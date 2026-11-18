@@ -22,7 +22,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **How:** family roles `owner`, `parent` (edit books), `viewer` (read only), defined in `packages/core/src/auth.ts`
   with an extra `book: [read, edit]` statement. The operator role (`admin`) is a custom admin-plugin role whose
   permissions omit `impersonate` and `impersonate-admins`; the smoke test asserts the impersonation endpoint
-  returns 403 for the operator. `emailAndPassword.disableSignUp` is on: accounts come only from invitations or seeding.
+  returns 403 for the operator. `emailAndPassword.disableSignUp` is on: accounts come only from invitations, the
+  operator command (D21), or the development seed.
 - **Every account has a family (Sid, 2026-11-18):** an account that isn't joining an existing family gets a
   one-person family, with that user as `owner`, when the account is created. There is no separate "create a
   family" step, and the UI says little about families until someone invites a second member. Rejected: families
@@ -33,6 +34,19 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   a grandparent who views two children's families). Better Auth 1.7.25 allows it by default (`organizationLimit`
   is unset), and the session's `activeOrganizationId` picks the current family.
 - **Reopen if:** Better Auth drops organization roles or custom admin access control.
+
+### D21. The production operator account comes from a one-off CLI command — Decided (Sid, 2026-11-18)
+- **Why:** the operator is the one account no invitation can create. A first-sign-in-becomes-admin rule would
+  open sign-up on an empty database, so anyone reaching a fresh (or wiped) deploy first would own an app holding
+  children's photos. Seeding from environment variables would keep a password in the host's variables and
+  re-run admin-granting code on every boot.
+- **How:** `mise run operator:create -- --email <email>`, run once inside the deployed container (any host's
+  one-off run or shell; nothing host-specific). It reads the password from a prompt, never from the environment
+  or arguments, creates the user with role `admin` (or promotes an existing user), and creates their one-person
+  family through the same account-plus-family path as the operator's new-family invite (plan.md, "Invites and
+  families"). Running it again changes nothing, and deploys never run it. The development seed
+  (`mise run db:seed`, with its published password) never runs against production.
+- **Reopen if:** a second operator or an automated environment needs operators without shell access.
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided
 - **Why:** brief. Postgres is the only moving part; workflows can suspend for days (preview approval).

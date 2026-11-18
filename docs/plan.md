@@ -220,4 +220,6 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
    single-page regeneration, character-change propagation.
 5. Editor text editing; PDF proof task, download, and approval.
 6. Modal provider and Python function, callback route, README instructions.
-7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config).
+7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
+   the `operator:create` command (D21), with production loading the sample story under the real operator
+   instead of running the development seed.
