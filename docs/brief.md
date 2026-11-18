@@ -32,7 +32,7 @@ If one of these turns out to be wrong, tell me the evidence and what you'd do in
 
 The first version is invite-only: my family and families I invite. Build this vertical slice:
 
-1. Sign up by invite, create a family, and invite another member with a view-only role.
+1. Sign up by invite (a new account comes with its own family), and invite another member with a view-only role.
 2. Add family members as characters with reference photos. Photos are stored in object storage and visible only to that family.
 3. A seeded sample book with human-written text and layered illustrations that have slots for characters. Use placeholder art. Define the first version of the book format that this needs.
 4. Personalize the book: choose which family member fills each character slot, generate a character preview and wait for the parent to approve or adjust it (a different reference photo, or simple attributes such as hair and glasses), then generate every page through the workflow and provider, show progress, and regenerate a single page. A change to a character applies on every page.

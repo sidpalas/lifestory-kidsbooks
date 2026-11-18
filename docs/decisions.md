@@ -23,6 +23,15 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   with an extra `book: [read, edit]` statement. The operator role (`admin`) is a custom admin-plugin role whose
   permissions omit `impersonate` and `impersonate-admins`; the smoke test asserts the impersonation endpoint
   returns 403 for the operator. `emailAndPassword.disableSignUp` is on: accounts come only from invitations or seeding.
+- **Every account has a family (Sid, 2026-11-18):** an account that isn't joining an existing family gets a
+  one-person family, with that user as `owner`, when the account is created. There is no separate "create a
+  family" step, and the UI says little about families until someone invites a second member. Rejected: families
+  that users create themselves, which leaves a user with no family that every page must handle; and characters
+  and books owned by the user with families added later, which still needs sharing for the view-only member and
+  later moves ownership of every character, book, and stored file.
+- **Several families per user:** a user can belong to any number of families, each with its own role (for example
+  a grandparent who views two children's families). Better Auth 1.7.25 allows it by default (`organizationLimit`
+  is unset), and the session's `activeOrganizationId` picks the current family.
 - **Reopen if:** Better Auth drops organization roles or custom admin access control.
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided

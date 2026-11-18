@@ -101,6 +101,8 @@ Better Auth owns `user`, `session`, `account`, `verification`, `organization` (=
 
 Access rules, enforced in `packages/core` (not in route code): every family-owned row is reached through
 `family_id`, and a `FamilyAccess` service checks the caller's membership and role (`book:edit` for writes).
+A user may belong to several families: the check uses the row's `family_id`, never only the session's active family,
+which just picks the default family for lists and new books.
 `/api/files/*` maps the object key prefix to its owner: `families/<id>/...` requires membership in that family,
 `stories/...` requires the story to be published (or the caller to be its author).
 
@@ -165,11 +167,22 @@ personalize-book(bookId)
 
 ## Invites and families
 
-- Sign up by invite: Better Auth's organization invitation creates the `invitation` row and emails a link (in dev the
-  email is logged and shown in a dev-only mailbox page). Because public sign-up is disabled (D3), the accept page
-  calls a server function that verifies the pending invitation for that email and then creates the account with
-  Better Auth's internal adapter (as `ensureDevUser` does today), since its public sign-up endpoint is off. Creating a new family is allowed for invited users (`allowUserToCreateOrganization`).
+Every account has a family (D3). Accounts are created in two ways, and no user is left without a family:
+
+- **Invite a new family (operator).** The operator enters a name and email. Accepting creates the account and a
+  one-person family named "<name>'s family" (renamable) with the new user as `owner`, using Better Auth's
+  `createOrganization` with `userId` (a server-side system action; no session needed), and it is the active family
+  when they sign in. How the invitee sets a password (an invite token checked by our accept page, or the
+  admin plugin's `createUser` plus a set-password link) is settled in phase 2. Public sign-ups later reuse the
+  same account-plus-family path.
+- **Invite a member into a family.** Better Auth's organization invitation creates the `invitation` row and emails
+  a link (in dev the email is logged and shown in a dev-only mailbox page). Because public sign-up is disabled (D3),
+  the accept page calls a server function that verifies the pending invitation for that email, creates the account
+  with Better Auth's internal adapter if there is none (as `ensureDevUser` does today), and adds the membership.
+  The invitee gets no family of their own; they can create one later (`allowUserToCreateOrganization`).
 - Invite with a view-only role: the inviter picks `parent` or `viewer`; `viewer` can open books and proofs only.
+- An existing user can accept invitations into other families, so a user can be in several. Accepting makes that
+  family active; a family switcher sets `activeOrganizationId`, and pages show the active family's characters and books.
 
 ## How "Coming later" fits
 
@@ -185,7 +198,10 @@ None of this is built in milestone 1; these are the seams that keep it from need
 - **Community authoring with revenue share.** Any user can own a `story`; `story_version` makes published content
   immutable, so a sale can name exactly which version (and author) it paid for. A royalty ledger keyed by order line
   and author comes with payments. Authors upload assets through the same storage service; the manifest Schema is
-  the validator for uploads.
+  the validator for uploads. Author and illustrator groups (studios) will be a second kind of Better Auth
+  organization: a `kind` column (`family` / `studio`) on `organization`, studio roles beside the family roles, and
+  an optional studio owner on `story`. Since a user can be in several organizations, family lists, the active
+  family, and `FamilyAccess` will then filter to `kind = family`; until then every organization is a family.
 - **Moderation.** `story_version` gains a review state (`submitted` → `approved`) gating publication, plus a
   `report` table; the operator's admin role gets moderation permissions (still without impersonation).
 - **Public sign-ups.** Flip `disableSignUp` off and keep invitation acceptance as is; nothing else assumes
