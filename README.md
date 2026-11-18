@@ -47,3 +47,43 @@ mise run test:e2e   # needs the stack's Postgres and SeaweedFS running, migrated
 ```
 
 CI (`.github/workflows/ci.yml`) runs the same mise tasks.
+
+## Deploying
+
+The app ships as two images, built from the repository root, that need only Postgres and an S3-compatible
+bucket. They read the variables in `.env.example`; production also sets `BETTER_AUTH_URL` to its public origin.
+
+- `apps/web/Dockerfile`: the web app on `$PORT`. Before each release, run `node packages/db/src/migrate.ts`
+  in the same image to apply migrations (idempotent).
+- `apps/worker/Dockerfile`: the Absurd worker.
+
+Production images never serve the `/__dev` routes (they are compiled out of `vite build`), and the development
+seed refuses to run with `NODE_ENV=production`. The operator account comes from `operator:create` (D21).
+`GET /api/health` reads Postgres and returns `{"status":"ok","migrations":<n>}`.
+
+### Railway
+
+The Railway project `lifestory-kidsbooks` (environment `production`) runs `web`, `worker`, and `postgres`, with the
+`lifestory-data` bucket. It's live at https://web-production-73ade4c2.up.railway.app. `.railway/railway.ts`
+declares the services, their Dockerfiles, the web app's pre-deploy migration and healthcheck, and every variable
+([Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)). The services have no GitHub
+source, so code is deployed from a checkout with the CLI (`npm install -g @railway/cli`, 5.74 or newer) and a
+project token in `RAILWAY_TOKEN`, or after `railway login` and `railway link`. `railway config` evaluates the file with
+the `railway` SDK from the root devDependencies (`mise run install`):
+
+```sh
+railway config plan                    # preview config changes in .railway/railway.ts
+railway config apply                   # apply them
+railway up --service web --ci          # build and deploy the web app; migrations run before it starts
+railway up --service worker --ci       # then the worker
+curl https://web-production-73ade4c2.up.railway.app/api/health
+```
+
+`railway up` uploads the working tree (minus `.gitignore`d files), so deploy from a clean checkout of `main`.
+`BETTER_AUTH_SECRET` is set once on `web` (the worker references it) and stays out of the config file:
+`railway variables --service web --set "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"`. Railway buckets use
+virtual-hosted-style URLs, hence `S3_FORCE_PATH_STYLE=false`.
+
+To switch to the real image model, change `IMAGE_PROVIDER` from `fake` to `modal` in `.railway/railway.ts`,
+add the Modal variables described in [docs/plan.md](docs/plan.md#generation-workflow), then apply and redeploy
+both services.

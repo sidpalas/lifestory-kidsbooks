@@ -153,10 +153,27 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   it can't collide with product routes. The folder is `routes/[_][_]dev`, because TanStack Router treats a
   leading `_` as a pathless layout. `GET /__dev` lists the endpoints and local users; `GET /__dev/log-me-out`
   ends the session. All of them share the same 404 gate.
-- **Reopen if:** never expected; remove from production images in milestone 1's Dockerfiles.
+- **Production (2026-11-18):** the gate also requires `import.meta.env.DEV`, which `vite build` compiles to false, so
+  the production image returns 404 for every `/__dev` route whatever its environment says.
+- **Reopen if:** never expected.
 
 ### D18. Postgres tuned for speed in development (`fsync=off`, `synchronous_commit=off`) — Made
 - Local and CI data is disposable. Production uses the host's managed Postgres defaults.
+
+### D22. Deployment: two images, migrations as a release step, Railway configured by its IaC file — Made
+- **Images:** `apps/web/Dockerfile` and `apps/worker/Dockerfile` (Node 26 slim, pnpm prod install, workspace packages
+  run from TypeScript source). Configuration is only environment variables, so any container host works.
+- **Web server:** `vite build` emits a fetch handler, not a listener, so `apps/web/server.ts` serves it with srvx
+  1.0.8 (already in the lockfile through TanStack Start). Rejected: Nitro, whose only current release is an RC (D16).
+- **Migrations:** a separate command in the web image (`node packages/db/src/migrate.ts`) run before each release
+  (Railway's pre-deploy command), not on container start, so a failed migration stops the release instead of
+  crash-looping, and replicas don't race.
+- **Railway:** `.railway/railway.ts` (Railway Infrastructure as Code, `railway` SDK 3.17.0) declares the services,
+  Postgres, the bucket, and variables. `railway.json`/`railway.toml` are deprecated and stop being read on
+  2026-12-01 (Sid, 2026-11-18). Code deploys with `railway up` because a project token can't connect a GitHub repo.
+- **Storage URLs:** `S3_FORCE_PATH_STYLE` (default true for SeaweedFS); Railway buckets need virtual-hosted style.
+- **Reopen if:** a release needs steps the pre-deploy command can't run, or deploys should follow pushes to `main`
+  (then connect the GitHub repo as the services' source).
 
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once

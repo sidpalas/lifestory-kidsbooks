@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
@@ -37,6 +38,11 @@ const _devLogMeOutRoute = _devLogMeOutRouteImport.update({
   path: '/__dev/log-me-out',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const _devLogMeInEmailRoute = _devLogMeInEmailRouteImport.update({
   id: '/__dev/log-me-in/$email',
   path: '/__dev/log-me-in/$email',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/api/health': typeof ApiHealthRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/api/health': typeof ApiHealthRoute
   '/__dev': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/api/health': typeof ApiHealthRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/api/health'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/api/health'
     | '/__dev'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/api/health'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SignInRoute: typeof SignInRoute
   _devLogMeOutRoute: typeof _devLogMeOutRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   _devIndexRoute: typeof _devIndexRoute
   _devLogMeInEmailRoute: typeof _devLogMeInEmailRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _devLogMeOutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/__dev/log-me-in/$email': {
       id: '/__dev/log-me-in/$email'
       path: '/__dev/log-me-in/$email'
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SignInRoute: SignInRoute,
   _devLogMeOutRoute: _devLogMeOutRoute,
+  ApiHealthRoute: ApiHealthRoute,
   _devIndexRoute: _devIndexRoute,
   _devLogMeInEmailRoute: _devLogMeInEmailRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

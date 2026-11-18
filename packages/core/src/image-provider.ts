@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Context, Effect, Layer } from "effect";
+import { Config, Context, Effect, Layer } from "effect";
 
 export interface ImageRequest {
   /** Stable key for this generation; the same key must yield the same image. */
@@ -47,3 +47,15 @@ export const FakeImageProvider = Layer.succeed(ImageProvider, {
   name: "fake",
   generate: (request) => Effect.sync(() => renderPlaceholder(request)),
 });
+
+/**
+ * The provider named by IMAGE_PROVIDER (default "fake"). The Modal provider
+ * adds "modal" here; until then any other value fails at startup instead of
+ * silently generating placeholders.
+ */
+export const ImageProviderFromConfig = Layer.unwrap(
+  Effect.gen(function* () {
+    yield* Config.Literals(["fake"], "IMAGE_PROVIDER").pipe(Config.withDefault("fake"));
+    return FakeImageProvider;
+  }),
+);

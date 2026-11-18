@@ -15,6 +15,7 @@ evidence and a proposal, don't switch on your own.
 | `packages/core` | `@lifestory/core`, the "shared package" in docs/brief.md: Effect services and layers for config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset; `src/testing.ts` holds test helpers. |
 | `packages/db` | `@lifestory/db`: Drizzle schema and migrations (including the vendored Absurd SQL). No services or domain logic. |
 | `compose.yaml` | Postgres 18 and SeaweedFS (S3 API on :8333). |
+| `apps/*/Dockerfile`, `.railway/railway.ts` | Production images (build from the repo root) and the Railway project they deploy to. Redeploying: README "Deploying". |
 
 ## Commands and how long they take
 
@@ -135,6 +136,12 @@ Tools pinned in `mise.toml` follow the same rule.
 `.env` (copied from `.env.example`) is loaded by mise for every task and **overrides** variables already set in the
 shell. Leave `BETTER_AUTH_URL` out of `.env`: `dev:web` derives it from `$PUBLIC_URL` (the Amp portal) or `$PORT`,
 and trusts `http://localhost:$PORT` too, so curl and Playwright on localhost work next to the portal.
+
+### Deploying
+
+Production is the Railway project in README "Deploying". Change its services and variables in `.railway/railway.ts`
+(`railway config plan`, then `apply`), never in the dashboard or with `railway.json`/`railway.toml` (deprecated).
+Deploy only when asked, and never run `db:seed` or enable `/__dev` against it.
 
 ### Commits
 

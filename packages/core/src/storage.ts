@@ -40,7 +40,7 @@ export class ObjectStorage extends Context.Service<
             new S3Client({
               endpoint: s3.endpoint,
               region: s3.region,
-              forcePathStyle: true,
+              forcePathStyle: s3.forcePathStyle,
               credentials: { accessKeyId: s3.accessKeyId, secretAccessKey: Redacted.value(s3.secretAccessKey) },
             }),
         ),

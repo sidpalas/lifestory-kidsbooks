@@ -11,6 +11,8 @@ export class AppConfig extends Context.Service<
       readonly bucket: string;
       readonly accessKeyId: string;
       readonly secretAccessKey: Redacted.Redacted<string>;
+      /** Path-style URLs (endpoint/bucket/key) for SeaweedFS; false for providers that require virtual-hosted style. */
+      readonly forcePathStyle: boolean;
     };
   }
 >()("@lifestory/core/AppConfig") {
@@ -25,6 +27,7 @@ export class AppConfig extends Context.Service<
           bucket: yield* Config.String("S3_BUCKET"),
           accessKeyId: yield* Config.String("S3_ACCESS_KEY_ID"),
           secretAccessKey: yield* Config.Redacted("S3_SECRET_ACCESS_KEY"),
+          forcePathStyle: yield* Config.Boolean("S3_FORCE_PATH_STYLE").pipe(Config.withDefault(true)),
         },
       };
     }),

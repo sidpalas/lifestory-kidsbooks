@@ -1,0 +1,8 @@
+# Images copy only what their Dockerfile names; keep local state out of the build context.
+**/node_modules
+**/dist
+.git
+.env
+.amp
+test-results
+playwright-report

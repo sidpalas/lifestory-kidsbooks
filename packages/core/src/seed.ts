@@ -45,6 +45,8 @@ export const seed = Effect.gen(function* () {
 });
 
 if (import.meta.main) {
+  // The seed creates accounts with a published password; production gets its operator from D21's command.
+  if (process.env.NODE_ENV === "production") throw new Error("refusing to run the development seed with NODE_ENV=production");
   const runtime = makeServerRuntime();
   await runtime.runPromise(seed);
   await runtime.dispose();
