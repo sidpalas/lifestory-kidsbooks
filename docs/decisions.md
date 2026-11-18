@@ -110,6 +110,29 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** GPU spend matters more than latency (fp8 weights or the upsampler on a smaller GPU), or bursts of
   pages need more than one container.
 
+### D26. Characters are illustrator-approved variants composed from parts; no AI when a book is made — Decided (Sid, 2026-11-18)
+- **What changed:** parents no longer upload photos and no model draws family members into books. For each role
+  a parent picks a base face (a handful per role, covering age, gender and facial structure, drawn by the illustrator),
+  a skin tone, a hairstyle, a hair colour and extras such as glasses. Every option is approved by the illustrator before
+  the story is published, and a book is a stack of approved layers composed on the CPU, so it is instant and needs no GPU.
+- **How:** for every appearance the illustrator delivers each base (bald, neutral skin) with region masks (skin, brows,
+  lips, line), an occluder layer and a head zone, plus skin and hair palettes. Authoring tooling generates each shape
+  option in place on the base (with a turnaround sheet per option for consistency), cuts it out by comparison with the
+  base inside the head zone, and splits it by region. Skin and hair colour are a version-pinned recolour, not AI. The
+  picker starts from a few curated looks and refines one feature at a time.
+- **Why:** no children's photos to store or protect, and nothing near the license's biometric and digital-replica
+  limits; a human reviews every image before families see it (the §2e content-review condition); consistent, print-
+  quality art. With no user data, hosted image APIs are also allowed as authoring providers.
+- **Evidence (thread T-01a1f012-4acc-7483-a9a5-8d5c5353cdee):** whole-page AI edits changed 0.8–13.6% of pixels
+  outside the target region, so art never passes through a model. Five in-place renders on one base gave 24
+  combinations (3 tones × 4 hairstyles × glasses) with the face pixel-identical; hair colour by gradient map kept the
+  watercolour texture. Parts grow as a sum of options per base, not a product.
+- **Open:** cut-outs at print size, hairstyle consistency across poses, glasses-over-hair layer order, a hosted API
+  with transparent output. Brief and plan text still describe photo likeness and need Sid's rewrite.
+- **Rejected:** photo likeness per book (privacy, license, cost, art drift); every combination pre-drawn (thousands of
+  images per story to review); standalone reusable parts (they ignore each page's head angle and light).
+- **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.
+
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.

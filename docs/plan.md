@@ -74,9 +74,10 @@ and a later v2 gets a migration function from v1.
 
 - **Text** is a list of styled blocks with `{{slot.field}}` tokens (`name`, `they/them`-style pronoun fields).
   A family's edits replace a block's content per page; the original stays in the story version.
-- **Illustrations are layered.** `art` layers are the illustrator's files. A `character` layer is a slot the provider
-  fills: the page render sends the art layers composited as the base image, the character's approved preview and
-  reference photos as references, and the box and direction as the prompt. Parents never edit art.
+- **Illustrations are layered.** `art` layers are the illustrator's files. A `character` layer is filled from the
+  role's approved variant parts (D26): base face, recoloured skin, hair and extras, stacked between plate and
+  foreground with no AI at book time. Parents never edit art. The generation workflow below predates D26 and will be
+  rewritten for authoring-time part generation.
 - **Nothing is author-specific.** Any user can own a story; slots, layouts, and fonts are declared in the manifest,
   so a community author's story uses the same format (and the same validation an upload would run later).
 
