@@ -1,0 +1,207 @@
+# Milestone 1 plan
+
+How milestone 1 ([brief.md](brief.md#milestone-1-scope)) gets built on the Phase 1 foundation. Decisions referenced
+as D*n* are in [decisions.md](decisions.md). This plan changes like decisions do: with evidence, and with Sid's approval.
+
+## Repository layout
+
+What exists after Phase 1, and what milestone 1 adds (marked *new*):
+
+```
+apps/
+  web/                      TanStack Start app
+    src/routes/             _app/ (signed-in shell)  _app/books/$bookId/edit (ssr: false)  print/books/$bookId (print-only)
+    src/routes/api/         auth/$  files/$  webhooks/modal (new)
+    src/components/book/    BookPage: the one page component for editor and print (new)
+    src/server/             server functions grouped by area: families, characters, books, proofs (new)
+    e2e/                    smoke.spec.ts, milestone1.spec.ts (new, walks the whole slice)
+  worker/                   Absurd worker; also runs Playwright Chromium for PDF proofs (new)
+packages/
+  core/src/                 Effect services (Auth, Database, ObjectStorage, ImageProvider, Jobs)
+    families/ characters/ stories/ books/ proofs/   domain modules (new)
+    book-format/            Schema for the book format, v1 (new)
+    tasks/                  personalize-book, render-page, render-proof (new)
+    providers/modal.ts      Modal ImageProvider (new)
+  db/                       Drizzle schema and migrations
+modal/                      Python: FLUX 3 Image Klein function, `modal deploy` target (new)
+fixtures/stories/moon-picnic/   sample story manifest and placeholder art, loaded by the seed (new)
+```
+
+Rules that keep it from sprawling: domain logic lives in `packages/core` as Effect code and is called from server
+functions and tasks alike; `apps/web/src/server` only adapts requests to it. Browser code imports only
+`@lifestory/core/contracts` (schemas, errors, the book format types).
+
+## Book format (v1)
+
+A story is authored once and personalized by many families, so the format separates **what the author made**
+(immutable once published) from **what a family chose** (cast and text edits). It's JSON validated by an Effect
+Schema in `packages/core/src/book-format`, stored as `story_version.manifest`, with assets in object storage
+under `stories/<storyId>/v<n>/`. The manifest carries `formatVersion: 1`; readers reject versions they don't know,
+and a later v2 gets a migration function from v1.
+
+```jsonc
+{
+  "formatVersion": 1,
+  "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375 },
+  "fonts": [{ "family": "Literata", "asset": "fonts/literata-var.woff2" }],
+  "characterSlots": [
+    {
+      "slotId": "hero",
+      "label": "The child",
+      "description": "A child about 5 years old, the main character",
+      "pronounSet": "from-character",           // text tokens resolve from the chosen character
+      "defaults": { "hair": "short brown", "glasses": false }
+    },
+    { "slotId": "grownup", "label": "A grown-up", "description": "A parent or grandparent", "defaults": {} }
+  ],
+  "pages": [
+    {
+      "pageId": "p01",
+      "layout": "full-bleed-art/text-bottom",   // a closed set of layouts the BookPage component knows
+      "text": [{ "style": "body", "content": "{{hero.name}} packed the picnic basket." }],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p01/background.png" },                 // the illustrator's art, never edited
+          { "kind": "character", "slotId": "hero", "box": [420, 120, 940, 480],  // FLUX bbox grid: [y0, x0, y1, x1] of 0..1000
+            "direction": "kneeling, holding a basket, smiling, side view" },
+          { "kind": "art", "asset": "pages/p01/foreground.png" }                  // e.g. table edge drawn over the character
+        ]
+      }
+    }
+  ]
+}
+```
+
+- **Text** is a list of styled blocks with `{{slot.field}}` tokens (`name`, `they/them`-style pronoun fields).
+  A family's edits replace a block's content per page; the original stays in the story version.
+- **Illustrations are layered.** `art` layers are the illustrator's files. A `character` layer is a slot the provider
+  fills: the page render sends the art layers composited as the base image, the character's approved preview and
+  reference photos as references, and the box and direction as the prompt. Parents never edit art.
+- **Nothing is author-specific.** Any user can own a story; slots, layouts, and fonts are declared in the manifest,
+  so a community author's story uses the same format (and the same validation an upload would run later).
+
+## Data model
+
+Better Auth owns `user`, `session`, `account`, `verification`, `organization` (= family), `member` (role
+`owner`/`parent`/`viewer`), and `invitation`. Milestone 1 adds (all IDs are text; timestamps omitted):
+
+| Table | Owner | Key columns | Notes |
+| --- | --- | --- | --- |
+| `story` (exists) | author (`user`) | `author_id`, `slug`, `status` | Never owned by a family. |
+| `story_version` | story | `story_id`, `version`, `manifest` jsonb, `published_at` | Immutable after publish. Books pin one. |
+| `character` | family | `family_id`, `name`, `pronouns`, `attributes` jsonb (hair, glasses, skin tone…), `revision` int | A family member as drawn. |
+| `character_photo` | family | `character_id`, `object_key`, `is_primary` | Object keys under `families/<familyId>/photos/`. |
+| `character_preview` | family | `character_id`, `revision`, `status` (`generating`/`ready`/`approved`/`rejected`), `object_key`, `task_id` | One per character revision. |
+| `book` | family | `family_id`, `story_version_id`, `title`, `status`, `workflow_task_id` | A family's personalized copy. |
+| `book_cast` | book | `book_id`, `slot_id`, `character_id` | Which family member fills each slot. |
+| `book_text_edit` | book | `book_id`, `page_id`, `block_index`, `content` | Overrides; absent row = story text. |
+| `page_render` | book | `book_id`, `page_id`, `cast_key`, `status`, `object_key`, `task_id` | `cast_key` = hash of (slot → character id + revision) for the slots on that page. |
+| `generation` | any | `provider`, `external_id`, `request` jsonb, `status`, `event_name` | One row per provider job; the Modal callback looks it up. |
+| `proof` | book | `book_id`, `status`, `object_key`, `page_count`, `approved_at`, `approved_by` | An immutable print-ready PDF. |
+
+Access rules, enforced in `packages/core` (not in route code): every family-owned row is reached through
+`family_id`, and a `FamilyAccess` service checks the caller's membership and role (`book:edit` for writes).
+`/api/files/*` maps the object key prefix to its owner: `families/<id>/...` requires membership in that family,
+`stories/...` requires the story to be published (or the caller to be its author).
+
+## Generation workflow
+
+Everything that touches the provider runs in Absurd tasks on the worker. Each step is idempotent: object keys and
+row IDs derive from domain IDs plus revisions, writes are upserts, and provider submissions carry an idempotency
+key, so a re-run step converges on the same result.
+
+```
+personalize-book(bookId)
+  for each cast slot (in parallel via child tasks on queue "previews"):
+    preview(characterId, revision)
+      step  submit       → generation row, provider.submit(key = char:<id>:r<rev>)
+      await event        generation.done:<generationId>          (Modal callback, or the fake provider)
+      step  store        → previews/<characterId>/r<rev>.png, character_preview.status = ready
+  await event            preview.decision:<bookId>:<round>        (parent approves or adjusts in the UI)
+    adjust (new photo or attributes) → character.revision += 1, round += 1, loop to preview
+  for each page (child tasks on queue "pages", up to N at a time):
+    render-page(bookId, pageId, castKey)
+      step  submit       → provider.submit(key = page:<bookId>:<pageId>:<castKey>)
+      await event        generation.done:<generationId>
+      step  store        → books/<bookId>/pages/<pageId>/<castKey>.png, page_render.status = ready
+  step  mark book ready
+```
+
+- **Suspending.** `ctx.awaitEvent` suspends the run without holding a worker. Absurd events are first-emit-wins and
+  cached, so each wait uses a unique name (generation ID, decision round) and a late or duplicate callback is harmless.
+- **Character preview approval.** The book page shows each slot's preview with Approve / Adjust. Approve and adjust are
+  server functions that write the decision and emit `preview.decision:<bookId>:<round>`. Only approved previews
+  are used as references for pages, so every page gets the same look.
+- **Progress.** The UI polls a server function that counts `page_render` rows by status (no websockets needed);
+  rows are written by the steps, so progress survives worker restarts.
+- **Regenerate one page.** Spawns `render-page` with a new seed in the idempotency key; the old render stays until
+  the new one is ready.
+- **A character change applies everywhere.** Editing a character bumps its `revision`, which changes the `cast_key`
+  of every page it appears on in every book; a task re-renders exactly the pages whose current render's key no
+  longer matches.
+- **Providers.** `ImageProvider` grows to `submit(request) → { generationId }` plus completion through the
+  `generation.done` event. Modal: the Python function (FLUX 3 Image Klein with its prompt upsampler) receives
+  references as presigned GET URLs, uploads its output to a presigned PUT URL, and POSTs
+  `/api/webhooks/modal` with an HMAC signature over the generation ID; the route verifies it and emits the event.
+  Fake: renders the deterministic placeholder (composited art + a labelled box per character), uploads it, and emits
+  the same event, so dev, CI, and tests run the real suspend/resume path. If inbound callbacks prove unreliable, the
+  fallback is polling Modal's call result with `ctx.sleepFor` (D14).
+- **Running Modal for real** (Sid, later): `modal deploy modal/flux_klein.py`, set `IMAGE_PROVIDER=modal`,
+  `MODAL_ENDPOINT_URL`, `MODAL_TOKEN_*`, and `MODAL_CALLBACK_SECRET`, with the app reachable at a public URL. The
+  README will carry the exact steps.
+
+## Editor and print
+
+- `BookPage` renders one page from (manifest page, resolved text, render image) in CSS physical units
+  (`in`), at trim plus bleed, with fonts loaded from the story's assets. The editor route (`ssr: false`) scales it
+  with a CSS transform and shows trim and safe-area guides; editing a text block saves a `book_text_edit` row.
+  Viewers see the same page without editing controls.
+- `print/books/$bookId` renders every page with `@page { size: <w+2·bleed>in <h+2·bleed>in; margin: 0 }`, for the
+  worker only (a short-lived signed token, not a session).
+- `render-proof(bookId)` task: Playwright Chromium on the worker opens the print route, waits for fonts and images,
+  calls `page.pdf({ preferCSSPageSize: true, printBackground: true })`, stores `proofs/<bookId>/<proofId>.pdf`, and
+  records the page count. The parent downloads it, checks it, and approves it; an approved proof is immutable.
+- The e2e test checks the PDF's page count and page size and renders page 1 to an image for the report.
+
+## Invites and families
+
+- Sign up by invite: Better Auth's organization invitation creates the `invitation` row and emails a link (in dev the
+  email is logged and shown in a dev-only mailbox page). Because public sign-up is disabled (D3), the accept page
+  calls a server function that verifies the pending invitation for that email and then creates the account with
+  Better Auth's internal adapter (as `ensureDevUser` does today), since its public sign-up endpoint is off. Creating a new family is allowed for invited users (`allowUserToCreateOrganization`).
+- Invite with a view-only role: the inviter picks `parent` or `viewer`; `viewer` can open books and proofs only.
+
+## How "Coming later" fits
+
+None of this is built in milestone 1; these are the seams that keep it from needing a rewrite.
+
+- **Payments and print ordering (e.g. Lulu).** An `order` will reference an approved `proof` (an immutable PDF with
+  known trim and page count, which is what print APIs take) and the `book`. A `PrintProvider` service, like
+  `ImageProvider`, wraps the vendor; order fulfilment is an Absurd workflow that suspends on payment and vendor
+  webhooks, received by server routes like the Modal callback.
+- **Public marketplace with ranking.** `story` is already author-owned with a `status`; a public catalogue lists
+  published stories. Ratings and reviews attach to `story` (by families who made a book from it), and ranking is a
+  query or a periodic Absurd task writing a score.
+- **Community authoring with revenue share.** Any user can own a `story`; `story_version` makes published content
+  immutable, so a sale can name exactly which version (and author) it paid for. A royalty ledger keyed by order line
+  and author comes with payments. Authors upload assets through the same storage service; the manifest Schema is
+  the validator for uploads.
+- **Moderation.** `story_version` gains a review state (`submitted` → `approved`) gating publication, plus a
+  `report` table; the operator's admin role gets moderation permissions (still without impersonation).
+- **Public sign-ups.** Flip `disableSignUp` off and keep invitation acceptance as is; nothing else assumes
+  every user was invited (families are created by their first member, not by the operator).
+- **Server-rendered catalogue pages for search engines.** Catalogue routes keep TanStack Start's SSR on (only the
+  editor turns it off) and read published stories only, with no session required.
+
+## Delivery
+
+Pull requests (or reviewed local branches, as Sid prefers) in this order, each with its tests:
+
+1. Book format Schema, `story_version`, seeded sample story with placeholder art, `BookPage` and the print route.
+2. Families and invites (sign up by invite, roles, viewer read-only), family-scoped file access.
+3. Characters and photos (upload to storage, family-only access).
+4. Personalization workflow with the fake provider: previews, approval and adjustment, page renders, progress,
+   single-page regeneration, character-change propagation.
+5. Editor text editing; PDF proof task, download, and approval.
+6. Modal provider and Python function, callback route, README instructions.
+7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config).

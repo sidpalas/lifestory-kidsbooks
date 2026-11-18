@@ -1,0 +1,80 @@
+# Toolchain pins and the repo's task commands. `mise install`, then `mise tasks`
+# to list tasks and `mise run <task>` to run one. CI and .agents/setup use these.
+# Versions: latest stable release at least 3 days old (docs/decisions.md D16).
+
+min_version = "2026.11.8"
+
+[tools]
+node = "26.13.1"
+pnpm = "12.0.0"
+
+[env]
+# Every task sees the app's environment (copy .env.example to .env).
+_.file = ".env"
+# Workspace binaries (tsc, oxlint, vitest, playwright) for task commands.
+_.path = ["{{config_root}}/node_modules/.bin"]
+
+# ---- Setup and infrastructure -------------------------------------------------
+
+[tasks.install]
+description = "Install dependencies exactly as locked"
+run = "pnpm install --frozen-lockfile"
+
+[tasks."infra:up"]
+description = "Start Postgres and SeaweedFS (compose.yaml) and wait until healthy"
+run = "docker compose up -d --wait --quiet-pull"
+
+[tasks."db:migrate"]
+description = "Apply Drizzle migrations, including Absurd's schema (idempotent)"
+run = "node packages/db/src/migrate.ts"
+
+[tasks."db:seed"]
+description = "Seed users, the example family, and the sample story (idempotent)"
+run = "node packages/core/src/seed.ts"
+
+[tasks."db:generate"]
+description = "Generate a migration from packages/db/src/schema: mise run db:generate --name <change>"
+dir = "packages/db"
+run = "pnpm exec drizzle-kit generate"
+
+# ---- Running the app ----------------------------------------------------------
+
+[tasks."dev:web"]
+description = "TanStack Start dev server on $PORT (default 3000)"
+dir = "apps/web"
+run = 'BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:${PORT:-3000}" BETTER_AUTH_URL="${BETTER_AUTH_URL:-${PUBLIC_URL:-http://localhost:${PORT:-3000}}}" pnpm exec vite dev --host 0.0.0.0 --port "${PORT:-3000}" --strictPort'
+
+[tasks."dev:worker"]
+description = "Absurd worker, restarted on change"
+dir = "apps/worker"
+run = "node --watch src/main.ts"
+
+[tasks.dev]
+description = "Web app and worker together"
+depends = ["dev:web", "dev:worker"]
+
+[tasks.stack]
+description = "Whole local stack: infrastructure, migrations, seed, web app, and worker"
+run = ["mise run infra:up", "mise run db:migrate", "mise run db:seed", "mise run dev"]
+
+# ---- Checks ---------------------------------------------------------------------
+
+[tasks.typecheck]
+description = "TypeScript over every package"
+run = "tsc -p packages/db && tsc -p packages/core && tsc -p apps/worker && tsc -p apps/web"
+
+[tasks.lint]
+description = "oxlint; warnings fail"
+run = "oxlint --deny-warnings apps packages"
+
+[tasks.test]
+description = "Vitest unit tests"
+run = "vitest run"
+
+[tasks."test:e2e"]
+description = "Playwright smoke test (needs infra up, migrated, and seeded)"
+run = "playwright test"
+
+[tasks.check]
+description = "typecheck, lint, and unit tests"
+depends = ["typecheck", "lint", "test"]

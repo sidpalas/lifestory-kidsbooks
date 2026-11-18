@@ -1,0 +1,14 @@
+# Long-running dev processes for Amp orbs: `amp orb services ensure`.
+# Postgres and SeaweedFS run in Docker (compose.yaml), started by .agents/setup.
+# Commands are mise tasks (mise.toml); `dev:web` takes its public origin from $PUBLIC_URL.
+services:
+  web:
+    command: mise run dev:web
+    port: 3000
+    health: /sign-in
+    portal:
+      url: /dev/log-me-in/parent@lifestory.dev?returnTo=/
+      title: Lifestory
+      description: Signs you in as the seeded parent (parent@lifestory.dev).
+  worker:
+    command: mise run dev:worker

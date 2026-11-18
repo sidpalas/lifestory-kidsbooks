@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Runs when an orb wakes. Fast and idempotent: make sure Docker and the
+# backing services are up. The web app and worker are supervised services.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+sudo systemctl start docker
+sudo docker compose up -d --wait --quiet-pull

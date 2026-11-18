@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Only install versions published at least 3 days ago (in minutes), as a
+# buffer against compromised releases. Applies to transitive dependencies too.
+minimumReleaseAge: 4320
+
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,22 @@
+{
+  "name": "@lifestory/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1169.0",
+    "@lifestory/db": "workspace:*",
+    "absurd-sdk": "0.5.1",
+    "better-auth": "1.7.25",
+    "drizzle-orm": "0.45.4",
+    "effect": "4.1.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/pg": "8.23.1"
+  }
+}

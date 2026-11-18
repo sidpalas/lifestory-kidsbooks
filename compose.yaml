@@ -1,0 +1,44 @@
+# Local backing services. Only Postgres and S3-compatible storage: nothing host-specific.
+name: lifestory
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: lifestory
+      POSTGRES_PASSWORD: lifestory
+      POSTGRES_DB: lifestory
+    # Dev and test only: trade durability for speed.
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifestory -d lifestory"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  seaweedfs:
+    # S3-compatible object storage for local development and CI.
+    image: chrislusf/seaweedfs:4.54
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=64"]
+    environment:
+      AWS_ACCESS_KEY_ID: lifestory
+      AWS_SECRET_ACCESS_KEY: lifestory-secret
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  seaweedfs-data:

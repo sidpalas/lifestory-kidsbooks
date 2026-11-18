@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Prepares a fresh Amp orb (Debian) for this repo. Idempotent and fast on a
+# warm snapshot: every step checks before it installs. Never starts the app;
+# .amp/services.yaml owns the web app and the worker. Tool versions and task
+# commands live in mise.toml.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+step() { printf '\n==> %s\n' "$*"; step_start=$SECONDS; }
+done_step() { printf '    (%ss)\n' "$((SECONDS - step_start))"; }
+
+mise_version="$(sed -n 's/^min_version = "\(.*\)"/\1/p' mise.toml)"
+mise_bin="$HOME/.local/bin/mise"
+
+step "mise $mise_version"
+if [[ "$("$mise_bin" --version 2>/dev/null | cut -d' ' -f1)" != "$mise_version" ]]; then
+  curl -fsSL https://mise.run | MISE_VERSION="v$mise_version" MISE_QUIET=1 sh
+fi
+# Agents and supervised services run in non-interactive login shells: put mise
+# and its tool shims (node, pnpm) on their PATH.
+marker="# lifestory: mise"
+if ! grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+  printf '\n%s\nexport PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"\n' "$marker" >> "$HOME/.bash_profile"
+fi
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+mise --version
+done_step
+
+step "Toolchain (mise install)"
+mise trust --quiet mise.toml
+mise install
+node -v && pnpm -v
+done_step
+
+step "Docker and Compose"
+if ! docker compose version >/dev/null 2>&1; then
+  sudo apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-compose-plugin
+fi
+# The daemon isn't running by default in orbs. Enabling it makes it, and the
+# compose containers (restart: unless-stopped), come back in restored orbs.
+sudo systemctl enable --now docker >/dev/null 2>&1
+# Lets later shells (agents, services) use docker without sudo.
+id -nG "$USER" | grep -qw docker || sudo usermod -aG docker "$USER"
+done_step
+
+step "Postgres and SeaweedFS (compose.yaml)"
+# sudo: this shell isn't in the docker group yet on a fresh orb.
+sudo docker compose up -d --wait --quiet-pull
+done_step
+
+step ".env"
+[ -f .env ] || cp -- .env.example .env
+done_step
+
+step "Dependencies (mise run install)"
+mise run install
+done_step
+
+step "Playwright Chromium"
+mise exec -- pnpm exec playwright install --with-deps chromium | tail -2
+done_step
+
+step "Migrate and seed"
+mise run db:migrate
+mise run db:seed
+done_step
+
+echo
+echo "Setup complete. Start the app and worker with: amp orb services ensure"

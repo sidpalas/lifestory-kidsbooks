@@ -1,0 +1,37 @@
+// Development-only sign-in: GET /dev/log-me-in/<email>?returnTo=/path
+// Finds or creates the user, signs in with the dev password, sets Better
+// Auth's normal session cookie, and redirects to a same-origin path.
+// Returns 404 unless DEV_LOGIN_ENABLED=true and NODE_ENV isn't production.
+import { Auth, Database, ensureDevUser, DEV_PASSWORD } from "@lifestory/core";
+import { createFileRoute } from "@tanstack/react-router";
+import { Effect } from "effect";
+import { safeReturnTo } from "~/lib/safe-return-to";
+import { serverRuntime } from "~/server/runtime";
+
+const enabled = () => process.env.DEV_LOGIN_ENABLED === "true" && process.env.NODE_ENV !== "production";
+
+export const Route = createFileRoute("/dev/log-me-in/$email")({
+  server: {
+    handlers: {
+      GET: async ({ request, params }) => {
+        if (!enabled()) return new Response("Not found", { status: 404 });
+        const email = params.email.toLowerCase();
+        const returnTo = safeReturnTo(new URL(request.url).searchParams.get("returnTo"));
+        const signIn = await serverRuntime().runPromise(
+          Effect.gen(function* () {
+            const { db } = yield* Database;
+            const { auth } = yield* Auth.use((service) => Effect.succeed(service));
+            yield* Effect.promise(() => ensureDevUser(db, { name: email.split("@")[0] ?? email, email }));
+            return yield* Effect.promise(() =>
+              auth.api.signInEmail({ body: { email, password: DEV_PASSWORD }, headers: request.headers, asResponse: true }),
+            );
+          }),
+        );
+        if (!signIn.ok) return new Response(`Dev sign-in failed: ${await signIn.text()}`, { status: 500 });
+        const headers = new Headers({ location: returnTo });
+        for (const cookie of signIn.headers.getSetCookie()) headers.append("set-cookie", cookie);
+        return new Response(null, { status: 302, headers });
+      },
+    },
+  },
+});

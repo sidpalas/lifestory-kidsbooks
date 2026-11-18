@@ -1,0 +1,11 @@
+node_modules/
+.env
+.output/
+dist/
+.vinxi/
+.tanstack/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.amp/portals/
+.amp/in/
