@@ -12,8 +12,8 @@ evidence and a proposal, don't switch on your own.
 | --- | --- |
 | `apps/web` | TanStack Start app (React, Tailwind, shadcn/ui). Server functions in `src/server`, server routes in `src/routes/api` and `src/routes/[_][_]dev` (URL `/__dev`; a bare leading `_` would make a pathless layout). |
 | `apps/worker` | Absurd worker. Registers every task from `@lifestory/core` and runs it through the shared runtime. |
-| `packages/core` | Shared Effect package: config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset. |
-| `packages/db` | Drizzle schema and migrations (including the vendored Absurd SQL). |
+| `packages/core` | `@lifestory/core`, the "shared package" in docs/brief.md: Effect services and layers for config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset; `src/testing.ts` holds test helpers. |
+| `packages/db` | `@lifestory/db`: Drizzle schema and migrations (including the vendored Absurd SQL). No services or domain logic. |
 | `compose.yaml` | Postgres 18 and SeaweedFS (S3 API on :8333). |
 
 ## Commands and how long they take
@@ -21,7 +21,7 @@ evidence and a proposal, don't switch on your own.
 Tool versions (Node, pnpm) are pinned in `mise.toml`, and every command is a mise task: `mise tasks` lists them,
 `mise run <task>` runs one with `.env` loaded and `node_modules/.bin` on `PATH`. In an orb, `mise`, `node`, and
 `pnpm` are already on `PATH`. Run `mise run check` and `mise run test:e2e` before handing work back.
-Times measured in an orb with services running.
+Times measured on an `a1.small` orb.
 
 | Command | What | Time |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Times measured in an orb with services running.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~6–10 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`) | ~1–5 s |
-| `mise run test:e2e` | Playwright smoke test. Needs Postgres and SeaweedFS migrated and seeded. Reuses a web app on :3000, starts its own worker | ~6 s; ~13 s with `CI=1` (starts everything fresh) |
+| `mise run test:e2e` | Playwright smoke test. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~7–9 s reusing the `web` service; ~11–14 s without it. `CI=1` always starts fresh (~11–13 s) and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
@@ -41,13 +41,15 @@ Times measured in an orb with services running.
 ## Orb size
 
 Measured 2026-11-18 on `a1.small` (2 vCPU, 4 GB, no swap): with the `web` and `worker` services and an
-agent-browser session open, the orb uses ~2 GB. A `CI=1 mise run test:e2e` run (second Vite server, worker,
-Playwright Chromium) plus `mise run typecheck` peaks at ~3.4 GB, leaving ~0.5 GB, and the orb hits memory pressure.
+agent-browser session open, the orb uses ~2 GB. A `CI=1 mise run test:e2e` run on its own fits: it peaks at
+~1.8 GB used with no services running and ~3 GB next to the running services. The pressure comes from running it
+at the same time as `mise run typecheck` (or `mise run check`) on top of the services and agent-browser: that peaks at
+~3.4 GB, leaving ~0.5 GB. Run e2e and typecheck one after the other, not in parallel.
 
-- **`a1.small`**: docs, small edits, unit tests (`mise run check`), and the e2e test against the running services
-  (without `CI=1`). Close agent-browser (`agent-browser close`) before running e2e.
+- **`a1.small`**: docs, small edits, unit tests (`mise run check`), and e2e runs (including `CI=1`) run one at a
+  time. Close agent-browser (`agent-browser close`) before running e2e.
 - **`a1.medium`** (4 vCPU, 8 GB): anything that runs the full stack plus browsers at once: feature work with UI
-  verification, `CI=1` e2e runs, PDF proof rendering (milestone 1).
+  verification while running checks in parallel, PDF proof rendering (milestone 1).
 - An orb can't be resized while it runs. To verify on a bigger machine, start a new thread with a larger size;
   it starts from the base branch, so push the work to a branch first.
 
@@ -104,6 +106,11 @@ downloads) are server routes with `server.handlers`.
 - **A task may run more than once.** Do side effects only inside `step(ctx, "name", effect)`, and make every step
   idempotent: derive IDs and object keys from `ctx.taskID` or domain IDs, write with upserts or `onConflictDoNothing`.
 - Step results must be JSON. Spawn with `Jobs.spawn(task, params)`; pass `idempotencyKey` when a request can repeat.
+- Unit-test a task by calling `task.run(params, ctx)` with helpers from `@lifestory/core/testing` (`../src/testing.ts`
+  inside `packages/core`): `fakeTaskContext(taskID, checkpoints)` replaces Absurd's `TaskContext` (private constructor)
+  and stores step results in `checkpoints`. Share one map across runs to test a retry that replays completed steps;
+  use a fresh map to rerun a step whose result was lost. `memoryObjectStorage(objects)` is an `ObjectStorage` layer
+  over a `Map` you can inspect. Provide it with `FakeImageProvider`; example: `packages/core/test/sample-file.test.ts`.
 
 ### Database
 

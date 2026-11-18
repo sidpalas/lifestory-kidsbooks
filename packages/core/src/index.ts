@@ -3,6 +3,7 @@ export * from "./auth.ts";
 export * from "./config.ts";
 export * from "./database.ts";
 export * from "./dev-users.ts";
+export * from "./families.ts";
 export * from "./image-provider.ts";
 export * from "./jobs.ts";
 export * from "./runtime.ts";

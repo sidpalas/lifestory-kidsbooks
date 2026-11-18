@@ -9,6 +9,7 @@ test("unauthenticated visitors are sent to sign-in", async ({ page }) => {
 test("seeded parent signs in, sees stories from Postgres, and the worker writes a file", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Pat Parent (parent@lifestory.dev)");
+  await expect(page.getByTestId("families")).toHaveText("The Example Family");
   await expect(page.getByTestId("stories")).toContainText("The Moon Picnic");
 
   await page.getByRole("button", { name: "Write a sample file" }).click();

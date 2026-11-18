@@ -14,6 +14,13 @@ export const StorySummary = Schema.Struct({
 });
 export type StorySummary = typeof StorySummary.Type;
 
+export const FamilyMembership = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  role: Schema.String,
+});
+export type FamilyMembership = typeof FamilyMembership.Type;
+
 export const SampleFileResult = Schema.Struct({
   key: Schema.String,
   contentType: Schema.String,

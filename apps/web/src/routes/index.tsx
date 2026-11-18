@@ -24,7 +24,7 @@ type JobView =
   | { readonly phase: "error"; readonly message: string };
 
 function Home() {
-  const { user, stories } = Route.useLoaderData();
+  const { user, families, stories } = Route.useLoaderData();
   const [job, setJob] = useState<JobView>({ phase: "idle" });
   // The server-rendered button does nothing until React hydrates, so keep it disabled until then.
   const hydrated = useHydrated();
@@ -53,9 +53,14 @@ function Home() {
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Lifestory</h1>
-        <p className="text-muted-foreground text-sm" data-testid="signed-in-as">
-          Signed in as {user.name} ({user.email})
-        </p>
+        <div className="text-right text-sm">
+          <p className="text-muted-foreground" data-testid="signed-in-as">
+            Signed in as {user.name} ({user.email})
+          </p>
+          <p className="font-medium" data-testid="families">
+            {families.length > 0 ? families.map((family) => family.name).join(", ") : "Not in a family yet"}
+          </p>
+        </div>
       </header>
 
       <Card>
