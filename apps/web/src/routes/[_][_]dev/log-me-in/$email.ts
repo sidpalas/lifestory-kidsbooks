@@ -1,20 +1,19 @@
-// Development-only sign-in: GET /dev/log-me-in/<email>?returnTo=/path
+// Development-only sign-in: GET /__dev/log-me-in/<email>?returnTo=/path
 // Finds or creates the user, signs in with the dev password, sets Better
 // Auth's normal session cookie, and redirects to a same-origin path.
 // Returns 404 unless DEV_LOGIN_ENABLED=true and NODE_ENV isn't production.
 import { Auth, Database, ensureDevUser, DEV_PASSWORD } from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Effect } from "effect";
+import { devRouteNotFound, devRoutesEnabled } from "~/lib/dev-routes";
 import { safeReturnTo } from "~/lib/safe-return-to";
 import { serverRuntime } from "~/server/runtime";
 
-const enabled = () => process.env.DEV_LOGIN_ENABLED === "true" && process.env.NODE_ENV !== "production";
-
-export const Route = createFileRoute("/dev/log-me-in/$email")({
+export const Route = createFileRoute("/__dev/log-me-in/$email")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!enabled()) return new Response("Not found", { status: 404 });
+        if (!devRoutesEnabled()) return devRouteNotFound();
         const email = params.email.toLowerCase();
         const returnTo = safeReturnTo(new URL(request.url).searchParams.get("returnTo"));
         const signIn = await serverRuntime().runPromise(

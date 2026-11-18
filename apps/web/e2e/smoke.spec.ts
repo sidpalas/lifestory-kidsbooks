@@ -7,7 +7,7 @@ test("unauthenticated visitors are sent to sign-in", async ({ page }) => {
 });
 
 test("seeded parent signs in, sees stories from Postgres, and the worker writes a file", async ({ page }) => {
-  await page.goto("/dev/log-me-in/parent@lifestory.dev?returnTo=/");
+  await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Pat Parent (parent@lifestory.dev)");
   await expect(page.getByTestId("stories")).toContainText("The Moon Picnic");
 
@@ -22,13 +22,22 @@ test("seeded parent signs in, sees stories from Postgres, and the worker writes 
 });
 
 test("the dev sign-in route refuses off-site redirects", async ({ request }) => {
-  const response = await request.get("/dev/log-me-in/parent@lifestory.dev?returnTo=//evil.example", { maxRedirects: 0 });
+  const response = await request.get("/__dev/log-me-in/parent@lifestory.dev?returnTo=//evil.example", { maxRedirects: 0 });
   expect(response.status()).toBe(302);
   expect(response.headers().location).toBe("/");
 });
 
+test("the dev index signs in as a listed user and log-me-out signs out", async ({ page }) => {
+  await page.goto("/__dev");
+  await page.getByRole("link", { name: "grandparent@lifestory.dev" }).click();
+  await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Gran Viewer (grandparent@lifestory.dev)");
+
+  await page.goto("/__dev/log-me-out?returnTo=/");
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+
 test("the operator cannot impersonate users", async ({ page }) => {
-  await page.goto("/dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
   const origin = new URL(page.url()).origin;
   const response = await page.request.post("/api/auth/admin/impersonate-user", {
     data: { userId: "user_parent" },

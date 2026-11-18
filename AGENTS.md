@@ -10,7 +10,7 @@ evidence and a proposal, don't switch on your own.
 
 | Path | What |
 | --- | --- |
-| `apps/web` | TanStack Start app (React, Tailwind, shadcn/ui). Server functions in `src/server`, server routes in `src/routes/api` and `src/routes/dev`. |
+| `apps/web` | TanStack Start app (React, Tailwind, shadcn/ui). Server functions in `src/server`, server routes in `src/routes/api` and `src/routes/[_][_]dev` (URL `/__dev`; a bare leading `_` would make a pathless layout). |
 | `apps/worker` | Absurd worker. Registers every task from `@lifestory/core` and runs it through the shared runtime. |
 | `packages/core` | Shared Effect package: config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset. |
 | `packages/db` | Drizzle schema and migrations (including the vendored Absurd SQL). |
@@ -58,9 +58,10 @@ Playwright Chromium) plus `mise run typecheck` peaks at ~3.4 GB, leaving ~0.5 GB
   `.amp/services.yaml` and prints the portal URL. Don't also run `mise run dev`: it would fight over port 3000.
   Logs: `amp orb service logs web` / `worker`. Restart the worker after editing tasks if `--watch` misses it.
 - Docker needs `sudo` in the current shell (`sudo docker compose ps`); new login shells are in the `docker` group.
-- Sign in without a password: open `/dev/log-me-in/<email>?returnTo=/` in the browser you're testing with
-  (curl doesn't sign the browser in). It creates the user if missing. Only works with `DEV_LOGIN_ENABLED=true`
-  and `NODE_ENV` not `production`.
+- Sign in without a password: open `/__dev/log-me-in/<email>?returnTo=/` in the browser you're testing with
+  (curl doesn't sign the browser in). It creates the user if missing. `/__dev` lists the dev endpoints and every
+  local user with a sign-in link; `/__dev/log-me-out?returnTo=/` signs the browser out. All `/__dev` routes only
+  work with `DEV_LOGIN_ENABLED=true` and `NODE_ENV` not `production`.
 
 Seeded accounts (password for all: `lifestory-dev-password`):
 

@@ -65,7 +65,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 ## Recommended design (adopted)
 
 ### D9. TanStack Start; server functions for app calls, server routes for outside callers; no separate API — Recommended
-- **How:** Better Auth at `/api/auth/$`, file downloads at `/api/files/$`, dev sign-in at `/dev/log-me-in/$email`.
+- **How:** Better Auth at `/api/auth/$`, file downloads at `/api/files/$`, dev sign-in at `/__dev/log-me-in/$email`.
   The Modal callback will be a server route. Editor routes will set `ssr: false` (milestone 1).
 - **Reopen if:** server rendering or routing blocks the print path or the editor.
 
@@ -123,9 +123,13 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** a security fix is needed sooner than 3 days; then add a dated, commented exclusion.
 
 ### D17. Development sign-in route — Made
-- `GET /dev/log-me-in/<email>?returnTo=<path>` finds or creates the user, signs in through Better Auth's real
+- `GET /__dev/log-me-in/<email>?returnTo=<path>` finds or creates the user, signs in through Better Auth's real
   email-and-password endpoint (so the cookie is the normal session cookie), and redirects only to same-origin
   relative paths. Returns 404 unless `DEV_LOGIN_ENABLED=true` and `NODE_ENV !== "production"`.
+- Dev-only routes live under `/__dev` (Sid, 2026-11-18): the convention agents know from Amp's own orb setup, and
+  it can't collide with product routes. The folder is `routes/[_][_]dev`, because TanStack Router treats a
+  leading `_` as a pathless layout. `GET /__dev` lists the endpoints and local users; `GET /__dev/log-me-out`
+  ends the session. All of them share the same 404 gate.
 - **Reopen if:** never expected; remove from production images in milestone 1's Dockerfiles.
 
 ### D18. Postgres tuned for speed in development (`fsync=off`, `synchronous_commit=off`) — Made

@@ -7,7 +7,7 @@ services:
     port: 3000
     health: /sign-in
     portal:
-      url: /dev/log-me-in/parent@lifestory.dev?returnTo=/
+      url: /__dev/log-me-in/parent@lifestory.dev?returnTo=/
       title: Lifestory
       description: Signs you in as the seeded parent (parent@lifestory.dev).
   worker:

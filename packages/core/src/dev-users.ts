@@ -1,7 +1,7 @@
-// Development-only account helpers, used by the seed script and the dev sign-in route.
+// Development-only account helpers, used by the seed script and the /__dev routes.
 import { schema, type Db } from "@lifestory/db";
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 /** Password for every seeded and dev-created account. Development only. */
 export const DEV_PASSWORD = "lifestory-dev-password";
@@ -24,3 +24,10 @@ export const ensureDevUser = async (
     .onConflictDoNothing();
   return id;
 };
+
+/** Every local user, by email, for the /__dev index. */
+export const listDevUsers = (db: Db) =>
+  db
+    .select({ name: schema.user.name, email: schema.user.email, role: schema.user.role })
+    .from(schema.user)
+    .orderBy(asc(schema.user.email));

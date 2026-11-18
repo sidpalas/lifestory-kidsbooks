@@ -14,7 +14,7 @@ function SignIn() {
           <CardDescription>Lifestory is invite-only.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm">
-          In development, open <code>/dev/log-me-in/parent@lifestory.dev</code>.
+          In development, open <code>/__dev/log-me-in/parent@lifestory.dev</code>.
         </CardContent>
       </Card>
     </main>

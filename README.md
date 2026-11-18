@@ -34,7 +34,7 @@ mise run stack                                       # Postgres + SeaweedFS, mig
 
 `mise tasks` lists every command.
 
-Then open http://localhost:3000/dev/log-me-in/parent@lifestory.dev?returnTo=/ to sign in as the seeded parent.
+Then open http://localhost:3000/__dev/log-me-in/parent@lifestory.dev?returnTo=/ to sign in as the seeded parent.
 Other seeded accounts are listed in [AGENTS.md](AGENTS.md).
 
 In an Amp orb, `.agents/setup` does all of the above except starting the app; run `amp orb services ensure`.

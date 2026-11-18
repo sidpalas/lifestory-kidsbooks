@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
+import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
+import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
-import { Route as DevLogMeInEmailRouteImport } from './routes/dev/log-me-in/$email'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,6 +25,21 @@ const IndexRoute = IndexRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const _devIndexRoute = _devIndexRouteImport.update({
+  id: '/__dev/',
+  path: '/__dev/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const _devLogMeOutRoute = _devLogMeOutRouteImport.update({
+  id: '/__dev/log-me-out',
+  path: '/__dev/log-me-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const _devLogMeInEmailRoute = _devLogMeInEmailRouteImport.update({
+  id: '/__dev/log-me-in/$email',
+  path: '/__dev/log-me-in/$email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -35,56 +52,73 @@ const ApiFilesSplatRoute = ApiFilesSplatRouteImport.update({
   path: '/api/files/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DevLogMeInEmailRoute = DevLogMeInEmailRouteImport.update({
-  id: '/dev/log-me-in/$email',
-  path: '/dev/log-me-in/$email',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev/': typeof _devIndexRoute
+  '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/dev/log-me-in/$email': typeof DevLogMeInEmailRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev': typeof _devIndexRoute
+  '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/dev/log-me-in/$email': typeof DevLogMeInEmailRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev/': typeof _devIndexRoute
+  '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/dev/log-me-in/$email': typeof DevLogMeInEmailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/sign-in' | '/api/auth/$' | '/api/files/$' | '/dev/log-me-in/$email'
+    | '/'
+    | '/sign-in'
+    | '/__dev/log-me-out'
+    | '/__dev/'
+    | '/__dev/log-me-in/$email'
+    | '/api/auth/$'
+    | '/api/files/$'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/sign-in' | '/api/auth/$' | '/api/files/$' | '/dev/log-me-in/$email'
+    | '/'
+    | '/sign-in'
+    | '/__dev/log-me-out'
+    | '/__dev'
+    | '/__dev/log-me-in/$email'
+    | '/api/auth/$'
+    | '/api/files/$'
   id:
     | '__root__'
     | '/'
     | '/sign-in'
+    | '/__dev/log-me-out'
+    | '/__dev/'
+    | '/__dev/log-me-in/$email'
     | '/api/auth/$'
     | '/api/files/$'
-    | '/dev/log-me-in/$email'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SignInRoute: typeof SignInRoute
+  _devLogMeOutRoute: typeof _devLogMeOutRoute
+  _devIndexRoute: typeof _devIndexRoute
+  _devLogMeInEmailRoute: typeof _devLogMeInEmailRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiFilesSplatRoute: typeof ApiFilesSplatRoute
-  DevLogMeInEmailRoute: typeof DevLogMeInEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -103,6 +137,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/__dev/': {
+      id: '/__dev/'
+      path: '/__dev'
+      fullPath: '/__dev/'
+      preLoaderRoute: typeof _devIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/__dev/log-me-out': {
+      id: '/__dev/log-me-out'
+      path: '/__dev/log-me-out'
+      fullPath: '/__dev/log-me-out'
+      preLoaderRoute: typeof _devLogMeOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/__dev/log-me-in/$email': {
+      id: '/__dev/log-me-in/$email'
+      path: '/__dev/log-me-in/$email'
+      fullPath: '/__dev/log-me-in/$email'
+      preLoaderRoute: typeof _devLogMeInEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -117,22 +172,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFilesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dev/log-me-in/$email': {
-      id: '/dev/log-me-in/$email'
-      path: '/dev/log-me-in/$email'
-      fullPath: '/dev/log-me-in/$email'
-      preLoaderRoute: typeof DevLogMeInEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SignInRoute: SignInRoute,
+  _devLogMeOutRoute: _devLogMeOutRoute,
+  _devIndexRoute: _devIndexRoute,
+  _devLogMeInEmailRoute: _devLogMeInEmailRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiFilesSplatRoute: ApiFilesSplatRoute,
-  DevLogMeInEmailRoute: DevLogMeInEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
