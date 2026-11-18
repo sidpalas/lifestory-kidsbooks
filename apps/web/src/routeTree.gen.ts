@@ -17,6 +17,7 @@ import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InvitationsInvitationIdRouteImport } from './routes/invitations.$invitationId'
 import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$token'
+import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
@@ -62,6 +63,11 @@ const SetPasswordTokenRoute = SetPasswordTokenRouteImport.update({
   path: '/set-password/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoriesSlugRoute = StoriesSlugRouteImport.update({
+  id: '/stories/$slug',
+  path: '/stories/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const _devLogMeInEmailRoute = _devLogMeInEmailRouteImport.update({
   id: '/__dev/log-me-in/$email',
   path: '/__dev/log-me-in/$email',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
+  '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
+  '/stories/$slug': typeof StoriesSlugRoute
   '/__dev': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
+  '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/invitations/$invitationId'
     | '/set-password/$token'
+    | '/stories/$slug'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/invitations/$invitationId'
     | '/set-password/$token'
+    | '/stories/$slug'
     | '/__dev'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/invitations/$invitationId'
     | '/set-password/$token'
+    | '/stories/$slug'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
   SetPasswordTokenRoute: typeof SetPasswordTokenRoute
+  StoriesSlugRoute: typeof StoriesSlugRoute
   _devIndexRoute: typeof _devIndexRoute
   _devLogMeInEmailRoute: typeof _devLogMeInEmailRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetPasswordTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stories/$slug': {
+      id: '/stories/$slug'
+      path: '/stories/$slug'
+      fullPath: '/stories/$slug'
+      preLoaderRoute: typeof StoriesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/__dev/log-me-in/$email': {
       id: '/__dev/log-me-in/$email'
       path: '/__dev/log-me-in/$email'
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
   SetPasswordTokenRoute: SetPasswordTokenRoute,
+  StoriesSlugRoute: StoriesSlugRoute,
   _devIndexRoute: _devIndexRoute,
   _devLogMeInEmailRoute: _devLogMeInEmailRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

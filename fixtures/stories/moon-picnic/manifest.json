@@ -1,0 +1,132 @@
+{
+  "formatVersion": 1,
+  "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375 },
+  "fonts": [
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-wght-normal.woff2",
+      "weight": "200 900",
+      "style": "normal",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-ext-wght-normal.woff2",
+      "weight": "200 900",
+      "style": "normal",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
+    }
+  ],
+  "textStyles": {
+    "title": { "fontFamily": "Literata", "sizePt": 30, "lineHeight": 1.15, "weight": 700, "align": "center" },
+    "body": { "fontFamily": "Literata", "sizePt": 17, "lineHeight": 1.45, "weight": 450, "align": "left" }
+  },
+  "characterSlots": [
+    {
+      "slotId": "hero",
+      "label": "The child",
+      "description": "A child about 5 years old, the main character",
+      "example": { "name": "Mia", "pronouns": "she/her" },
+      "defaults": { "hair": "curly black", "glasses": false }
+    },
+    {
+      "slotId": "grownup",
+      "label": "A grown-up",
+      "description": "A parent or grandparent who comes along",
+      "example": { "name": "Grandpa Joe", "pronouns": "he/him" },
+      "defaults": {}
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "p01",
+      "layout": "full-bleed-art/text-bottom",
+      "text": [
+        { "style": "title", "content": "The Moon Picnic" },
+        { "style": "body", "content": "{{hero.name}} packed the picnic basket: two jam sandwiches, a flask of cocoa, and the roundest cheese in the whole house." }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p01/background.svg" },
+          { "kind": "character", "slotId": "hero", "box": [250, 430, 690, 760], "direction": "standing behind the table, reaching into a picnic basket, smiling, three-quarter view" },
+          { "kind": "art", "asset": "pages/p01/foreground.svg" }
+        ]
+      }
+    },
+    {
+      "pageId": "p02",
+      "layout": "full-bleed-art/text-top",
+      "text": [
+        { "style": "body", "content": "“Where shall we have our picnic?” asked {{grownup.name}}. {{hero.name}} pointed straight up at the Moon. “There!”" }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p02/background.svg" },
+          { "kind": "character", "slotId": "grownup", "box": [400, 110, 930, 430], "direction": "standing in the garden, holding the picnic basket, looking up, side view" },
+          { "kind": "character", "slotId": "hero", "box": [530, 470, 930, 700], "direction": "standing on tiptoe, pointing up at the Moon, seen from behind" }
+        ]
+      }
+    },
+    {
+      "pageId": "p03",
+      "layout": "art-left/text-right",
+      "text": [
+        { "style": "body", "content": "{{grownup.name}} checked the fuel. {{hero.name}} checked the cocoa. {{hero.They}} buckled {{hero.themself}} in tight." },
+        { "style": "body", "content": "Three, two, one… WHOOSH!" }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p03/background.svg" },
+          { "kind": "character", "slotId": "hero", "box": [365, 420, 555, 820], "direction": "looking out of the rocket's round window, waving, excited" },
+          { "kind": "character", "slotId": "grownup", "box": [600, 20, 960, 330], "direction": "climbing the ladder into the rocket, looking back over the shoulder" },
+          { "kind": "art", "asset": "pages/p03/foreground.svg" }
+        ]
+      }
+    },
+    {
+      "pageId": "p04",
+      "layout": "full-bleed-art/text-bottom",
+      "text": [
+        { "style": "body", "content": "The Moon was quiet and grey and very, very bumpy. {{hero.name}} spread {{hero.their}} blanket in the biggest crater of all." }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p04/background.svg" },
+          { "kind": "character", "slotId": "hero", "box": [380, 270, 720, 500], "direction": "kneeling on a picnic blanket, smoothing it flat, wearing a space helmet" },
+          { "kind": "character", "slotId": "grownup", "box": [330, 530, 720, 780], "direction": "sitting on the blanket, unscrewing the cocoa flask, wearing a space helmet" },
+          { "kind": "art", "asset": "pages/p04/foreground.svg" }
+        ]
+      }
+    },
+    {
+      "pageId": "p05",
+      "layout": "full-bleed-art/text-top",
+      "text": [
+        { "style": "body", "content": "“Your cheese looks just like the Moon,” said {{grownup.name}}. {{hero.name}} laughed so hard that cocoa came out of {{hero.their}} nose." }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p05/background.svg" },
+          { "kind": "character", "slotId": "hero", "box": [420, 100, 900, 460], "direction": "sitting cross-legged, laughing with eyes closed, holding a cup of cocoa" },
+          { "kind": "character", "slotId": "grownup", "box": [360, 540, 900, 900], "direction": "sitting, holding up a round cheese next to their face, grinning" }
+        ]
+      }
+    },
+    {
+      "pageId": "p06",
+      "layout": "art-left/text-right",
+      "text": [
+        { "style": "body", "content": "Back home, {{grownup.name}} tucked {{hero.them}} into bed." },
+        { "style": "body", "content": "“Same time tomorrow?” asked {{hero.name}}. And the Moon winked." }
+      ],
+      "illustration": {
+        "layers": [
+          { "kind": "art", "asset": "pages/p06/background.svg" },
+          { "kind": "character", "slotId": "grownup", "box": [230, 30, 900, 420], "direction": "leaning over the bed, tucking in the blanket, smiling softly" },
+          { "kind": "character", "slotId": "hero", "box": [470, 380, 680, 900], "direction": "lying in bed under the blanket, sleepy, head on the pillow" },
+          { "kind": "art", "asset": "pages/p06/foreground.svg" }
+        ]
+      }
+    }
+  ]
+}

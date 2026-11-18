@@ -1,12 +1,14 @@
 import {
   NotAuthenticated,
+  NotFound,
   ResultSchema,
   SampleFileResult,
+  StoryManifest,
   StorySummary,
   JobError,
   TaskState,
 } from "@lifestory/core/contracts";
-import { Auth, Jobs, listPublishedStories, writeSampleFile } from "@lifestory/core";
+import { Auth, getStoryPreview, Jobs, listPublishedStories, writeSampleFile } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
@@ -72,3 +74,20 @@ export const getSampleFileStatus = createServerFn({ method: "GET" })
       }),
     );
   });
+
+export const StoryPreviewResult = ResultSchema(
+  Schema.Struct({ story: StorySummary, version: Schema.Number, manifest: StoryManifest }),
+  Schema.Union([NotAuthenticated, NotFound]),
+);
+
+export const getStoryPreviewFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String })))
+  .handler(async ({ data }) =>
+    runEffect(
+      StoryPreviewResult,
+      Effect.gen(function* () {
+        const user = yield* currentUser;
+        return yield* getStoryPreview(user.id, data.slug);
+      }),
+    ),
+  );

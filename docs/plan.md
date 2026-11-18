@@ -73,6 +73,9 @@ and a later v2 gets a migration function from v1.
 }
 ```
 
+The Schema in `packages/core/src/book-format/manifest.ts` is the authoritative format;
+[D24](decisions.md#d24-book-format-v1-the-details-the-plans-example-left-open--made) lists where it refines this example.
+
 - **Text** is a list of styled blocks with `{{slot.field}}` tokens (`name`, `they/them`-style pronoun fields).
   A family's edits replace a block's content per page; the original stays in the story version.
 - **Illustrations are layered.** `art` layers are the illustrator's files. A `character` layer is filled from the

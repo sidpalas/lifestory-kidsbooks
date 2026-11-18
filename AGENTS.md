@@ -15,6 +15,7 @@ evidence and a proposal, don't switch on your own.
 | `packages/core` | `@lifestory/core`, the "shared package" in docs/brief.md: Effect services and layers for config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset; `src/testing.ts` holds test helpers. |
 | `packages/db` | `@lifestory/db`: Drizzle schema and migrations (including the vendored Absurd SQL). No services or domain logic. |
 | `modal` | Python: FLUX 3 Image Klein on Modal (`modal/flux_klein.py`), the real `ImageProvider` behind `IMAGE_PROVIDER=modal`. |
+| `fixtures/stories` | Sample stories (book format manifest, placeholder art, fonts) that `db:seed` imports. |
 | `compose.yaml` | Postgres 18 and SeaweedFS (S3 API on :8333). |
 | `apps/*/Dockerfile`, `.railway/railway.ts` | Production images (build from the repo root) and the Railway project they deploy to. Redeploying: README "Deploying". |
 
@@ -128,6 +129,8 @@ row's family, not only the session's active family.
 
 - Edit `packages/db/src/schema/*`, then `mise run db:generate --name <change>`; commit the SQL and `meta/`.
   Never edit an applied migration. Column names are snake_case.
+- A story version (`story_version`) never changes once stored: `db:seed` fails if a fixture's manifest differs from
+  the stored one. Add a new version, or in a dev database delete the row and reseed.
 - Absurd's schema is a vendored custom migration (`0001_absurd_0_5_1.sql`). Upgrade it with a new custom
   migration containing Absurd's published upgrade SQL.
 

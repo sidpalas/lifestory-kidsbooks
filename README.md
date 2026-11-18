@@ -5,7 +5,8 @@ AI adds the family's own members as characters in the illustrations. See [docs/b
 
 This is a demo codebase: an open-source, realistic product used to test background coding agents.
 
-**Status:** foundation only. You can sign in as a seeded user, see stories read from Postgres, and run a
+**Status:** foundation only. You can sign in as a seeded user, see stories read from Postgres, open the sample
+story "The Moon Picnic" with its pages rendered at print size (placeholder art and character slots), and run a
 worker job that writes a file to object storage. Families and invites work: the operator invites a new family,
 an owner invites a parent or a view-only member, and a user in several families switches between them
 (emails go to `/__dev/mailbox` in development). Milestone 1 is planned in [docs/plan.md](docs/plan.md);

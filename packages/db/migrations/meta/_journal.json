@@ -22,6 +22,13 @@
       "when": 1795029938628,
       "tag": "0002_generation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795035574239,
+      "tag": "0003_story_version",
+      "breakpoints": true
     }
   ]
 }

@@ -100,6 +100,34 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   the assessment; the choice gets its own decision.
 - **Reopen if:** revenue approaches the license threshold, or quality on children's-book character consistency is poor.
 
+### D24. Book format v1: the details the plan's example left open — Made
+- **Where:** `packages/core/src/book-format` (Effect Schema, browser-safe through `@lifestory/core/contracts`) is the
+  format; `story_version.manifest` stores it; `fixtures/stories/moon-picnic` is the sample. The plan's example is
+  refined in these ways:
+  - **`textStyles`** (`title`, `body`: font family, size in points, line height, weight, alignment) are declared
+    per story, so a community author picks their own type; each family must be in `fonts`.
+  - **Fonts ship with the story**, as woff2 assets with optional `weight`, `style`, and `unicode-range` (the sample
+    uses Literata, SIL OFL, latin and latin-ext subsets, so names like "Łucja" print in the same font). The app UI
+    keeps Nunito (D12); a page never uses app fonts. `font-display: block`, so print never falls back.
+  - **Slots carry an `example`** (name, pronouns) that fills them in story previews before a family casts anyone.
+    The plan's `pronounSet: "from-character"` is dropped: pronouns always come from whoever fills the slot.
+  - **Text tokens:** `{{slot.name}}` and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
+    `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. Pronouns don't fix verb agreement
+    ("they are" against "she is"), so authors write around it, as in past tense.
+  - **Layouts** (closed set): `full-bleed-art/text-bottom`, `full-bleed-art/text-top` (text on a light panel so it
+    reads over any art), and `art-left/text-right`. Character boxes are thousandths of the illustration area.
+  - **Validation** checks references across the manifest (slots, page IDs, fonts, tokens, boxes, asset paths that
+    stay inside the version's folder) and reports every problem with its path, so it can serve as the upload validator.
+  - **Placeholder art is SVG**, at 1 unit = 0.01 in, so it's small, diffable, and sharp at any print resolution.
+    The format also accepts PNG, JPEG, and WebP for real illustrations.
+- **Published versions don't change:** `importStoryVersion` (used by the seed) leaves an existing version alone and
+  fails if its manifest differs, so editing the fixture means adding a version (or resetting a dev database).
+- **Story assets** under `/api/files/stories/<storyId>/v<n>/` follow the story's read rule: published story and
+  version, or the caller is the author. File responses carry `Content-Security-Policy: sandbox` and `nosniff`,
+  because stored SVGs (and later author uploads) could contain scripts.
+- **Reopen if:** an author needs a layout or text style outside the closed sets, or pronoun tokens prove too
+  limiting for real stories (then per-pronoun text variants).
+
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
 - **How:** `modal/flux_klein.py` runs the distilled checkpoint through Diffusers' `ModularPipeline` with the prompt
   upsampler on (BFL: "do not use the model without it"), all in bf16 (~39 GB), on one A100-80GB. Weights live on

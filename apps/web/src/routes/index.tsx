@@ -1,5 +1,5 @@
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, redirect, useHydrated, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { FamilyPanel, InviteFamilyCard } from "~/components/family-panel";
@@ -111,7 +111,9 @@ function Home() {
           <ul className="flex flex-col gap-3" data-testid="stories">
             {stories.map((story) => (
               <li key={story.id} className="rounded-md border p-3">
-                <p className="font-medium">{story.title}</p>
+                <Link to="/stories/$slug" params={{ slug: story.slug }} className="font-medium hover:underline">
+                  {story.title}
+                </Link>
                 <p className="text-muted-foreground text-sm">{story.summary}</p>
                 <p className="text-muted-foreground mt-1 text-xs">by {story.authorName}</p>
               </li>

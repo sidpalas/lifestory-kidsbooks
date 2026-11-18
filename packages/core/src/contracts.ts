@@ -2,6 +2,7 @@
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
 
+export * from "./book-format/index.ts";
 export * from "./errors.ts";
 export * from "./rpc.ts";
 
