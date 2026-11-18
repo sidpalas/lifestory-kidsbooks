@@ -9,3 +9,4 @@ playwright-report/
 *.tsbuildinfo
 .amp/portals/
 .amp/in/
+__pycache__/

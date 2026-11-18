@@ -19,3 +19,9 @@ export class StorageError extends Schema.TaggedError<StorageError>()("StorageErr
 export class JobError extends Schema.TaggedError<JobError>()("JobError", {
   message: Schema.String,
 }) {}
+
+/** An image generation that the provider rejected, failed, or that its content filter blocked. */
+export class GenerationFailed extends Schema.TaggedError<GenerationFailed>()("GenerationFailed", {
+  generationId: Schema.String,
+  message: Schema.String,
+}) {}

@@ -148,9 +148,9 @@ personalize-book(bookId)
   Fake: renders the deterministic placeholder (composited art + a labelled box per character), uploads it, and emits
   the same event, so dev, CI, and tests run the real suspend/resume path. If inbound callbacks prove unreliable, the
   fallback is polling Modal's call result with `ctx.sleepFor` (D14).
-- **Running Modal for real** (Sid, later): `modal deploy modal/flux_klein.py`, set `IMAGE_PROVIDER=modal`,
-  `MODAL_ENDPOINT_URL`, `MODAL_TOKEN_*`, and `MODAL_CALLBACK_SECRET`, with the app reachable at a public URL. The
-  README will carry the exact steps.
+- **Running Modal for real:** `modal deploy modal/flux_klein.py`, then set `IMAGE_PROVIDER=modal`,
+  `MODAL_ENDPOINT_URL`, `MODAL_CALLBACK_SECRET`, `PUBLIC_APP_URL` (for the callback), and `S3_PUBLIC_ENDPOINT` if
+  storage isn't reachable from Modal at `S3_ENDPOINT`. The app needs no Modal token (D25). The README has the steps.
 
 ## Editor and print
 

@@ -68,7 +68,25 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **License:** FLUX Kommunity License. Non-commercial use, plus commercial output for organizations under
   US$5M gross annual revenue. Above that, a commercial license from Black Forest Labs is needed.
 - **Sid, 2026-11-18:** revenue is not expected to exceed the threshold; revisit only if it approaches it.
+- **License conditions on that exception (§2e), Sid 2026-11-18:** outputs must pass content filtering (or a review)
+  before anyone sees them, and carry an AI disclosure where the law requires one. The Modal function runs the
+  classifier BFL's reference code ships (`Falconsai/nsfw_image_detection`) on every image and fails the generation
+  when it scores ≥ 0.5 as NSFW, so a flagged image is never uploaded. Still open for the product: the §4 limits on
+  rights of publicity and "digital replica" rights (consent from the people in uploaded photos) and the AI disclosure.
 - **Reopen if:** revenue approaches the license threshold, or quality on children's-book character consistency is poor.
+
+### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
+- **How:** `modal/flux_klein.py` runs the distilled checkpoint through Diffusers' `ModularPipeline` with the prompt
+  upsampler on (BFL: "do not use the model without it"), all in bf16 (~39 GB), on one A100-80GB. Weights live on
+  the Modal Volume `lifestory-flux-klein-weights`, filled once on a CPU. Containers scale down 60 s after the last job
+  and `max_containers=1` queues jobs instead of fanning out. The app POSTs jobs to the function's web endpoint,
+  signed with HMAC-SHA256 over the body (`MODAL_CALLBACK_SECRET`); the GPU function reads references and writes its
+  PNG through presigned S3 URLs and calls back `/api/webhooks/modal` with the same signature. The app needs no Modal
+  token: `MODAL_TOKEN_*` is only for deploying.
+- **Measured 2026-11-18:** cold start ~45 s (weights load 27–33 s), one 1024×768 image 19.5 s, so a cold job costs
+  ~US$0.09 at US$0.000694/s including the 60 s idle tail, and a warm one ~US$0.014.
+- **Reopen if:** GPU spend matters more than latency (fp8 weights or the upsampler on a smaller GPU), or bursts of
+  pages need more than one container.
 
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and

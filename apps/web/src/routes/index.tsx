@@ -33,7 +33,8 @@ function Home() {
     try {
       const { taskId } = unwrapResult(StartSampleFileResult)(await startSampleFile({ data: { label: `Hello from ${user.name}` } }));
       setJob({ phase: "running", taskId, state: "pending" });
-      for (let i = 0; i < 60; i++) {
+      // Up to 4 minutes: with IMAGE_PROVIDER=modal a cold GPU start takes 1 to 2 minutes.
+      for (let i = 0; i < 480; i++) {
         const status = unwrapResult(SampleFileStatusResult)(await getSampleFileStatus({ data: { taskId } }));
         if (status.state === "completed" && status.result) {
           setJob({ phase: "done", taskId, key: status.result.key, bytes: status.result.bytes });

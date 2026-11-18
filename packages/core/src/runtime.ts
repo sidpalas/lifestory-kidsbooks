@@ -1,17 +1,27 @@
-import { Layer, ManagedRuntime } from "effect";
+import { Config, Effect, Layer, ManagedRuntime } from "effect";
 import { Auth } from "./auth.ts";
 import { AppConfig } from "./config.ts";
 import { Database } from "./database.ts";
-import { ImageProviderFromConfig } from "./image-provider.ts";
+import { Generations } from "./generations.ts";
+import { FakeImageProvider } from "./image-provider.ts";
 import { Jobs } from "./jobs.ts";
+import { ModalImageProvider } from "./providers/modal.ts";
 import { ObjectStorage } from "./storage.ts";
+
+/** IMAGE_PROVIDER picks the provider: `fake` (the default; development, tests, CI) or `modal` (FLUX 3 Klein). */
+const ImageProviderLayer = Layer.unwrap(
+  Effect.map(
+    Config.Literals(["fake", "modal"], "IMAGE_PROVIDER").pipe(Config.withDefault("fake" as const)),
+    (provider) => (provider === "modal" ? ModalImageProvider : FakeImageProvider),
+  ),
+);
 
 /**
  * Every server-side service, wired once. The web server and the worker each
  * build one ManagedRuntime from this layer and run all their Effects through it.
- * IMAGE_PROVIDER picks the image provider; "fake" is the only one until milestone 1 adds Modal.
  */
-export const ServerLayer = Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, ImageProviderFromConfig).pipe(
+export const ServerLayer = ImageProviderLayer.pipe(
+  Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer)),
   Layer.provideMerge(Database.layer),
   Layer.provideMerge(AppConfig.layer),
 );

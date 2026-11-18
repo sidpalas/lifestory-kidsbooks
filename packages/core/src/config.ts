@@ -7,6 +7,8 @@ export class AppConfig extends Context.Service<
     readonly databaseUrl: Redacted.Redacted<string>;
     readonly s3: {
       readonly endpoint: string;
+      /** Origin that outside callers (Modal) use in presigned URLs; defaults to `endpoint`. */
+      readonly publicEndpoint: string;
       readonly region: string;
       readonly bucket: string;
       readonly accessKeyId: string;
@@ -19,10 +21,12 @@ export class AppConfig extends Context.Service<
   static readonly layer = Layer.effect(
     AppConfig,
     Effect.gen(function* () {
+      const endpoint = yield* Config.String("S3_ENDPOINT");
       return {
         databaseUrl: yield* Config.Redacted("DATABASE_URL"),
         s3: {
-          endpoint: yield* Config.String("S3_ENDPOINT"),
+          endpoint,
+          publicEndpoint: yield* Config.String("S3_PUBLIC_ENDPOINT").pipe(Config.withDefault(endpoint)),
           region: yield* Config.String("S3_REGION").pipe(Config.withDefault("us-east-1")),
           bucket: yield* Config.String("S3_BUCKET"),
           accessKeyId: yield* Config.String("S3_ACCESS_KEY_ID"),

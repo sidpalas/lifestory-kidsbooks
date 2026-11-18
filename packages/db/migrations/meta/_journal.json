@@ -15,6 +15,13 @@
       "when": 1795023856611,
       "tag": "0001_absurd_0_5_1",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795029938628,
+      "tag": "0002_generation",
+      "breakpoints": true
     }
   ]
 }

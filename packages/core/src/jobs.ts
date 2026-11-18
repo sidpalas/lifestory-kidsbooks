@@ -1,4 +1,4 @@
-import { Absurd, type TaskContext } from "absurd-sdk";
+import { Absurd, type JsonValue, type TaskContext } from "absurd-sdk";
 import { Context, Effect, Layer, Schema } from "effect";
 import { Database } from "./database.ts";
 import type { TaskState } from "./contracts.ts";
@@ -46,6 +46,8 @@ export class Jobs extends Context.Service<
       readonly state: TaskState;
       readonly result: unknown;
     }, JobError>;
+    /** Emits an Absurd event, waking tasks that await it. First emit wins, so repeats are harmless. */
+    readonly emit: (eventName: string, payload: JsonValue) => Effect.Effect<void>;
   }
 >()("@lifestory/core/Jobs") {
   static readonly queue = "default";
@@ -79,6 +81,7 @@ export class Jobs extends Context.Service<
                 : Effect.fail(new JobError({ message: `unknown task ${taskId}` })),
             ),
           ),
+        emit: (eventName, payload) => Effect.promise(() => client.emitEvent(eventName, payload, Jobs.queue)),
       };
     }),
   );

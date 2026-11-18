@@ -14,6 +14,7 @@ evidence and a proposal, don't switch on your own.
 | `apps/worker` | Absurd worker. Registers every task from `@lifestory/core` and runs it through the shared runtime. |
 | `packages/core` | `@lifestory/core`, the "shared package" in docs/brief.md: Effect services and layers for config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset; `src/testing.ts` holds test helpers. |
 | `packages/db` | `@lifestory/db`: Drizzle schema and migrations (including the vendored Absurd SQL). No services or domain logic. |
+| `modal` | Python: FLUX 3 Image Klein on Modal (`modal/flux_klein.py`), the real `ImageProvider` behind `IMAGE_PROVIDER=modal`. |
 | `compose.yaml` | Postgres 18 and SeaweedFS (S3 API on :8333). |
 | `apps/*/Dockerfile`, `.railway/railway.ts` | Production images (build from the repo root) and the Railway project they deploy to. Redeploying: README "Deploying". |
 
@@ -122,8 +123,12 @@ downloads) are server routes with `server.handlers`.
 
 ### Images
 
-All generation goes through the `ImageProvider` service. `FakeImageProvider` (deterministic SVG per key) is the
-default everywhere; there is no GPU in orbs or CI.
+All generation goes through the `ImageProvider` service, called from tasks with `generateImage(ctx, name, request)`
+(`packages/core/src/generations.ts`): it submits (a step), suspends until the `generation.done:<id>` event, and
+records the outcome in the `generation` table. `FakeImageProvider` (deterministic SVG per key, emits the event
+itself) is the default everywhere; there is no GPU in orbs or CI. `IMAGE_PROVIDER=modal` uses FLUX 3 Klein on Modal,
+which calls back `/api/webhooks/modal`; the README's "Image generation on Modal" has the runbook. Don't deploy or run
+the Modal app unless asked: it spends GPU money.
 
 ### Dependencies
 

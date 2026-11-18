@@ -85,5 +85,54 @@ curl https://web-production-73ade4c2.up.railway.app/api/health
 virtual-hosted-style URLs, hence `S3_FORCE_PATH_STYLE=false`.
 
 To switch to the real image model, change `IMAGE_PROVIDER` from `fake` to `modal` in `.railway/railway.ts`,
-add the Modal variables described in [docs/plan.md](docs/plan.md#generation-workflow), then apply and redeploy
-both services.
+add the Modal variables from "Image generation on Modal" below, then apply and redeploy both services.
+
+## Image generation on Modal
+
+Development, tests, and CI use the fake image provider, which needs no GPU. Real images come from FLUX 3 Image Klein
+running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
+calls back `/api/webhooks/modal` when the image is in object storage. Each cold job costs about US$0.09 of A100 time,
+and a warm one about US$0.014. The GPU scales to zero 60 s after the last job (docs/decisions.md D25).
+
+**One-time setup**
+
+1. Accept the FLUX Kommunity License at https://huggingface.co/black-forest-labs/flux-3-image-klein with a Hugging Face
+   account, and create a read-only token for it.
+2. Install the Modal CLI (`uv tool install modal`), then `modal token new` (or set `MODAL_TOKEN_ID` and
+   `MODAL_TOKEN_SECRET`). The workspace needs a payment method on file for GPUs.
+3. Create the two secrets the function reads:
+
+   ```sh
+   modal secret create huggingface HF_TOKEN=hf_...
+   modal secret create lifestory-modal MODAL_CALLBACK_SECRET="$(openssl rand -hex 32)"   # keep this value
+   ```
+
+4. Download the weights (about 40 GB, two minutes, CPU only) onto the Modal Volume:
+   `modal run modal/flux_klein.py::download_weights`.
+
+**Deploy, and redeploy after changing `modal/flux_klein.py`**
+
+```sh
+modal deploy modal/flux_klein.py   # prints the submit endpoint URL
+```
+
+**Try the model without the app**
+
+```sh
+modal run modal/flux_klein.py --prompt "a watercolor fox reading under a tree" --out fox.png
+```
+
+**Point the app at it.** Set these on the web app and the worker, and restart both:
+
+```sh
+IMAGE_PROVIDER=modal
+MODAL_ENDPOINT_URL=https://<workspace>--lifestory-flux-klein-submit.modal.run   # from modal deploy
+MODAL_CALLBACK_SECRET=<the value in the lifestory-modal secret>
+PUBLIC_APP_URL=https://<the app's public origin>                                 # Modal calls back here
+S3_PUBLIC_ENDPOINT=https://<storage as Modal reaches it>                         # if not S3_ENDPOINT
+```
+
+The app needs a public URL for the callback, and Modal must reach object storage through the presigned URLs. With
+SeaweedFS on a laptop, expose both through a tunnel. Signed callbacks that arrive twice are harmless. "Write a sample
+file" on the home page runs one real generation. Logs: `modal app logs lifestory-flux-klein`; runs:
+https://modal.com/apps (app `lifestory-flux-klein`).
