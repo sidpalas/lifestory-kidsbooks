@@ -32,6 +32,11 @@ run = "node packages/db/src/migrate.ts"
 description = "Seed users, the example family, and the sample story (idempotent)"
 run = "node packages/core/src/seed.ts"
 
+[tasks."operator:create"]
+# Production images have no mise: there, run `node packages/core/src/operator-create.ts --email <email>` directly.
+description = "Create or promote the operator (D21): mise run operator:create -- --email <email> [--name <name>]"
+run = "node packages/core/src/operator-create.ts"
+
 [tasks."db:generate"]
 description = "Generate a migration from packages/db/src/schema: mise run db:generate --name <change>"
 dir = "packages/db"

@@ -3,11 +3,8 @@
 import { Database, DEV_PASSWORD, listDevUsers } from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Effect } from "effect";
-import { devRouteNotFound, devRoutesEnabled } from "~/lib/dev-routes";
+import { devRouteNotFound, devRoutesEnabled, escapeHtml as escape } from "~/lib/dev-routes";
 import { serverRuntime } from "~/server/runtime";
-
-const escape = (value: string) =>
-  value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 
 export const Route = createFileRoute("/__dev/")({
   server: {
@@ -30,7 +27,8 @@ export const Route = createFileRoute("/__dev/")({
 <h1>Dev endpoints</h1>
 <ul>
 <li><code>GET /__dev</code>: this page.</li>
-<li><code>GET /__dev/log-me-in/&lt;email&gt;?returnTo=/path</code>: signs the browser in as that user, creating a non-admin user with no family if the email is new.</li>
+<li><code>GET /__dev/log-me-in/&lt;email&gt;?returnTo=/path</code>: signs the browser in as that user, creating a non-admin user with a one-person family if the email is new.</li>
+<li><code>GET /__dev/mailbox</code>: <a href="/__dev/mailbox">emails the app sent</a> (invitations, set-password links) since the web server started.</li>
 <li><code>GET /__dev/log-me-out?returnTo=/path</code>: <a href="/__dev/log-me-out?returnTo=/__dev">signs the browser out</a>.</li>
 </ul>
 <h2>Sign in as</h2>

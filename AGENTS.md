@@ -35,6 +35,7 @@ Times measured on an `a1.small` orb.
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
+| `mise run operator:create -- --email <email>` | Create or promote the operator with a one-person family (D21). Prompts for the password; reads two lines from stdin when piped. In production images (no mise): `node packages/core/src/operator-create.ts --email <email>` | ~1 s |
 | `mise run db:generate --name <change>` | Generate a migration after editing `packages/db/src/schema` | ~2 s |
 | `mise run dev` | Web app (`dev:web`) and worker (`dev:worker`) in the foreground | ~2 s to ready |
 | `mise run stack` | Outside orbs: compose up, migrate, seed, then `dev` | ~15 s to ready |
@@ -63,9 +64,11 @@ at the same time as `mise run typecheck` (or `mise run check`) on top of the ser
   Logs: `amp orb service logs web` / `worker`. Restart the worker after editing tasks if `--watch` misses it.
 - Docker needs `sudo` in the current shell (`sudo docker compose ps`); new login shells are in the `docker` group.
 - Sign in without a password: open `/__dev/log-me-in/<email>?returnTo=/` in the browser you're testing with
-  (curl doesn't sign the browser in). It creates the user if missing. `/__dev` lists the dev endpoints and every
-  local user with a sign-in link; `/__dev/log-me-out?returnTo=/` signs the browser out. All `/__dev` routes only
-  work with `DEV_LOGIN_ENABLED=true` and `NODE_ENV` not `production`.
+  (curl doesn't sign the browser in). It creates the user, with a one-person family, if missing. `/__dev` lists the
+  dev endpoints and every local user with a sign-in link; `/__dev/log-me-out?returnTo=/` signs the browser out.
+  Emails (invitations, set-password links) aren't delivered: they're logged and listed at `/__dev/mailbox` (in
+  memory, per web server process). All `/__dev` routes only work with `DEV_LOGIN_ENABLED=true` and `NODE_ENV` not
+  `production`.
 
 Seeded accounts (password for all: `lifestory-dev-password`):
 
@@ -73,7 +76,7 @@ Seeded accounts (password for all: `lifestory-dev-password`):
 | --- | --- |
 | `parent@lifestory.dev` | owner of "The Example Family" |
 | `grandparent@lifestory.dev` | viewer in that family (read-only) |
-| `operator@lifestory.dev` | operator (`admin` role), author of the sample story; impersonation is disabled |
+| `operator@lifestory.dev` | operator (`admin` role), owner of "Sid (operator)'s family", author of the sample story; impersonation is disabled |
 
 ## Conventions
 
@@ -113,6 +116,13 @@ downloads) are server routes with `server.handlers`.
   and stores step results in `checkpoints`. Share one map across runs to test a retry that replays completed steps;
   use a fresh map to rerun a step whose result was lost. `memoryObjectStorage(objects)` is an `ObjectStorage` layer
   over a `Map` you can inspect. Provide it with `FakeImageProvider`; example: `packages/core/test/sample-file.test.ts`.
+
+### Accounts and families
+
+Every account has a family (D3). Create accounts only through `packages/core/src/accounts.ts`
+(`createAccountWithFamily`, `ensureOwnFamily`, `acceptInvitationAsNewUser`), never by inserting `user` rows elsewhere.
+Family role checks use `familyRoles` from `auth.ts`; a user can be in several families, so check membership of the
+row's family, not only the session's active family.
 
 ### Database
 

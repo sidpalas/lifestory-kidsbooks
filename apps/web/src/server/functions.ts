@@ -1,5 +1,4 @@
 import {
-  FamilyMembership,
   NotAuthenticated,
   ResultSchema,
   SampleFileResult,
@@ -7,7 +6,7 @@ import {
   JobError,
   TaskState,
 } from "@lifestory/core/contracts";
-import { Auth, Jobs, listPublishedStories, listUserFamilies, writeSampleFile } from "@lifestory/core";
+import { Auth, Jobs, listPublishedStories, writeSampleFile } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
@@ -17,7 +16,6 @@ import { runEffect } from "./runtime.ts";
 export const HomeResult = ResultSchema(
   Schema.Struct({
     user: Schema.Struct({ name: Schema.String, email: Schema.String }),
-    families: Schema.Array(FamilyMembership),
     stories: Schema.Array(StorySummary),
   }),
   NotAuthenticated,
@@ -40,9 +38,8 @@ export const getHome = createServerFn({ method: "GET" }).handler(() =>
     HomeResult,
     Effect.gen(function* () {
       const user = yield* currentUser;
-      const families = yield* listUserFamilies(user.id);
       const stories = yield* listPublishedStories();
-      return { user: { name: user.name, email: user.email }, families, stories };
+      return { user: { name: user.name, email: user.email }, stories };
     }),
   ),
 );

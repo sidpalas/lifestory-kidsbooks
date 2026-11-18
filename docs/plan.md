@@ -169,11 +169,11 @@ personalize-book(bookId)
 
 Every account has a family (D3). Accounts are created in two ways, and no user is left without a family:
 
-- **Invite a new family (operator).** The operator enters a name and email. Accepting creates the account and a
+- **Invite a new family (operator).** The operator enters a name and email. Inviting creates the account and a
   one-person family named "<name>'s family" (renamable) with the new user as `owner`, using Better Auth's
   `createOrganization` with `userId` (a server-side system action; no session needed), and it is the active family
-  when they sign in. How the invitee sets a password (an invite token checked by our accept page, or the
-  admin plugin's `createUser` plus a set-password link) is settled in phase 2. Public sign-ups later reuse the
+  when they sign in. The account and family are created when the operator invites, and the invitee sets
+  a password from a single-use emailed link (D23). Public sign-ups later reuse the
   same account-plus-family path.
 - **Invite a member into a family.** Better Auth's organization invitation creates the `invitation` row and emails
   a link (in dev the email is logged and shown in a dev-only mailbox page). Because public sign-up is disabled (D3),

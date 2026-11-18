@@ -3,6 +3,7 @@
 //   mise run db:seed
 import { schema } from "@lifestory/db";
 import { Effect } from "effect";
+import { ensureOwnFamily } from "./accounts.ts";
 import { Database } from "./database.ts";
 import { ensureDevUser } from "./dev-users.ts";
 import { makeServerRuntime } from "./runtime.ts";
@@ -41,6 +42,8 @@ export const seed = Effect.gen(function* () {
       })
       .onConflictDoNothing();
   });
+  // The operator joins no family here, so they get their own one-person family (D3).
+  yield* ensureOwnFamily(seedUsers.operator.id);
   yield* ObjectStorage.use((storage) => storage.ensureBucket);
 });
 

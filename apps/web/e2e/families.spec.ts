@@ -1,0 +1,144 @@
+import { expect, type Page, test } from "@playwright/test";
+
+// Families and invites (docs/plan.md "Invites and families"). Every run uses fresh emails,
+// so the tests don't depend on each other or on earlier runs.
+const unique = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const PASSWORD = "a-long-test-password";
+
+/** The link in the newest email to `to`, from the dev mailbox, as a same-origin path. */
+const emailedLink = async (page: Page, to: string) => {
+  await page.goto("/__dev/mailbox");
+  const href = await page.locator(`article[data-to="${to}"] a`).first().getAttribute("href");
+  expect(href, `an email to ${to}`).toBeTruthy();
+  const url = new URL(href ?? "");
+  return url.pathname + url.search;
+};
+
+const signOut = async (page: Page) => {
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+};
+
+const signInWithPassword = async (page: Page, email: string) => {
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByTestId("signed-in-as")).toContainText(email);
+};
+
+const inviteMember = async (page: Page, email: string, role: "Viewer (read only)" | "Parent (can edit)") => {
+  const form = page.getByRole("form", { name: "Invite a family member" });
+  await form.getByLabel("Invite someone by email").fill(email);
+  await form.getByLabel("Role").selectOption({ label: role });
+  await form.getByRole("button", { name: "Send invitation" }).click();
+  await expect(page.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
+};
+
+test("the operator invites a new family, whose owner sets a password and invites a view-only grandparent", async ({ page }) => {
+  const id = unique();
+  const ownerEmail = `robin-${id}@example.com`;
+  const granEmail = `gran-${id}@example.com`;
+
+  // The operator invites a family: the account and its family exist from now on.
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  const inviteFamily = page.getByRole("form", { name: "Invite a new family" });
+  await inviteFamily.getByLabel("Name").fill("Robin");
+  await inviteFamily.getByLabel("Email").fill(ownerEmail);
+  await inviteFamily.getByRole("button", { name: "Invite family" }).click();
+  await expect(page.getByTestId("invite-family").getByRole("status")).toContainText(`Invitation sent to ${ownerEmail}`);
+  await signOut(page);
+
+  // The invitee chooses a password from the emailed link and lands in their own family as owner.
+  const setPasswordPath = await emailedLink(page, ownerEmail);
+  expect(setPasswordPath).toMatch(/^\/set-password\//);
+  await page.goto(setPasswordPath);
+  await expect(page.getByText("Welcome, Robin")).toBeVisible();
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Repeat the password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Set password and sign in" }).click();
+  await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Robin (${ownerEmail})`);
+  await expect(page.getByTestId("families")).toHaveText("Robin's family");
+  await expect(page.getByTestId("members")).toContainText("Owner");
+
+  // The link works once.
+  await page.goto(setPasswordPath);
+  await expect(page.getByText("This link has expired")).toBeVisible();
+
+  // The owner invites a grandparent with the view-only role.
+  await page.goto("/");
+  await inviteMember(page, granEmail, "Viewer (read only)");
+  await expect(page.getByTestId("members")).toContainText(`${granEmail}Invited as Viewer (read only)`);
+  await signOut(page);
+
+  // The grandparent creates an account from the invitation and joins as a viewer, with no family of their own.
+  await page.goto(await emailedLink(page, granEmail));
+  await expect(page.getByText("Join Robin's family")).toBeVisible();
+  await expect(page.getByText(`Robin invited ${granEmail} to view its books.`)).toBeVisible();
+  await page.getByLabel("Your name").fill("Gran");
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Repeat the password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account and join" }).click();
+  await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Gran (${granEmail})`);
+  await expect(page.getByTestId("families")).toHaveText("Robin's family");
+  await expect(page.getByTestId("family-panel")).toContainText("You're a viewer: you can read this family's books");
+  await expect(page.getByRole("form", { name: "Invite a family member" })).toHaveCount(0);
+
+  // A viewer can't invite anyone, even by calling Better Auth directly.
+  const origin = new URL(page.url()).origin;
+  const refused = await page.request.post("/api/auth/organization/invite-member", {
+    data: { email: `someone-${id}@example.com`, role: "viewer" },
+    headers: { origin },
+  });
+  expect(refused.status()).toBe(403);
+
+  // The owner signs in again with the password they chose.
+  await signOut(page);
+  await signInWithPassword(page, ownerEmail);
+  await expect(page.getByTestId("members")).toContainText(`Gran (${granEmail})Viewer (read only)`);
+});
+
+test("an existing user accepts an invitation into a second family and switches between them", async ({ page }) => {
+  const id = unique();
+  const ownerEmail = `alex-${id}@example.com`;
+  const friendEmail = `sam-${id}@example.com`;
+
+  // New accounts from the dev sign-in route get a one-person family too.
+  await page.goto(`/__dev/log-me-in/${friendEmail}?returnTo=/`);
+  await expect(page.getByTestId("families")).toHaveText(`sam-${id}'s family`);
+  await signOut(page);
+  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
+  await expect(page.getByTestId("families")).toHaveText(`alex-${id}'s family`);
+  await inviteMember(page, friendEmail, "Parent (can edit)");
+  await signOut(page);
+
+  // The friend, who already has an account, accepts: the new family joins theirs and becomes active.
+  const invitationPath = await emailedLink(page, friendEmail);
+  await page.goto(`/__dev/log-me-in/${friendEmail}?returnTo=${encodeURIComponent(invitationPath)}`);
+  await expect(page.getByText(`Join alex-${id}'s family`)).toBeVisible();
+  await page.getByRole("button", { name: "Accept invitation" }).click();
+  const switcher = page.getByRole("combobox", { name: "Family" });
+  await expect(switcher.locator("option:checked")).toHaveText(`alex-${id}'s family`);
+  await expect(page.getByTestId("family-panel")).toContainText("You're the family's parent");
+  await expect(page.getByTestId("members")).toContainText(`alex-${id} (${ownerEmail})Owner`);
+
+  // Switching back shows their own family, and the choice sticks across reloads.
+  await switcher.selectOption({ label: `sam-${id}'s family` });
+  await expect(page.getByTestId("family-panel")).toContainText("You're the family's owner");
+  await page.reload();
+  await expect(switcher.locator("option:checked")).toHaveText(`sam-${id}'s family`);
+});
+
+test("only the operator sees the new-family invite", async ({ page }) => {
+  await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
+  await expect(page.getByTestId("family-panel")).toBeVisible();
+  await expect(page.getByTestId("invite-family")).toHaveCount(0);
+});
+
+test("a wrong password is refused", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("parent@lifestory.dev");
+  await page.getByLabel("Password").fill("not-the-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("alert")).toHaveText("That email and password don't match.");
+});

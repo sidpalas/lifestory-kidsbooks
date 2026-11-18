@@ -6,7 +6,9 @@ AI adds the family's own members as characters in the illustrations. See [docs/b
 This is a demo codebase: an open-source, realistic product used to test background coding agents.
 
 **Status:** foundation only. You can sign in as a seeded user, see stories read from Postgres, and run a
-worker job that writes a file to object storage. Milestone 1 is planned in [docs/plan.md](docs/plan.md);
+worker job that writes a file to object storage. Families and invites work: the operator invites a new family,
+an owner invites a parent or a view-only member, and a user in several families switches between them
+(emails go to `/__dev/mailbox` in development). Milestone 1 is planned in [docs/plan.md](docs/plan.md);
 decisions are in [docs/decisions.md](docs/decisions.md).
 
 ## Stack
@@ -58,7 +60,9 @@ bucket. They read the variables in `.env.example`; production also sets `BETTER_
 - `apps/worker/Dockerfile`: the Absurd worker.
 
 Production images never serve the `/__dev` routes (they are compiled out of `vite build`), and the development
-seed refuses to run with `NODE_ENV=production`. The operator account comes from `operator:create` (D21).
+seed refuses to run with `NODE_ENV=production`. The operator account comes from
+`node packages/core/src/operator-create.ts --email <email>`, run once in the web image (D21; see "Railway" below).
+Until an email provider is added, invitation and set-password links appear only in the web service's log (D23).
 `GET /api/health` reads Postgres and returns `{"status":"ok","migrations":<n>}`.
 
 ### Railway
@@ -83,6 +87,17 @@ curl https://web-production-73ade4c2.up.railway.app/api/health
 `BETTER_AUTH_SECRET` is set once on `web` (the worker references it) and stays out of the config file:
 `railway variables --service web --set "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"`. Railway buckets use
 virtual-hosted-style URLs, hence `S3_FORCE_PATH_STYLE=false`.
+
+Create the operator account once, after the first deploy (D21). Open a shell in the web container under your own
+Railway login; the command prompts for the password without echoing it, so it needs that interactive terminal:
+
+```sh
+railway ssh --service web
+node packages/core/src/operator-create.ts --email <email> --name "<name>"   # inside the container, in /app
+```
+
+It creates the `admin` account and its one-person family, or promotes an existing user; running it again changes
+nothing. Locally, `mise run operator:create -- --email <email>` runs the same script with `.env` loaded.
 
 To switch to the real image model, change `IMAGE_PROVIDER` from `fake` to `modal` in `.railway/railway.ts`,
 add the Modal variables from "Image generation on Modal" below, then apply and redeploy both services.

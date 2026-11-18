@@ -13,7 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
+import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as InvitationsInvitationIdRouteImport } from './routes/invitations.$invitationId'
+import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$token'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
@@ -39,9 +42,24 @@ const _devLogMeOutRoute = _devLogMeOutRouteImport.update({
   path: '/__dev/log-me-out',
   getParentRoute: () => rootRouteImport,
 } as any)
+const _devMailboxRoute = _devMailboxRouteImport.update({
+  id: '/__dev/mailbox',
+  path: '/__dev/mailbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvitationsInvitationIdRoute = InvitationsInvitationIdRouteImport.update({
+  id: '/invitations/$invitationId',
+  path: '/invitations/$invitationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordTokenRoute = SetPasswordTokenRouteImport.update({
+  id: '/set-password/$token',
+  path: '/set-password/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const _devLogMeInEmailRoute = _devLogMeInEmailRouteImport.update({
@@ -69,7 +87,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/set-password/$token': typeof SetPasswordTokenRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -80,7 +101,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/set-password/$token': typeof SetPasswordTokenRoute
   '/__dev': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -92,7 +116,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
+  '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/set-password/$token': typeof SetPasswordTokenRoute
   '/__dev/': typeof _devIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -105,7 +132,10 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/__dev/mailbox'
     | '/api/health'
+    | '/invitations/$invitationId'
+    | '/set-password/$token'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -116,7 +146,10 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/__dev/mailbox'
     | '/api/health'
+    | '/invitations/$invitationId'
+    | '/set-password/$token'
     | '/__dev'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -127,7 +160,10 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/__dev/log-me-out'
+    | '/__dev/mailbox'
     | '/api/health'
+    | '/invitations/$invitationId'
+    | '/set-password/$token'
     | '/__dev/'
     | '/__dev/log-me-in/$email'
     | '/api/auth/$'
@@ -139,7 +175,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SignInRoute: typeof SignInRoute
   _devLogMeOutRoute: typeof _devLogMeOutRoute
+  _devMailboxRoute: typeof _devMailboxRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
+  SetPasswordTokenRoute: typeof SetPasswordTokenRoute
   _devIndexRoute: typeof _devIndexRoute
   _devLogMeInEmailRoute: typeof _devLogMeInEmailRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -177,11 +216,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _devLogMeOutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/__dev/mailbox': {
+      id: '/__dev/mailbox'
+      path: '/__dev/mailbox'
+      fullPath: '/__dev/mailbox'
+      preLoaderRoute: typeof _devMailboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invitations/$invitationId': {
+      id: '/invitations/$invitationId'
+      path: '/invitations/$invitationId'
+      fullPath: '/invitations/$invitationId'
+      preLoaderRoute: typeof InvitationsInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password/$token': {
+      id: '/set-password/$token'
+      path: '/set-password/$token'
+      fullPath: '/set-password/$token'
+      preLoaderRoute: typeof SetPasswordTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/__dev/log-me-in/$email': {
@@ -219,7 +279,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SignInRoute: SignInRoute,
   _devLogMeOutRoute: _devLogMeOutRoute,
+  _devMailboxRoute: _devMailboxRoute,
   ApiHealthRoute: ApiHealthRoute,
+  InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
+  SetPasswordTokenRoute: SetPasswordTokenRoute,
   _devIndexRoute: _devIndexRoute,
   _devLogMeInEmailRoute: _devLogMeInEmailRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

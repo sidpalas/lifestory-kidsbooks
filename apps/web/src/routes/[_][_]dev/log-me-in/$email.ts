@@ -1,8 +1,9 @@
 // Development-only sign-in: GET /__dev/log-me-in/<email>?returnTo=/path
-// Finds or creates the user, signs in with the dev password, sets Better
+// Finds or creates the user (with a one-person family, like every new account),
+// signs in with the dev password, sets Better
 // Auth's normal session cookie, and redirects to a same-origin path.
 // Returns 404 unless DEV_LOGIN_ENABLED=true and NODE_ENV isn't production.
-import { Auth, Database, ensureDevUser, DEV_PASSWORD } from "@lifestory/core";
+import { Auth, ensureDevAccount, DEV_PASSWORD } from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Effect } from "effect";
 import { devRouteNotFound, devRoutesEnabled } from "~/lib/dev-routes";
@@ -18,9 +19,8 @@ export const Route = createFileRoute("/__dev/log-me-in/$email")({
         const returnTo = safeReturnTo(new URL(request.url).searchParams.get("returnTo"));
         const signIn = await serverRuntime().runPromise(
           Effect.gen(function* () {
-            const { db } = yield* Database;
-            const { auth } = yield* Auth.use((service) => Effect.succeed(service));
-            yield* Effect.promise(() => ensureDevUser(db, { name: email.split("@")[0] ?? email, email }));
+            const { auth } = yield* Auth;
+            yield* ensureDevAccount(email);
             return yield* Effect.promise(() =>
               auth.api.signInEmail({ body: { email, password: DEV_PASSWORD }, headers: request.headers, asResponse: true }),
             );

@@ -1,14 +1,19 @@
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, redirect, useHydrated } from "@tanstack/react-router";
+import { createFileRoute, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+import { FamilyPanel, InviteFamilyCard } from "~/components/family-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { NativeSelect } from "~/components/ui/native-select";
+import { signOut, SignOutResult } from "~/server/accounts";
+import { FamiliesResult, getFamilies, switchFamilyFn, SwitchFamilyResult } from "~/server/families";
 import { getHome, getSampleFileStatus, HomeResult, SampleFileStatusResult, startSampleFile, StartSampleFileResult } from "~/server/functions";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
     try {
-      return unwrapResult(HomeResult)(await getHome());
+      const [home, families] = await Promise.all([getHome(), getFamilies()]);
+      return { ...unwrapResult(HomeResult)(home), ...unwrapResult(FamiliesResult)(families) };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       throw error;
@@ -24,7 +29,8 @@ type JobView =
   | { readonly phase: "error"; readonly message: string };
 
 function Home() {
-  const { user, families, stories } = Route.useLoaderData();
+  const { user, families, stories, active, isOperator } = Route.useLoaderData();
+  const router = useRouter();
   const [job, setJob] = useState<JobView>({ phase: "idle" });
   // The server-rendered button does nothing until React hydrates, so keep it disabled until then.
   const hydrated = useHydrated();
@@ -50,19 +56,51 @@ function Home() {
     }
   };
 
+  const switchTo = async (familyId: string) => {
+    unwrapResult(SwitchFamilyResult)(await switchFamilyFn({ data: { familyId } }));
+    await router.invalidate();
+  };
+
+  const leave = async () => {
+    unwrapResult(SignOutResult)(await signOut());
+    await router.navigate({ to: "/sign-in" });
+  };
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Lifestory</h1>
-        <div className="text-right text-sm">
+        <div className="flex flex-col items-end gap-1 text-right text-sm">
           <p className="text-muted-foreground" data-testid="signed-in-as">
             Signed in as {user.name} ({user.email})
           </p>
-          <p className="font-medium" data-testid="families">
-            {families.length > 0 ? families.map((family) => family.name).join(", ") : "Not in a family yet"}
-          </p>
+          {/* The switcher appears once someone is in more than one family (D3: say little about families until then). */}
+          {families.length > 1 ? (
+            <NativeSelect
+              aria-label="Family"
+              value={active?.id}
+              disabled={!hydrated}
+              onChange={(event) => void switchTo(event.target.value)}
+            >
+              {families.map((family) => (
+                <option key={family.id} value={family.id}>
+                  {family.name}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : (
+            <p className="font-medium" data-testid="families">
+              {active?.name ?? "Not in a family yet"}
+            </p>
+          )}
+          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => void leave()} disabled={!hydrated}>
+            Sign out
+          </Button>
         </div>
       </header>
+
+      {active && <FamilyPanel family={active} />}
+      {isOperator && <InviteFamilyCard />}
 
       <Card>
         <CardHeader>

@@ -40,13 +40,35 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   open sign-up on an empty database, so anyone reaching a fresh (or wiped) deploy first would own an app holding
   children's photos. Seeding from environment variables would keep a password in the host's variables and
   re-run admin-granting code on every boot.
-- **How:** `mise run operator:create -- --email <email>`, run once inside the deployed container (any host's
-  one-off run or shell; nothing host-specific). It reads the password from a prompt, never from the environment
+- **How:** `node packages/core/src/operator-create.ts --email <email> [--name <name>]`, run once inside the deployed
+  web container (any host's one-off run or shell, for example `railway ssh`; nothing host-specific). Production
+  images have no mise, so the command is a plain Node entry point like `migrate.ts`; `mise run operator:create --
+  --email <email>` wraps it locally. It reads the password from a prompt, never from the environment
   or arguments, creates the user with role `admin` (or promotes an existing user), and creates their one-person
   family through the same account-plus-family path as the operator's new-family invite (plan.md, "Invites and
   families"). Running it again changes nothing, and deploys never run it. The development seed
   (`mise run db:seed`, with its published password) never runs against production.
 - **Reopen if:** a second operator or an automated environment needs operators without shell access.
+
+### D23. A newly invited family sets its password from a single-use emailed link — Made (2026-11-18)
+- **How:** the operator's "Invite a new family" creates the account (no password yet) and its one-person family
+  right away, through the same `createAccountWithFamily` path as `operator:create` (D21), and emails a link to
+  `/set-password/<token>`. The token is a Better Auth `reset-password:` verification value valid for 7 days, so
+  Better Auth's own `/reset-password` endpoint sets the password and consumes it; the page then signs the user in.
+  Inviting the same email again before a password is set sends a fresh link; after that it is refused.
+- **Why:** of the two options in plan.md, this reuses Better Auth's token storage, expiry, single use, and password
+  hashing instead of a token table and accept page of our own. Creating the family at invite time also means the
+  family exists (and can be renamed or pre-filled later) before the invitee arrives, and every account is created by
+  one function. The other option, an invite token our accept page checks before creating the account and family,
+  needs a "pending family" record Better Auth has no model for (its invitations belong to an existing organization).
+- **Email:** there is no delivery provider yet. A `Mailer` service logs every email and keeps the last 50 in memory
+  for the dev-only `/__dev/mailbox`. Until a provider is added, the operator copies the link from the web server's
+  log in production. Adding one means a second `Mailer` layer; nothing else changes.
+- **Member invitations** use Better Auth's organization invitations (`/invitations/<id>`, also 7 days). Someone
+  without an account creates one there with their name and password and joins only that family; someone with an
+  account signs in and accepts. Opening the emailed link is what proves the email.
+- **Reopen if:** we add a delivery provider that offers magic links, invitees often miss the 7-day window, or we
+  need invitations that don't create an account until accepted (for example to keep unaccepted invites out of user lists).
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided
 - **Why:** brief. Postgres is the only moving part; workflows can suspend for days (preview approval).

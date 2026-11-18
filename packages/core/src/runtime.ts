@@ -5,6 +5,7 @@ import { Database } from "./database.ts";
 import { Generations } from "./generations.ts";
 import { FakeImageProvider } from "./image-provider.ts";
 import { Jobs } from "./jobs.ts";
+import { Mailer } from "./mailer.ts";
 import { ModalImageProvider } from "./providers/modal.ts";
 import { ObjectStorage } from "./storage.ts";
 
@@ -22,6 +23,7 @@ const ImageProviderLayer = Layer.unwrap(
  */
 export const ServerLayer = ImageProviderLayer.pipe(
   Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer)),
+  Layer.provideMerge(Mailer.log),
   Layer.provideMerge(Database.layer),
   Layer.provideMerge(AppConfig.layer),
 );

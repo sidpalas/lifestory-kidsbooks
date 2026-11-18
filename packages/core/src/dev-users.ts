@@ -1,7 +1,9 @@
 // Development-only account helpers, used by the seed script and the /__dev routes.
 import { schema, type Db } from "@lifestory/db";
-import { hashPassword } from "better-auth/crypto";
 import { asc, eq } from "drizzle-orm";
+import { Effect } from "effect";
+import { ensureOwnFamily, insertUser } from "./accounts.ts";
+import { Database } from "./database.ts";
 
 /** Password for every seeded and dev-created account. Development only. */
 export const DEV_PASSWORD = "lifestory-dev-password";
@@ -13,17 +15,18 @@ export const ensureDevUser = async (
 ): Promise<string> => {
   const existing = await db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.email, user.email));
   if (existing[0]) return existing[0].id;
-  const id = user.id ?? `user_${crypto.randomUUID()}`;
-  await db
-    .insert(schema.user)
-    .values({ id, name: user.name, email: user.email, emailVerified: true, role: user.role ?? "user" })
-    .onConflictDoNothing();
-  await db
-    .insert(schema.account)
-    .values({ id: `account_${id}`, accountId: id, providerId: "credential", userId: id, password: await hashPassword(DEV_PASSWORD) })
-    .onConflictDoNothing();
-  return id;
+  return insertUser(db, { ...user, password: DEV_PASSWORD });
 };
+
+/**
+ * The /__dev/log-me-in account: finds or creates the user, and gives them a
+ * one-person family if they're in none (D3), like any other new account.
+ */
+export const ensureDevAccount = Effect.fn("devUsers.ensureAccount")(function* (email: string) {
+  const { db } = yield* Database;
+  const userId = yield* Effect.promise(() => ensureDevUser(db, { name: email.split("@")[0] ?? email, email }));
+  yield* ensureOwnFamily(userId);
+});
 
 /** Every local user, by email, for the /__dev index. */
 export const listDevUsers = (db: Db) =>

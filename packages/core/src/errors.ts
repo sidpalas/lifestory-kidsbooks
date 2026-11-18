@@ -25,3 +25,25 @@ export class GenerationFailed extends Schema.TaggedError<GenerationFailed>()("Ge
   generationId: Schema.String,
   message: Schema.String,
 }) {}
+
+/** The caller is signed in but their role doesn't allow this action. */
+export class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", {
+  message: Schema.String,
+}) {}
+
+/** Wrong email or password, or an account that can't sign in. */
+export class InvalidCredentials extends Schema.TaggedError<InvalidCredentials>()("InvalidCredentials", {}) {}
+
+/** An account with this email already exists (and has a password). */
+export class AccountExists extends Schema.TaggedError<AccountExists>()("AccountExists", {
+  email: Schema.String,
+}) {}
+
+/** An invitation or set-password link that is unknown, expired, or already used. */
+export class InviteInvalid extends Schema.TaggedError<InviteInvalid>()("InviteInvalid", {}) {}
+
+/** Better Auth refused a request; message is its explanation (for example "already a member"). */
+export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthRejected", {
+  code: Schema.String,
+  message: Schema.String,
+}) {}
