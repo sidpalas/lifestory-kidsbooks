@@ -95,6 +95,9 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   classifier BFL's reference code ships (`Falconsai/nsfw_image_detection`) on every image and fails the generation
   when it scores ≥ 0.5 as NSFW, so a flagged image is never uploaded. Still open for the product: the §4 limits on
   rights of publicity and "digital replica" rights (consent from the people in uploaded photos) and the AI disclosure.
+- **Sid, 2026-11-18 (with D26):** image generation is now authoring tooling only, and hosted image APIs will likely
+  become the primary provider, with this Modal function as the fallback. plan.md's "Image providers" section holds
+  the assessment; the choice gets its own decision.
 - **Reopen if:** revenue approaches the license threshold, or quality on children's-book character consistency is poor.
 
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
@@ -128,7 +131,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   combinations (3 tones × 4 hairstyles × glasses) with the face pixel-identical; hair colour by gradient map kept the
   watercolour texture. Parts grow as a sum of options per base, not a product.
 - **Open:** cut-outs at print size, hairstyle consistency across poses, glasses-over-hair layer order, a hosted API
-  with transparent output. Brief and plan text still describe photo likeness and need Sid's rewrite.
+  with transparent output. plan.md's data model and generation workflow still describe photo likeness and need rewriting.
 - **Rejected:** photo likeness per book (privacy, license, cost, art drift); every combination pre-drawn (thousands of
   images per story to review); standalone reusable parts (they ignore each page's head angle and light).
 - **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.

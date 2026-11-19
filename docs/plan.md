@@ -107,6 +107,42 @@ which just picks the default family for lists and new books.
 `/api/files/*` maps the object key prefix to its owner: `families/<id>/...` requires membership in that family,
 `stories/...` requires the story to be published (or the caller to be its author).
 
+## Image providers: assessment of hosted APIs
+
+Since D26, image generation is authoring tooling and touches no user data, so hosted image APIs are allowed, and
+they will likely replace self-hosted FLUX 3 Klein on Modal (D25) as the primary provider. Klein stays as the
+fallback and as the baseline every API is measured against. Any hosted provider is one more `ImageProvider`
+implementation next to `fake` and `modal`; the workflow doesn't change. Nothing below has been run yet.
+
+**What we need from a provider**, in order of weight:
+
+1. **Edits in place:** redraw one part (a hairstyle, glasses, a beard) on the illustrator's base crop and leave
+   the face, hands and props pixel-identical, so the part can be cut out by comparison with the base.
+2. **Style fidelity** to the illustrator's references across many parts, with no drift in age or proportions.
+3. **Consistency:** the same hairstyle from its turnaround sheet across poses and pages.
+4. **Transparent output,** if the provider has it, which could replace the comparison cut-out.
+5. **Terms on inputs:** the illustrator's art is their IP, so we need no training on inputs, short retention, and
+   output ownership compatible with publishing. Content filtering on the provider's side counts toward FLUX §2e only
+   for FLUX models.
+6. **Price and throughput** per accepted part. A story needs ~470 parts per base face (D26), generated once, so
+   rejections cost more in illustrator time than per-image price does.
+
+**Candidates** (prices and features as published, not verified by us):
+
+| Provider | Why it's a candidate | Known so far |
+| --- | --- | --- |
+| BFL API: FLUX 3 Klein and the larger FLUX 3 models | Same family as our baseline; the bigger models may hold style better | Klein is served as the same distilled checkpoint |
+| OpenAI `gpt-image-2` | Strong instruction following; markup-guided edits | Transparent backgrounds; ~$0.006 / $0.053 / $0.211 per 1024² image at low / medium / high |
+| Qwen-Image-2.1 API (Turbo, Pro) | Native RGBA generation and editing, masked local edits, up to 10 references | ~$0.016 (Turbo) / $0.04 (Pro) per image; open weights are research-only |
+| Self-hosted Klein on Modal (baseline) | Already deployed | ~$0.014 per warm 1 MP image, ~45 s cold start (D25) |
+
+**Assessment:** run the same set through each provider with the same base, references and prompts: four
+hairstyles, glasses and a beard on the bald sitting base; one hairstyle on two poses from its turnaround sheet; and
+one transparent-output part where supported. Score each output on face pixels unchanged outside the head zone
+(automatic), cut-out halo and holes at print size, style match and age drift (Sid or the illustrator, blind), and
+cost and time per accepted part. Record the provider terms checked. The result becomes a decision naming the
+primary provider.
+
 ## Generation workflow
 
 Everything that touches the provider runs in Absurd tasks on the worker. Each step is idempotent: object keys and
