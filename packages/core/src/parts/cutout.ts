@@ -240,6 +240,35 @@ export const partPieces = (mask: Uint8Array, width: number, height: number, opti
   return out;
 };
 
+/** The pixels outside `mask` that the zone's border can't reach without crossing it: the mask's holes (8-connected walls). */
+export const enclosed = (mask: Uint8Array, width: number, height: number) => {
+  const reached = new Uint8Array(mask.length);
+  const stack: Array<number> = [];
+  const visit = (p: number) => {
+    if (mask[p] || reached[p]) return;
+    reached[p] = 1;
+    stack.push(p);
+  };
+  for (let x = 0; x < width; x++) {
+    visit(x);
+    visit((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y++) {
+    visit(y * width);
+    visit(y * width + width - 1);
+  }
+  while (stack.length > 0) {
+    const p = stack.pop()!;
+    const x = p % width;
+    const y = (p - x) / width;
+    if (x > 0) visit(p - 1);
+    if (x < width - 1) visit(p + 1);
+    if (y > 0) visit(p - width);
+    if (y < height - 1) visit(p + width);
+  }
+  return Uint8Array.from(mask, (m, p) => (m || reached[p] ? 0 : 1));
+};
+
 /** Box sums through an integral image: the mean of `values` (stride `channels`) in a (2r+1)² window, clamped. */
 const boxSum = (values: Float64Array, channels: number, width: number, height: number, r: number) => {
   const W = width + 1;
@@ -312,14 +341,29 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
     }
     changed[p] = nearest > CHANGED ? 1 : 0;
   }
-  const core = partPieces(changed, width, height, { minPixels: Math.max(8, Math.round(40 * scale * scale)), share: 0.03, reach: Math.max(4, r(8)) });
-  const allowed = dilate(core, width, height, r(8));
+  const pieces = partPieces(changed, width, height, { minPixels: Math.max(8, Math.round(40 * scale * scale)), share: 0.03, reach: Math.max(4, r(8)) });
   // Two pixels at least: an anti-aliased edge is that wide at any resolution, and its pixels are not opaque.
   const sure = erode(above(SURE), width, height, Math.max(2, r(2)));
   const near = dilate(above(NEAR), width, height, r(3));
   // The part's opaque mass with its narrow gaps closed: where the part covers base line work of nearly its own colour
   // (dark hair over a dark outline), the change is too small to measure, but the part is still there.
   const mass = erode(dilate(sure, width, height, r(8)), width, height, r(8));
+  // The base shows through the part's own holes (a glasses lens, a loop of hair), so what the model redrew there
+  // (the eyes behind the lenses, moved by a few pixels) isn't the part: drop the pieces the part encloses, and matte
+  // inside a hole only right at its rim.
+  const solid = Uint8Array.from(pieces, (c, p) => (c || mass[p] ? 1 : 0));
+  const holes = enclosed(solid, width, height);
+  const outside = dilate(Uint8Array.from(solid, (s, p) => (s || holes[p] ? 0 : 1)), width, height, 1);
+  const core = new Uint8Array(n);
+  for (const island of components(solid, width, height)) {
+    const open = island.some((p) => outside[p]);
+    for (const p of island) {
+      if (open) core[p] = pieces[p]!;
+      else holes[p] = 1;
+    }
+  }
+  const rim = dilate(core, width, height, Math.max(2, r(2)));
+  const allowed = Uint8Array.from(dilate(core, width, height, r(8)), (a, p) => (a && (!holes[p] || rim[p]) ? 1 : 0));
 
   // The part's colour near each pixel, filled outward at growing radii (normalized convolution). Opaque interior
   // pixels come first: a thin half-transparent strand's own colour is a blend, and taking it as the part's colour
@@ -517,7 +561,7 @@ export const neutralize = (colour: Float32Array, alpha: Float32Array, target = 0
  * like the base's skin does, or they show the base's tone on every skin. A pixel is skin when its unmixed colour is
  * within 3 standard deviations (Mahalanobis) of the colours inside the base's skin mask. The mask is eroded first:
  * its edge holds outline pixels, and a brown outline would make brown hair look like skin. Only pixels inside the
- * mask can be skin, and specks and thin streaks of skin colour (highlights) are left to the part.
+ * mask can be skin, and specks and thin streaks of skin colour (highlights) are left to the part unless `everySpeck`.
  */
 export const skinPixels = (
   colour: Float32Array,
@@ -525,6 +569,7 @@ export const skinPixels = (
   base: Rgb,
   skinMask: Uint8Array,
   minPixels: number,
+  everySpeck = false,
 ): Uint8Array => {
   const { width, height } = base;
   const n = alpha.length;
@@ -557,6 +602,7 @@ export const skinPixels = (
     for (let r = 0; r < 3; r++) for (let s = 0; s < 3; s++) d2 += v[r]! * inv[r * 3 + s]! * v[s]!;
     found[p] = d2 < 9 ? 1 : 0;
   }
+  if (everySpeck) return found;
   // Redrawn skin comes in patches (an ear, a forehead between strands); thin streaks of skin colour are highlights
   // in the part. A piece counts when it is big enough and thick enough to survive an erosion.
   const thick = erode(found, width, height, Math.max(3, Math.round((3 * Math.max(width, height)) / 1024)));

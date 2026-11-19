@@ -275,9 +275,9 @@ publish.
   thin glasses frames and baby wisps and kept a band of the old skin. Steps: align C to B (integer shift, ±6 px);
   colour-match it outside the zone (linear per channel); segment the part: pixels that changed and whose colour
   isn't within 2 px in B (line work the model moved by a pixel isn't new), kept as the part's large pieces and the
-  small ones that touch them; estimate F nearby from the part's opaque interior; matte by projecting C − B onto
+  small ones that touch them, without what the part encloses (the eyes inside a lens show the base); estimate F nearby from the part's opaque interior; matte by projecting C − B onto
   F − B; unmix F; split off skin the model redrew (unmixed colour within 3σ of the base's skin, inside its skin
-  mask) as a layer the skin palette recolours; turn hair into neutral tones for the hair palette. Then compose on
+  mask) as a layer the skin palette recolours, or drop it for glasses; turn hair into neutral tones for the hair palette. Then compose on
   the lightest and darkest skin for the illustrator's review. 2–8 s per part on an `a1.small` orb.
 - **Running Modal for real:** `modal deploy modal/flux_klein.py`, then set `IMAGE_PROVIDER=modal`,
   `MODAL_ENDPOINT_URL`, `MODAL_CALLBACK_SECRET`, `PUBLIC_APP_URL` (for the callback), and `S3_PUBLIC_ENDPOINT` if

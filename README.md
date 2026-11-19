@@ -143,15 +143,23 @@ It prints `The Moon Picnic (/stories/the-moon-picnic) v4 is published, by <email
 To publish a changed story, raise `version` in its `story.json` (stored versions never change) and run it again
 after the change deploys. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
 
-To switch to the real image model, change `IMAGE_PROVIDER` from `fake` to `modal` in `.railway/railway.ts`,
-add the Modal variables from "Image generation on Modal" below, then apply and redeploy both services.
+Production generates story parts with OpenAI (`IMAGE_PROVIDER=openai` in `.railway/railway.ts`; "Generating story
+parts" below). The API key is set once on the web service, never in that file, and the worker references it. Set it
+before applying a config that selects OpenAI: both services build the provider when they start and fail without it.
+
+```sh
+railway variables --service web --set "OPENAI_API_KEY=<key>"
+railway config plan && railway config apply
+```
+
+To use the fallback instead, change `IMAGE_PROVIDER` to `modal` and add the Modal variables from "Image generation on
+Modal" below, then apply and redeploy both services.
 
 ## Image generation on Modal
 
 Image generation is authoring tooling for illustrators (D26); no family's data reaches it. Development, tests, and CI
-use the fake image provider, which needs no GPU. OpenAI `gpt-image-2.6-sunburst` was chosen as the primary provider
-(D30) and comes with the illustrator tooling in a later milestone; until then the one real provider is the fallback,
-FLUX 3 Image Klein running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
+use the fake image provider, which needs no GPU. OpenAI `gpt-image-2.6-sunburst` is the primary provider (D30;
+"Generating story parts" below); the fallback is FLUX 3 Image Klein running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
 calls back `/api/webhooks/modal` when the image is in object storage. Each cold job costs about US$0.09 of A100 time,
 and a warm one about US$0.014. The GPU scales to zero 60 s after the last job (docs/decisions.md D25).
 
@@ -201,13 +209,14 @@ https://modal.com/apps (app `lifestory-flux-klein`).
 ## Generating story parts
 
 Authoring tooling generates each option's part on a role's base (plan.md, "Authoring-time part generation"; D30,
-D36). There are no screens for it yet: the authoring UI calls `requestPart`, `getPart`, `listParts`, `reviewPart`,
-`approvedParts`, and `withApprovedParts` from `@lifestory/core`, for the author of a draft story version. The worker
+D36). The story editor's parts grid generates and reviews them (D37) through `requestPart`, `getPart`, `listParts`,
+`reviewPart`, `approvedParts`, and `withApprovedParts` from `@lifestory/core`, for the author of a draft. The worker
 runs the `part.generate` task: the provider's in-place edit of the base, then the cut-out, which stores RGBA layers
 and review images of the part on the story's lightest and darkest skin under `stories/<storyId>/v<n>/parts/<partId>/`.
 
 The fake provider (the default) answers with a deterministic edit, so the whole path runs locally and in CI
-(`apps/web/e2e/parts.spec.ts`). For real parts, set on the worker and restart it:
+(`apps/web/e2e/parts.spec.ts`). For real parts, set on the web app and the worker (both build the provider when
+they start) and restart them:
 
 ```sh
 IMAGE_PROVIDER=openai
@@ -217,4 +226,4 @@ OPENAI_IMAGE_QUALITY=medium               # the default
 ```
 
 Each part's provider, token usage, and cost are on its `generation` row (`select provider, cost_usd from
-generation`) and in `getPart`.
+generation`) and in `getPart`. The home page's sample job always uses the fake provider, so it never bills.

@@ -4,7 +4,8 @@ import { cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
 // a·F + (1 − a)·B, then shifted by (2, −1) px and re-toned (gain 0.96, offset +0.03), as providers do. The model also
-// redraws a little of the face: its mouth line comes back 2 px lower, which is not part of the part.
+// redraws a little of the face, which is not part of the part: its mouth line comes back 2 px lower, and the eyes,
+// inside the glasses' lenses, 7 px to the right, a few pixels from the frames.
 const W = 320;
 const H = 400;
 const zone: PixelRect = [70, 20, 250, 260];
@@ -16,6 +17,7 @@ const scene = () => {
   const glasses = new Uint8Array(W * H);
   const wisps = new Uint8Array(W * H);
   const mouth = new Uint8Array(W * H);
+  const eyes = new Uint8Array(W * H);
   const redrawn = new Float32Array(W * H * 3);
   const head = { x: 160, y: 140, r: 70 };
   for (let y = 0; y < H; y++) {
@@ -26,13 +28,18 @@ const scene = () => {
       let rgb = [0.35 + 0.1 * Math.sin(x / 7) * Math.cos(y / 11), 0.45 + 0.08 * Math.sin((x + y) / 9), 0.7 + 0.05 * Math.cos(x / 5)];
       const inHead = Math.hypot(x - head.x, y - head.y) < head.r;
       if (inHead) rgb = [0.82, 0.68, 0.58];
-      if (inHead && (Math.hypot(x - 135, y - 150) < 5 || Math.hypot(x - 185, y - 150) < 5)) rgb = [0.15, 0.1, 0.08];
+      const eyeAt = (dx: number) => inHead && (Math.hypot(x - 135 - dx, y - 150) < 5 || Math.hypot(x - 185 - dx, y - 150) < 5);
+      if (eyeAt(0)) rgb = [0.15, 0.1, 0.08];
       base.set(rgb, i);
+      if (eyeAt(0) || eyeAt(7)) eyes[p] = 1;
       // The mouth: rows 184–185 in the base, 186–187 as the model redraws it.
       if (inHead && x >= 140 && x < 180 && y >= 182 && y < 190) mouth[p] = 1;
       const mouthLine = (top: number) => inHead && x >= 140 && x < 180 && (y === top || y === top + 1);
       if (mouthLine(184)) base.set([0.3, 0.12, 0.1], i);
-      redrawn.set(mouthLine(186) ? [0.3, 0.12, 0.1] : mouthLine(184) ? [0.82, 0.68, 0.58] : base.subarray(i, i + 3), i);
+      redrawn.set(
+        mouthLine(186) ? [0.3, 0.12, 0.1] : mouthLine(184) ? [0.82, 0.68, 0.58] : eyeAt(7) ? [0.15, 0.1, 0.08] : eyeAt(0) ? [0.82, 0.68, 0.58] : base.subarray(i, i + 3),
+        i,
+      );
 
       // Hair cap: the top of the head and a bit around it, with a 4 px soft edge, some texture in its colour.
       const capDistance = Math.max(Math.hypot(x - head.x, y - head.y) - (head.r + 6), y - 115);
@@ -65,7 +72,7 @@ const scene = () => {
       }
     }
   }
-  return { base: { width: W, height: H, data: base } satisfies Rgb, edit: { width: W, height: H, data: raw } satisfies Rgb, alpha, colour, glasses, wisps, mouth };
+  return { base: { width: W, height: H, data: base } satisfies Rgb, edit: { width: W, height: H, data: raw } satisfies Rgb, alpha, colour, glasses, wisps, mouth, eyes };
 };
 
 const mean = (values: ReadonlyArray<number>) => values.reduce((a, b) => a + b, 0) / values.length;
@@ -90,7 +97,7 @@ describe("cutOutPart", () => {
 
   it("recovers soft alpha, thin frames, and half-transparent wisps that a threshold would lose or harden", () => {
     // Away from the image edge the shift clamps, every zone pixel's alpha is close to the truth.
-    const error = mean(pixels.filter((p) => inZone(p) && !truth.mouth[p]).map((p) => Math.abs(result.alpha[p]! - truth.alpha[p]!)));
+    const error = mean(pixels.filter((p) => inZone(p) && !truth.mouth[p] && !truth.eyes[p]).map((p) => Math.abs(result.alpha[p]! - truth.alpha[p]!)));
     expect(error).toBeLessThan(0.02);
     expect(mean(pixels.filter((p) => truth.glasses[p]).map((p) => result.alpha[p]!))).toBeGreaterThan(0.9);
     const wispAlpha = mean(pixels.filter((p) => truth.wisps[p] && truth.alpha[p] === 0.5).map((p) => result.alpha[p]!));
@@ -105,6 +112,8 @@ describe("cutOutPart", () => {
     expect(strayAlpha.length).toBeLessThan(pixels.filter(inZone).length * 0.005);
     // The redrawn mouth changed as much as the hair did, but it is the model's noise, not the part.
     expect(Math.max(...pixels.filter((p) => truth.mouth[p]).map((p) => result.alpha[p]!))).toBe(0);
+    // So did the eyes, close to the frames but inside the lenses, where the base shows through the part.
+    expect(Math.max(...pixels.filter((p) => truth.eyes[p]).map((p) => result.alpha[p]!))).toBe(0);
     // Unmixed colour is the part's, not skin blended in, even at the soft edge.
     const edge = pixels.filter((p) => truth.alpha[p]! >= 0.3 && truth.alpha[p]! < 1 && !truth.wisps[p] && !truth.glasses[p]);
     const colourError = mean(edge.map((p) => Math.abs(result.colour[p * 3]! - truth.colour[p * 3]!)));

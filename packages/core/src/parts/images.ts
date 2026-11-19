@@ -123,8 +123,8 @@ const encodeLayer = async (region: LayerRegion, alpha: Float32Array, colour: Flo
  * Cuts the part out of the provider's `edit` of `prepared`'s input: undoes the padding, runs cutOutPart within
  * `zone` (thousandths of the base), and splits the result by region: the part, and any skin the model drew in it,
  * found by the colours under the base's `skinMask`. With `neutral`, the part's colours become the neutral tones its
- * palette recolours (hair); otherwise it keeps the colours drawn (glasses). Skin keeps the base's tones, which the
- * skin palette recolours as it does the base. No layers when the edit added nothing in the zone.
+ * palette recolours (hair); otherwise it keeps the colours drawn (glasses) and leaves out any skin. Skin keeps the
+ * base's tones, which the skin palette recolours as it does the base. No layers when the edit added nothing in the zone.
  */
 export const cutOutLayer = async (
   prepared: Pick<PreparedBase, "base" | "width" | "height" | "padding">,
@@ -143,9 +143,11 @@ export const cutOutLayer = async (
   const aligned = await toRgb(sharp(unpadded).extract({ left: padding.left, top: padding.top, width, height }));
   const { alpha, colour, metrics } = cutOutPart(base, aligned, rectToPixels(zone, width, height));
   const mask = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
-  const skin = skinPixels(colour, alpha, base, new Uint8Array(mask), Math.max(12, Math.round((40 * Math.max(width, height)) / 1024)));
+  // Hair can't carry skin-coloured highlights away as skin, but an accessory has no skin of its own: skin the model
+  // redrew under glasses is the base's skin with its eye and nose lines moved, so the base shows there instead.
+  const skin = skinPixels(colour, alpha, base, new Uint8Array(mask), Math.max(12, Math.round((40 * Math.max(width, height)) / 1024)), !options.neutral);
   const partAlpha = alpha.map((a, p) => (skin[p] ? 0 : a));
-  const skinAlpha = alpha.map((a, p) => (skin[p] ? a : 0));
+  const skinAlpha = options.neutral ? alpha.map((a, p) => (skin[p] ? a : 0)) : new Float32Array(alpha.length);
   const layers = await Promise.all([
     encodeLayer("part", partAlpha, options.neutral ? neutralize(colour, partAlpha) : colour, width, height),
     encodeLayer("skin", skinAlpha, colour, width, height),

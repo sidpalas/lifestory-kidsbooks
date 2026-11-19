@@ -285,7 +285,16 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
     counts only where nothing within 2 px of the base looks like it.
   - Skin the model drew inside a part (an ear over a glasses arm) kept the base's tone on every skin. Such pixels
     (colour within 3σ of the base's skin, inside its skin mask, in patches rather than streaks) are split into a
-    layer with `palette: "skin"`; the format already allowed it. This is the plan's "split by region".
+    layer with `palette: "skin"`; the format already allowed it. This is the plan's "split by region". Glasses
+    keep no skin at all since the review below: skin the model redrew under an accessory is the base's skin with its
+    lines moved, so the base shows there.
+  - Glasses showed bits of the eyes and nose, which the model redraws a few pixels off when it adds glasses: orange
+    slivers inside the lenses on dark skin (Sid's review, 2026-11-19). The cut-out kept them because they lie within
+    reach of the frame. Pieces the part encloses (inside a lens) are now dropped, a hole is matted only at its rim,
+    and glasses drop the skin they redrew. Of the 11 stored hair parts, 10 cut identically; one long-hair part lost
+    40 faint edge pixels of 97,501 inside a gap in the hair, with the same opaque pixels. A line the model redraws in
+    the frame's own colour where it touches the frame (a nose stroke at the bridge) still gets through, which is
+    what the review is for.
   - Hair over a base outline of its own colour (gouache) left a dark arc. Pixels coloured like the part inside its
     closed opaque mass are opaque.
 - **Hair is asked for in dark brown** and turned into neutral tones (median 0.40, where the hair palettes put the

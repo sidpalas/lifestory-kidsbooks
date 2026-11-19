@@ -19,8 +19,8 @@ export default defineRailway(() => {
     S3_SECRET_ACCESS_KEY: ref(data, "SECRET_ACCESS_KEY"),
     // Railway buckets use virtual-hosted-style URLs.
     S3_FORCE_PATH_STYLE: "false",
-    // "fake" until the Modal provider ships; switching to "modal" also needs its MODAL_* variables.
-    IMAGE_PROVIDER: "fake",
+    // OpenAI edits story parts (D30, D36); "modal" is the fallback and needs its MODAL_* variables instead.
+    IMAGE_PROVIDER: "openai",
   };
 
   // Each push to main deploys both services, after CI passes (checkSuites).
@@ -41,6 +41,8 @@ export default defineRailway(() => {
       BETTER_AUTH_URL: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
       // Set once with `railway variables --service web --set BETTER_AUTH_SECRET=...`; never in this file.
       BETTER_AUTH_SECRET: preserve(),
+      // Set once with `railway variables --service web --set OPENAI_API_KEY=...` before applying (README "Railway").
+      OPENAI_API_KEY: preserve(),
     },
   });
 
@@ -51,6 +53,7 @@ export default defineRailway(() => {
     env: {
       ...appEnv,
       BETTER_AUTH_SECRET: web.env.BETTER_AUTH_SECRET,
+      OPENAI_API_KEY: web.env.OPENAI_API_KEY,
       // Headless Chromium on the worker opens the web app's print page for PDF proofs (D27), over the private network.
       PRINT_APP_URL: "http://${{web.RAILWAY_PRIVATE_DOMAIN}}:${{web.PORT}}",
     },
