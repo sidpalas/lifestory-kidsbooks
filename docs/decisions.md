@@ -517,12 +517,12 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** authors need to withdraw an addition (then a withdrawal that pinned proofs ignore), or additions grow
   so many that merging them on every read gets slow (then cache the merged manifest per revision).
 
-### D43. Six more hairstyles and facial hair; options added later are optional for stories published before them — Decided (Sid, 2026-11-19) / Made
+### D43. Six more hairstyles and facial hair; options added later are optional for stories published before them — Decided (Sid, 2026-11-19)
 - **What (Sid):** hairstyles buzz cut, ponytail, braids, coily afro, locs and bun join short, curly and long, and a
   facial hair axis (none, stubble, moustache, full beard) is offered from adult up. Pronouns order the hairstyles
   (she/her starts with long, ponytail and braids; he/him with short and buzz cut) and never hide one. Facial hair is
   a part like glasses, drawn in neutral tones and recoloured with the hair colour, below the glasses and hair.
-- **Stories published before an option stay valid (Made; Sid can veto):** each option added after the first stories
+- **Stories published before an option stay valid (Decided, Sid, 2026-11-19):** each option added after the first stories
   carries `addedAt`. Publishing still requires every option (D26), except those added after the version's
   `publishedAt`; a stored `partOrder` may lack an axis added later, which then goes at the bottom (`fullPartOrder`).
   Moon Picnic and The Paper Boat keep their versions; a parent who picks a new option sees the book's stand-in
