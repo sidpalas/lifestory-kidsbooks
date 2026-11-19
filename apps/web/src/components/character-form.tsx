@@ -14,7 +14,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
   const hydrated = useHydrated();
   const [name, setName] = useState(character?.name ?? "");
   const [pronouns, setPronouns] = useState<PronounSet>(character?.pronouns ?? "she/her");
-  const [look, setLook] = useState<Look>(character?.look ?? curatedLooks[0]!.look);
+  const [look, setLook] = useState<Look>(character?.look ?? curatedLooks.find((curated) => curated.look.age === "young-child")!.look);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const locked = !hydrated || !canEdit;

@@ -1,6 +1,5 @@
 import {
   curatedLooks,
-  facesForAge,
   type Look,
   Look as LookSchema,
   type LookAxis,
@@ -50,7 +49,7 @@ export const Route = createFileRoute("/stories/$slug")({
   component: StoryPreview,
 });
 
-const axisLabels: Record<LookAxis, string> = { face: "Face", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses" };
+const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses" };
 
 function StoryPreview() {
   const { story, version, manifest, cast, pages, library } = Route.useLoaderData();
@@ -110,7 +109,7 @@ function StoryPreview() {
         {manifest.characterSlots.map((slot) => {
           const member = cast[slot.slotId]!;
           const options = (axis: LookAxis) =>
-            axis === "face" ? lookVocabulary.face.filter((option) => facesForAge(slot.age).includes(option.id)) : lookVocabulary[axis];
+            axis === "age" ? lookVocabulary.age.filter((option) => slot.ages.includes(option.id)) : lookVocabulary[axis];
           return (
             <fieldset key={slot.slotId} className="flex flex-col gap-2 rounded-md border p-3" data-testid={`look-${slot.slotId}`}>
               <legend className="px-1 text-sm font-medium">
@@ -118,7 +117,7 @@ function StoryPreview() {
               </legend>
               <div className="flex flex-wrap gap-2">
                 {curatedLooks
-                  .filter((curated) => facesForAge(slot.age).includes(curated.look.face))
+                  .filter((curated) => slot.ages.includes(curated.look.age))
                   .map((curated) => (
                     <button
                       key={curated.id}

@@ -2,11 +2,12 @@
 // approved parts, and the selected page shown as it will print, where its text can be edited. Server rendering is
 // off (brief, "Recommended design"): the editor is interactive only, and BookPage measures in physical units.
 import {
-  ageOfFace,
+  ageLabel,
   type BookRole,
   type BookView,
   castLook,
   type Character,
+  type CharacterSlot,
   type Look,
   type LookAxis,
   lookVocabulary,
@@ -22,6 +23,7 @@ import { useCallback, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
+import { agesLabel } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
 import {
@@ -110,7 +112,7 @@ function BookEditor() {
               view={view}
               role={role}
               label={slot.label}
-              age={slot.age}
+              slot={slot}
               characters={characters}
               canEdit={canEdit}
               onCast={(characterId) => run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))}
@@ -292,7 +294,7 @@ function RoleCard({
   view,
   role,
   label,
-  age,
+  slot,
   characters,
   canEdit,
   onCast,
@@ -301,14 +303,14 @@ function RoleCard({
   view: BookView;
   role: BookRole;
   label: string;
-  age: "child" | "adult";
+  slot: CharacterSlot;
   characters: ReadonlyArray<Character>;
   canEdit: boolean;
   onCast: (characterId: string) => void;
   onOverride: (override: Partial<Look>) => void;
 }) {
   const character = characters.find((candidate) => candidate.id === role.characterId);
-  const fits = characters.filter((candidate) => ageOfFace(candidate.look.face) === age || candidate.id === role.characterId);
+  const fits = characters.filter((candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId);
   // For each unsupported axis, the options this story version can draw for this role, given the rest of the look.
   const supported = (axis: LookAxis) =>
     lookVocabulary[axis].filter((option) => !castLook(view.manifest, role.slotId, role.member.look, { ...role.override, [axis]: option.id }).unsupported.includes(axis));
@@ -338,7 +340,7 @@ function RoleCard({
         </div>
         {role.wrongAge ? (
           <p className="text-destructive" role="status">
-            {role.member.name} is drawn as a {age === "child" ? "grown-up" : "child"} now, and this role is a {age}, so the pages leave them out.
+            {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()} now, and this role is for {agesLabel(slot)}, so the pages leave them out.
             Choose someone else for {label.toLowerCase()}.
           </p>
         ) : role.unsupported.length > 0 ? (

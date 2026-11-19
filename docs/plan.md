@@ -42,7 +42,7 @@ and a later v2 gets a migration function from v1.
 
 ```jsonc
 {
-  "formatVersion": 1,
+  "formatVersion": 2,                         // 2 since D29; stored format 1 versions are upgraded when read
   "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375 },
   "fonts": [{ "family": "Literata", "asset": "fonts/literata-var.woff2" }],
   "characterSlots": [
@@ -50,9 +50,9 @@ and a later v2 gets a migration function from v1.
       "slotId": "hero",
       "label": "The child",
       "description": "A child about 5 years old, the main character",
-      "age": "child",                           // the one axis a story may restrict: it draws only faces of this age
+      "ages": ["young-child", "older-child"],   // the one axis a story may restrict: the character ages it accepts (D29)
       "example": { "name": "Mia", "pronouns": "she/her",   // fills the slot in story previews
-                   "look": { "face": "face:child-1", "skin": "skin:s4", "hair": "hair:curly",
+                   "look": { "age": "young-child", "face": "face:round", "skin": "skin:s4", "hair": "hair:curly",
                              "hairColour": "hair-colour:black", "glasses": "glasses:none" } }
     }
   ],
@@ -70,14 +70,15 @@ and a later v2 gets a migration function from v1.
         "layers": [
           { "kind": "art", "asset": "pages/p01/background.png" },                 // the illustrator's art, never edited
           { "kind": "figure", "slotId": "hero", "box": [430, 250, 760, 690],    // [x0, y0, x1, y1], thousandths of the art
-            "bases": [                                                          // one per face of the slot's age (D26)
-              { "face": "face:child-1", "asset": "pages/p01/hero/base-child-1.svg",
+            // "age": "toddler",                                                // optional: draw the role at this age here (D29)
+            "bases": [                                                          // one per face type, at each age drawn (D26, D29)
+              { "age": "young-child", "face": "face:round", "asset": "pages/p01/hero/base-child-1.svg",
                 "skinMask": "pages/p01/hero/base-child-1-skin.svg",            // every visible bit of skin
                 "browMask": "pages/p01/hero/base-child-1-brows.svg",           // takes the hair colour
                 "occluder": { "asset": "...", "skinMask": "..." } }           // optional: a hand in front of the face
             ],
-            "parts": [                                                          // every option, on every base face
-              { "face": "face:child-1", "axis": "hair", "option": "hair:curly", "asset": "pages/p01/hero/child-1-curly.svg",
+            "parts": [                                                          // every option, on every base
+              { "age": "young-child", "face": "face:round", "axis": "hair", "option": "hair:curly", "asset": "pages/p01/hero/child-1-curly.svg",
                 "at": [120, 0, 880, 420],                                       // a crop, in thousandths of the box
                 "palette": "hairColour", "approved": true }
             ] },
@@ -171,20 +172,21 @@ primary provider.
 ## Looks and the picker
 
 Characters belong to the family, not to a story, so a look can't name one story's assets. `packages/core/src/looks`
-defines a shared **look vocabulary**: the axes (base face, skin tone, hairstyle, hair colour, glasses, and later
-beard, freckles) and stable option IDs for each, such as `face:child-2`, `skin:s4`, `hair:braids-2`. A story role
-supports every option in the vocabulary, each backed by approved parts, except faces of another age than the role's
-(Sid, 2026-11-19): a fallback to another option would draw someone who doesn't look like the family member. Publishing
+defines a shared **look vocabulary**: the axes (age, face type, skin tone, hairstyle, hair colour, glasses, and later
+beard, freckles) and stable option IDs for each, such as `young-child`, `face:oval`, `skin:s4`, `hair:long`. A story
+role accepts some ages (D29) and supports every other option in the vocabulary at each of them, each backed by
+approved parts (Sid, 2026-11-19): a fallback to another option would draw someone who doesn't look like the family member. Publishing
 checks this (`vocabularyGaps`). An option added to the vocabulary later is missing from versions already published;
 `unsupportedOptions` finds it, and the book then either disables that story for the character or keeps a
 story-specific override with one of the story's supported options, which the parent picks.
 
-- **Picker** (milestone 1, item 2): a character starts from one of a few curated looks (full option sets), then the
-  parent changes one axis at a time with a live preview: a story-independent portrait composed with the same
+- **Picker** (milestone 1, item 2): the parent picks the character's age first (D29), then starts from one of a few
+  curated looks of that age (full option sets) and changes one axis at a time with a live preview: a story-independent portrait composed with the same
   pipeline as the pages (D28), each option shown as a thumbnail of the character with it. No photos and no matching
   from photos (D26).
-- **Base faces:** a handful per role, covering age, gender and facial structure, each a separate illustrator-drawn
-  base with its own parts. Skin tone and hair colour apply to every base.
+- **Bases:** one per face type at each age a role accepts, each a separate illustrator-approved base with its own
+  parts (D29). An age draws only the parts it has (`partAxesAt`: a baby has no hairstyle, a toddler no glasses). Skin
+  tone and hair colour apply to every base.
 
 ## Composing pages
 

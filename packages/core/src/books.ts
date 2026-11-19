@@ -13,6 +13,7 @@ import {
   type StoryManifest,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
+import { ageLabel } from "./looks/vocabulary.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
 import { Character as CharacterSchema } from "./contracts.ts";
 import { Database } from "./database.ts";
@@ -53,7 +54,7 @@ const checkCast = Effect.fn("books.checkCast")(function* (
     const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
     if (!character) return yield* new InvalidInput({ message: `Choose who plays ${slot.label.toLowerCase()}.` });
     if (castLook(manifest, slot.slotId, character.look).wrongAge) {
-      return yield* new InvalidInput({ message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is drawn as a ${slot.age}.` });
+      return yield* new InvalidInput({ message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.` });
     }
   }
   for (const slotId of Object.keys(cast)) {

@@ -1,6 +1,6 @@
-// Starting a family's book of a story: choose which family member plays each role. A role draws only faces of its
-// age (D26), so only family members of that age are offered.
-import { ageOfFace, type Character, type CharacterSlot, unwrapResult } from "@lifestory/core/contracts";
+// Starting a family's book of a story: choose which family member plays each role. A role accepts some character
+// ages (D29), so only family members of those ages are offered.
+import { ageLabel, type Character, type CharacterSlot, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -9,10 +9,13 @@ import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
 import { createBookFn, CreateBookResult } from "~/server/books";
 
+/** "young child or older child". */
+export const agesLabel = (slot: CharacterSlot) => slot.ages.map((age) => ageLabel(age).toLowerCase()).join(" or ");
+
 export function MakeBook({ slug, slots, characters }: { slug: string; slots: ReadonlyArray<CharacterSlot>; characters: ReadonlyArray<Character> }) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const fits = (slot: CharacterSlot) => characters.filter((character) => ageOfFace(character.look.face) === slot.age);
+  const fits = (slot: CharacterSlot) => characters.filter((character) => slot.ages.includes(character.look.age));
   const [cast, setCast] = useState<Record<string, string>>(() =>
     Object.fromEntries(slots.flatMap((slot) => (fits(slot)[0] ? [[slot.slotId, fits(slot)[0]!.id]] : []))),
   );
@@ -40,13 +43,13 @@ export function MakeBook({ slug, slots, characters }: { slug: string; slots: Rea
           {slots.map((slot) => (
             <div key={slot.slotId} className="flex min-w-48 flex-col gap-2">
               <Label htmlFor={`cast-${slot.slotId}`}>
-                {slot.label} <span className="text-muted-foreground font-normal">({slot.age})</span>
+                {slot.label} <span className="text-muted-foreground font-normal">({agesLabel(slot)})</span>
               </Label>
               {fits(slot).length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   Nobody yet.{" "}
                   <Link to="/characters/new" className="underline">
-                    Add a {slot.age === "child" ? "child" : "grown-up"}
+                    Add someone ({agesLabel(slot)})
                   </Link>
                 </p>
               ) : (

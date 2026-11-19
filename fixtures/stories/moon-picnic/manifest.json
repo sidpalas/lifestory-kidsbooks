@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "trim": {"widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375},
   "fonts": [
     {
@@ -40,35 +40,37 @@
       "slotId": "hero",
       "label": "The child",
       "description": "A child about 5 years old, the main character",
-      "age": "child",
       "example": {
         "name": "Mia",
         "pronouns": "she/her",
         "look": {
-          "face": "face:child-1",
+          "age": "young-child",
+          "face": "face:round",
           "skin": "skin:s4",
           "hair": "hair:curly",
           "hairColour": "hair-colour:black",
           "glasses": "glasses:none"
         }
-      }
+      },
+      "ages": ["young-child", "older-child"]
     },
     {
       "slotId": "grownup",
       "label": "A grown-up",
       "description": "A parent or grandparent who comes along",
-      "age": "adult",
       "example": {
         "name": "Grandpa Joe",
         "pronouns": "he/him",
         "look": {
-          "face": "face:adult-2",
+          "age": "adult",
+          "face": "face:round",
           "skin": "skin:s2",
           "hair": "hair:short",
           "hairColour": "hair-colour:grey",
           "glasses": "glasses:round"
         }
-      }
+      },
+      "ages": ["adult", "older-adult"]
     }
   ],
   "palettes": {
@@ -152,13 +154,29 @@
             "box": [430, 250, 760, 690],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p01/hero/base-child-1.svg",
                 "skinMask": "pages/p01/hero/base-child-1-skin.svg",
                 "browMask": "pages/p01/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p01/hero/base-child-1.svg",
+                "skinMask": "pages/p01/hero/base-child-1-skin.svg",
+                "browMask": "pages/p01/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p01/hero/base-child-2.svg",
+                "skinMask": "pages/p01/hero/base-child-2-skin.svg",
+                "browMask": "pages/p01/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p01/hero/base-child-2.svg",
                 "skinMask": "pages/p01/hero/base-child-2-skin.svg",
                 "browMask": "pages/p01/hero/base-child-2-brows.svg"
@@ -166,7 +184,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p01/hero/child-1-short.svg",
@@ -175,7 +194,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p01/hero/child-1-short.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p01/hero/child-1-curly.svg",
@@ -184,7 +214,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p01/hero/child-1-curly.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p01/hero/child-1-long.svg",
@@ -193,7 +234,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p01/hero/child-1-long.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p01/hero/child-1-glasses-round.svg",
@@ -202,7 +254,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p01/hero/child-1-glasses-round.svg",
+                "at": [388, 150, 612, 234],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p01/hero/child-2-short.svg",
@@ -211,7 +274,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p01/hero/child-2-short.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p01/hero/child-2-curly.svg",
@@ -220,7 +294,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p01/hero/child-2-curly.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p01/hero/child-2-long.svg",
@@ -229,7 +314,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p01/hero/child-2-long.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p01/hero/child-2-glasses-round.svg",
+                "at": [404, 148, 596, 236],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p01/hero/child-2-glasses-round.svg",
@@ -247,12 +353,26 @@
             "showsHead": false,
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p01/grownup/base-adult-1.svg",
                 "skinMask": "pages/p01/grownup/base-adult-1-skin.svg"
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p01/grownup/base-adult-1.svg",
+                "skinMask": "pages/p01/grownup/base-adult-1-skin.svg"
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p01/grownup/base-adult-2.svg",
+                "skinMask": "pages/p01/grownup/base-adult-2-skin.svg"
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p01/grownup/base-adult-2.svg",
                 "skinMask": "pages/p01/grownup/base-adult-2-skin.svg"
               }
@@ -280,13 +400,29 @@
             "box": [110, 400, 430, 930],
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p02/grownup/base-adult-1.svg",
                 "skinMask": "pages/p02/grownup/base-adult-1-skin.svg",
                 "browMask": "pages/p02/grownup/base-adult-1-brows.svg"
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p02/grownup/base-adult-1.svg",
+                "skinMask": "pages/p02/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p02/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p02/grownup/base-adult-2.svg",
+                "skinMask": "pages/p02/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p02/grownup/base-adult-2-brows.svg"
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p02/grownup/base-adult-2.svg",
                 "skinMask": "pages/p02/grownup/base-adult-2-skin.svg",
                 "browMask": "pages/p02/grownup/base-adult-2-brows.svg"
@@ -294,7 +430,8 @@
             ],
             "parts": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p02/grownup/adult-1-short.svg",
@@ -303,7 +440,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/grownup/adult-1-short.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p02/grownup/adult-1-curly.svg",
@@ -312,7 +460,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/grownup/adult-1-curly.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p02/grownup/adult-1-long.svg",
@@ -321,7 +480,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/grownup/adult-1-long.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p02/grownup/adult-1-glasses-round.svg",
@@ -330,7 +500,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/grownup/adult-1-glasses-round.svg",
+                "at": [375, 148, 625, 236],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p02/grownup/adult-2-short.svg",
@@ -339,7 +520,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/grownup/adult-2-short.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p02/grownup/adult-2-curly.svg",
@@ -348,7 +540,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/grownup/adult-2-curly.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p02/grownup/adult-2-long.svg",
@@ -357,7 +560,28 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/grownup/adult-2-long.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/grownup/adult-2-glasses-round.svg",
+                "at": [361, 150, 639, 234],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p02/grownup/adult-2-glasses-round.svg",
@@ -373,13 +597,29 @@
             "box": [470, 530, 700, 930],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p02/hero/base-child-1.svg",
                 "skinMask": "pages/p02/hero/base-child-1-skin.svg",
                 "browMask": "pages/p02/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p02/hero/base-child-1.svg",
+                "skinMask": "pages/p02/hero/base-child-1-skin.svg",
+                "browMask": "pages/p02/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p02/hero/base-child-2.svg",
+                "skinMask": "pages/p02/hero/base-child-2-skin.svg",
+                "browMask": "pages/p02/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p02/hero/base-child-2.svg",
                 "skinMask": "pages/p02/hero/base-child-2-skin.svg",
                 "browMask": "pages/p02/hero/base-child-2-brows.svg"
@@ -387,7 +627,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p02/hero/child-1-short.svg",
@@ -396,7 +637,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/hero/child-1-short.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p02/hero/child-1-curly.svg",
@@ -405,7 +657,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/hero/child-1-curly.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p02/hero/child-1-long.svg",
@@ -414,7 +677,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/hero/child-1-long.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p02/hero/child-1-glasses-round.svg",
@@ -423,7 +697,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/hero/child-1-glasses-round.svg",
+                "at": [354, 150, 646, 234],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p02/hero/child-2-short.svg",
@@ -432,7 +717,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/hero/child-2-short.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p02/hero/child-2-curly.svg",
@@ -441,7 +737,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/hero/child-2-curly.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p02/hero/child-2-long.svg",
@@ -450,7 +757,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/hero/child-2-long.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/hero/child-2-glasses-round.svg",
+                "at": [374, 148, 626, 236],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p02/hero/child-2-glasses-round.svg",
@@ -482,13 +810,29 @@
             "box": [420, 365, 820, 555],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p03/hero/base-child-1.svg",
                 "skinMask": "pages/p03/hero/base-child-1-skin.svg",
                 "browMask": "pages/p03/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p03/hero/base-child-1.svg",
+                "skinMask": "pages/p03/hero/base-child-1-skin.svg",
+                "browMask": "pages/p03/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p03/hero/base-child-2.svg",
+                "skinMask": "pages/p03/hero/base-child-2-skin.svg",
+                "browMask": "pages/p03/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p03/hero/base-child-2.svg",
                 "skinMask": "pages/p03/hero/base-child-2-skin.svg",
                 "browMask": "pages/p03/hero/base-child-2-brows.svg"
@@ -496,7 +840,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p03/hero/child-1-short.svg",
@@ -505,7 +850,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/hero/child-1-short.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p03/hero/child-1-curly.svg",
@@ -514,7 +870,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/hero/child-1-curly.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p03/hero/child-1-long.svg",
@@ -523,7 +890,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/hero/child-1-long.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p03/hero/child-1-glasses-round.svg",
@@ -532,7 +910,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/hero/child-1-glasses-round.svg",
+                "at": [360, 346, 640, 494],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p03/hero/child-2-short.svg",
@@ -541,7 +930,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/hero/child-2-short.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p03/hero/child-2-curly.svg",
@@ -550,7 +950,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/hero/child-2-curly.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p03/hero/child-2-long.svg",
@@ -559,7 +970,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/hero/child-2-long.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/hero/child-2-glasses-round.svg",
+                "at": [380, 343, 620, 497],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p03/hero/child-2-glasses-round.svg",
@@ -575,13 +1007,29 @@
             "box": [20, 600, 330, 960],
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p03/grownup/base-adult-1.svg",
                 "skinMask": "pages/p03/grownup/base-adult-1-skin.svg",
                 "browMask": "pages/p03/grownup/base-adult-1-brows.svg"
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p03/grownup/base-adult-1.svg",
+                "skinMask": "pages/p03/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p03/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p03/grownup/base-adult-2.svg",
+                "skinMask": "pages/p03/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p03/grownup/base-adult-2-brows.svg"
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p03/grownup/base-adult-2.svg",
                 "skinMask": "pages/p03/grownup/base-adult-2-skin.svg",
                 "browMask": "pages/p03/grownup/base-adult-2-brows.svg"
@@ -589,7 +1037,8 @@
             ],
             "parts": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p03/grownup/adult-1-short.svg",
@@ -598,7 +1047,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/grownup/adult-1-short.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p03/grownup/adult-1-curly.svg",
@@ -607,7 +1067,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/grownup/adult-1-curly.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p03/grownup/adult-1-long.svg",
@@ -616,7 +1087,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/grownup/adult-1-long.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p03/grownup/adult-1-glasses-round.svg",
@@ -625,7 +1107,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/grownup/adult-1-glasses-round.svg",
+                "at": [349, 127, 651, 203],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p03/grownup/adult-2-short.svg",
@@ -634,7 +1127,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/grownup/adult-2-short.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p03/grownup/adult-2-curly.svg",
@@ -643,7 +1147,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/grownup/adult-2-curly.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p03/grownup/adult-2-long.svg",
@@ -652,7 +1167,28 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/grownup/adult-2-long.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/grownup/adult-2-glasses-round.svg",
+                "at": [332, 129, 668, 201],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p03/grownup/adult-2-glasses-round.svg",
@@ -684,13 +1220,29 @@
             "box": [270, 380, 500, 720],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p04/hero/base-child-1.svg",
                 "skinMask": "pages/p04/hero/base-child-1-skin.svg",
                 "browMask": "pages/p04/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p04/hero/base-child-1.svg",
+                "skinMask": "pages/p04/hero/base-child-1-skin.svg",
+                "browMask": "pages/p04/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p04/hero/base-child-2.svg",
+                "skinMask": "pages/p04/hero/base-child-2-skin.svg",
+                "browMask": "pages/p04/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p04/hero/base-child-2.svg",
                 "skinMask": "pages/p04/hero/base-child-2-skin.svg",
                 "browMask": "pages/p04/hero/base-child-2-brows.svg"
@@ -698,7 +1250,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p04/hero/child-1-short.svg",
@@ -707,7 +1260,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/hero/child-1-short.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p04/hero/child-1-curly.svg",
@@ -716,7 +1280,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/hero/child-1-curly.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p04/hero/child-1-long.svg",
@@ -725,7 +1300,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/hero/child-1-long.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p04/hero/child-1-glasses-round.svg",
@@ -734,7 +1320,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/hero/child-1-glasses-round.svg",
+                "at": [345, 188, 655, 293],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p04/hero/child-2-short.svg",
@@ -743,7 +1340,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/hero/child-2-short.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p04/hero/child-2-curly.svg",
@@ -752,7 +1360,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/hero/child-2-curly.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p04/hero/child-2-long.svg",
@@ -761,7 +1380,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/hero/child-2-long.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/hero/child-2-glasses-round.svg",
+                "at": [367, 185, 633, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p04/hero/child-2-glasses-round.svg",
@@ -777,13 +1417,29 @@
             "box": [530, 330, 780, 720],
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p04/grownup/base-adult-1.svg",
                 "skinMask": "pages/p04/grownup/base-adult-1-skin.svg",
                 "browMask": "pages/p04/grownup/base-adult-1-brows.svg"
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p04/grownup/base-adult-1.svg",
+                "skinMask": "pages/p04/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p04/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p04/grownup/base-adult-2.svg",
+                "skinMask": "pages/p04/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p04/grownup/base-adult-2-brows.svg"
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p04/grownup/base-adult-2.svg",
                 "skinMask": "pages/p04/grownup/base-adult-2-skin.svg",
                 "browMask": "pages/p04/grownup/base-adult-2-brows.svg"
@@ -791,7 +1447,8 @@
             ],
             "parts": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p04/grownup/adult-1-short.svg",
@@ -800,7 +1457,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/grownup/adult-1-short.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p04/grownup/adult-1-curly.svg",
@@ -809,7 +1477,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/grownup/adult-1-curly.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p04/grownup/adult-1-long.svg",
@@ -818,7 +1497,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/grownup/adult-1-long.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p04/grownup/adult-1-glasses-round.svg",
@@ -827,7 +1517,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/grownup/adult-1-glasses-round.svg",
+                "at": [353, 185, 647, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p04/grownup/adult-2-short.svg",
@@ -836,7 +1537,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/grownup/adult-2-short.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p04/grownup/adult-2-curly.svg",
@@ -845,7 +1557,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/grownup/adult-2-curly.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p04/grownup/adult-2-long.svg",
@@ -854,7 +1577,28 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/grownup/adult-2-long.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/grownup/adult-2-glasses-round.svg",
+                "at": [336, 188, 664, 293],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p04/grownup/adult-2-glasses-round.svg",
@@ -886,13 +1630,29 @@
             "box": [100, 420, 460, 900],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p05/hero/base-child-1.svg",
                 "skinMask": "pages/p05/hero/base-child-1-skin.svg",
                 "browMask": "pages/p05/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p05/hero/base-child-1.svg",
+                "skinMask": "pages/p05/hero/base-child-1-skin.svg",
+                "browMask": "pages/p05/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p05/hero/base-child-2.svg",
+                "skinMask": "pages/p05/hero/base-child-2-skin.svg",
+                "browMask": "pages/p05/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p05/hero/base-child-2.svg",
                 "skinMask": "pages/p05/hero/base-child-2-skin.svg",
                 "browMask": "pages/p05/hero/base-child-2-brows.svg"
@@ -900,7 +1660,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p05/hero/child-1-short.svg",
@@ -909,7 +1670,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/hero/child-1-short.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p05/hero/child-1-curly.svg",
@@ -918,7 +1690,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/hero/child-1-curly.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p05/hero/child-1-long.svg",
@@ -927,7 +1710,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/hero/child-1-long.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p05/hero/child-1-glasses-round.svg",
@@ -936,7 +1730,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/hero/child-1-glasses-round.svg",
+                "at": [360, 188, 640, 293],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p05/hero/child-2-short.svg",
@@ -945,7 +1750,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/hero/child-2-short.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p05/hero/child-2-curly.svg",
@@ -954,7 +1770,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/hero/child-2-curly.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p05/hero/child-2-long.svg",
@@ -963,7 +1790,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/hero/child-2-long.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/hero/child-2-glasses-round.svg",
+                "at": [380, 185, 620, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p05/hero/child-2-glasses-round.svg",
@@ -979,7 +1827,8 @@
             "box": [540, 360, 900, 900],
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p05/grownup/base-adult-1.svg",
                 "skinMask": "pages/p05/grownup/base-adult-1-skin.svg",
                 "browMask": "pages/p05/grownup/base-adult-1-brows.svg",
@@ -989,7 +1838,30 @@
                 }
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p05/grownup/base-adult-1.svg",
+                "skinMask": "pages/p05/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p05/grownup/base-adult-1-brows.svg",
+                "occluder": {
+                  "asset": "pages/p05/grownup/occluder-adult-1.svg",
+                  "skinMask": "pages/p05/grownup/occluder-adult-1-skin.svg"
+                }
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p05/grownup/base-adult-2.svg",
+                "skinMask": "pages/p05/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p05/grownup/base-adult-2-brows.svg",
+                "occluder": {
+                  "asset": "pages/p05/grownup/occluder-adult-2.svg",
+                  "skinMask": "pages/p05/grownup/occluder-adult-2-skin.svg"
+                }
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p05/grownup/base-adult-2.svg",
                 "skinMask": "pages/p05/grownup/base-adult-2-skin.svg",
                 "browMask": "pages/p05/grownup/base-adult-2-brows.svg",
@@ -1001,7 +1873,8 @@
             ],
             "parts": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p05/grownup/adult-1-short.svg",
@@ -1010,7 +1883,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/grownup/adult-1-short.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p05/grownup/adult-1-curly.svg",
@@ -1019,7 +1903,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/grownup/adult-1-curly.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p05/grownup/adult-1-long.svg",
@@ -1028,7 +1923,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/grownup/adult-1-long.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p05/grownup/adult-1-glasses-round.svg",
@@ -1037,7 +1943,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/grownup/adult-1-glasses-round.svg",
+                "at": [358, 185, 642, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p05/grownup/adult-2-short.svg",
@@ -1046,7 +1963,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/grownup/adult-2-short.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p05/grownup/adult-2-curly.svg",
@@ -1055,7 +1983,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/grownup/adult-2-curly.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p05/grownup/adult-2-long.svg",
@@ -1064,7 +2003,28 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/grownup/adult-2-long.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/grownup/adult-2-glasses-round.svg",
+                "at": [342, 187, 658, 292],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p05/grownup/adult-2-glasses-round.svg",
@@ -1093,13 +2053,29 @@
             "box": [30, 230, 420, 900],
             "bases": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "asset": "pages/p06/grownup/base-adult-1.svg",
                 "skinMask": "pages/p06/grownup/base-adult-1-skin.svg",
                 "browMask": "pages/p06/grownup/base-adult-1-brows.svg"
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "asset": "pages/p06/grownup/base-adult-1.svg",
+                "skinMask": "pages/p06/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p06/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "asset": "pages/p06/grownup/base-adult-2.svg",
+                "skinMask": "pages/p06/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p06/grownup/base-adult-2-brows.svg"
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "asset": "pages/p06/grownup/base-adult-2.svg",
                 "skinMask": "pages/p06/grownup/base-adult-2-skin.svg",
                 "browMask": "pages/p06/grownup/base-adult-2-brows.svg"
@@ -1107,7 +2083,8 @@
             ],
             "parts": [
               {
-                "face": "face:adult-1",
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p06/grownup/adult-1-short.svg",
@@ -1116,7 +2093,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/grownup/adult-1-short.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p06/grownup/adult-1-curly.svg",
@@ -1125,7 +2113,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/grownup/adult-1-curly.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p06/grownup/adult-1-long.svg",
@@ -1134,7 +2133,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-1",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/grownup/adult-1-long.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p06/grownup/adult-1-glasses-round.svg",
@@ -1143,7 +2153,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/grownup/adult-1-glasses-round.svg",
+                "at": [349, 86, 651, 137],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p06/grownup/adult-2-short.svg",
@@ -1152,7 +2173,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/grownup/adult-2-short.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p06/grownup/adult-2-curly.svg",
@@ -1161,7 +2193,18 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/grownup/adult-2-curly.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p06/grownup/adult-2-long.svg",
@@ -1170,7 +2213,28 @@
                 "approved": true
               },
               {
-                "face": "face:adult-2",
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/grownup/adult-2-long.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/grownup/adult-2-glasses-round.svg",
+                "at": [332, 87, 668, 136],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p06/grownup/adult-2-glasses-round.svg",
@@ -1187,13 +2251,29 @@
             "partOrder": ["glasses", "hair"],
             "bases": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "asset": "pages/p06/hero/base-child-1.svg",
                 "skinMask": "pages/p06/hero/base-child-1-skin.svg",
                 "browMask": "pages/p06/hero/base-child-1-brows.svg"
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "asset": "pages/p06/hero/base-child-1.svg",
+                "skinMask": "pages/p06/hero/base-child-1-skin.svg",
+                "browMask": "pages/p06/hero/base-child-1-brows.svg"
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "asset": "pages/p06/hero/base-child-2.svg",
+                "skinMask": "pages/p06/hero/base-child-2-skin.svg",
+                "browMask": "pages/p06/hero/base-child-2-brows.svg"
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "asset": "pages/p06/hero/base-child-2.svg",
                 "skinMask": "pages/p06/hero/base-child-2-skin.svg",
                 "browMask": "pages/p06/hero/base-child-2-brows.svg"
@@ -1201,7 +2281,8 @@
             ],
             "parts": [
               {
-                "face": "face:child-1",
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p06/hero/child-1-short.svg",
@@ -1210,7 +2291,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/hero/child-1-short.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p06/hero/child-1-curly.svg",
@@ -1219,7 +2311,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/hero/child-1-curly.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p06/hero/child-1-long.svg",
@@ -1228,7 +2331,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-1",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/hero/child-1-long.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p06/hero/child-1-glasses-round.svg",
@@ -1237,7 +2351,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/hero/child-1-glasses-round.svg",
+                "at": [627, 373, 876, 527],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
                 "asset": "pages/p06/hero/child-2-short.svg",
@@ -1246,7 +2371,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/hero/child-2-short.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
                 "asset": "pages/p06/hero/child-2-curly.svg",
@@ -1255,7 +2391,18 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/hero/child-2-curly.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
                 "asset": "pages/p06/hero/child-2-long.svg",
@@ -1264,7 +2411,28 @@
                 "approved": true
               },
               {
-                "face": "face:child-2",
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/hero/child-2-long.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/hero/child-2-glasses-round.svg",
+                "at": [644, 369, 858, 531],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
                 "asset": "pages/p06/hero/child-2-glasses-round.svg",

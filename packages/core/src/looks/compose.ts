@@ -1,7 +1,7 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
 import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { type Look, NO_PART_OPTIONS } from "./vocabulary.ts";
+import { type Look, NO_PART_OPTIONS, partAxesAt } from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -29,7 +29,8 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
 
 /**
  * One figure for `look`, bottom to top: its base face (skin and brows recoloured), the look's parts in `partOrder`,
- * then the occluder (its skin recoloured too). Story pages and the picker's portrait both compose with this.
+ * then the occluder (its skin recoloured too). Drawn at the figure's pinned age, else the look's own (D29); part
+ * axes that don't exist at that age (a baby's hairstyle) are left out. Story pages and the picker's portrait both compose with this.
  * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
  */
 export const composeFigure = (
@@ -40,7 +41,8 @@ export const composeFigure = (
 ): ReadonlyArray<LayerSpec> => {
   const skin = palettes.skin[look.skin];
   const hair = palettes.hairColour[look.hairColour];
-  const base = layer.bases.find((candidate) => candidate.face === look.face);
+  const age = layer.age ?? look.age;
+  const base = layer.bases.find((candidate) => candidate.age === age && candidate.face === look.face);
   if (!skin || !hair || !base) throw new Error(`${layer.slotId}: can't draw this look`);
   const regionPalettes = { skin, hairColour: hair } as const;
 
@@ -49,9 +51,9 @@ export const composeFigure = (
       ? []
       : (layer.partOrder ?? partOrder).flatMap((axis) => {
           const option = look[axis];
-          if (NO_PART_OPTIONS.has(option)) return [];
-          const drawn = layer.parts.filter((part) => part.face === look.face && part.axis === axis && part.option === option);
-          if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${look.face}"`);
+          if (NO_PART_OPTIONS.has(option) || !partAxesAt(age).includes(axis)) return [];
+          const drawn = layer.parts.filter((part) => part.age === age && part.face === look.face && part.axis === axis && part.option === option);
+          if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${age}/${look.face}"`);
           return drawn.map((part) => ({
             asset: part.asset,
             rect: within(layer.box, part.at),

@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
-import { Result, Schema } from "effect";
+import { Effect, Result, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   castLook,
   composeIllustration,
+  decodeStoryManifest,
   exampleCast,
   isVariableFont,
   manifestAssets,
@@ -46,7 +47,7 @@ describe("StoryManifest", () => {
   });
 
   it("rejects a format version it doesn't know", () => {
-    expect(errorOf(variant((m) => (m.formatVersion = 2)))).toContain("formatVersion");
+    expect(errorOf(variant((m) => (m.formatVersion = 3)))).toContain("formatVersion");
   });
 
   it.each([
@@ -62,11 +63,21 @@ describe("StoryManifest", () => {
     ["an asset path that climbs out of the story", (m: any) => (m.pages[0].illustration.layers[0].asset = "../other/art.png"), "relative path"],
     ["an absolute asset path", (m: any) => (m.pages[0].illustration.layers[0].asset = "/etc/art.png"), "relative path"],
     ["a font that isn't woff2", (m: any) => (m.fonts[0].asset = "fonts/literata.ttf"), ".woff2"],
-    ["a base face of another age", (m: any) => (m.pages[0].illustration.layers[1].bases[0].face = "face:adult-1"), `"face:adult-1" is not a child's face`],
+    ["a base for an age the role doesn't accept", (m: any) => (m.pages[0].illustration.layers[1].bases[0].age = "adult"), `the figure doesn't draw "adult"`],
+    ["a base for another age than the figure's pinned one", (m: any) => (m.pages[0].illustration.layers[1].age = "toddler"), `the figure doesn't draw "young-child"`],
+    [
+      "a hairstyle part at an age that has none",
+      (m: any) => {
+        m.characterSlots[0].ages.push("baby");
+        m.pages[0].illustration.layers[1].parts[0].age = "baby";
+      },
+      `"baby" has no hair parts`,
+    ],
     ["a part for an option outside the vocabulary", (m: any) => (m.pages[0].illustration.layers[1].parts[0].option = "hair:mohawk"), `"hair:mohawk" is not a hair option`],
-    ["a part for an option with nothing to draw", (m: any) => (m.pages[0].illustration.layers[1].parts[3].option = "glasses:none"), `"glasses:none" is not a glasses option with a drawing`],
+    ["a part for an option with nothing to draw", (m: any) => (m.pages[0].illustration.layers[1].parts.find((part: any) => part.axis === "glasses").option = "glasses:none"), `"glasses:none" is not a glasses option with a drawing`],
     ["parts on a figure without a head", (m: any) => m.pages[0].illustration.layers[3].parts.push(m.pages[0].illustration.layers[1].parts[0]), "a figure without a head has no parts"],
-    ["an example look of another age", (m: any) => (m.characterSlots[0].example.look.face = "face:adult-1"), "the example's face is not a child's"],
+    ["an example look of another age", (m: any) => (m.characterSlots[0].example.look.age = "adult"), "the example is not one of the slot's ages"],
+    ["a role accepting no age", (m: any) => (m.characterSlots[0].ages = []), "ages"],
     ["a palette for an unknown option", (m: any) => (m.palettes.skin["skin:s9"] = m.palettes.skin["skin:s1"]), `"skin:s9" is not a skin option`],
     ["a part order missing an axis", (m: any) => (m.partOrder = ["hair"]), "must list each of hair, glasses once"],
     ["a safe margin wider than the page", (m: any) => (m.trim.safeMarginIn = 4.25), "no room for text"],
@@ -97,51 +108,121 @@ describe("resolveText", () => {
 });
 
 const decoded = (m: unknown) => Schema.decodeUnknownSync(StoryManifest)(m);
-const childLook = (face: Look["face"], hair: Look["hair"]): Look => ({ face, skin: "skin:s3", hair, hairColour: "hair-colour:brown", glasses: "glasses:round" });
+const childLook = (face: Look["face"], hair: Look["hair"], age: Look["age"] = "young-child"): Look => ({
+  age,
+  face,
+  skin: "skin:s3",
+  hair,
+  hairColour: "hair-colour:brown",
+  glasses: "glasses:round",
+});
+/** The sample with p04's child figure missing the long hairstyle on the oval face, for young children only. */
+const missingLongOval = () =>
+  decoded(
+    variant((m) => {
+      const hero = m.pages[3].illustration.layers.find((layer: any) => layer.slotId === "hero");
+      hero.parts = hero.parts.filter((part: any) => !(part.age === "young-child" && part.face === "face:oval" && part.option === "hair:long"));
+    }),
+  );
 
-describe("looks against a story (D26)", () => {
-  it("reports exactly the axis a story can't draw, and only for the face missing its part", () => {
-    // p04's child figure loses the long hairstyle on the oval face only.
-    const manifest = decoded(
-      variant((m) => {
-        const hero = m.pages[3].illustration.layers.find((layer: any) => layer.slotId === "hero");
-        hero.parts = hero.parts.filter((part: any) => !(part.face === "face:child-2" && part.option === "hair:long"));
-      }),
-    );
-    expect(vocabularyGaps(manifest)).toEqual(['p04/hero: no part for "hair:long" on "face:child-2"']);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:child-2", "hair:long"))).toEqual(["hair"]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:child-1", "hair:long"))).toEqual([]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:child-2", "hair:curly"))).toEqual([]);
+describe("looks against a story (D26, D29)", () => {
+  it("reports exactly the axis a story can't draw, and only for the age and face missing its part", () => {
+    const manifest = missingLongOval();
+    expect(vocabularyGaps(manifest)).toEqual(['p04/hero: no part for "hair:long" on "young-child/face:oval"']);
+    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:long"))).toEqual(["hair"]);
+    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:long"))).toEqual([]);
+    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:curly"))).toEqual([]);
+    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:long", "older-child"))).toEqual([]);
   });
 
-  it("rejects a face of another age and a colour the story has no palette for", () => {
+  it("rejects an age the role doesn't accept and a colour the story has no palette for", () => {
     const manifest = decoded(variant((m) => delete m.palettes.skin["skin:s5"]));
     expect(vocabularyGaps(manifest)).toEqual(['no palette for "skin:s5"']);
-    expect(unsupportedOptions(manifest, "hero", { ...childLook("face:adult-1", "hair:short"), skin: "skin:s5" }).toSorted()).toEqual(["face", "skin"]);
+    expect(unsupportedOptions(manifest, "hero", { ...childLook("face:round", "hair:short"), skin: "skin:s5" })).toEqual(["skin"]);
+    // A role accepting young and older children: a teen or a toddler can't play it.
+    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:short", "teen"))).toEqual(["age"]);
+    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:short", "toddler"))).toEqual(["age"]);
   });
 
   it("a book's override stands in only for options the story can't draw, and never for another age", () => {
-    const manifest = decoded(
-      variant((m) => {
-        const hero = m.pages[3].illustration.layers.find((layer: any) => layer.slotId === "hero");
-        hero.parts = hero.parts.filter((part: any) => !(part.face === "face:child-2" && part.option === "hair:long"));
-      }),
-    );
-    const longOval = childLook("face:child-2", "hair:long");
+    const manifest = missingLongOval();
+    const longOval = childLook("face:oval", "hair:long");
     expect(castLook(manifest, "hero", longOval)).toEqual({ look: longOval, wrongAge: false, unsupported: ["hair"] });
     // The parent picks a stand-in hairstyle for this book; the other axes stay the character's own.
-    expect(castLook(manifest, "hero", longOval, { hair: "hair:curly", glasses: "glasses:round" })).toEqual({
+    expect(castLook(manifest, "hero", longOval, { hair: "hair:curly", glasses: "glasses:none" })).toEqual({
       look: { ...longOval, hair: "hair:curly" },
       wrongAge: false,
       unsupported: [],
     });
     // Once the character's own option is drawable (another face here), the override no longer applies.
-    const longRound = childLook("face:child-1", "hair:long");
+    const longRound = childLook("face:round", "hair:long");
     expect(castLook(manifest, "hero", longRound, { hair: "hair:curly" }).look).toEqual(longRound);
     // A stand-in the story can't draw either leaves the axis unsupported.
     expect(castLook(manifest, "hero", longOval, { hair: "hair:long" }).unsupported).toEqual(["hair"]);
-    // A grown-up's face can't fill a child's role, whatever the override says.
-    expect(castLook(manifest, "hero", childLook("face:adult-1", "hair:short"), { face: "face:child-1" })).toMatchObject({ wrongAge: true, unsupported: ["face"] });
+    // A grown-up can't fill a child's role, whatever the override says.
+    expect(castLook(manifest, "hero", childLook("face:round", "hair:short", "adult"), { face: "face:round" })).toEqual({
+      look: childLook("face:round", "hair:short", "adult"),
+      wrongAge: true,
+      unsupported: ["age"],
+    });
+  });
+
+  it("draws a figure pinned to an age at that age, whatever age the character is", () => {
+    // p02 draws the hero as a toddler (D29: a character who grows up during the story), with toddler bases and hair
+    // parts that reuse p01's drawings so they can be told apart. Toddlers have no glasses parts.
+    const manifest = decoded(
+      variant((m) => {
+        const p01 = m.pages[0].illustration.layers.find((layer: any) => layer.slotId === "hero");
+        const hero = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "hero");
+        hero.age = "toddler";
+        hero.bases = p01.bases.filter((base: any) => base.age === "young-child").map((base: any) => ({ ...base, age: "toddler" }));
+        hero.parts = p01.parts
+          .filter((part: any) => part.age === "young-child" && part.axis === "hair")
+          .map((part: any) => ({ ...part, age: "toddler" }));
+      }),
+    );
+    expect(vocabularyGaps(manifest)).toEqual([]);
+    for (const age of ["young-child", "older-child"] as const) {
+      const look = childLook("face:oval", "hair:long", age);
+      expect(unsupportedOptions(manifest, "hero", look)).toEqual([]);
+      const hero = composeIllustration(manifest, manifest.pages[1]!, { hero: { name: "Ada", pronouns: "she/her", look } })
+        .map((layer) => layer.asset)
+        .filter((asset) => asset.includes("/hero/"));
+      // The toddler base and hairstyle, and no glasses although the look has them.
+      expect(hero).toEqual(["pages/p01/hero/base-child-2.svg", "pages/p01/hero/child-2-long.svg"]);
+    }
+  });
+
+  it("reads a stored format 1 manifest as the format 2 version that draws the same", () => {
+    // Format 1 as stored before D29: one age per role, faces bound to an age.
+    const format1 = variant((m) => {
+      const faces: Record<string, string> = { "young-child/face:round": "face:child-1", "young-child/face:oval": "face:child-2", "adult/face:oval": "face:adult-1", "adult/face:round": "face:adult-2" };
+      const old = (item: any) => {
+        const { age, face, ...rest } = item;
+        return { ...rest, face: faces[`${age}/${face}`] };
+      };
+      m.formatVersion = 1;
+      for (const slot of m.characterSlots) {
+        slot.age = slot.ages[0] === "adult" ? "adult" : "child";
+        delete slot.ages;
+        slot.example.look = old(slot.example.look);
+      }
+      for (const page of m.pages) {
+        for (const layer of page.illustration.layers) {
+          if (layer.kind !== "figure") continue;
+          layer.bases = layer.bases.filter((base: any) => faces[`${base.age}/${base.face}`]).map(old);
+          layer.parts = layer.parts.filter((part: any) => faces[`${part.age}/${part.face}`]).map(old);
+        }
+      }
+    });
+    const upgraded = Effect.runSync(decodeStoryManifest(format1));
+    expect(upgraded.characterSlots.map((slot) => slot.ages)).toEqual([["young-child"], ["adult"]]);
+    const current = decoded(sample);
+    for (const page of current.pages) {
+      expect(composeIllustration(upgraded, upgraded.pages.find((p) => p.pageId === page.pageId)!, exampleCast(upgraded))).toEqual(
+        composeIllustration(current, page, exampleCast(current)),
+      );
+    }
   });
 });
 
@@ -183,7 +264,12 @@ describe("composeIllustration", () => {
   });
 
   it("places a part inside its figure's box and honours a page's own part order", () => {
-    const edited = decoded(variant((m) => (m.pages[0].illustration.layers[1].parts[1].at = [0, 0, 500, 1000])));
+    const edited = decoded(
+      variant((m) => {
+        const curly = m.pages[0].illustration.layers[1].parts.find((part: any) => part.age === "young-child" && part.asset.endsWith("child-1-curly.svg"));
+        curly.at = [0, 0, 500, 1000];
+      }),
+    );
     // Box [430, 250, 760, 690]; the left half of it.
     const hair = composeIllustration(edited, edited.pages[0]!, cast).find((layer) => layer.asset.endsWith("child-1-curly.svg"))!;
     expect(hair.rect).toEqual([430, 250, 595, 690]);

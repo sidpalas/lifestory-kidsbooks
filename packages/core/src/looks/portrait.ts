@@ -5,8 +5,9 @@
 //
 // Placeholder art (portrait/, 244 × 280 px): rebuilt by portrait/extract.py from the FLUX 3 Klein experiment in
 // thread T-01a1f012-4acc-7483-a9a5-8d5c5353cdee (its 24-combination grid): a bald base, its skin mask, and in-place
-// hairstyle and glasses parts. That experiment drew one grown-up base only, so every face option shows that base
-// until the illustrator draws the others; hair:short is its bob, hair:curly its coily afro, hair:long its braids.
+// hairstyle and glasses parts. That experiment drew one grown-up base only, so every age and face type shows that
+// base until the illustrator's bases arrive (D29); hair:short is its bob, hair:curly its coily afro, hair:long its
+// braids. Axes an age has no parts for (a baby's hairstyle, a toddler's glasses) are left out, as in books.
 // Server-only (sharp, node:fs).
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -15,7 +16,7 @@ import sharp from "sharp";
 import type { FigureLayer, Part, StoryManifest } from "../book-format/manifest.ts";
 import { composeFigure } from "./compose.ts";
 import { recolour } from "./recolour.ts";
-import { faceOptions, hairOptions, type Look } from "./vocabulary.ts";
+import { ageOptions, faceOptions, hairOptions, type Look, partAxesAt } from "./vocabulary.ts";
 
 const FULL = [0, 0, 1000, 1000] as const;
 
@@ -52,22 +53,28 @@ export const portraitPalettes: StoryManifest["palettes"] = {
 /** The experiment drew glasses under the hair. */
 const partOrder: StoryManifest["partOrder"] = ["glasses", "hair"];
 
+const atEveryAge = ageOptions.flatMap((age) => faceOptions.map((face) => ({ age: age.id, face: face.id })));
+
 export const portraitFigure: FigureLayer = {
   kind: "figure",
   slotId: "portrait",
   box: FULL,
-  bases: faceOptions.map((face) => ({ face: face.id, asset: "base.png", skinMask: "skin-mask.png" })),
-  parts: faceOptions.flatMap((face): ReadonlyArray<Part> => [
-    ...hairOptions.map((hair) => ({
-      face: face.id,
-      axis: "hair" as const,
-      option: hair.id,
-      asset: `hair-${hair.id.slice("hair:".length)}.png`,
-      at: FULL,
-      palette: "hairColour" as const,
-      approved: true,
-    })),
-    { face: face.id, axis: "glasses", option: "glasses:round", asset: "glasses-round.png", at: FULL, palette: "none", approved: true },
+  bases: atEveryAge.map((at) => ({ ...at, asset: "base.png", skinMask: "skin-mask.png" })),
+  parts: atEveryAge.flatMap((at): ReadonlyArray<Part> => [
+    ...(partAxesAt(at.age).includes("hair")
+      ? hairOptions.map((hair) => ({
+          ...at,
+          axis: "hair" as const,
+          option: hair.id,
+          asset: `hair-${hair.id.slice("hair:".length)}.png`,
+          at: FULL,
+          palette: "hairColour" as const,
+          approved: true,
+        }))
+      : []),
+    ...(partAxesAt(at.age).includes("glasses")
+      ? [{ ...at, axis: "glasses" as const, option: "glasses:round", asset: "glasses-round.png", at: FULL, palette: "none" as const, approved: true }]
+      : []),
   ]),
 };
 
@@ -97,12 +104,13 @@ const render = async (look: Look): Promise<Uint8Array> => {
   );
 };
 
-// Bounded by the vocabulary: 4 faces × 5 tones × 3 hairstyles × 4 colours × 2 = 480 looks of ~100 KB at most.
+// Bounded by the vocabulary: 7 ages × 2 faces × 5 tones × 3 hairstyles × 4 colours × 2 ≈ 1,700 looks of ~170 KB at
+// most, and only looks someone picked are made.
 const cache = new Map<string, Promise<Uint8Array>>();
 
 /** The portrait of `look` as a PNG. Deterministic, so it is made once per look and process. */
 export const lookPortrait = Effect.fn("looks.portrait")(function* (look: Look) {
-  const key = JSON.stringify([look.face, look.skin, look.hair, look.hairColour, look.glasses]);
+  const key = JSON.stringify([look.age, look.face, look.skin, look.hair, look.hairColour, look.glasses]);
   let png = cache.get(key);
   if (!png) {
     png = render(look);

@@ -12,10 +12,12 @@ const evidence = async (page: Page, name: string) => {
 const imagesLoaded = (page: Page) =>
   expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
 
-const addCharacter = async (page: Page, name: string, pronouns: string, start: string, refine: (picker: Page) => Promise<void> = async () => {}) => {
+const addCharacter = async (page: Page, name: string, pronouns: string, age: string, start: string, refine: (picker: Page) => Promise<void> = async () => {}) => {
   await page.goto("/characters/new");
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Pronouns").selectOption(pronouns);
+  // Age first (D29): it decides which curated looks and features the picker offers.
+  await page.getByRole("button", { name: age, exact: true }).click();
   await page.getByRole("button", { name: start, exact: true }).click();
   await refine(page);
   await page.getByRole("button", { name: "Add to the family" }).click();
@@ -36,21 +38,29 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   const grownup = `Sam ${id}`;
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
 
-  // The picker starts from a curated look and refines one feature at a time, with the portrait following each choice.
-  await addCharacter(page, child, "she/her", "Child: Curly black hair", async () => {
+  // The picker starts from an age and a curated look of it, and refines one feature at a time, with the portrait
+  // following each choice.
+  await addCharacter(page, child, "she/her", "Young child", "Curly black hair", async () => {
     const preview = page.getByTestId("look-preview");
     const before = await preview.getAttribute("src");
+    // A toddler has no glasses parts, so the picker doesn't offer them; back to a young child, it does.
+    await page.getByRole("button", { name: "Toddler", exact: true }).click();
+    await expect(page.getByRole("group", { name: /Hairstyle/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Round glasses" })).toHaveCount(0);
+    await expect(page.getByTestId("look-summary")).toHaveText("Toddler, round face, brown skin, curly black hair");
+    await page.getByRole("button", { name: "Young child", exact: true }).click();
     await page.getByRole("button", { name: "Long hair" }).click();
     await page.getByRole("button", { name: "Brown hair colour" }).click();
     await page.getByRole("button", { name: "Round glasses" }).click();
-    await expect(page.getByTestId("look-summary")).toHaveText("Round face, brown skin, long brown hair, glasses");
+    await expect(page.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, long brown hair, glasses");
     expect(await preview.getAttribute("src")).not.toBe(before);
     await imagesLoaded(page);
     await evidence(page, "picker");
   });
-  await addCharacter(page, grownup, "they/them", "Grown-up: Short grey hair, glasses");
+  await addCharacter(page, grownup, "they/them", "Older adult", "Short grey hair, glasses");
 
-  // Make a book: each role is filled by a family member of its age.
+  // Make a book: each role is filled by a family member of an age it accepts (the grown-up's role takes adults and
+  // older adults).
   await page.goto("/stories/the-moon-picnic");
   const make = page.getByRole("form", { name: "Make our book" });
   await make.getByLabel(/The child/).selectOption({ label: child });
@@ -108,10 +118,10 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   expect(after.flat().length).toBe(before.flat().length);
   await evidence(page, "book-after-look-change");
 
-  // Ada becomes a grown-up: the child's role can't draw her any more, so her figures leave the pages and the
-  // editor asks for someone else; the text still names her (D26: no fallback to another face).
+  // Ada grows up: the child's role accepts young and older children, not adults, so her figures leave the pages and
+  // the editor asks for someone else; the text still names her (D26, D29: no fallback to another age).
   await page.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
-  await page.getByRole("button", { name: "Grown-up, square face" }).click();
+  await page.getByRole("button", { name: "Adult", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
   await page.goto(bookUrl);
   await expect(page.getByTestId("role-hero").getByRole("status")).toContainText("Choose someone else for the child");
@@ -125,8 +135,8 @@ test("a viewer reads the family's characters and books but can't change them", a
   const id = unique();
   const child = `Kit ${id}`;
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
-  await addCharacter(page, child, "he/him", "Child: Short black hair");
-  await addCharacter(page, `Lee ${id}`, "she/her", "Grown-up: Long brown hair");
+  await addCharacter(page, child, "he/him", "Older child", "Short brown hair, glasses");
+  await addCharacter(page, `Lee ${id}`, "she/her", "Adult", "Long brown hair");
   await page.goto("/stories/the-moon-picnic");
   const make = page.getByRole("form", { name: "Make our book" });
   await make.getByLabel(/The child/).selectOption({ label: child });

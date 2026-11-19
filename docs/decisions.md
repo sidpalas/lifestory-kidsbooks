@@ -115,19 +115,19 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
     readable. The sample's v2 replaced v1's variable Literata with static instances at 450 (body) and 700 (title),
     made with `fonttools varLib.instancer` (the OFL declares no Reserved Font Name). Databases seeded before keep v1.
   - **Slots carry an `example`** (name, pronouns, look) that fills them in story previews before a family casts
-    anyone, and an `age` (`child`, `adult`): the faces the slot draws. The plan's `pronounSet: "from-character"` and
+    anyone, and the character `ages` it accepts (D29; format 1 had one `age`, `child` or `adult`). The plan's `pronounSet: "from-character"` and
     free-text `defaults` are dropped: pronouns and look always come from whoever fills the slot.
   - **Characters are figures composed from parts (D26).** A `figure` layer has a `box` on the page and, for each
-    face of its slot's age, a base drawn bald in neutral greys with a `skinMask` covering every visible bit of skin,
+    face type at each age it draws (D29), a base drawn bald in neutral greys with a `skinMask` covering every visible bit of skin,
     an optional `browMask`, and an optional `occluder` with its own skin mask. Its `parts` are cropped drawings
-    placed `at` a rectangle inside the box, one per option and face, each naming the palette it takes and whether
+    placed `at` a rectangle inside the box, one per option, age and face, each naming the palette it takes and whether
     it is approved. `showsHead: false` marks a figure with only a hand in frame (no parts, skin still recoloured).
     The manifest's `partOrder` (bottom to top) can be overridden per figure, e.g. glasses under hair. `palettes`
     holds the illustrator's gradient map for each skin tone and hair colour. Full-page canvases were the
     alternative; crops keep each part small and match the plan's "Composing pages".
-  - **The look vocabulary** is `packages/core/src/looks/vocabulary.ts`: face (by age), skin, hairstyle, hair colour,
-    glasses, with curated looks for the picker. Decoding checks that the manifest names only known options and has
-    no misplaced faces; `vocabularyGaps` (run when publishing) checks that every option has a palette or a part on
+  - **The look vocabulary** is `packages/core/src/looks/vocabulary.ts`: age, face type, skin, hairstyle, hair colour,
+    glasses, with curated looks for the picker (D29). Decoding checks that the manifest names only known options and
+    draws only the ages its slots accept; `vocabularyGaps` (run when publishing) checks that every option has a palette or a part on
     every figure, and `unapprovedParts` that every part is approved.
   - **Recolour** (`gradient-map-v1`, `looks/recolour.ts`, sharp): each pixel's luminance indexes the palette inside
     a mask, mask alpha blends soft edges, everything else is untouched. Vector placeholders rasterize at 300 dpi.
@@ -177,8 +177,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   picker starts from a few curated looks and refines one feature at a time.
 - **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, pronouns and a look,
   and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
-  and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role draws only faces of
-  its age, and covers every other option; falling back to a default would draw someone who doesn't look like the
+  and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role accepts some ages
+  (D29), and covers every other option at each of them; falling back to a default would draw someone who doesn't look like the
   family member. Publishing checks this. When an option added later is missing from an older published version, the
   book either disables that story for the character or keeps a story-specific override with a supported option.
 - **Why:** no children's photos to store or protect, and nothing near the license's biometric and digital-replica
@@ -245,10 +245,33 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
   its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
   character's own option is unsupported, so a later look change back to a supported option takes effect again. A role
-  still undrawable (no override yet, or a face of another age) is left out of the pictures, never drawn with a default,
+  still undrawable (no override yet, or a character of an age the role doesn't accept) is left out of the pictures, never drawn with a default,
   and the editor asks the parent to pick a stand-in or someone else; the text still uses the name and pronouns.
 - **Reopen if:** the illustrator delivers real portrait bases (then replace the art; nothing else changes), or parents
   are confused that the portrait and a story's drawings differ.
+
+### D29. Character ages: seven buckets first in the picker; roles accept some, figures can pin one — Decided (Sid, 2026-11-19) / Made
+- **What:** a look's first axis is the character's `age`, one of `baby` (0–1), `toddler` (1–3), `young-child` (3–7),
+  `older-child` (8–12), `teen` (13–17), `adult` (18–64), `older-adult` (65+). The buckets are character ages, not
+  Wonderbly-style reader ages: they split where the body changes enough that one drawn base can't cover both, or where
+  the character plays a different part in a story. Finer buckets multiply the bases to draw and review; coarser ones
+  lose likeness. Faces become **face types** (`face:round`, `face:oval`) drawn at every age, so a character keeps their
+  face as they grow.
+- **Roles and figures:** a slot declares the `ages` it accepts (the hero of the sample takes young and older
+  children; its grown-up takes adults and older adults), and a figure has a base and parts per face type at each.
+  A figure may pin an `age`, so a role can grow up during a story (a newborn on page 1, a toddler on page 6); it then
+  draws that age whatever the character's own. `partAxesAt(age)` says which parts an age has: a baby none, a toddler
+  hair only. An override never sets an age. A character whose age a role doesn't accept leaves that role's pictures
+  and the editor asks for someone else (D28), the same when a character's age changes later.
+- **Bases from the illustrator's samples (amends D26):** authoring tooling may generate bases for other ages from a
+  few illustrator-drawn sample characters; every generated base and part still needs the illustrator's approval
+  before publishing, as in D26.
+- **Format 2:** `formatVersion` 2 with `ages` on slots and `age` on bases, parts, examples, and optionally figures.
+  Stored format 1 versions are upgraded when read (`upgradeFormat1`: child → young child, adult → adult, the four old
+  faces → face types at those ages), so they keep drawing exactly what they drew. Migration 0006 converts stored
+  looks the same way. The sample story's v3 is format 2; its new ages reuse the placeholder SVGs.
+- **Reopen if:** an illustrator finds a bucket boundary wrong for real bodies (split or merge it), or generated bases
+  fail review often enough that hand-drawing every age is cheaper.
 
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and

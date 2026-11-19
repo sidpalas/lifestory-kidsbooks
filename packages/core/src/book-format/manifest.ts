@@ -1,20 +1,13 @@
-// Book format v1: what an author publishes, stored as `story_version.manifest`.
-// See docs/plan.md, "Book format (v1)". Browser-safe: the page component reads it.
+// The book format: what an author publishes, stored as `story_version.manifest`. Format 2 (D29) gives roles a set of
+// ages and draws bases and parts per age and face type; stored format 1 manifests are upgraded when decoded
+// (upgradeFormat1). See docs/plan.md, "Book format (v1)". Browser-safe: the page component reads it.
 //
 // The manifest holds only what the author made. A family's choices (who fills
 // each character slot, text edits) live on their book and are applied when a
 // page is rendered, so one story version serves every family unchanged.
 import { Schema } from "effect";
-import {
-  Age,
-  facesForAge,
-  FaceOption,
-  lookVocabulary,
-  Look,
-  NO_PART_OPTIONS,
-  PartAxis,
-  ageOfFace,
-} from "../looks/vocabulary.ts";
+import { Effect } from "effect";
+import { Age, FaceOption, faceOptions, lookVocabulary, Look, NO_PART_OPTIONS, PartAxis, partAxesAt } from "../looks/vocabulary.ts";
 import { tokenIssues } from "./text.ts";
 
 /** Slot and page IDs: lowercase, stable across versions, used in object keys and text tokens. */
@@ -83,10 +76,11 @@ export const CharacterSlot = Schema.Struct({
   /** Guidance for the parent, e.g. "A child about 5 years old". */
   description: Schema.String,
   /**
-   * Who can fill the slot. Age is the one axis a story may restrict (D26): the slot supplies a base for every face
-   * of this age, and every other option in the look vocabulary.
+   * The ages a family member may be to fill the slot (D29). Age is the one axis a story may restrict (D26): every
+   * figure of the slot not pinned to an age supplies a base for every face type at each of these ages, and every
+   * other option in the look vocabulary.
    */
-  age: Age,
+  ages: Schema.Array(Age).check(Schema.isMinLength(1)),
   /** Fills the slot in story previews, before a family chooses anyone. */
   example: CastMember,
 });
@@ -108,6 +102,8 @@ export type Rect = typeof Rect.Type;
  * Masks are on the same canvas (opaque = in the region) and say what the recolour may touch.
  */
 export const FigureBase = Schema.Struct({
+  /** The age this base draws the character at (D29). */
+  age: Age,
   face: FaceOption,
   asset: ImageAsset,
   /** Every visible bit of skin: face, neck, arms, hands, legs. Takes the look's skin palette. */
@@ -121,6 +117,7 @@ export type FigureBase = typeof FigureBase.Type;
 
 /** One option's drawing for one base face, cut out and placed within the figure's box. */
 export const Part = Schema.Struct({
+  age: Age,
   face: FaceOption,
   axis: PartAxis,
   option: Schema.String,
@@ -143,6 +140,11 @@ export const FigureLayer = Schema.Struct({
   slotId: Id,
   /** Where the figure sits, in thousandths of the illustration. */
   box: Rect,
+  /**
+   * Draws the role at this age on this page, whatever age the family member is (D29): a baby who grows into a toddler
+   * during the story. Without it the figure draws them at their own age, one of the slot's `ages`.
+   */
+  age: Schema.optionalKey(Age),
   /** False when only a hand or an arm is in frame: then the figure has no head parts. */
   showsHead: Schema.optionalKey(Schema.Boolean),
   /** Overrides the manifest's `partOrder` on this appearance, e.g. glasses over hair. */
@@ -186,7 +188,7 @@ export const Palette = Schema.Array(
 ).check(Schema.isMinLength(2));
 export type Palette = typeof Palette.Type;
 
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 
 const duplicates = (values: ReadonlyArray<string>) => values.filter((value, i) => values.indexOf(value) !== i);
 
@@ -236,9 +238,10 @@ export const StoryManifest = Schema.Struct({
       issues.push({ path: ["partOrder"], issue: `must list each of ${PartAxis.literals.join(", ")} once` });
     }
     manifest.characterSlots.forEach((slot, s) => {
-      if (ageOfFace(slot.example.look.face) !== slot.age) {
-        issues.push({ path: ["characterSlots", s, "example", "look", "face"], issue: `the example's face is not a ${slot.age}'s` });
+      if (!slot.ages.includes(slot.example.look.age)) {
+        issues.push({ path: ["characterSlots", s, "example", "look", "age"], issue: `the example is not one of the slot's ages` });
       }
+      for (const age of new Set(duplicates(slot.ages))) issues.push({ path: ["characterSlots", s, "ages"], issue: `"${age}" twice` });
     });
     manifest.pages.forEach((page, p) => {
       page.illustration.layers.forEach((layer, l) => {
@@ -249,7 +252,7 @@ export const StoryManifest = Schema.Struct({
           issues.push({ path: [...path, "slotId"], issue: `unknown slot "${layer.slotId}"` });
           return;
         }
-        for (const issue of figureIssues(layer, slot.age)) issues.push({ path: [...path, ...issue.path], issue: issue.issue });
+        for (const issue of figureIssues(layer, drawnAges(layer, slot))) issues.push({ path: [...path, ...issue.path], issue: issue.issue });
       });
       page.text.forEach((block, b) => {
         for (const issue of tokenIssues(block.content, slots)) issues.push({ path: ["pages", p, "text", b, "content"], issue });
@@ -260,14 +263,16 @@ export const StoryManifest = Schema.Struct({
 );
 export type StoryManifest = typeof StoryManifest.Type;
 
-/** What a figure is missing or has extra, given its slot's age. Paths are relative to the figure. */
-const figureIssues = (figure: FigureLayer, age: Age): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
+/** The ages a figure draws its role at: its pinned age, or every age the slot accepts. */
+const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> => (figure.age ? [figure.age] : slot.ages);
+
+/** What a figure has extra or misplaced, given the ages it draws. Paths are relative to the figure. */
+const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
   const issues: Array<{ path: ReadonlyArray<PropertyKey>; issue: string }> = [];
-  const faces = facesForAge(age);
-  const baseFaces = figure.bases.map((base) => base.face);
-  for (const face of new Set(duplicates(baseFaces))) issues.push({ path: ["bases"], issue: `two bases for "${face}"` });
+  const keys = figure.bases.map((base) => `${base.age}/${base.face}`);
+  for (const key of new Set(duplicates(keys))) issues.push({ path: ["bases"], issue: `two bases for "${key}"` });
   figure.bases.forEach((base, b) => {
-    if (!faces.includes(base.face)) issues.push({ path: ["bases", b, "face"], issue: `"${base.face}" is not a ${age}'s face` });
+    if (!ages.includes(base.age)) issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
   });
   if (figure.partOrder && (new Set(figure.partOrder).size !== figure.partOrder.length || figure.partOrder.length !== PartAxis.literals.length)) {
     issues.push({ path: ["partOrder"], issue: `must list each of ${PartAxis.literals.join(", ")} once` });
@@ -277,7 +282,8 @@ const figureIssues = (figure: FigureLayer, age: Age): ReadonlyArray<{ path: Read
     return issues;
   }
   figure.parts.forEach((part, i) => {
-    if (!faces.includes(part.face)) issues.push({ path: ["parts", i, "face"], issue: `"${part.face}" is not a ${age}'s face` });
+    if (!ages.includes(part.age)) issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
+    else if (!partAxesAt(part.age).includes(part.axis)) issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
     if (!lookVocabulary[part.axis].some((option) => option.id === part.option) || NO_PART_OPTIONS.has(part.option)) {
       issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" is not a ${part.axis} option with a drawing` });
     }
@@ -298,15 +304,18 @@ export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> =
   for (const page of manifest.pages) {
     for (const layer of page.illustration.layers) {
       if (layer.kind !== "figure") continue;
-      const age = manifest.characterSlots.find((slot) => slot.slotId === layer.slotId)!.age;
-      for (const face of facesForAge(age)) {
-        if (!layer.bases.some((base) => base.face === face)) gaps.push(`${page.pageId}/${layer.slotId}: no base for "${face}"`);
-        if (layer.showsHead === false) continue;
-        for (const axis of PartAxis.literals) {
-          for (const option of lookVocabulary[axis]) {
-            if (NO_PART_OPTIONS.has(option.id)) continue;
-            if (!layer.parts.some((part) => part.face === face && part.axis === axis && part.option === option.id)) {
-              gaps.push(`${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${face}"`);
+      const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId)!;
+      for (const age of drawnAges(layer, slot)) {
+        for (const { id: face } of faceOptions) {
+          const at = `${age}/${face}`;
+          if (!layer.bases.some((base) => base.age === age && base.face === face)) gaps.push(`${page.pageId}/${layer.slotId}: no base for "${at}"`);
+          if (layer.showsHead === false) continue;
+          for (const axis of partAxesAt(age)) {
+            for (const option of lookVocabulary[axis]) {
+              if (NO_PART_OPTIONS.has(option.id)) continue;
+              if (!layer.parts.some((part) => part.age === age && part.face === face && part.axis === axis && part.option === option.id)) {
+                gaps.push(`${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`);
+              }
             }
           }
         }
@@ -317,27 +326,31 @@ export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> =
 };
 
 /**
- * The axes of `look` this story can't draw for `slotId`: the face's age doesn't match, or an option has no palette
- * or no part on some page. The book then disables the story for that character or keeps a story-specific override
- * with supported options (Sid, 2026-11-19). Empty means every page composes.
+ * The axes of `look` this story can't draw for `slotId`: "age" when the slot doesn't accept the character's age;
+ * otherwise an option with no palette, or a face type or part missing at an age some page draws them at. The book
+ * then disables the story for that character or keeps a story-specific override with supported options (Sid,
+ * 2026-11-19). Empty means every page composes.
  */
 export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look: Look): ReadonlyArray<keyof Look> => {
   const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
   if (!slot) return [];
+  if (!slot.ages.includes(look.age)) return ["age"];
   const unsupported = new Set<keyof Look>();
-  if (ageOfFace(look.face) !== slot.age) unsupported.add("face");
   if (!manifest.palettes.skin[look.skin]) unsupported.add("skin");
   if (!manifest.palettes.hairColour[look.hairColour]) unsupported.add("hairColour");
   for (const page of manifest.pages) {
     for (const layer of page.illustration.layers) {
       if (layer.kind !== "figure" || layer.slotId !== slotId) continue;
-      if (!layer.bases.some((base) => base.face === look.face)) unsupported.add("face");
-      // Parts are drawn per face, so with an unsupported face only the face is the problem.
-      if (layer.showsHead === false || unsupported.has("face")) continue;
-      for (const axis of PartAxis.literals) {
+      const age = layer.age ?? look.age;
+      if (!layer.bases.some((base) => base.age === age && base.face === look.face)) {
+        unsupported.add("face");
+        continue; // Parts are drawn per face, so with an unsupported face only the face is the problem.
+      }
+      if (layer.showsHead === false) continue;
+      for (const axis of partAxesAt(age)) {
         const option = look[axis];
         if (NO_PART_OPTIONS.has(option)) continue;
-        if (!layer.parts.some((part) => part.face === look.face && part.axis === axis && part.option === option)) unsupported.add(axis);
+        if (!layer.parts.some((part) => part.age === age && part.face === look.face && part.axis === axis && part.option === option)) unsupported.add(axis);
       }
     }
   }
@@ -349,6 +362,7 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
  * (D26: "a story-specific override with a supported option", picked by the parent).
  */
 export const LookOverride = Schema.Struct({
+  // No age: a role's ages say who may play it, so a stand-in age would draw someone else.
   face: Schema.optionalKey(Look.fields.face),
   skin: Schema.optionalKey(Look.fields.skin),
   hair: Schema.optionalKey(Look.fields.hair),
@@ -360,7 +374,7 @@ export type LookOverride = typeof LookOverride.Type;
 export interface CastLook {
   /** What the pages draw: the character's look, with the override applied to the axes the story can't draw. */
   readonly look: Look;
-  /** The character's face is another age than the role's: only faces of the role's age fill it, so no override helps. */
+  /** The character's age isn't one the role accepts, so no override helps: someone else plays it (D29). */
   readonly wrongAge: boolean;
   /** Axes still unsupported after the override. Empty (and `wrongAge` false) means every page composes. */
   readonly unsupported: ReadonlyArray<keyof Look>;
@@ -372,13 +386,12 @@ export interface CastLook {
  */
 export const castLook = (manifest: StoryManifest, slotId: string, look: Look, override: LookOverride = {}): CastLook => {
   const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
-  if (slot && ageOfFace(look.face) !== slot.age) return { look, wrongAge: true, unsupported: ["face"] };
+  if (slot && !slot.ages.includes(look.age)) return { look, wrongAge: true, unsupported: ["age"] };
   const patched: { -readonly [K in keyof Look]: Look[K] } = { ...look };
   for (const axis of unsupportedOptions(manifest, slotId, look)) {
-    const option = override[axis];
+    const option = axis === "age" ? undefined : override[axis];
     if (option !== undefined) (patched as Record<keyof Look, string>)[axis] = option;
   }
-  if (ageOfFace(patched.face) !== slot?.age) return { look, wrongAge: false, unsupported: ["face"] };
   return { look: patched, wrongAge: false, unsupported: unsupportedOptions(manifest, slotId, patched) };
 };
 
@@ -390,8 +403,45 @@ export const unapprovedParts = (manifest: StoryManifest): ReadonlyArray<string> 
     ),
   );
 
-/** Decodes and validates a manifest; fails with every problem found. */
-export const decodeStoryManifest = Schema.decodeUnknownEffect(StoryManifest);
+/**
+ * Format 1 (D24) as format 2 (D29): its two ages become buckets (child → young child, adult → adult) and its four
+ * faces become face types at those ages, so stored versions keep drawing exactly what they drew. Leaves anything
+ * else alone for the schema to judge.
+ */
+const format1Faces: Record<string, { readonly age: string; readonly face: string }> = {
+  "face:child-1": { age: "young-child", face: "face:round" },
+  "face:child-2": { age: "young-child", face: "face:oval" },
+  "face:adult-1": { age: "adult", face: "face:oval" },
+  "face:adult-2": { age: "adult", face: "face:round" },
+};
+const format1Ages: Record<string, string> = { child: "young-child", adult: "adult" };
+
+// oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
+const withFace = (item: any) => (item && format1Faces[item.face] ? { age: format1Faces[item.face]!.age, ...item, face: format1Faces[item.face]!.face } : item);
+
+export const upgradeFormat1 = (input: unknown): unknown => {
+  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 1) return input;
+  // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
+  const m = structuredClone(input) as any;
+  m.formatVersion = 2;
+  for (const slot of m.characterSlots ?? []) {
+    if (typeof slot.age === "string") slot.ages = [format1Ages[slot.age] ?? slot.age];
+    delete slot.age;
+    if (slot.example?.look) slot.example.look = withFace(slot.example.look);
+  }
+  for (const page of m.pages ?? []) {
+    for (const layer of page.illustration?.layers ?? []) {
+      if (layer.kind !== "figure") continue;
+      layer.bases = (layer.bases ?? []).map(withFace);
+      layer.parts = (layer.parts ?? []).map(withFace);
+    }
+  }
+  return m;
+};
+
+/** Decodes and validates a manifest of any known format, as the current format; fails with every problem found. */
+export const decodeStoryManifest = (input: unknown) =>
+  Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgradeFormat1(input)));
 
 /** Every asset the manifest references, each once: what an upload or import must provide. */
 export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> => [

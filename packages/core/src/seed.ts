@@ -59,17 +59,18 @@ export const seed = Effect.gen(function* () {
   yield* ensureOwnFamily(seedUsers.operator.id);
   yield* ObjectStorage.use((storage) => storage.ensureBucket);
   // The sample story's pages, text, character slots, and placeholder art (fixtures/stories/moon-picnic), as its
-  // newest version. v2 replaced v1's variable Literata with static instances (D27); databases seeded earlier keep v1.
+  // newest version. v2 replaced v1's variable Literata with static instances (D27); v3 is book format 2, whose roles
+  // accept several ages (D29). Databases seeded earlier keep their older versions.
   yield* importStoryVersion({
-    id: "story_moon_picnic_v2",
+    id: "story_moon_picnic_v3",
     storyId: "story_moon_picnic",
-    version: 2,
+    version: 3,
     manifest: JSON.parse(yield* Effect.promise(() => readFile(new URL("manifest.json", sampleStoryDir), "utf8"))),
     readAsset: async (asset) => ({
       body: await readFile(new URL(asset, sampleStoryDir)),
       contentType: contentTypes[extname(asset)] ?? "application/octet-stream",
     }),
-    publishedAt: new Date("2026-11-19T00:00:00Z"),
+    publishedAt: new Date("2026-11-19T12:00:00Z"),
   });
 });
 
