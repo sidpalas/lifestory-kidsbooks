@@ -3,7 +3,7 @@
 // glasses) aren't offered.
 // Every choice is shown on the story-independent portrait (/api/portrait), composed on the server with the same
 // parts-and-recolour pipeline as book pages; each story then draws the same option IDs with its own parts.
-import { ageLabel, ageOptions, curatedLooks, type Look, type LookAxis, lookVocabulary, partAxesAt } from "@lifestory/core/contracts";
+import { ageLabel, ageOptions, curatedLooks, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { cn } from "~/lib/utils";
 
@@ -75,10 +75,26 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/**
+ * Pronouns order the hairstyles, and the curated looks by their hairstyle, so the likelier ones come first. They never
+ * hide an option: a boy may have long hair and a girl short (D29).
+ */
+const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
+  "she/her": ["hair:long", "hair:curly", "hair:short"],
+  "he/him": ["hair:short", "hair:curly", "hair:long"],
+  "they/them": lookVocabulary.hair.map((option) => option.id),
+};
+export const orderedHairstyles = (pronouns: PronounSet) =>
+  lookVocabulary.hair.toSorted((a, b) => hairOrder[pronouns].indexOf(a.id) - hairOrder[pronouns].indexOf(b.id));
+export const orderedCuratedLooks = (age: Look["age"], pronouns: PronounSet) =>
+  curatedLooks
+    .filter((curated) => curated.look.age === age)
+    .toSorted((a, b) => hairOrder[pronouns].indexOf(a.look.hair) - hairOrder[pronouns].indexOf(b.look.hair));
+
 const same = (a: Look, b: Look) => (Object.keys(a) as Array<LookAxis>).every((axis) => a[axis] === b[axis]);
 
 /** A controlled picker: `look` is the current look, `onChange` receives the next one. */
-export function LookPicker({ look, onChange, disabled }: { look: Look; onChange: (look: Look) => void; disabled?: boolean }) {
+export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look; pronouns: PronounSet; onChange: (look: Look) => void; disabled?: boolean }) {
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
@@ -119,9 +135,7 @@ export function LookPicker({ look, onChange, disabled }: { look: Look; onChange:
           ))}
         </Step>
         <Step title={step("Start from a look", "Start from a look")}>
-          {curatedLooks
-            .filter((curated) => curated.look.age === look.age)
-            .map((curated) => (
+          {orderedCuratedLooks(look.age, pronouns).map((curated) => (
               <Choice key={curated.id} pressed={same(curated.look, look)} label={curated.label} disabled={disabled} onClick={() => onChange(curated.look)}>
                 <Thumb look={curated.look} label={curated.label} />
               </Choice>
@@ -143,7 +157,7 @@ export function LookPicker({ look, onChange, disabled }: { look: Look; onChange:
         </Step>
         {drawn.includes("hair") && (
           <Step title={step("hair", axisLabels.hair)}>
-            {lookVocabulary.hair.map((option) => (
+            {orderedHairstyles(pronouns).map((option) => (
               <Choice key={option.id} pressed={look.hair === option.id} label={`${option.label} hair`} disabled={disabled} onClick={() => set({ hair: option.id })}>
                 <Thumb look={{ ...look, hair: option.id }} label={option.label} />
               </Choice>

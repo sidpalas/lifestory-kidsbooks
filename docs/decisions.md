@@ -263,6 +263,9 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   draws that age whatever the character's own. `partAxesAt(age)` says which parts an age has: a baby none, a toddler
   hair only. An override never sets an age. A character whose age a role doesn't accept leaves that role's pictures
   and the editor asks for someone else (D28), the same when a character's age changes later.
+- **Pronouns order, never filter (Sid, 2026-11-19):** the picker lists the hairstyles, and the starting looks by
+  their hairstyle, likelier first for the chosen pronouns (`she/her`: long first; `he/him`: short first; `they/them`:
+  vocabulary order). Every option stays offered: pronouns don't decide how someone looks.
 - **Bases from the illustrator's samples (amends D26):** authoring tooling may generate bases for other ages from a
   few illustrator-drawn sample characters; every generated base and part still needs the illustrator's approval
   before publishing, as in D26.

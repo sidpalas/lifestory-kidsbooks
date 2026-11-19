@@ -49,6 +49,14 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     await expect(page.getByRole("button", { name: "Round glasses" })).toHaveCount(0);
     await expect(page.getByTestId("look-summary")).toHaveText("Toddler, round face, brown skin, curly black hair");
     await page.getByRole("button", { name: "Young child", exact: true }).click();
+    // Pronouns order the starting looks and hairstyles, likelier first, and never hide one (D29).
+    const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Curly hair", "Short hair"]);
+    await expect.poll(() => labels(/Start from a look/)).toEqual(["Long blonde hair", "Curly black hair", "Short brown hair, glasses"]);
+    await page.getByLabel("Pronouns").selectOption("he/him");
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Curly hair", "Long hair"]);
+    await expect.poll(() => labels(/Start from a look/)).toEqual(["Short brown hair, glasses", "Curly black hair", "Long blonde hair"]);
+    await page.getByLabel("Pronouns").selectOption("she/her");
     await page.getByRole("button", { name: "Long hair" }).click();
     await page.getByRole("button", { name: "Brown hair colour" }).click();
     await page.getByRole("button", { name: "Round glasses" }).click();

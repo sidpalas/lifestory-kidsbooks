@@ -55,7 +55,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
             </NativeSelect>
           </div>
         </div>
-        <LookPicker look={look} onChange={setLook} disabled={locked} />
+        <LookPicker look={look} pronouns={pronouns} onChange={setLook} disabled={locked} />
         {canEdit && (
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={locked || saving || name.trim() === ""}>
