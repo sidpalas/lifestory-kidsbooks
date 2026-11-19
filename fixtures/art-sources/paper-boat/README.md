@@ -8,7 +8,7 @@ cd fixtures/art-sources/paper-boat
 py="uv run --with numpy,opencv-python-headless python"
 # 1. generate (gen.py skips files that exist), prompts below
 # 2. cut out bases, skin masks and parts into out/
-$py prep.py out
+$py prep.py out   # also the overlays (blush, open mouth)
 # 3. write fixtures/stories/paper-boat (assets, manifest.json, story.json)
 $py build.py ../../..
 ```

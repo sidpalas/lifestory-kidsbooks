@@ -116,6 +116,11 @@ export const FigureBase = Schema.Struct({
   skinMask: ImageAsset,
   /** Eyebrows, which take the look's hair colour. */
   browMask: Schema.optionalKey(ImageAsset),
+  /**
+   * Colour inside the skin that a gradient map would lose (blush, lips, an open mouth), on the same canvas. Drawn as
+   * the illustrator made it, above the recoloured base and below the parts (Sid, 2026-11-19).
+   */
+  overlay: Schema.optionalKey(ImageAsset),
   /** Drawn over the parts: hands or props in front of the face. Its skin takes the skin palette too. */
   occluder: Schema.optionalKey(Schema.Struct({ asset: ImageAsset, skinMask: Schema.optionalKey(ImageAsset) })),
 });
@@ -139,7 +144,7 @@ export type Part = typeof Part.Type;
 
 /**
  * One appearance of a character on a page (D26): the slot's base faces and option parts, composed per family as
- * base → parts (in `partOrder`) → occluder, with no AI when a book is made.
+ * base → overlay → parts (in `partOrder`) → occluder, with no AI when a book is made.
  */
 export const FigureLayer = Schema.Struct({
   kind: Schema.Literal("figure"),
@@ -479,6 +484,7 @@ export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> =
                 base.asset,
                 base.skinMask,
                 ...(base.browMask ? [base.browMask] : []),
+                ...(base.overlay ? [base.overlay] : []),
                 ...(base.occluder ? [base.occluder.asset, ...(base.occluder.skinMask ? [base.occluder.skinMask] : [])] : []),
               ]),
               ...layer.parts.map((part) => part.asset),

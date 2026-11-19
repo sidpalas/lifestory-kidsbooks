@@ -15,8 +15,11 @@ How the layers were made (`prep.py`, `build.py`):
 
 - Each base figure is matted off its white paper, cropped to a canvas shared by both face types of the role, and its
   skin turned to neutral greys inside the skin mask. The skin mask covers face, ears, neck, arms, hands and legs with
-  the pencil line around them, and leaves out clothes and an open mouth (whose tongue and teeth keep their colour).
-  The cheek blush is evened out to the skin around it, because a gradient map would make it a dark smudge on dark skin.
+  the pencil line around them, and leaves out clothes.
+- Colour inside the skin goes to each base's `overlay` (v2), which is drawn as is above the recoloured base: an open
+  mouth (found by its teeth) in its own colours, and the cheek blush as a translucent rose (#c8585c at up to 35%). In
+  the base the blush is evened out to the skin around it, so it doesn't darken twice. v1 had no overlays: it kept the
+  mouth out of the skin mask and dropped the blush.
 - Each part is what an edit made darker than its base, after aligning the edit to the base (under 1.3 px) and matching
   its colour (under 2 levels); its colour is unmixed against the base, so soft edges composite cleanly.
 - Plates are JPEG (quality 90, 2048 px, about 234 ppi at this trim); the reeds are a WebP with alpha.

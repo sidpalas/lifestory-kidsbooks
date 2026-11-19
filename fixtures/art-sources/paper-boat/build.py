@@ -44,7 +44,7 @@ def figure(slot, box, **extra):
     bases, figure_parts = [], []
     for age in AGES[slot]:
         for face, stem in info["bases"].items():
-            bases.append({"age": age, "face": face, "asset": f"figures/{stem}.png", "skinMask": f"figures/{stem}-skin.png"})
+            bases.append({"age": age, "face": face, "asset": f"figures/{stem}.png", "skinMask": f"figures/{stem}-skin.png", "overlay": f"figures/{stem}-overlay.png"})
         for part in info["parts"]:
             axis = "glasses" if part["option"].startswith("glasses:") else "hair"
             figure_parts.append(
@@ -201,7 +201,7 @@ json.dump(
         "slug": "the-paper-boat",
         "title": "The Paper Boat",
         "summary": "A child and a grown-up fold a newspaper boat and sail it on the park pond. Sample story with watercolour placeholder art.",
-        "version": 1,
+        "version": 2,
         "publishedAt": "2026-11-19T18:00:00Z",
     },
     open(os.path.join(DST, "story.json"), "w"),

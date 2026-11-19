@@ -4,6 +4,7 @@ For each role (hero, grownup): both face bases and their 4 edits (short, curly, 
 base, cropped to one shared canvas, and split into
   base-<face>.png        figure on transparent, skin desaturated to neutral greys (D26)
   base-<face>-skin.png   skin mask (alpha = in the region): face, ears, neck, arms, hands, legs, and the lines on them
+  base-<face>-overlay.png  blush and the open mouth in colour, drawn unrecoloured over the base
   <face>-<option>.png    the part, cut out by comparison with the base, cropped to a rect snapped to 5 permille
 and writes parts.json with each part's rect in thousandths of the figure box.
 usage: prep.py <out dir>
@@ -85,6 +86,9 @@ def skin_mask(img, alpha):
     # Clothes: saturated or dark pixels that aren't skin-coloured; never in the mask.
     clothes = (((B > 46) | (A < 0) | (B < 2) | (A > 38) | ((L < 58) & (A > 20))) & (alpha > 0.5)).astype(np.uint8)
     clothes = cv2.morphologyEx(clothes, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    # The head wears nothing (hair is a part): saturated pinks there, inside the ears and the mouth, are skin.
+    ys = np.nonzero(seed.any(axis=1))[0]
+    clothes[: ys.min() + int(0.18 * (ys.max() - ys.min()))] = 0
     # The pencil outline around skin belongs to the skin; a soft edge keeps it from showing a seam.
     m = cv2.dilate(seed, np.ones((7, 7), np.uint8)).astype(np.float32)
     m[clothes > 0] = 0
@@ -98,29 +102,52 @@ def desaturate(img, mask):
 
 
 def face_fixes(img, skin, alpha):
-    """A gradient map keeps only tone, so two things the illustrator drew in colour go wrong on dark skin:
-    the cheek blush (a darker tone) turns into a dark smudge, and an open mouth's pink tongue turns skin-brown.
-    The blush is evened out to the tone around it; the mouth's interior leaves the skin mask and keeps its colour."""
+    """A gradient map keeps only tone, so colour the illustrator put inside the skin is lost: on dark skin the cheek
+    blush (a darker tone) turns into a dark smudge and an open mouth's pink tongue turns skin-brown. Those go to the
+    base's overlay, drawn as it is above the recoloured base (D24): the mouth in its own colours, the blush as a
+    translucent rose. In the base the blush is evened out to the tone around it, so it doesn't darken twice."""
     L, A, B = cv2.split(lab(img))
     ys = np.nonzero(skin.max(axis=1) > 0.5)[0]
     face = np.zeros(skin.shape, bool)
-    face[ys.min() : ys.min() + int((ys.max() - ys.min()) * 0.2)] = True
+    face[ys.min() : ys.min() + int((ys.max() - ys.min()) * 0.26)] = True  # the head, down to the chin
     face &= skin > 0.5
     # Mouth: teeth (white) or tongue (dark red) enclosed in the face's lower half, with the lip line around them.
-    mouth = (face & (((L > 86) & (A < 8) & (B < 14)) | ((A > 22) & (L < 72) & (B < 30)))).astype(np.uint8)
-    mouth = cv2.morphologyEx(mouth, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    # Only near the face's centre line, so ears and cheeks never count; then the one largest region.
+    xs = np.nonzero(face.any(axis=0))[0]
+    centre = np.zeros(face.shape, bool)
+    centre[:, int(xs.min() + 0.3 * (xs.max() - xs.min())) : int(xs.min() + 0.7 * (xs.max() - xs.min()))] = True
+    teeth = face & centre & (L > 86) & (A < 8) & (B < 14)
+    mouth = (teeth | (face & centre & (A > 27) & (L < 80))).astype(np.uint8)
+    mouth = cv2.morphologyEx(mouth, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
     n, labels, stats, _ = cv2.connectedComponentsWithStats(mouth)
-    mouth = np.isin(labels, [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] > 150]).astype(np.uint8)
-    mouth = fill_holes(cv2.morphologyEx(mouth, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8)))
-    skin = skin * (1 - cv2.GaussianBlur(mouth.astype(np.float32), (5, 5), 1.0))
-    # Blush: warm, slightly darker patches on the cheeks. Raise their lightness to the skin's around them.
-    warm = (face & (A > 16) & (mouth == 0)).astype(np.float32)
-    warm = cv2.GaussianBlur(warm, (31, 31), 8)
-    ref = cv2.GaussianBlur(L * face * (A <= 16), (61, 61), 0) / np.maximum(cv2.GaussianBlur((face & (A <= 16)).astype(np.float32), (61, 61), 0), 1e-3)
+    if n > 1:
+        # The tongue sits under a line below the teeth: take every candidate pixel in the box around the largest
+        # region, extended downwards, and close the gaps between them.
+        i = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        x, y, w, h = stats[i, :4]
+        box = np.zeros(face.shape, np.uint8)
+        box[y : y + 3 * h, x : x + w] = 1
+        mouth = cv2.morphologyEx(mouth * box, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8)) * face
+    mouth = fill_holes(mouth.astype(np.uint8))
+    if (mouth.astype(bool) & teeth).sum() < 30:  # a closed mouth (a red nose tip is not a mouth)
+        mouth = np.zeros_like(mouth)
+    mouth_a = cv2.GaussianBlur(mouth.astype(np.float32), (5, 5), 1.0)
+    # Blush: warm, slightly darker patches on the cheeks, measured against the face's own redness around them.
+    plain = (face & (A <= 16)).astype(np.float32)
+    ref_a = cv2.GaussianBlur(A * plain, (61, 61), 0) / np.maximum(cv2.GaussianBlur(plain, (61, 61), 0), 1e-3)
+    blush = np.clip((A - ref_a - 4) / 12, 0, 1) * face * (1 - mouth_a) * (L > 55)
+    blush = cv2.GaussianBlur(blush, (21, 21), 5)
+    warm = cv2.GaussianBlur((face & (A > 16) & (mouth == 0)).astype(np.float32), (31, 31), 8)
+    ref = cv2.GaussianBlur(L * plain, (61, 61), 0) / np.maximum(cv2.GaussianBlur(plain, (61, 61), 0), 1e-3)
     lift = np.clip(ref - L, 0, 12) * np.clip(warm * 2, 0, 1) * (L > 55)
-    lab_img = cv2.merge([L + lift, A, B])
-    fixed = np.clip(cv2.cvtColor(lab_img, cv2.COLOR_LAB2BGR) * 255, 0, 255)
-    return fixed, skin
+    fixed = np.clip(cv2.cvtColor(cv2.merge([L + lift, A, B]), cv2.COLOR_LAB2BGR) * 255, 0, 255)
+    rose = np.array([92, 88, 200], np.float32)  # BGR of #c8585c
+    oa = np.maximum(mouth_a, blush * BLUSH)
+    colour = (img * mouth_a[..., None] + rose * (blush * BLUSH * (1 - mouth_a))[..., None]) / np.maximum(oa, 1e-3)[..., None]
+    return fixed, skin, rgba(colour, oa * alpha)
+
+
+BLUSH = 0.35
 
 
 def part_alpha(base, edit, zone):
@@ -173,7 +200,8 @@ def role(name):
         a = figure_alpha(base)
         colour = unmix(base, a, 255.0)
         skin = skin_mask(base, a)
-        colour, skin = face_fixes(colour, skin, a)
+        colour, skin, overlay = face_fixes(colour, skin, a)
+        cv2.imwrite(os.path.join(OUT, name, f"base-{face}-overlay.png"), overlay, [cv2.IMWRITE_PNG_COMPRESSION, 9])
         cv2.imwrite(os.path.join(OUT, name, f"base-{face}.png"), rgba(desaturate(colour, skin), a), [cv2.IMWRITE_PNG_COMPRESSION, 9])
         cv2.imwrite(os.path.join(OUT, name, f"base-{face}-skin.png"), mask_png(skin), [cv2.IMWRITE_PNG_COMPRESSION, 9])
         # Where parts may be: the head and, for long hair, the shoulders and chest.

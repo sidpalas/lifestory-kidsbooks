@@ -375,25 +375,29 @@
                 "age": "adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -653,25 +657,29 @@
                 "age": "young-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -949,25 +957,29 @@
                 "age": "adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -1227,25 +1239,29 @@
                 "age": "young-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -1527,25 +1543,29 @@
                 "age": "adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:round",
                 "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png"
+                "skinMask": "figures/grownup/base-round-skin.png",
+                "overlay": "figures/grownup/base-round-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:oval",
                 "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png"
+                "skinMask": "figures/grownup/base-oval-skin.png",
+                "overlay": "figures/grownup/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -1805,25 +1825,29 @@
                 "age": "young-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
                 "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png"
+                "skinMask": "figures/hero/base-round-skin.png",
+                "overlay": "figures/hero/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
                 "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png"
+                "skinMask": "figures/hero/base-oval-skin.png",
+                "overlay": "figures/hero/base-oval-overlay.png"
               }
             ],
             "parts": [

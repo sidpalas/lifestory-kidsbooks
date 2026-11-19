@@ -28,7 +28,7 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
 };
 
 /**
- * One figure for `look`, bottom to top: its base face (skin and brows recoloured), the look's parts in `partOrder`,
+ * One figure for `look`, bottom to top: its base face (skin and brows recoloured), its overlay as drawn, the look's parts in `partOrder`,
  * then the occluder (its skin recoloured too). Drawn at the figure's pinned age, else the look's own (D29); part
  * axes that don't exist at that age (a baby's hairstyle) are left out. Story pages and the picker's portrait both compose with this.
  * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
@@ -67,6 +67,7 @@ export const composeFigure = (
       rect: layer.box,
       recolour: [{ mask: base.skinMask, palette: skin }, ...(base.browMask ? [{ mask: base.browMask, palette: hair }] : [])],
     },
+    ...(base.overlay ? [{ asset: base.overlay, rect: layer.box, recolour: [] }] : []),
     ...parts,
     ...(base.occluder
       ? [{ asset: base.occluder.asset, rect: layer.box, recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [] }]

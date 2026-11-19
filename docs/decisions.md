@@ -231,9 +231,15 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     halos at mask edges; the editor and the print-ready proof (D35) show the same art (mean colour difference under
     0.03 levels, 0–0.8% of pixels off by more than 5% at 96 dpi, all at resampled edges). What a gradient map can't
     keep is colour inside the skin: the cheek blush became a dark smudge and an open mouth's tongue turned skin-brown on
-    dark skin, so the sample evens out the blush in its bases and leaves the mouth out of the skin mask. Writing PNGs
+    dark skin. v1 worked around it in its art; v2 uses the face overlay below. Writing PNGs
     at zlib level 6 instead of 9 cut a recolour of an 800 × 1600 raster figure from ~0.8 s to ~0.3 s (the encoder
     took ~90%), for files 4–5% larger and the same pixels.
+  - **Face overlays (Sid, 2026-11-19):** a base may have an `overlay` on its canvas, drawn as the illustrator made it
+    (never recoloured) above the recoloured base and below the parts. It holds the colour a gradient map can't keep
+    inside skin: blush, lips, an open mouth, later freckles. It's optional, so stored versions stay valid. The Paper
+    Boat v2 uses it (blush as a translucent rose, the open mouth in its own colours), and both read right from the
+    lightest to the darkest skin tone. Rejected: a second palette per region (blush tones per skin colour), which
+    multiplies the illustrator's palettes and still can't hold a tongue next to teeth.
 - **Published versions don't change:** `importStoryVersion` (used by the seed) leaves an existing version alone and
   fails if its manifest differs, so editing the fixture means adding a version (or resetting a dev database).
 - **Story assets** under `/api/files/stories/<storyId>/v<n>/` follow the story's read rule: published story and

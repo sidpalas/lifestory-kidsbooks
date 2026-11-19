@@ -207,7 +207,7 @@ and in print:
 
 ```
 plate (art) → for each figure on the page, in z-order:
-                base figure (skin, lips, brows recoloured) → face overlays → beard → glasses → hair
+                base figure (skin, brows recoloured) → face overlay (as drawn) → beard → glasses → hair
                 → occluders (their skin recoloured too)
             → foreground (art) → text
 ```

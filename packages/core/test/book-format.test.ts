@@ -282,6 +282,22 @@ describe("composeIllustration", () => {
     ]);
   });
 
+  it("draws a base's overlay as it is, above the recoloured base and below the parts", () => {
+    const withOverlay = decoded(
+      variant((m) => {
+        for (const base of m.pages[4].illustration.layers[2].bases) base.overlay = base.asset.replace(".svg", "-overlay.svg");
+      }),
+    );
+    const layers = composeIllustration(withOverlay, withOverlay.pages[4]!, cast);
+    expect(layers.slice(3, 6).map((layer) => layer.asset)).toEqual([
+      "pages/p05/grownup/base-adult-2.svg",
+      "pages/p05/grownup/base-adult-2-overlay.svg",
+      "pages/p05/grownup/adult-2-short.svg",
+    ]);
+    expect(layers[4]!.recolour).toEqual([]);
+    expect(manifestAssets(withOverlay)).toContain("pages/p05/grownup/base-adult-2-overlay.svg");
+  });
+
   it("recolours the occluder's skin, so a hand in front of the face matches the face", () => {
     const layers = composeIllustration(manifest, manifest.pages[4]!, cast);
     const skin = manifest.palettes.skin["skin:s2"];
