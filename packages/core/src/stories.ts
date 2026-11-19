@@ -212,8 +212,10 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
       .from(schema.storyVersion)
       .where(and(eq(schema.storyVersion.storyId, input.storyId), eq(schema.storyVersion.version, input.version)));
   });
-  // jsonb doesn't keep key order, so compare structurally.
-  if (!isDeepStrictEqual(stored?.manifest, manifest)) {
+  // jsonb doesn't keep key order, so compare structurally, and decode the stored one the same way: a manifest stored
+  // before a field with a default existed (a look's features, D40) is the same manifest.
+  const storedManifest = stored ? yield* decodeStoryManifest(stored.manifest).pipe(Effect.orDie) : undefined;
+  if (!isDeepStrictEqual(storedManifest, manifest)) {
     return yield* Effect.die(
       new Error(`story ${input.storyId} v${input.version} already exists with a different manifest; add a new version`),
     );

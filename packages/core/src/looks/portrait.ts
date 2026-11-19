@@ -5,7 +5,7 @@
 //
 // Art (portrait/, 488 × 560 px, shown at 244 × 280): gouache with an ink outline, drawn with OpenAI
 // gpt-image-2.6-sunburst (D28, D30). One base per age and face type (bases/<age>-<face>.png), each an edit of the style
-// sample Sid chose, with a skin mask found by colour and the skin's median luminance set to 0.684; then each base's
+// sample Sid chose (from teen up also one with softer features, D40, an edit of the defined one), with a skin mask found by colour and the skin's median luminance set to 0.684; then each base's
 // hairstyles and glasses (parts.json, parts/) made and cut out like story parts (D36) and reviewed on the lightest and
 // darkest skin. Axes an age has no parts for (a baby's hairstyle, a toddler's glasses) are left out, as in books.
 // Server-only (sharp, node:fs).
@@ -17,7 +17,7 @@ import type { FigureLayer, Part, StoryManifest } from "../book-format/manifest.t
 import { composeFigure } from "./compose.ts";
 import { recolour } from "./recolour.ts";
 import partsByBase from "./portrait/parts.json" with { type: "json" };
-import { ageOptions, faceOptions, type Look } from "./vocabulary.ts";
+import { ageOptions, faceOptions, featuresOptions, hasFeatures, type Look } from "./vocabulary.ts";
 
 const FULL = [0, 0, 1000, 1000] as const;
 
@@ -54,9 +54,14 @@ export const portraitPalettes: StoryManifest["palettes"] = {
 /** Glasses go under the hair, which falls over their arms. */
 const partOrder: StoryManifest["partOrder"] = ["glasses", "hair"];
 
-const atEveryAge = ageOptions.flatMap((age) => faceOptions.map((face) => ({ age: age.id, face: face.id })));
+const atEveryAge = ageOptions.flatMap((age) =>
+  faceOptions.flatMap((face) =>
+    hasFeatures(age.id) ? featuresOptions.map((features) => ({ age: age.id, face: face.id, features: features.id })) : [{ age: age.id, face: face.id }],
+  ),
+);
 
-const baseName = (at: (typeof atEveryAge)[number]) => `${at.age}-${at.face.slice("face:".length)}`;
+const baseName = (at: (typeof atEveryAge)[number]) =>
+  `${at.age}-${at.face.slice("face:".length)}${"features" in at && at.features === "features:soft" ? "-soft" : ""}`;
 
 export const portraitFigure: FigureLayer = {
   kind: "figure",
@@ -99,17 +104,19 @@ const render = async (look: Look): Promise<Uint8Array> => {
   return new Uint8Array(await sharp(base!).composite(placed).png().toBuffer());
 };
 
-// Bounded by the vocabulary: 7 ages × 2 faces × 5 tones × 3 hairstyles × 4 colours × 2 ≈ 1,700 looks of ~170 KB at
-// most, and only looks someone picked are made.
+// The vocabulary allows ~2,400 looks (features double the teen and older ages) of ~400 KB each, too many to keep
+// every one in the web process, so only the 300 most recently made stay (~120 MB); a picker shows ~15 at a time.
+const CACHED = 300;
 const cache = new Map<string, Promise<Uint8Array>>();
 
-/** The portrait of `look` as a PNG. Deterministic, so it is made once per look and process. */
+/** The portrait of `look` as a PNG. Deterministic, so a recent look is served from memory. */
 export const lookPortrait = Effect.fn("looks.portrait")(function* (look: Look) {
-  const key = JSON.stringify([look.age, look.face, look.skin, look.hair, look.hairColour, look.glasses]);
+  const key = JSON.stringify([look.age, look.face, look.features, look.skin, look.hair, look.hairColour, look.glasses]);
   let png = cache.get(key);
   if (!png) {
     png = render(look);
     cache.set(key, png);
+    if (cache.size > CACHED) cache.delete(cache.keys().next().value!);
     png.catch(() => cache.delete(key));
   }
   return yield* Effect.promise(() => png);

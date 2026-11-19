@@ -6,7 +6,7 @@ import type { Rect } from "../book-format/manifest.ts";
 import { Database } from "../database.ts";
 import { generateImage } from "../generations.ts";
 import { defineTask, step } from "../jobs.ts";
-import type { Age } from "../looks/vocabulary.ts";
+import type { Age, FeaturesOption } from "../looks/vocabulary.ts";
 import { byLightness, composeReview, cutOutLayer, prepareBase, reviewSheet } from "../parts/images.ts";
 import { findAppearance, partAssets, PartTaskParams, type StoredLayer } from "../parts/parts.ts";
 import { ObjectStorage } from "../storage.ts";
@@ -22,7 +22,7 @@ const loadPart = Effect.fn("parts.load")(function* (partId: string) {
   );
   if (!row) return yield* Effect.die(new Error(`part ${partId} doesn't exist`));
   const manifest = yield* decodeStoryVersion(row.manifest, row.publishedAt).pipe(Effect.orDie);
-  const appearance = findAppearance(manifest, row.part.pageId, row.part.slotId, row.part.age as Age, row.part.face);
+  const appearance = findAppearance(manifest, row.part.pageId, row.part.slotId, row.part.age as Age, row.part.face, row.part.features as FeaturesOption | null);
   if ("problem" in appearance) return yield* Effect.die(new Error(`part ${partId}: ${appearance.problem}`));
   const storage = yield* ObjectStorage;
   const key = (asset: string) => storyAssetKey(row.storyId, row.version, asset);

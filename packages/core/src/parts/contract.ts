@@ -1,7 +1,7 @@
 // What the authoring UI sends and gets back for part generation and review (browser-safe; exported from contracts.ts).
 import { Schema } from "effect";
 import { type Part, Rect } from "../book-format/manifest.ts";
-import { Age, FaceOption, PartAxis } from "../looks/vocabulary.ts";
+import { Age, FaceOption, FeaturesOption, PartAxis } from "../looks/vocabulary.ts";
 
 export const PartStatus = Schema.Literals(["generating", "pending_review", "approved", "rejected", "failed"]);
 export type PartStatus = typeof PartStatus.Type;
@@ -13,6 +13,8 @@ export const PartRequest = Schema.Struct({
   slotId: Schema.String,
   age: Age,
   face: FaceOption,
+  /** From teen up, which of the face type's two bases (D40); absent means defined. */
+  features: Schema.optionalKey(FeaturesOption),
   axis: PartAxis,
   option: Schema.String,
   /** Where the part may be, in thousandths of the base: the head zone, with room for long hair. */
@@ -31,6 +33,8 @@ export const StoryPart = Schema.Struct({
   slotId: Schema.String,
   age: Age,
   face: FaceOption,
+  /** Null below teen, where bases have no features (D40). */
+  features: Schema.NullOr(FeaturesOption),
   axis: PartAxis,
   option: Schema.String,
   seed: Schema.Int,
@@ -73,12 +77,14 @@ export type PartDecision = typeof PartDecision.Type;
  */
 export const manifestParts = (
   part: Pick<StoryPart, "age" | "face" | "axis" | "option" | "status"> & {
+    readonly features?: StoryPart["features"] | undefined;
     readonly layers: ReadonlyArray<Pick<StoryPart["layers"][number], "asset" | "at" | "palette">>;
   },
 ): ReadonlyArray<Part> =>
   part.layers.map((layer) => ({
     age: part.age,
     face: part.face,
+    ...(part.features ? { features: part.features } : {}),
     axis: part.axis,
     option: part.option,
     asset: layer.asset,

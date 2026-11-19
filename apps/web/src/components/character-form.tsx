@@ -2,7 +2,7 @@
 import { type Character, curatedLooks, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { LookPicker } from "~/components/look-picker";
+import { LookPicker, withPronounFeatures } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -69,7 +69,11 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="character-pronouns">Pronouns</Label>
-            <NativeSelect id="character-pronouns" value={pronouns} disabled={locked} onChange={(event) => setPronouns(event.target.value as PronounSet)}>
+            <NativeSelect id="character-pronouns" value={pronouns} disabled={locked} onChange={(event) => {
+                const next = event.target.value as PronounSet;
+                setPronouns(next);
+                setLook((current) => withPronounFeatures(current, next));
+              }}>
               {PronounSet.literals.map((set) => (
                 <option key={set} value={set}>
                   {set}

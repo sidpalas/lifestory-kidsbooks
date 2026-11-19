@@ -1,16 +1,16 @@
 // The look picker (brief, milestone 1 item 2; D26, D29): pick the character's age first, start from a curated look
 // of that age, then change one feature at a time. Features an age has no parts for (a baby's hairstyle, a toddler's
-// glasses) aren't offered.
+// glasses) aren't offered, and features (softer or defined, D40) only from teen up.
 // Every choice is shown on the story-independent portrait (/api/portrait), composed on the server with the same
 // parts-and-recolour pipeline as book pages; each story then draws the same option IDs with its own parts.
-import { ageLabel, ageOptions, curatedLooks, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
+import { ageLabel, ageOptions, curatedLooks, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { cn } from "~/lib/utils";
 
 export const portraitUrl = (look: Look) =>
-  `/api/portrait?${new URLSearchParams({ age: look.age, face: look.face, skin: look.skin, hair: look.hair, hairColour: look.hairColour, glasses: look.glasses })}`;
+  `/api/portrait?${new URLSearchParams({ age: look.age, face: look.face, features: look.features, skin: look.skin, hair: look.hair, hairColour: look.hairColour, glasses: look.glasses })}`;
 
-export const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras" };
+export const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras" };
 
 /** "Young child, round face, medium skin, curly black hair, glasses", leaving out what the age doesn't draw. */
 export const describeLook = (look: Look) => {
@@ -18,7 +18,8 @@ export const describeLook = (look: Look) => {
   const drawn = partAxesAt(look.age);
   const hair = drawn.includes("hair") ? `${label("hair").toLowerCase()} ${label("hairColour").toLowerCase()} hair` : `${label("hairColour").toLowerCase()} hair`;
   const glasses = drawn.includes("glasses") && look.glasses !== "glasses:none" ? ", glasses" : "";
-  return `${ageLabel(look.age)}, ${label("face").toLowerCase()}, ${label("skin").toLowerCase()} skin, ${hair}${glasses}`;
+  const features = hasFeatures(look.age) ? `, ${label("features").toLowerCase()}` : "";
+  return `${ageLabel(look.age)}, ${label("face").toLowerCase()}${features}, ${label("skin").toLowerCase()} skin, ${hair}${glasses}`;
 };
 
 export { ageLabel };
@@ -84,6 +85,13 @@ const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
   "he/him": ["hair:short", "hair:curly", "hair:long"],
   "they/them": lookVocabulary.hair.map((option) => option.id),
 };
+/**
+ * The features pronouns suggest from teen up (D40, Sid): softer for she/her, defined for he/him; they/them keeps
+ * what's chosen. A default only: either is one click away.
+ */
+const pronounFeatures: Record<PronounSet, Look["features"] | undefined> = { "she/her": "features:soft", "he/him": "features:defined", "they/them": undefined };
+export const withPronounFeatures = (look: Look, pronouns: PronounSet): Look => ({ ...look, features: pronounFeatures[pronouns] ?? look.features });
+
 export const orderedHairstyles = (pronouns: PronounSet) =>
   lookVocabulary.hair.toSorted((a, b) => hairOrder[pronouns].indexOf(a.id) - hairOrder[pronouns].indexOf(b.id));
 export const orderedCuratedLooks = (age: Look["age"], pronouns: PronounSet) =>
@@ -98,10 +106,16 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
-  const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...drawn.filter((axis) => axis === "glasses")];
+  const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", ...(hasFeatures(look.age) ? ["features"] : []), "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...drawn.filter((axis) => axis === "glasses")];
   const step = (key: string, title: string) => `${shown.indexOf(key) + 1}. ${title}`;
-  // Another age keeps the face, colours, and hairstyle; glasses go when the new age doesn't wear them.
-  const setAge = (age: Look["age"]) => set({ age, ...(partAxesAt(age).includes("glasses") ? {} : { glasses: "glasses:none" }) });
+  // Another age keeps the face, colours, and hairstyle; glasses go when the new age doesn't wear them, and growing
+  // into an age with features starts from the ones the pronouns suggest.
+  const setAge = (age: Look["age"]) =>
+    onChange({
+      ...(hasFeatures(age) && !hasFeatures(look.age) ? withPronounFeatures(look, pronouns) : look),
+      age,
+      ...(partAxesAt(age).includes("glasses") ? {} : { glasses: "glasses:none" }),
+    });
 
   return (
     <div className="grid gap-6 md:grid-cols-[244px_minmax(0,1fr)]" data-testid="look-picker">
@@ -117,10 +131,7 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
         <figcaption className="text-muted-foreground text-xs" data-testid="look-summary">
           {describeLook(look)}
         </figcaption>
-        <p className="text-muted-foreground text-[11px] leading-snug">
-          Placeholder art from the FLUX 3 Klein experiment: one grown-up base so far, so every age and face shows it until
-          the illustrator draws the others. Books draw each choice with their own illustrations.
-        </p>
+        <p className="text-muted-foreground text-[11px] leading-snug">Books draw each choice with their own illustrations.</p>
       </figure>
 
       <div className="flex flex-col gap-4">
@@ -148,6 +159,15 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
             </Choice>
           ))}
         </Step>
+        {hasFeatures(look.age) && (
+          <Step title={step("features", axisLabels.features)}>
+            {lookVocabulary.features.map((option) => (
+              <Choice key={option.id} pressed={look.features === option.id} label={option.label} disabled={disabled} onClick={() => set({ features: option.id })}>
+                <Thumb look={{ ...look, features: option.id }} label={option.label.replace(" features", "")} />
+              </Choice>
+            ))}
+          </Step>
+        )}
         <Step title={step("skin", axisLabels.skin)}>
           {lookVocabulary.skin.map((option) => (
             <Choice key={option.id} round pressed={look.skin === option.id} label={`${option.label} skin`} disabled={disabled} onClick={() => set({ skin: option.id })}>

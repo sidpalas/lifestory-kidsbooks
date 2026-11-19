@@ -1,5 +1,5 @@
 // One character figure on a draft page (D26, D29): which role, its box, an optional pinned age, the base drawings
-// with their masks for each age and face type it draws, and the part grid every look option needs. A cell is filled by
+// with their masks for each age and face type it draws (in both features from teen up, D40), and the part grid every look option needs. A cell is filled by
 // an uploaded drawing (approved here, in the manifest) or by a generated part (D36; generated from the base and
 // approved or rejected in story_part, the one record of its review).
 import {
@@ -7,8 +7,12 @@ import {
   ageLabel,
   ageOptions,
   type CharacterSlot,
+  DEFAULT_FEATURES,
   faceOptions,
+  type FeaturesOption,
+  featuresOptions,
   type FigureBase,
+  hasFeatures,
   type FigureLayer,
   type LookOption,
   lookVocabulary,
@@ -26,13 +30,32 @@ import { type DraftFiles, draftFileUrl, RectFields, UploadField } from "./fields
 
 const faceLabel = (face: string) => faceOptions.find((option) => option.id === face)?.label.toLowerCase() ?? face;
 
+/** One base drawing the figure needs: an age and face type, and from teen up its features (D40). */
+interface Appearance {
+  readonly age: Age;
+  readonly face: FigureBase["face"];
+  readonly features?: FeaturesOption;
+}
+const appearancesAt = (ages: ReadonlyArray<Age>): ReadonlyArray<Appearance> =>
+  ages.flatMap((age) =>
+    faceOptions.flatMap(({ id: face }) => (hasFeatures(age) ? featuresOptions.map(({ id: features }) => ({ age, face, features })) : [{ age, face }])),
+  );
+const appearanceKey = (at: Appearance) => `${at.age}/${at.face}${at.features ? `/${at.features}` : ""}`;
+const appearanceLabel = (at: Appearance) =>
+  `${ageLabel(at.age)}, ${faceLabel(at.face)}${at.features ? `, ${featuresOptions.find((option) => option.id === at.features)!.label.toLowerCase()}` : ""}`;
+/** Whether a base or part (stored, or generated with a null features) draws `at`; a missing features is defined. */
+const draws = (item: { readonly age: Age; readonly face: string; readonly features?: FeaturesOption | null | undefined }, at: Appearance) =>
+  item.age === at.age && item.face === at.face && (!at.features || (item.features ?? DEFAULT_FEATURES) === at.features);
+
 /** What the parts grid needs from the part pipeline (D36), for this figure. */
 export interface Generation {
   /** Parts generated for this figure's role on this page, oldest first. */
   readonly parts: ReadonlyArray<StoryPart>;
   /** Why generating isn't possible now (unsaved changes, two figures of the role on the page), or null. */
   readonly blocked: string | null;
-  readonly generate: (requests: ReadonlyArray<{ age: Age; face: FigureBase["face"]; axis: Part["axis"]; option: string; zone: Rect; seed: number }>) => void;
+  readonly generate: (
+    requests: ReadonlyArray<{ age: Age; face: FigureBase["face"]; features?: FeaturesOption; axis: Part["axis"]; option: string; zone: Rect; seed: number }>,
+  ) => void;
   readonly review: (partId: string, decision: PartDecision) => void;
 }
 
@@ -127,16 +150,16 @@ function BasesGrid({
   // latest uploads: both can finish before a re-render, and the second must see the first.
   const pendingRef = useRef<Record<string, { asset?: string; skinMask?: string }>>({});
   const [pending, setPending] = useState<Record<string, { asset?: string; skinMask?: string }>>({});
-  const set = (age: Age, face: FigureBase["face"], field: "asset" | "skinMask" | "browMask", asset: string) => {
-    const existing = figure.bases.find((base) => base.age === age && base.face === face);
+  const set = (at: Appearance, field: "asset" | "skinMask" | "browMask", asset: string) => {
+    const existing = figure.bases.find((base) => draws(base, at));
     if (existing) {
       onChange({ ...figure, bases: figure.bases.map((base) => (base === existing ? { ...base, [field]: asset } : base)) });
       return;
     }
-    const key = `${age}/${face}`;
+    const key = appearanceKey(at);
     const next = { ...pendingRef.current[key], [field]: asset };
     if (next.asset && next.skinMask) {
-      onChange({ ...figure, bases: [...figure.bases, { age, face, asset: next.asset, skinMask: next.skinMask }] });
+      onChange({ ...figure, bases: [...figure.bases, { ...at, asset: next.asset, skinMask: next.skinMask }] });
       pendingRef.current = Object.fromEntries(Object.entries(pendingRef.current).filter(([k]) => k !== key));
     } else {
       pendingRef.current = { ...pendingRef.current, [key]: next };
@@ -148,39 +171,38 @@ function BasesGrid({
     <section className="flex flex-col gap-2" aria-label={`Base drawings of ${role}`}>
       <h4 className="text-sm font-semibold">Base drawings</h4>
       <p className="text-muted-foreground text-xs">
-        One per face type at each age this figure draws: bald, in neutral greys, filling the box. The skin mask covers every visible bit of skin (it takes
+        One per face type at each age this figure draws, and from teen up one with softer and one with defined features: bald, in neutral greys, filling the box. The skin mask covers every visible bit of skin (it takes
         the skin tone); the brow mask takes the hair colour.
       </p>
       <ul className="grid gap-2 md:grid-cols-2">
-        {ages.flatMap((age) =>
-          faceOptions.map(({ id: face }) => {
-            const base = figure.bases.find((candidate) => candidate.age === age && candidate.face === face);
-            const waiting = pending[`${age}/${face}`];
-            const at = `${ageLabel(age)}, ${faceLabel(face)}`;
-            return (
-              <li key={`${age}/${face}`} className="flex flex-col gap-2 rounded-md border p-2" data-testid="base-cell" data-ready={base ? "true" : "false"}>
-                <span className="text-xs font-semibold">{at}</span>
-                <UploadField files={files} folder={folder} label={`Base drawing: ${at}`} asset={base?.asset ?? waiting?.asset} onUploaded={(asset) => set(age, face, "asset", asset)} />
-                <UploadField files={files} folder={folder} label={`Skin mask: ${at}`} asset={base?.skinMask ?? waiting?.skinMask} onUploaded={(asset) => set(age, face, "skinMask", asset)} />
-                {base && <UploadField files={files} folder={folder} label={`Brow mask: ${at}`} asset={base.browMask} onUploaded={(asset) => set(age, face, "browMask", asset)} />}
-              </li>
-            );
-          }),
-        )}
+        {appearancesAt(ages).map((appearance) => {
+          const base = figure.bases.find((candidate) => draws(candidate, appearance));
+          const waiting = pending[appearanceKey(appearance)];
+          const at = appearanceLabel(appearance);
+          return (
+            <li key={appearanceKey(appearance)} className="flex flex-col gap-2 rounded-md border p-2" data-testid="base-cell" data-ready={base ? "true" : "false"}>
+              <span className="text-xs font-semibold">
+                {at}
+                {appearance.features === "features:soft" && <span className="text-muted-foreground font-normal"> (optional)</span>}
+              </span>
+              <UploadField files={files} folder={folder} label={`Base drawing: ${at}`} asset={base?.asset ?? waiting?.asset} onUploaded={(asset) => set(appearance, "asset", asset)} />
+              <UploadField files={files} folder={folder} label={`Skin mask: ${at}`} asset={base?.skinMask ?? waiting?.skinMask} onUploaded={(asset) => set(appearance, "skinMask", asset)} />
+              {base && <UploadField files={files} folder={folder} label={`Brow mask: ${at}`} asset={base.browMask} onUploaded={(asset) => set(appearance, "browMask", asset)} />}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
 }
 
-interface PartCell {
-  readonly age: Age;
-  readonly face: FigureBase["face"];
+interface PartCell extends Appearance {
   readonly axis: Part["axis"];
   readonly option: LookOption;
 }
 
-const sameCell = (cell: PartCell, part: Pick<Part, "age" | "face" | "axis" | "option">) =>
-  part.age === cell.age && part.face === cell.face && part.axis === cell.axis && part.option === cell.option.id;
+const sameCell = (cell: PartCell, part: Pick<Part, "age" | "face" | "axis" | "option"> & { readonly features?: FeaturesOption | null | undefined }) =>
+  draws(part, cell) && part.axis === cell.axis && part.option === cell.option.id;
 
 const statusLabel: Record<StoryPart["status"], string> = {
   generating: "Generating…",
@@ -209,11 +231,11 @@ function PartsGrid({
 }) {
   // Where generated parts may be, in thousandths of the base: the head, with room for long hair (D36).
   const [zone, setZone] = useState<Rect>([200, 0, 800, 450]);
-  const cells: ReadonlyArray<PartCell> = ages.flatMap((age) =>
-    faceOptions.flatMap(({ id: face }) =>
-      partAxesAt(age).flatMap((axis) =>
-        (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) => !NO_PART_OPTIONS.has(option.id)).map((option) => ({ age, face, axis, option })),
-      ),
+  // A softer base is optional (without one the defined base draws, D40), so its parts are cells only once it exists.
+  const drawn = appearancesAt(ages).filter((at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)));
+  const cells: ReadonlyArray<PartCell> = drawn.flatMap((appearance) =>
+    partAxesAt(appearance.age).flatMap((axis) =>
+      (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) => !NO_PART_OPTIONS.has(option.id)).map((option) => ({ ...appearance, axis, option })),
     ),
   );
   const uploaded = (cell: PartCell) => figure.parts.find((part) => sameCell(cell, part));
@@ -223,10 +245,11 @@ function PartsGrid({
     const all = attempts(cell);
     return all.findLast((part) => part.status === "approved") ?? all.findLast((part) => part.status === "pending_review" || part.status === "generating");
   };
-  const hasBase = (cell: PartCell) => figure.bases.some((base) => base.age === cell.age && base.face === cell.face);
+  const hasBase = (cell: PartCell) => figure.bases.some((base) => draws(base, cell));
   const request = (cell: PartCell) => ({
     age: cell.age,
     face: cell.face,
+    ...(cell.features ? { features: cell.features } : {}),
     axis: cell.axis,
     option: cell.option.id,
     zone,
@@ -239,6 +262,7 @@ function PartsGrid({
     const part: Part = {
       age: cell.age,
       face: cell.face,
+      ...(cell.features ? { features: cell.features } : {}),
       axis: cell.axis,
       option: cell.option.id,
       asset,
@@ -299,7 +323,7 @@ function PartsGrid({
           const part = uploaded(cell);
           const gen = generated(cell);
           const last = attempts(cell).at(-1);
-          const at = `${cell.option.label}, ${ageLabel(cell.age).toLowerCase()}, ${faceLabel(cell.face)}`;
+          const at = `${cell.option.label}, ${appearanceLabel(cell).replace(/^[^,]+/, (age) => age.toLowerCase())}`;
           const state = gen
             ? gen.status === "approved"
               ? "approved"
@@ -313,7 +337,7 @@ function PartsGrid({
               : "missing";
           return (
             <li
-              key={`${cell.age}/${cell.face}/${cell.option.id}`}
+              key={`${appearanceKey(cell)}/${cell.option.id}`}
               className="flex flex-col gap-2 rounded-md border p-2"
               data-testid="part-cell"
               data-option={cell.option.id}

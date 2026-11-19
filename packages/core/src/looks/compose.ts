@@ -1,7 +1,7 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
 import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { type Look, NO_PART_OPTIONS, partAxesAt } from "./vocabulary.ts";
+import { drawnFeatures, type Look, NO_PART_OPTIONS, partAxesAt, sameAppearance } from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -42,7 +42,8 @@ export const composeFigure = (
   const skin = palettes.skin[look.skin];
   const hair = palettes.hairColour[look.hairColour];
   const age = layer.age ?? look.age;
-  const base = layer.bases.find((candidate) => candidate.age === age && candidate.face === look.face);
+  const features = drawnFeatures(layer.bases, age, look.face, look);
+  const base = layer.bases.find((candidate) => sameAppearance(candidate, age, look.face, features));
   if (!skin || !hair || !base) throw new Error(`${layer.slotId}: can't draw this look`);
   const regionPalettes = { skin, hairColour: hair } as const;
 
@@ -52,7 +53,7 @@ export const composeFigure = (
       : (layer.partOrder ?? partOrder).flatMap((axis) => {
           const option = look[axis];
           if (NO_PART_OPTIONS.has(option) || !partAxesAt(age).includes(axis)) return [];
-          const drawn = layer.parts.filter((part) => part.age === age && part.face === look.face && part.axis === axis && part.option === option);
+          const drawn = layer.parts.filter((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option);
           if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${age}/${look.face}"`);
           return drawn.map((part) => ({
             asset: part.asset,

@@ -456,6 +456,26 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** an illustrator finds a bucket boundary wrong for real bodies (split or merge it), or generated bases
   fail review often enough that hand-drawing every age is cheaper.
 
+### D40. Features: softer or defined, from teen up; pronouns pick the default — Decided (Sid, 2026-11-19) / Made
+- **Why (Sid):** the gouache portrait's teen and adult bases read male even with long hair (D28), and a face type
+  in two versions gives better likeness. Sid chose a new axis over replacing round and oval, and more hairstyles plus
+  facial hair over a gender or ethnicity axis (those are still to come).
+- **What:** a look's `features` is `features:soft` or `features:defined`, a choice from teen up (`featureAges`);
+  younger bases read neutral, so children have none. Looks saved before the axis decode as defined, which is what
+  their bases showed. A story's bases and parts carry an optional `features`; absent means defined.
+- **Defaults from pronouns (Sid):** she/her suggests softer, he/him defined, they/them keeps what's chosen. Applied
+  when pronouns change and when a look grows into a teen age; one click changes it. Curated teen and adult looks come
+  in both.
+- **A story without softer features draws the defined base (Made; Sid can veto):** softer features refine likeness,
+  so instead of leaving the character out (D28's rule for options a story can't draw), the figure falls back to the
+  defined base of the same face type. Publishing requires the defined bases as before, and a softer base, when drawn,
+  must have all its parts. Moon Picnic and The Paper Boat keep working unchanged. Reopen if parents find the fallback
+  worse than the stand-in prompt.
+- **Authoring:** the figure editor lists a softer and a defined base cell per face type from teen up, and generated
+  parts record their base's features (`story_part.features`, migration `0012_part_features`).
+- **Portrait art:** 6 softer bases (edits of the defined ones; a first, subtler prompt was redrawn because the recolour
+  erased its pink lips, so lips and lashes are now ink line) and their 24 parts, made and reviewed like the rest (D28).
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The

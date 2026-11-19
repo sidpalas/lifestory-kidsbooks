@@ -11,7 +11,7 @@ import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
 import { Database } from "../database.ts";
 import { Forbidden, InvalidInput, NotFound } from "../errors.ts";
 import { Jobs } from "../jobs.ts";
-import { type Age, ageOptions, lookVocabulary, NO_PART_OPTIONS, partAxesAt, type PartAxis } from "../looks/vocabulary.ts";
+import { type Age, ageOptions, DEFAULT_FEATURES, type FeaturesOption, hasFeatures, lookVocabulary, NO_PART_OPTIONS, partAxesAt, type PartAxis, sameAppearance } from "../looks/vocabulary.ts";
 import { manifestParts, type PartDecision, type PartRequest, type PartStatus, type StoryPart } from "./contract.ts";
 
 /** A part's files, relative to its story version's folder. */
@@ -35,6 +35,8 @@ export const partIdFor = (request: PartRequest) => {
   const key = JSON.stringify([
     request.storyVersionId, request.pageId, request.slotId, request.age, request.face, request.axis, request.option,
     request.zone, request.note ?? null, request.seed ?? 1,
+    // Only when set, so parts requested before features existed keep their IDs.
+    ...(request.features ? [request.features] : []),
   ]);
   return `part_${createHash("sha256").update(key).digest("hex").slice(0, 24)}`;
 };
@@ -88,6 +90,7 @@ const partView = (row: PartRow, storyId: string, version: number, generation: { 
     slotId: row.slotId,
     age: row.age as Age,
     face: row.face as StoryPart["face"],
+    features: row.features as StoryPart["features"],
     axis: row.axis as PartAxis,
     option: row.option,
     seed: row.seed,
@@ -134,15 +137,16 @@ const authoredVersion = Effect.fn("parts.authoredVersion")(function* (userId: st
   return { ...row, manifest };
 });
 
-/** The figure of `slotId` on `pageId` and its base for `age` and `face`, or why there is none. */
-export const findAppearance = (manifest: StoryManifest, pageId: string, slotId: string, age: Age, face: string) => {
+/** The figure of `slotId` on `pageId` and its base for `age`, `face`, and `features` (D40), or why there is none. */
+export const findAppearance = (manifest: StoryManifest, pageId: string, slotId: string, age: Age, face: string, features?: FeaturesOption | null) => {
   const page = manifest.pages.find((candidate) => candidate.pageId === pageId);
   if (!page) return { problem: `no page "${pageId}"` } as const;
   const figures = page.illustration.layers.filter((layer): layer is FigureLayer => layer.kind === "figure" && layer.slotId === slotId);
   if (figures.length !== 1) return { problem: `page "${pageId}" has ${figures.length} figures of "${slotId}"; parts need exactly one` } as const;
   const figure = figures[0]!;
-  const base = figure.bases.find((candidate) => candidate.age === age && candidate.face === face);
-  if (!base) return { problem: `the "${slotId}" figure on "${pageId}" has no base for ${age} / ${face}` } as const;
+  const drawn = hasFeatures(age) ? (features ?? DEFAULT_FEATURES) : undefined;
+  const base = figure.bases.find((candidate) => sameAppearance(candidate, age, face, drawn));
+  if (!base) return { problem: `the "${slotId}" figure on "${pageId}" has no base for ${[age, face, drawn].filter(Boolean).join(" / ")}` } as const;
   return { figure, base } as const;
 };
 
@@ -164,7 +168,8 @@ const generationOf = (generationId: string | null) =>
 export const requestPart = Effect.fn("parts.request")(function* (userId: string, request: PartRequest) {
   const version = yield* authoredVersion(userId, request.storyVersionId);
   if (version.publishedAt) return yield* new InvalidInput({ message: "this version is published; generate parts for a draft" });
-  const appearance = findAppearance(version.manifest, request.pageId, request.slotId, request.age, request.face);
+  if (request.features && !hasFeatures(request.age)) return yield* new InvalidInput({ message: `${request.age} bases have no features` });
+  const appearance = findAppearance(version.manifest, request.pageId, request.slotId, request.age, request.face, request.features);
   if ("problem" in appearance) return yield* new InvalidInput({ message: appearance.problem ?? "no such appearance" });
   if (!version.manifest.characterSlots.find((slot) => slot.slotId === request.slotId)?.ages.includes(request.age) && appearance.figure.age !== request.age) {
     return yield* new InvalidInput({ message: `the "${request.slotId}" role doesn't take the age ${request.age}` });
@@ -190,6 +195,7 @@ export const requestPart = Effect.fn("parts.request")(function* (userId: string,
         slotId: request.slotId,
         age: request.age,
         face: request.face,
+        features: request.features ?? null,
         axis: request.axis,
         option: request.option,
         seed,
@@ -271,6 +277,7 @@ export const approvedParts = Effect.fn("parts.approved")(function* (userId: stri
     manifestParts({
       age: row.age as Age,
       face: row.face as Part["face"],
+      features: row.features as FeaturesOption | null,
       axis: row.axis as PartAxis,
       option: row.option,
       status: row.status,
@@ -279,7 +286,8 @@ export const approvedParts = Effect.fn("parts.approved")(function* (userId: stri
   );
 });
 
-const sameOption = (a: Part, b: Part) => a.age === b.age && a.face === b.face && a.axis === b.axis && a.option === b.option;
+const sameOption = (a: Part, b: Part) =>
+  a.age === b.age && a.face === b.face && (a.features ?? DEFAULT_FEATURES) === (b.features ?? DEFAULT_FEATURES) && a.axis === b.axis && a.option === b.option;
 
 /**
  * `manifest` with approved parts in their figures: they replace the figure's parts for the same age, face, axis,

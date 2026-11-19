@@ -135,6 +135,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
   await page.getByRole("button", { name: "Adult", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
+  // Saving returns home; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/$/);
   await page.goto(bookUrl);
   await expect(page.getByTestId("role-hero").getByRole("status")).toContainText("Choose someone else for the child");
   await imagesLoaded(page);

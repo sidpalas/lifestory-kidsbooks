@@ -49,6 +49,56 @@
    }
   ]
  },
+ "adult-oval-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/adult-oval-soft-glasses-round.png",
+    "at": [
+     272,
+     355,
+     698,
+     491
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/adult-oval-soft-hair-curly.png",
+    "at": [
+     168,
+     54,
+     801,
+     579
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/adult-oval-soft-hair-long.png",
+    "at": [
+     65,
+     107,
+     883,
+     874
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/adult-oval-soft-hair-short.png",
+    "at": [
+     242,
+     94,
+     720,
+     458
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
  "adult-round": {
   "glasses:round": [
    {
@@ -94,6 +144,56 @@
      66,
      761,
      436
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
+ "adult-round-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/adult-round-soft-glasses-round.png",
+    "at": [
+     252,
+     333,
+     735,
+     483
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/adult-round-soft-hair-curly.png",
+    "at": [
+     112,
+     13,
+     869,
+     671
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/adult-round-soft-hair-long.png",
+    "at": [
+     42,
+     67,
+     955,
+     893
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/adult-round-soft-hair-short.png",
+    "at": [
+     230,
+     74,
+     755,
+     439
     ],
     "palette": "hairColour"
    }
@@ -149,6 +249,56 @@
    }
   ]
  },
+ "older-adult-oval-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/older-adult-oval-soft-glasses-round.png",
+    "at": [
+     247,
+     321,
+     731,
+     468
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-curly.png",
+    "at": [
+     146,
+     3,
+     837,
+     505
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-long.png",
+    "at": [
+     25,
+     34,
+     948,
+     906
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-short.png",
+    "at": [
+     216,
+     35,
+     771,
+     434
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
  "older-adult-round": {
   "glasses:round": [
    {
@@ -194,6 +344,56 @@
      77,
      770,
      453
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
+ "older-adult-round-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/older-adult-round-soft-glasses-round.png",
+    "at": [
+     226,
+     356,
+     763,
+     502
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-curly.png",
+    "at": [
+     143,
+     17,
+     859,
+     484
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-long.png",
+    "at": [
+     45,
+     49,
+     934,
+     993
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-short.png",
+    "at": [
+     198,
+     47,
+     791,
+     480
     ],
     "palette": "hairColour"
    }
@@ -349,6 +549,56 @@
    }
   ]
  },
+ "teen-oval-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/teen-oval-soft-glasses-round.png",
+    "at": [
+     264,
+     361,
+     726,
+     495
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/teen-oval-soft-hair-curly.png",
+    "at": [
+     145,
+     57,
+     854,
+     644
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/teen-oval-soft-hair-long.png",
+    "at": [
+     38,
+     86,
+     964,
+     934
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/teen-oval-soft-hair-short.png",
+    "at": [
+     229,
+     86,
+     761,
+     470
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
  "teen-round": {
   "glasses:round": [
    {
@@ -394,6 +644,56 @@
      72,
      761,
      435
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
+ "teen-round-soft": {
+  "glasses:round": [
+   {
+    "asset": "parts/teen-round-soft-glasses-round.png",
+    "at": [
+     260,
+     335,
+     733,
+     473
+    ],
+    "palette": "none"
+   }
+  ],
+  "hair:curly": [
+   {
+    "asset": "parts/teen-round-soft-hair-curly.png",
+    "at": [
+     145,
+     24,
+     847,
+     645
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:long": [
+   {
+    "asset": "parts/teen-round-soft-hair-long.png",
+    "at": [
+     8,
+     69,
+     975,
+     907
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:short": [
+   {
+    "asset": "parts/teen-round-soft-hair-short.png",
+    "at": [
+     226,
+     77,
+     762,
+     430
     ],
     "palette": "hairColour"
    }

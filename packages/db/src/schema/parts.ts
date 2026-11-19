@@ -22,6 +22,8 @@ export const storyPart = pgTable(
     slotId: text("slot_id").notNull(),
     age: text("age").notNull(),
     face: text("face").notNull(),
+    /** From teen up, which of the face type's two bases (D40); null below teen. */
+    features: text("features"),
     axis: text("axis").notNull(),
     option: text("option").notNull(),
     /** A new seed is a new attempt at the same option. */

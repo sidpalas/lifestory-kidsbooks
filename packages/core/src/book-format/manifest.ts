@@ -7,7 +7,21 @@
 // page is rendered, so one story version serves every family unchanged.
 import { Schema } from "effect";
 import { Effect } from "effect";
-import { Age, FaceOption, faceOptions, lookVocabulary, Look, NO_PART_OPTIONS, PartAxis, partAxesAt } from "../looks/vocabulary.ts";
+import {
+  Age,
+  FaceOption,
+  faceOptions,
+  DEFAULT_FEATURES,
+  drawnFeatures,
+  FeaturesOption,
+  hasFeatures,
+  lookVocabulary,
+  Look,
+  NO_PART_OPTIONS,
+  PartAxis,
+  partAxesAt,
+  sameAppearance,
+} from "../looks/vocabulary.ts";
 import { tokenIssues } from "./text.ts";
 
 /** Slot and page IDs: lowercase, stable across versions, used in object keys and text tokens. */
@@ -111,6 +125,8 @@ export const FigureBase = Schema.Struct({
   /** The age this base draws the character at (D29). */
   age: Age,
   face: FaceOption,
+  /** From teen up, the features this base draws (D40); absent means defined. Younger bases have none. */
+  features: Schema.optionalKey(FeaturesOption),
   asset: ImageAsset,
   /** Every visible bit of skin: face, neck, arms, hands, legs. Takes the look's skin palette. */
   skinMask: ImageAsset,
@@ -130,6 +146,8 @@ export type FigureBase = typeof FigureBase.Type;
 export const Part = Schema.Struct({
   age: Age,
   face: FaceOption,
+  /** The features of the base it was drawn on (D40); absent means defined. */
+  features: Schema.optionalKey(FeaturesOption),
   axis: PartAxis,
   option: Schema.String,
   asset: ImageAsset,
@@ -291,10 +309,11 @@ const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age>
 /** What a figure has extra or misplaced, given the ages it draws. Paths are relative to the figure. */
 const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
   const issues: Array<{ path: ReadonlyArray<PropertyKey>; issue: string }> = [];
-  const keys = figure.bases.map((base) => `${base.age}/${base.face}`);
+  const keys = figure.bases.map((base) => `${base.age}/${base.face}${hasFeatures(base.age) ? `/${base.features ?? "features:defined"}` : ""}`);
   for (const key of new Set(duplicates(keys))) issues.push({ path: ["bases"], issue: `two bases for "${key}"` });
   figure.bases.forEach((base, b) => {
     if (!ages.includes(base.age)) issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
+    else if (base.features && !hasFeatures(base.age)) issues.push({ path: ["bases", b, "features"], issue: `"${base.age}" bases have no features` });
   });
   if (figure.partOrder && (new Set(figure.partOrder).size !== figure.partOrder.length || figure.partOrder.length !== PartAxis.literals.length)) {
     issues.push({ path: ["partOrder"], issue: `must list each of ${PartAxis.literals.join(", ")} once` });
@@ -305,6 +324,7 @@ const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyAr
   }
   figure.parts.forEach((part, i) => {
     if (!ages.includes(part.age)) issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
+    else if (part.features && !hasFeatures(part.age)) issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
     else if (!partAxesAt(part.age).includes(part.axis)) issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
     if (!lookVocabulary[part.axis].some((option) => option.id === part.option) || NO_PART_OPTIONS.has(part.option)) {
       issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" is not a ${part.axis} option with a drawing` });
@@ -329,14 +349,18 @@ export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> =
       const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId)!;
       for (const age of drawnAges(layer, slot)) {
         for (const { id: face } of faceOptions) {
-          const at = `${age}/${face}`;
-          if (!layer.bases.some((base) => base.age === age && base.face === face)) gaps.push(`${page.pageId}/${layer.slotId}: no base for "${at}"`);
-          if (layer.showsHead === false) continue;
-          for (const axis of partAxesAt(age)) {
-            for (const option of lookVocabulary[axis]) {
-              if (NO_PART_OPTIONS.has(option.id)) continue;
-              if (!layer.parts.some((part) => part.age === age && part.face === face && part.axis === axis && part.option === option.id)) {
-                gaps.push(`${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`);
+          // From teen up the defined base is required, and a softer one, when drawn, needs its parts too (D40).
+          const soft = layer.bases.some((base) => sameAppearance(base, age, face, "features:soft"));
+          for (const features of hasFeatures(age) ? [DEFAULT_FEATURES, ...(soft ? (["features:soft"] as const) : [])] : [undefined]) {
+            const at = `${age}/${face}${features ? `/${features}` : ""}`;
+            if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) gaps.push(`${page.pageId}/${layer.slotId}: no base for "${at}"`);
+            if (layer.showsHead === false) continue;
+            for (const axis of partAxesAt(age)) {
+              for (const option of lookVocabulary[axis]) {
+                if (NO_PART_OPTIONS.has(option.id)) continue;
+                if (!layer.parts.some((part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id)) {
+                  gaps.push(`${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`);
+                }
               }
             }
           }
@@ -364,7 +388,8 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
     for (const layer of page.illustration.layers) {
       if (layer.kind !== "figure" || layer.slotId !== slotId) continue;
       const age = layer.age ?? look.age;
-      if (!layer.bases.some((base) => base.age === age && base.face === look.face)) {
+      const features = drawnFeatures(layer.bases, age, look.face, look);
+      if (!layer.bases.some((base) => sameAppearance(base, age, look.face, features))) {
         unsupported.add("face");
         continue; // Parts are drawn per face, so with an unsupported face only the face is the problem.
       }
@@ -372,7 +397,7 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
       for (const axis of partAxesAt(age)) {
         const option = look[axis];
         if (NO_PART_OPTIONS.has(option)) continue;
-        if (!layer.parts.some((part) => part.age === age && part.face === look.face && part.axis === axis && part.option === option)) unsupported.add(axis);
+        if (!layer.parts.some((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option)) unsupported.add(axis);
       }
     }
   }
@@ -386,6 +411,8 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
 export const LookOverride = Schema.Struct({
   // No age: a role's ages say who may play it, so a stand-in age would draw someone else.
   face: Schema.optionalKey(Look.fields.face),
+  // Never needed today (a story without softer features draws the defined ones, D40), kept so every axis has a key.
+  features: Schema.optionalKey(FeaturesOption),
   skin: Schema.optionalKey(Look.fields.skin),
   hair: Schema.optionalKey(Look.fields.hair),
   hairColour: Schema.optionalKey(Look.fields.hairColour),

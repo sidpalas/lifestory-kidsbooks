@@ -18,6 +18,7 @@ import {
   vocabularyGaps,
   type Look,
 } from "../src/book-format/index.ts";
+import { Look as LookSchema } from "../src/looks/vocabulary.ts";
 
 const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
 const sample = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
@@ -149,6 +150,7 @@ const decoded = (m: unknown) => Schema.decodeUnknownSync(StoryManifest)(m);
 const childLook = (face: Look["face"], hair: Look["hair"], age: Look["age"] = "young-child"): Look => ({
   age,
   face,
+  features: "features:defined",
   skin: "skin:s3",
   hair,
   hairColour: "hair-colour:brown",
@@ -162,6 +164,27 @@ const missingLongOval = () =>
       hero.parts = hero.parts.filter((part: any) => !(part.age === "young-child" && part.face === "face:oval" && part.option === "hair:long"));
     }),
   );
+
+/** p02's grown-up with a softer adult round-face base and its parts (D40). */
+const withSoft = (dropPart = false) =>
+  decoded(
+    variant((m) => {
+      const grownup = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "grownup");
+      const base = grownup.bases.find((b: any) => b.age === "adult" && b.face === "face:round");
+      grownup.bases.push({ ...base, features: "features:soft", asset: "soft/base.svg" });
+      const parts = grownup.parts.filter((part: any) => part.age === "adult" && part.face === "face:round");
+      grownup.parts.push(
+        ...parts
+          .filter((part: any) => !(dropPart && part.option === "hair:long"))
+          .map((part: any) => ({ ...part, features: "features:soft", asset: `soft/${part.option.replace(":", "-")}.svg` })),
+      );
+    }),
+  );
+const soft = (face: Look["face"], age: Look["age"] = "adult"): Look => ({ ...childLook(face, "hair:long", age), features: "features:soft" });
+const grownup = (manifest: StoryManifest, look: Look) =>
+  composeIllustration(manifest, manifest.pages[1]!, { grownup: { name: "Sam", pronouns: "she/her", look } })
+    .map((layer) => layer.asset)
+    .filter((asset) => asset.includes("grownup") || asset.startsWith("soft/"));
 
 describe("looks against a story (D26, D29)", () => {
   it("reports exactly the axis a story can't draw, and only for the age and face missing its part", () => {
@@ -203,6 +226,22 @@ describe("looks against a story (D26, D29)", () => {
       wrongAge: true,
       unsupported: ["age"],
     });
+  });
+
+  it("draws softer features where a story has them, and the defined base where it doesn't (D40)", () => {
+    // Only the adult round face has a softer base; the oval and older adults stay defined only.
+    const manifest = withSoft();
+    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(grownup(manifest, soft("face:round"))).toEqual(["soft/base.svg", "soft/hair-long.svg", "soft/glasses-round.svg"]);
+    // No softer oval base, so the defined one draws, with nothing reported unsupported.
+    const definedOval = grownup(manifest, { ...soft("face:oval"), features: "features:defined" });
+    expect(grownup(manifest, soft("face:oval"))).toEqual(definedOval);
+    expect(unsupportedOptions(manifest, "grownup", soft("face:oval"))).toEqual([]);
+    // A softer base must have its parts.
+    expect(vocabularyGaps(withSoft(true))).toEqual(['p02/grownup: no part for "hair:long" on "adult/face:round/features:soft"']);
+    // Looks saved before the axis existed are the defined ones.
+    const { features: _, ...stored } = soft("face:round");
+    expect(Schema.decodeUnknownSync(LookSchema)(stored).features).toBe("features:defined");
   });
 
   it("draws a figure pinned to an age at that age, whatever age the character is", () => {
