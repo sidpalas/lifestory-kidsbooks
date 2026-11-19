@@ -235,9 +235,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     halos at mask edges; the editor and the print-ready proof (D35) show the same art (mean colour difference under
     0.03 levels, 0–0.8% of pixels off by more than 5% at 96 dpi, all at resampled edges). What a gradient map can't
     keep is colour inside the skin: the cheek blush became a dark smudge and an open mouth's tongue turned skin-brown on
-    dark skin. v1 worked around it in its art; v2 uses the face overlay below. v3 (2026-11-19) poses every figure (kneeling
+    dark skin. v1 worked around it in its art; v2 uses the face overlay below. v5 (originally repo v3, 2026-11-19) poses every figure (kneeling
     side-on, pointing, sitting, seen from behind, and a hand in front of the face as an occluder), made with the art
-    import's base code and the part pipeline (D36, D42) for US$2.76; what took hand work is in its `ART.md`. Writing PNGs
+    import's base code and the part pipeline (D36, D42) for US$2.76; addition 2 completes D43 on every pose for another
+    US$3.86 without changing the published manifest. What took hand work is in its `ART.md`. Writing PNGs
     at zlib level 6 instead of 9 cut a recolour of an 800 × 1600 raster figure from ~0.8 s to ~0.3 s (the encoder
     took ~90%), for files 4–5% larger and the same pixels.
   - **Face overlays (Sid, 2026-11-19):** a base may have an `overlay` on its canvas, drawn as the illustrator made it

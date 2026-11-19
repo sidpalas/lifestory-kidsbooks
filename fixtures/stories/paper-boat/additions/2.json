@@ -1,0 +1,2470 @@
+{
+ "figures": [
+  {
+   "pageId": "p01",
+   "slotId": "grownup",
+   "parts": [
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/back/round-buzz.png",
+     "at": [
+      338,
+      12,
+      694,
+      177
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/back/round-ponytail.png",
+     "at": [
+      245,
+      6,
+      697,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/back/round-braids.png",
+     "at": [
+      261,
+      9,
+      708,
+      362
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/back/round-afro.png",
+     "at": [
+      282,
+      6,
+      734,
+      193
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/back/round-locs.png",
+     "at": [
+      266,
+      6,
+      695,
+      248
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/back/round-bun.png",
+     "at": [
+      317,
+      11,
+      699,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/back/round-stubble.png",
+     "at": [
+      596,
+      87,
+      748,
+      200
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/back/round-moustache.png",
+     "at": [
+      664,
+      109,
+      750,
+      154
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/back/round-beard.png",
+     "at": [
+      576,
+      62,
+      743,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/back/round-buzz.png",
+     "at": [
+      338,
+      12,
+      694,
+      177
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/back/round-ponytail.png",
+     "at": [
+      245,
+      6,
+      697,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/back/round-braids.png",
+     "at": [
+      261,
+      9,
+      708,
+      362
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/back/round-afro.png",
+     "at": [
+      282,
+      6,
+      734,
+      193
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/back/round-locs.png",
+     "at": [
+      266,
+      6,
+      695,
+      248
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/back/round-bun.png",
+     "at": [
+      317,
+      11,
+      699,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/back/round-stubble.png",
+     "at": [
+      596,
+      87,
+      748,
+      200
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/back/round-moustache.png",
+     "at": [
+      664,
+      109,
+      750,
+      154
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/back/round-beard.png",
+     "at": [
+      576,
+      62,
+      743,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/back/round-buzz.png",
+     "at": [
+      338,
+      12,
+      694,
+      177
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/back/round-ponytail.png",
+     "at": [
+      245,
+      6,
+      697,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/back/round-braids.png",
+     "at": [
+      261,
+      9,
+      708,
+      362
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/back/round-afro.png",
+     "at": [
+      282,
+      6,
+      734,
+      193
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/back/round-locs.png",
+     "at": [
+      266,
+      6,
+      695,
+      248
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/back/round-bun.png",
+     "at": [
+      317,
+      11,
+      699,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/back/round-stubble.png",
+     "at": [
+      596,
+      87,
+      748,
+      200
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/back/round-moustache.png",
+     "at": [
+      664,
+      109,
+      750,
+      154
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/back/round-beard.png",
+     "at": [
+      576,
+      62,
+      743,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/back/round-buzz.png",
+     "at": [
+      338,
+      12,
+      694,
+      177
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/back/round-ponytail.png",
+     "at": [
+      245,
+      6,
+      697,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/back/round-braids.png",
+     "at": [
+      261,
+      9,
+      708,
+      362
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/back/round-afro.png",
+     "at": [
+      282,
+      6,
+      734,
+      193
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/back/round-locs.png",
+     "at": [
+      266,
+      6,
+      695,
+      248
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/back/round-bun.png",
+     "at": [
+      317,
+      11,
+      699,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/back/round-stubble.png",
+     "at": [
+      596,
+      87,
+      748,
+      200
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/back/round-moustache.png",
+     "at": [
+      664,
+      109,
+      750,
+      154
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/back/round-beard.png",
+     "at": [
+      576,
+      62,
+      743,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  },
+  {
+   "pageId": "p01",
+   "slotId": "hero",
+   "parts": [
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/point/oval-buzz.png",
+     "at": [
+      548,
+      14,
+      861,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/point/oval-ponytail.png",
+     "at": [
+      527,
+      14,
+      982,
+      262
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/point/oval-braids.png",
+     "at": [
+      441,
+      10,
+      900,
+      443
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/point/oval-afro.png",
+     "at": [
+      484,
+      3,
+      921,
+      262
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/point/oval-locs.png",
+     "at": [
+      437,
+      7,
+      921,
+      347
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/point/oval-bun.png",
+     "at": [
+      532,
+      14,
+      916,
+      221
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/point/oval-buzz.png",
+     "at": [
+      548,
+      14,
+      861,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/point/oval-ponytail.png",
+     "at": [
+      527,
+      14,
+      982,
+      262
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/point/oval-braids.png",
+     "at": [
+      441,
+      10,
+      900,
+      443
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/point/oval-afro.png",
+     "at": [
+      484,
+      3,
+      921,
+      262
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/point/oval-locs.png",
+     "at": [
+      437,
+      7,
+      921,
+      347
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/point/oval-bun.png",
+     "at": [
+      532,
+      14,
+      916,
+      221
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  },
+  {
+   "pageId": "p02",
+   "slotId": "hero",
+   "parts": [
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/kneel/round-buzz.png",
+     "at": [
+      491,
+      17,
+      903,
+      326
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/kneel/round-ponytail.png",
+     "at": [
+      301,
+      8,
+      907,
+      352
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/kneel/round-braids.png",
+     "at": [
+      472,
+      14,
+      917,
+      574
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/kneel/round-afro.png",
+     "at": [
+      453,
+      0,
+      908,
+      347
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/kneel/round-locs.png",
+     "at": [
+      328,
+      2,
+      908,
+      483
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/kneel/round-bun.png",
+     "at": [
+      442,
+      11,
+      908,
+      336
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/kneel/oval-buzz.png",
+     "at": [
+      513,
+      21,
+      872,
+      319
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/kneel/oval-ponytail.png",
+     "at": [
+      312,
+      12,
+      880,
+      350
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/kneel/oval-braids.png",
+     "at": [
+      483,
+      15,
+      887,
+      592
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/kneel/oval-afro.png",
+     "at": [
+      467,
+      7,
+      883,
+      331
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/kneel/oval-locs.png",
+     "at": [
+      340,
+      8,
+      885,
+      472
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/kneel/oval-bun.png",
+     "at": [
+      459,
+      15,
+      869,
+      325
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/kneel/round-buzz.png",
+     "at": [
+      491,
+      17,
+      903,
+      326
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/kneel/round-ponytail.png",
+     "at": [
+      301,
+      8,
+      907,
+      352
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/kneel/round-braids.png",
+     "at": [
+      472,
+      14,
+      917,
+      574
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/kneel/round-afro.png",
+     "at": [
+      453,
+      0,
+      908,
+      347
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/kneel/round-locs.png",
+     "at": [
+      328,
+      2,
+      908,
+      483
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/kneel/round-bun.png",
+     "at": [
+      442,
+      11,
+      908,
+      336
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/kneel/oval-buzz.png",
+     "at": [
+      513,
+      21,
+      872,
+      319
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/kneel/oval-ponytail.png",
+     "at": [
+      312,
+      12,
+      880,
+      350
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/kneel/oval-braids.png",
+     "at": [
+      483,
+      15,
+      887,
+      592
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/kneel/oval-afro.png",
+     "at": [
+      467,
+      7,
+      883,
+      331
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/kneel/oval-locs.png",
+     "at": [
+      340,
+      8,
+      885,
+      472
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/kneel/oval-bun.png",
+     "at": [
+      459,
+      15,
+      869,
+      325
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  },
+  {
+   "pageId": "p03",
+   "slotId": "grownup",
+   "parts": [
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/sit/round-buzz.png",
+     "at": [
+      232,
+      11,
+      600,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/sit/round-ponytail.png",
+     "at": [
+      122,
+      9,
+      610,
+      382
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/sit/round-braids.png",
+     "at": [
+      191,
+      10,
+      683,
+      563
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/sit/round-afro.png",
+     "at": [
+      154,
+      1,
+      620,
+      295
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/sit/round-locs.png",
+     "at": [
+      134,
+      10,
+      703,
+      410
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/sit/round-bun.png",
+     "at": [
+      159,
+      11,
+      613,
+      218
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/sit/oval-buzz.png",
+     "at": [
+      251,
+      15,
+      593,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/sit/oval-ponytail.png",
+     "at": [
+      147,
+      10,
+      595,
+      364
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/sit/oval-braids.png",
+     "at": [
+      219,
+      15,
+      661,
+      563
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/sit/oval-afro.png",
+     "at": [
+      174,
+      3,
+      610,
+      284
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/sit/oval-locs.png",
+     "at": [
+      154,
+      3,
+      651,
+      400
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/sit/oval-bun.png",
+     "at": [
+      195,
+      16,
+      602,
+      203
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/sit/oval-stubble.png",
+     "at": [
+      351,
+      192,
+      585,
+      308
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/sit/oval-moustache.png",
+     "at": [
+      446,
+      190,
+      630,
+      237
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/sit/oval-beard.png",
+     "at": [
+      341,
+      178,
+      622,
+      308
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/sit/round-buzz.png",
+     "at": [
+      232,
+      11,
+      600,
+      199
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/sit/round-ponytail.png",
+     "at": [
+      122,
+      9,
+      610,
+      382
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/sit/round-braids.png",
+     "at": [
+      191,
+      10,
+      683,
+      563
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/sit/round-afro.png",
+     "at": [
+      154,
+      1,
+      620,
+      295
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/sit/round-locs.png",
+     "at": [
+      134,
+      10,
+      703,
+      410
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/sit/round-bun.png",
+     "at": [
+      159,
+      11,
+      613,
+      218
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/sit/oval-buzz.png",
+     "at": [
+      251,
+      15,
+      593,
+      190
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/sit/oval-ponytail.png",
+     "at": [
+      147,
+      10,
+      595,
+      364
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/sit/oval-braids.png",
+     "at": [
+      219,
+      15,
+      661,
+      563
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/sit/oval-afro.png",
+     "at": [
+      174,
+      3,
+      610,
+      284
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/sit/oval-locs.png",
+     "at": [
+      154,
+      3,
+      651,
+      400
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/sit/oval-bun.png",
+     "at": [
+      195,
+      16,
+      602,
+      203
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/sit/oval-stubble.png",
+     "at": [
+      351,
+      192,
+      585,
+      308
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/sit/oval-moustache.png",
+     "at": [
+      446,
+      190,
+      630,
+      237
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/sit/oval-beard.png",
+     "at": [
+      341,
+      178,
+      622,
+      308
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  },
+  {
+   "pageId": "p03",
+   "slotId": "hero",
+   "parts": [
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/sit/round-buzz.png",
+     "at": [
+      110,
+      10,
+      594,
+      285
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/sit/round-ponytail.png",
+     "at": [
+      0,
+      7,
+      613,
+      433
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/sit/round-braids.png",
+     "at": [
+      81,
+      8,
+      663,
+      548
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/sit/round-afro.png",
+     "at": [
+      37,
+      0,
+      647,
+      363
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/sit/round-locs.png",
+     "at": [
+      37,
+      3,
+      692,
+      486
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/sit/round-bun.png",
+     "at": [
+      56,
+      13,
+      609,
+      295
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/sit/oval-buzz.png",
+     "at": [
+      148,
+      10,
+      564,
+      268
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/sit/oval-ponytail.png",
+     "at": [
+      0,
+      14,
+      600,
+      398
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/sit/oval-braids.png",
+     "at": [
+      106,
+      12,
+      649,
+      546
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/sit/oval-afro.png",
+     "at": [
+      63,
+      0,
+      618,
+      348
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/sit/oval-locs.png",
+     "at": [
+      62,
+      5,
+      650,
+      462
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "young-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/sit/oval-bun.png",
+     "at": [
+      81,
+      15,
+      590,
+      305
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/sit/round-buzz.png",
+     "at": [
+      110,
+      10,
+      594,
+      285
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/sit/round-ponytail.png",
+     "at": [
+      0,
+      7,
+      613,
+      433
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/sit/round-braids.png",
+     "at": [
+      81,
+      8,
+      663,
+      548
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/sit/round-afro.png",
+     "at": [
+      37,
+      0,
+      647,
+      363
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/sit/round-locs.png",
+     "at": [
+      37,
+      3,
+      692,
+      486
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/sit/round-bun.png",
+     "at": [
+      56,
+      13,
+      609,
+      295
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/hero/sit/oval-buzz.png",
+     "at": [
+      148,
+      10,
+      564,
+      268
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/hero/sit/oval-ponytail.png",
+     "at": [
+      0,
+      14,
+      600,
+      398
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/hero/sit/oval-braids.png",
+     "at": [
+      106,
+      12,
+      649,
+      546
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/hero/sit/oval-afro.png",
+     "at": [
+      63,
+      0,
+      618,
+      348
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/hero/sit/oval-locs.png",
+     "at": [
+      62,
+      5,
+      650,
+      462
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-child",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/hero/sit/oval-bun.png",
+     "at": [
+      81,
+      15,
+      590,
+      305
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  },
+  {
+   "pageId": "p02",
+   "slotId": "grownup",
+   "parts": [
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/front/round-buzz.png",
+     "at": [
+      360,
+      45,
+      652,
+      138
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/front/round-ponytail.png",
+     "at": [
+      347,
+      37,
+      689,
+      239
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/front/round-braids.png",
+     "at": [
+      324,
+      34,
+      680,
+      370
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/front/round-afro.png",
+     "at": [
+      289,
+      6,
+      708,
+      183
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/front/round-locs.png",
+     "at": [
+      287,
+      31,
+      726,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/front/round-bun.png",
+     "at": [
+      354,
+      8,
+      657,
+      148
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/front/round-stubble.png",
+     "at": [
+      365,
+      126,
+      646,
+      230
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/front/round-moustache.png",
+     "at": [
+      429,
+      143,
+      586,
+      178
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/front/round-beard.png",
+     "at": [
+      363,
+      125,
+      649,
+      223
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/front/oval-buzz.png",
+     "at": [
+      375,
+      33,
+      622,
+      127
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/front/oval-ponytail.png",
+     "at": [
+      364,
+      22,
+      622,
+      230
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/front/oval-braids.png",
+     "at": [
+      339,
+      26,
+      666,
+      348
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/front/oval-afro.png",
+     "at": [
+      320,
+      6,
+      670,
+      173
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/front/oval-locs.png",
+     "at": [
+      312,
+      20,
+      679,
+      256
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/front/oval-bun.png",
+     "at": [
+      369,
+      9,
+      622,
+      134
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/front/oval-stubble.png",
+     "at": [
+      432,
+      137,
+      592,
+      201
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/front/oval-moustache.png",
+     "at": [
+      433,
+      134,
+      583,
+      166
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/front/oval-beard.png",
+     "at": [
+      385,
+      113,
+      615,
+      202
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/front/round-buzz.png",
+     "at": [
+      360,
+      45,
+      652,
+      138
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/front/round-ponytail.png",
+     "at": [
+      347,
+      37,
+      689,
+      239
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/front/round-braids.png",
+     "at": [
+      324,
+      34,
+      680,
+      370
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/front/round-afro.png",
+     "at": [
+      289,
+      6,
+      708,
+      183
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/front/round-locs.png",
+     "at": [
+      287,
+      31,
+      726,
+      273
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/front/round-bun.png",
+     "at": [
+      354,
+      8,
+      657,
+      148
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/front/round-stubble.png",
+     "at": [
+      365,
+      126,
+      646,
+      230
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/front/round-moustache.png",
+     "at": [
+      429,
+      143,
+      586,
+      178
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:round",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/front/round-beard.png",
+     "at": [
+      363,
+      125,
+      649,
+      223
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:buzz",
+     "asset": "figures/grownup/front/oval-buzz.png",
+     "at": [
+      375,
+      33,
+      622,
+      127
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:ponytail",
+     "asset": "figures/grownup/front/oval-ponytail.png",
+     "at": [
+      364,
+      22,
+      622,
+      230
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:braids",
+     "asset": "figures/grownup/front/oval-braids.png",
+     "at": [
+      339,
+      26,
+      666,
+      348
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:afro",
+     "asset": "figures/grownup/front/oval-afro.png",
+     "at": [
+      320,
+      6,
+      670,
+      173
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:locs",
+     "asset": "figures/grownup/front/oval-locs.png",
+     "at": [
+      312,
+      20,
+      679,
+      256
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "hair",
+     "option": "hair:bun",
+     "asset": "figures/grownup/front/oval-bun.png",
+     "at": [
+      369,
+      9,
+      622,
+      134
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:stubble",
+     "asset": "figures/grownup/front/oval-stubble.png",
+     "at": [
+      432,
+      137,
+      592,
+      201
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:moustache",
+     "asset": "figures/grownup/front/oval-moustache.png",
+     "at": [
+      433,
+      134,
+      583,
+      166
+     ],
+     "palette": "hairColour",
+     "approved": true
+    },
+    {
+     "age": "older-adult",
+     "face": "face:oval",
+     "axis": "facialHair",
+     "option": "facial-hair:beard",
+     "asset": "figures/grownup/front/oval-beard.png",
+     "at": [
+      385,
+      113,
+      615,
+      202
+     ],
+     "palette": "hairColour",
+     "approved": true
+    }
+   ]
+  }
+ ]
+}

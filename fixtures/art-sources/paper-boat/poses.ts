@@ -17,3 +17,15 @@ export const POSES: ReadonlyArray<Pose> = [
   { role: "grownup", pose: "back", faces: ["round"], notSkin: [[0, 895, 1000, 1000]] },
   { role: "grownup", pose: "sit", faces: ["round", "oval"], occluder: [250, 0, 1000, 420], notSkin: [[80, 850, 418, 1000], [550, 850, 1000, 1000]] },
 ];
+
+/** D43's options (D43: 2026-11-19T19:30). */
+export const D43_HAIR = ["hair:buzz", "hair:ponytail", "hair:braids", "hair:afro", "hair:locs", "hair:bun"];
+export const D43_FACIAL_HAIR = ["facial-hair:stubble", "facial-hair:moustache", "facial-hair:beard"];
+/**
+ * The D43 parts published in v5's manifest (production's v5 is this repo's first v3, 2026-11-19), one pose per role
+ * to prove them; every other D43 part is in additions/2.json (D41).
+ */
+export const IN_MANIFEST: Record<string, ReadonlyArray<string>> = {
+  "hero/point/round": D43_HAIR,
+  "grownup/sit/round": D43_FACIAL_HAIR,
+};

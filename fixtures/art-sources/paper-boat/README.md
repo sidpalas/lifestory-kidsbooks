@@ -1,6 +1,6 @@
 # Paper Boat art sources
 
-How `fixtures/stories/paper-boat` was made (see its `ART.md`). The generated images (`raw/`, ~45 MB) are not
+How `fixtures/stories/paper-boat` was made (see its `ART.md`). The generated images (`raw/`) are not
 committed; the story directory holds the layers cut from them. To redo it, with `OPENAI_API_KEY` set:
 
 ```sh
@@ -13,16 +13,29 @@ $py prep.py out   # also the overlays (blush, open mouth)
 $py build.py ../../..
 ```
 
-Then v3's poses (TypeScript, from the repo root, using the app's own cut-out code; edits cached in `raw/v3`):
+Then the poses (published as v5; the scripts keep their original `v3` names). TypeScript, from the repo root,
+using the app's own cut-out code; edits cached in `raw/v3`:
 
 ```sh
 node fixtures/art-sources/paper-boat/bases.ts     # raw/v3/<role>-<pose>-<face>.png -> bases, skin masks, overlays, occluder
 node fixtures/art-sources/paper-boat/parts.ts     # part edits (partPrompt) and cut-outs (cutOutLayer), with review images
-node fixtures/art-sources/paper-boat/build-v3.ts  # pages, boxes and v3 manifest
+node fixtures/art-sources/paper-boat/build-v3.ts  # unchanged published manifest, v5 reference and addition 2
 ```
 
-`poses.ts` lists the poses, their shoe areas kept out of the skin mask and the occluder's area; `parts.ts` the zones
-and which pose gets D43's options; `takes.json` the retakes (stubble took two).
+`poses.ts` lists the poses, their shoe areas kept out of the skin mask and the occluder's area, plus the original
+manifest's D43 subset. `parts.ts` generates every D43 option for every pose/face, including the standing adult;
+`build-v3.ts` puts the newly covered options in `additions/2.json`, not the immutable manifest. Red hair remains
+addition 1. Supported ages share drawings, as do both faces of the back view.
+
+`takes.json` records approved take numbers: missing means the first take, `2` means one rejected edit then an
+approved retake. The full-coverage pass used 72 initial edits and nine retakes (eight buns that exposed the scalp
+silhouette and one standing round adult stubble that covered only the chin), 81 calls for US$3.862529. Combined
+with the original pose pass: 138 calls, US$6.625167. `usage.jsonl` holds per-call usage (costed at the rates in
+`providers/openai.ts`); `raw/v3/` holds padded
+model inputs and raw edits; `out/v3/` holds cut parts and review composites. These are local working files, not
+committed. Review was visual on light and dark skin; elapsed review time was not instrumented. Allow roughly
+20–40 seconds per part for a contact-sheet inspection, plus 1–2 minutes to diagnose a failed cut; these are planning
+estimates, not measured timings.
 
 A changed manifest or changed art needs a new `version` in `story.json`: stored versions never change.
 

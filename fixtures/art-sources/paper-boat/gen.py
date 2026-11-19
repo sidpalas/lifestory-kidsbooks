@@ -2,7 +2,7 @@
 usage: gen.py generate <out.png> <size> <quality> <prompt>
        gen.py edit <out.png> <in.png> <size> <quality> <prompt>
 """
-import base64, json, os, sys, time, urllib.request, uuid
+import base64, json, os, sys, time, urllib.error, urllib.request, uuid
 
 MODEL = os.environ.get("ART_MODEL", "gpt-image-2.6-sunburst")
 KEY = os.environ["OPENAI_API_KEY"]
@@ -10,9 +10,16 @@ LOG = os.path.join(os.path.dirname(__file__), "usage.jsonl")
 
 
 def post(url, body, content_type):
-    req = urllib.request.Request(url, data=body, headers={"Authorization": f"Bearer {KEY}", "Content-Type": content_type})
-    with urllib.request.urlopen(req, timeout=600) as res:
-        return json.loads(res.read())
+    for attempt in range(6):
+        req = urllib.request.Request(url, data=body, headers={"Authorization": f"Bearer {KEY}", "Content-Type": content_type})
+        try:
+            with urllib.request.urlopen(req, timeout=600) as res:
+                return json.loads(res.read())
+        except urllib.error.HTTPError as error:
+            # Rate limits aren't billed: wait and try again.
+            if error.code != 429 or attempt == 5:
+                raise
+            time.sleep(20 * (attempt + 1))
 
 
 def multipart(fields, files):

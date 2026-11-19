@@ -62,9 +62,10 @@ describe("StoryManifest", () => {
   it("accepts the watercolour sample, whose raster figures cover the vocabulary with approved parts", () => {
     const dir = new URL("../../../fixtures/stories/paper-boat/", import.meta.url);
     const stored = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
-    const manifest = Effect.runSync(mergeAdditions(stored, [JSON.parse(readFileSync(new URL("additions/1.json", dir), "utf8"))]));
+    const manifest = Effect.runSync(mergeAdditions(stored, [1, 2].map((revision) => JSON.parse(readFileSync(new URL(`additions/${revision}.json`, dir), "utf8")))));
     expect(unapprovedParts(manifest)).toEqual([]);
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
+    // Revision 2 completes D43 on every pose, not only the options that predate the version.
+    expect(uncoveredOptions(manifest)).toEqual([]);
     expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
     expect(manifestAssets(manifest).filter((asset) => !existsSync(new URL(asset, dir)))).toEqual([]);
   });
