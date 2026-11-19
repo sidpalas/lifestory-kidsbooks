@@ -378,5 +378,5 @@ Open needs found on the first production deploy (2026-11-19):
   preview, worker jobs, proofs) need a person. Options: an ordinary "agent" family the operator invites, with its
   password kept as an Amp secret (no new API surface), or an API key (for example Better Auth's apiKey plugin),
   which is more capable but adds a way to authenticate on an app holding children's data.
-- **Email delivery.** Links are only logged (D23). `EMAIL_PROVIDER` picks the provider; Resend's free plan is proposed
-  in D39, waiting on Sid's sign-up and DNS.
+- **Email delivery.** Resend (D39, Sid): `EMAIL_PROVIDER=resend` is built; production switches once a sending domain
+  is verified in Resend (README "Email"). Until then links are logged (D23).

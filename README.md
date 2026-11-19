@@ -155,6 +155,20 @@ railway config plan && railway config apply
 To use the fallback instead, change `IMAGE_PROVIDER` to `modal` and add the Modal variables from "Image generation on
 Modal" below, then apply and redeploy both services.
 
+### Email
+
+Production logs invitation and set-password links until Resend sends them (D39). To switch, once:
+
+1. In Resend, add a sending domain (for example `mail.devopsdirective.com`) and create its DNS records (SPF, DKIM)
+   until Resend shows it verified.
+2. Set the key on the web service, never in `.railway/railway.ts`:
+   `railway variables --service web --set "RESEND_API_KEY=<key>" --skip-deploys`.
+3. In `.railway/railway.ts`, add `EMAIL_PROVIDER: "resend"`, `EMAIL_FROM: "Lifestory <hello@<that domain>>"`, and
+   `RESEND_API_KEY: preserve()` to the web service's `env`, then `railway config plan && railway config apply`.
+
+Invites then fail visibly if Resend refuses an email (an unverified domain, a wrong key); the web log has the error and
+the link. Only the web service sends email.
+
 ### Agent account
 
 Agents verifying a deploy sign in as an ordinary family, "Amp agent", which the operator invites (D38, proposed). It
@@ -163,7 +177,7 @@ operator. Set it up once:
 
 1. Sign in as the operator at https://lifestory.devopsdirective.com and, under "Invite a new family", invite name
    `Amp agent` with an address you receive, such as `sid+lifestory-agent@<your domain>`.
-2. Find its set-password link in the web log (there is no email provider yet, D23):
+2. Find its set-password link in the web log (until Resend sends email, D39):
    `railway logs --service web | grep "email to sid+lifestory-agent"`.
 3. Generate a password (`openssl rand -base64 24`), open the link, and set it.
 4. In Amp Settings → Secrets, add project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD` for this

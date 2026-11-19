@@ -116,7 +116,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** we add a delivery provider that offers magic links, invitees often miss the 7-day window, or we
   need invitations that don't create an account until accepted (for example to keep unaccepted invites out of user lists).
 
-### D39. Email delivery: Resend's free plan over its HTTPS API — Proposed (waiting on Sid)
+### D39. Email delivery: Resend's free plan over its HTTPS API — Decided (Sid, 2026-11-19)
 - **Need:** invitations and set-password links (D23), a few a week while invite-only. Each email holds the recipient's
   name and address and a single-use link valid for 7 days; no children's data. The provider must work from any host
   (D7) over HTTPS: Railway disables outbound SMTP on Free, Trial, and Hobby plans (Railway docs, "Outbound
@@ -133,14 +133,17 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | Terms | DPA pre-signed at sign-up, SCCs; data stored in the US; content not used for training | Transactional mail on separate IPs from bulk; DPA not checked | AWS DPA in the service terms; region we choose |
   | Setup | Sign up, verify a domain (DNS), one API key | Sign up, manual account approval, verify a domain | AWS account, IAM user and key, verify a domain, request production access (sandbox sends only to verified addresses) |
 
-- **Proposal:** Resend Free. It costs nothing at invite-only volume with room to spare, needs the least setup, is the
+- **Decision:** Resend Free (Sid, 2026-11-19). It costs nothing at invite-only volume with room to spare, needs the least setup, is the
   provider Railway's docs recommend, and keeps content 30 days (the links in it are single-use and expire in 7). The
   `resend` entry would read `RESEND_API_KEY` and `EMAIL_FROM`, and production would stop logging links. Moving later is
   one `Mailer` entry and DNS records.
 - **Alternatives:** Amazon SES if Sid wants no stored message content or already runs an AWS account (cheapest, most
   setup); Postmark if deliverability matters more than price (it vets senders and separates transactional traffic;
   $15/mo once past 100 emails a month).
-- **Needs Sid:** the sign-up (a vendor account and its terms), the sending domain, and its DNS records.
+- **How:** `EMAIL_PROVIDER=resend` POSTs each email to `https://api.resend.com/emails` with `RESEND_API_KEY`, from
+  `EMAIL_FROM`, which must be on a domain verified in Resend. A refused or failed send fails the invite, so the operator
+  sees it, and the error log still carries the link. `log` stays the default everywhere else, and production stays
+  on `log` until the sending domain is verified (README "Email").
 - **Reopen if:** volume passes 100 a day (Resend Free's cap), we need content kept less than 30 days, or deliverability
   to invitees' inboxes is poor.
 
