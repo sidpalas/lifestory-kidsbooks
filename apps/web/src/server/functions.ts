@@ -7,19 +7,18 @@ import {
   StoryManifest,
   StorySummary,
   JobError,
-  UnsupportedLook,
-  Forbidden,
-  ProofSummary,
+  Character,
+  PreviewRole,
   TextStyleName,
 } from "@lifestory/core/contracts";
 import {
+  activeFamily,
   Auth,
   canAuthor,
   getStoryPreview,
+  listCharacters,
   listPublishedStories,
-  listStoryProofs,
   printableProof,
-  requestStoryProof,
 } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -66,56 +65,37 @@ export const StoryPreviewResult = ResultSchema(
     story: StorySummary,
     version: Schema.Number,
     manifest: StoryManifest,
+    /** Who fills each role in this preview, and whether the story can draw them. */
+    roles: Schema.Array(PreviewRole),
     cast: Schema.Record(Schema.String, CastMember),
     /** Each page's composed illustration, as storage keys placed in the illustration area. */
     pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
+    /** The active family's members, who can fill the roles, and whether the user may make books in it. */
+    characters: Schema.Array(Character),
+    canEdit: Schema.Boolean,
   }),
-  Schema.Union([NotAuthenticated, NotFound, UnsupportedLook]),
+  Schema.Union([NotAuthenticated, NotFound]),
 );
 
+export const PreviewChoice = Schema.Struct({
+  /** A family member per role, by character ID. */
+  cast: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+  /** A look tried on a role's example character; wins over `cast`. */
+  looks: Schema.optional(Schema.Record(Schema.String, Look)),
+});
+
+/** A story's pages with the family's members in its roles, or the examples with looks being tried. */
 export const getStoryPreviewFn = createServerFn({ method: "GET" })
-  .validator(
-    Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String, looks: Schema.optional(Schema.Record(Schema.String, Look)) })),
-  )
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String, ...PreviewChoice.fields })))
   .handler(async ({ data }) =>
     runEffect(
       StoryPreviewResult,
       Effect.gen(function* () {
         const user = yield* currentUser;
-        return yield* getStoryPreview(user.id, data.slug, data.looks);
-      }),
-    ),
-  );
-
-const StorySlugAndLooks = Schema.Struct({ slug: Schema.String, looks: Schema.optional(Schema.Record(Schema.String, Look)) });
-
-export const RequestProofResult = ResultSchema(Schema.Struct({ id: Schema.String }), Schema.Union([NotAuthenticated, NotFound, Forbidden, UnsupportedLook, JobError]));
-
-/** Starts a PDF proof of the story with the looks shown, for the user's family (D27). */
-export const requestStoryProofFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(StorySlugAndLooks))
-  .handler(async ({ data }) =>
-    runEffect(
-      RequestProofResult,
-      Effect.gen(function* () {
-        const user = yield* currentUser;
-        return yield* requestStoryProof(user, data.slug, data.looks);
-      }),
-    ),
-  );
-
-export const StoryProofsResult = ResultSchema(
-  Schema.Struct({ canRequest: Schema.Boolean, proofs: Schema.Array(ProofSummary) }),
-  Schema.Union([NotAuthenticated, NotFound, Forbidden]));
-
-export const listStoryProofsFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String })))
-  .handler(async ({ data }) =>
-    runEffect(
-      StoryProofsResult,
-      Effect.gen(function* () {
-        const user = yield* currentUser;
-        return yield* listStoryProofs(user, data.slug);
+        const { active } = yield* activeFamily(user);
+        const { characters, canEdit } = active ? yield* listCharacters(user.id, active.id) : { characters: [], canEdit: false };
+        const preview = yield* getStoryPreview(user.id, data.slug, characters, { cast: data.cast, looks: data.looks });
+        return { ...preview, characters, canEdit };
       }),
     ),
   );

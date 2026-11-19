@@ -1,5 +1,5 @@
-// The family's PDF proofs of a story preview or a book: make one from the cast shown, watch it render, download it
-// (D27), and for a book approve it for print. The page passes how to list, request, and approve them.
+// A book's PDF proofs: make one from the cast and text as they are now, watch it render, download it (D27), and
+// approve one for print. The page passes how to list, request, and approve them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -21,8 +21,8 @@ export function ProofPanel({
   load: () => Promise<ProofList>;
   /** Starts one; rejects with a message for the parent. */
   request: () => Promise<void>;
-  /** Approves a ready proof for print; only a book's proofs can be approved, so a story preview passes none. */
-  approve?: (proofId: string) => Promise<void>;
+  /** Approves a ready proof for print. */
+  approve: (proofId: string) => Promise<void>;
   hydrated: boolean;
 }) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
@@ -48,7 +48,6 @@ export function ProofPanel({
   }, [load, rendering]);
 
   const approveProof = async (proofId: string) => {
-    if (!approve) return;
     setApproving(proofId);
     setError(null);
     try {
@@ -80,8 +79,8 @@ export function ProofPanel({
         <div>
           <h2 className="font-medium">Print proof</h2>
           <p className="text-muted-foreground text-sm">
-            A print-ready PDF of the whole book with the characters as shown, with bleed.
-            {approve && " Download it and check every page, then approve it for print."}
+            A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every page, then
+            approve it for print.
           </p>
         </div>
         {state?.canRequest && (
@@ -114,8 +113,7 @@ export function ProofPanel({
                 ) : (
                   proof.expiresAt && (
                     <span className="text-muted-foreground text-xs">
-                      Deleted on {new Date(proof.expiresAt).toLocaleDateString()}
-                      {approve ? " unless approved" : ""}
+                      Deleted on {new Date(proof.expiresAt).toLocaleDateString()} unless approved
                     </span>
                   )
                 )}
@@ -125,7 +123,7 @@ export function ProofPanel({
                   <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
                     Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
                   </a>
-                  {approve && state.canRequest && !proof.approvedAt && (
+                  {state.canRequest && !proof.approvedAt && (
                     <Button size="sm" variant="outline" onClick={() => void approveProof(proof.id)} disabled={!hydrated || approving !== null}>
                       {approving === proof.id ? "Approving…" : "Approve for print"}
                     </Button>

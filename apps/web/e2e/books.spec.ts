@@ -74,10 +74,18 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   // Make a book: each role is filled by a family member of an age it accepts (the grown-up's role takes adults and
   // older adults).
   await page.goto("/stories/the-moon-picnic");
-  const make = page.getByRole("form", { name: "Make our book" });
+  const make = page.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
   await make.getByLabel(/A grown-up/).selectOption({ label: grownup });
-  await make.getByRole("button", { name: "Make the book" }).click();
+  // The story's pages show them at once, with their saved looks, before the book exists: the same 45 layers the
+  // book composes below, and no example look pickers.
+  await expect(page.getByTestId("pages-heading")).toHaveText(`The pages with ${child} and ${grownup}`);
+  const preview = page.getByRole("region", { name: "Pages" }).getByTestId("book-page");
+  await expect(preview.nth(2)).toContainText(`Grandpa checked the fuel. ${child} checked the cocoa.`);
+  await imagesLoaded(page);
+  await expect.poll(() => preview.locator("img").count()).toBe(45);
+  await expect(page.getByTestId(/^try-/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Make the book" }).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = page.url();
 
@@ -154,10 +162,10 @@ test("a viewer reads the family's characters and books but can't change them", a
   await addCharacter(page, child, "he/him", "Older child", "Short brown hair, glasses");
   await addCharacter(page, `Lee ${id}`, "she/her", "Adult", "Long brown hair");
   await page.goto("/stories/the-moon-picnic");
-  const make = page.getByRole("form", { name: "Make our book" });
+  const make = page.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
   await make.getByLabel(/A grown-up/).selectOption({ label: `Lee ${id}` });
-  await make.getByRole("button", { name: "Make the book" }).click();
+  await page.getByRole("button", { name: "Make the book" }).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = new URL(page.url()).pathname;
 

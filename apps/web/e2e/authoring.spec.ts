@@ -221,9 +221,9 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(author.getByTestId("characters")).toContainText(child);
 
   await author.getByTestId("stories").getByRole("link", { name: title }).click();
-  const make = author.getByRole("form", { name: "Make our book" });
+  const make = author.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
-  await make.getByRole("button", { name: "Make the book" }).click();
+  await author.getByRole("button", { name: "Make the book" }).click();
   await expect(author).toHaveURL(/\/books\/book_/);
   const pages = author.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(pages).toHaveCount(1);

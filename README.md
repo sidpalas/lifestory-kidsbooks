@@ -15,8 +15,8 @@ This is a demo codebase: an open-source, realistic product used to test backgrou
    portrait.
 3. The seeded sample stories "The Moon Picnic" (book format v2, placeholder art, approved variant parts per role) and
    "The Paper Boat" (the same format with watercolour raster art).
-4. A family makes a personalized book of it; every page is composed from the approved parts, and a look change shows
-   on every page at once.
+4. A family picks who plays each role and sees every page with them at once, then makes a personalized book; every
+   page is composed from the approved parts, and a look change shows on every page at once.
 5. The editor shows a page as it will print and edits its text.
 6. The worker renders a print-ready PDF proof with headless Chromium; the parent downloads it and approves it for
    print.

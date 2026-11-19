@@ -36,12 +36,12 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
   for (const [slug, version, name] of [["the-paper-boat", 2, "paper-boat"], ["the-moon-picnic", 5, "moon-picnic"]] as const) {
     await page.goto(`/stories/${slug}`);
     await expect(page.getByText(`version ${version}`)).toBeVisible();
-    const make = page.getByRole("form", { name: "Make our book" });
+    const make = page.getByRole("list", { name: "Roles" });
     await make.getByLabel(/The child/).selectOption({ label: child });
     await make.getByLabel(/grown-up/i).selectOption({ label: grownup });
     // The story can draw red now, so making the book warns about nothing.
     await expect(page.getByTestId(/^cast-warning-/)).toHaveCount(0);
-    await make.getByRole("button", { name: "Make the book" }).click();
+    await page.getByRole("button", { name: "Make the book" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     await imagesLoaded(page);
     // Nobody is left out of the pictures, and no stand-in is asked for.
@@ -112,6 +112,18 @@ test("an addition draws in an existing book at once, and a proof made before it 
     const look = { face: "face:round", features: "features:soft", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:red", glasses: "glasses:none", facialHair: "facial-hair:none" } as const;
     const hero = await run(createCharacter(parent, family, { name: `Rosie ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
     const grown = await run(createCharacter(parent, family, { name: `Fern ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "adult" } }));
+    // Choosing them on the story page warns before the book is made, and the pictures leave them out (D28, D41).
+    const cast = encodeURIComponent(JSON.stringify({ hero: hero.id, grownup: grown.id }));
+    await page.goto(`/__dev/log-me-in/parent@lifestory.dev?returnTo=${encodeURIComponent(`/stories/${slug}?cast=${cast}`)}`);
+    await expect(page.getByTestId("cast-warning-hero")).toHaveText(
+      `This story can't draw Rosie ${suffix}'s hair colour yet, so the pages leave Rosie ${suffix} out. In the book you'll pick a stand-in.`,
+    );
+    await expect(page.getByTestId("cast-warning-grownup")).toBeVisible();
+    // Every figure is recoloured from the cast's skin and hair; with both left out, no page draws one.
+    await imagesLoaded(page);
+    const drawn = await page.getByRole("region", { name: "Pages" }).locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")!));
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(drawn.filter((src) => src.includes("/recoloured/"))).toEqual([]);
     const { id: bookId } = await run(createBook(parent, family, { slug, cast: { hero: hero.id, grownup: grown.id } }));
     // The story can't draw red yet, so the parent picks brown stand-ins (D28).
     for (const slotId of ["hero", "grownup"]) {

@@ -104,8 +104,23 @@ export const orderedCuratedLooks = (age: Look["age"], pronouns: PronounSet) =>
 
 const same = (a: Look, b: Look) => (Object.keys(a) as Array<LookAxis>).every((axis) => a[axis] === b[axis]);
 
-/** A controlled picker: `look` is the current look, `onChange` receives the next one. */
-export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look; pronouns: PronounSet; onChange: (look: Look) => void; disabled?: boolean }) {
+/**
+ * A controlled picker: `look` is the current look, `onChange` receives the next one. `ages` limits the ages offered,
+ * such as to the ones a story role accepts.
+ */
+export function LookPicker({
+  look,
+  pronouns,
+  onChange,
+  disabled,
+  ages,
+}: {
+  look: Look;
+  pronouns: PronounSet;
+  onChange: (look: Look) => void;
+  disabled?: boolean;
+  ages?: ReadonlyArray<Look["age"]>;
+}) {
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
@@ -140,7 +155,7 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
 
       <div className="flex flex-col gap-4">
         <Step title={step("Age", "Age")}>
-          {ageOptions.map((option) => (
+          {ageOptions.filter((option) => !ages || ages.includes(option.id)).map((option) => (
             <Choice key={option.id} pressed={look.age === option.id} label={option.label} disabled={disabled} onClick={() => setAge(option.id)}>
               <span className="block px-3 py-2 text-left text-sm">
                 {option.label}

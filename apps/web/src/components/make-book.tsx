@@ -1,100 +1,170 @@
-// Starting a family's book of a story: choose which family member plays each role. A role accepts some character
-// ages (D29), so only family members of those ages are offered.
-import { ageLabel, type Character, type CharacterSlot, optionLabel, type StoryManifest, unsupportedOptions, unwrapResult } from "@lifestory/core/contracts";
+// Who's in a story: choose a family member for each role, and the pages below draw them with their saved looks
+// right away; then make the book. A role can instead try looks on the story's example character, which is a preview
+// only and never touches the family. A role accepts some character ages (D29), so only family members of those ages
+// are offered, and a look the story can't draw yet is left out of the pictures with a warning (D28, D41).
+import { ageLabel, type Character, type CharacterSlot, type LookAxis, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
 import { createBookFn, CreateBookResult } from "~/server/books";
 
 /** "young child or older child". */
 export const agesLabel = (slot: CharacterSlot) => slot.ages.map((age) => ageLabel(age).toLowerCase()).join(" or ");
 
-/**
- * What the story can't draw of `character` in `slotId` yet, as a parent reads it ("red hair"): an option added to
- * the vocabulary after the story was published and not yet added to it (D41). The book asks for a stand-in.
- */
-const notDrawable = (manifest: StoryManifest, slotId: string, character: Character) =>
-  unsupportedOptions(manifest, slotId, character.look)
-    .filter((axis) => axis !== "age")
-    .map((axis) => optionLabel(character.look[axis]));
+/** The select's value for trying looks on the example character. */
+export const EXAMPLE = "example";
 
-export function MakeBook({ slug, manifest, characters }: { slug: string; manifest: StoryManifest; characters: ReadonlyArray<Character> }) {
-  const slots = manifest.characterSlots;
+const missingLabel = (role: PreviewRole) => role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ");
+
+export function StoryCast({
+  slug,
+  slots,
+  roles,
+  characters,
+  canEdit,
+  selected,
+  trying,
+  onSelect,
+  updating,
+}: {
+  slug: string;
+  slots: ReadonlyArray<CharacterSlot>;
+  /** Who the pages show now. */
+  roles: ReadonlyArray<PreviewRole>;
+  characters: ReadonlyArray<Character>;
+  canEdit: boolean;
+  /** What each role's select shows: a character ID, or EXAMPLE. Runs ahead of `roles` while pages recompose. */
+  selected: (slotId: string) => string;
+  /** Whether the looks picker for the role's example is open. */
+  trying: (slotId: string) => boolean;
+  onSelect: (slotId: string, value: string) => void;
+  updating: boolean;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const fits = (slot: CharacterSlot) => characters.filter((character) => slot.ages.includes(character.look.age));
-  const [cast, setCast] = useState<Record<string, string>>(() =>
-    Object.fromEntries(slots.flatMap((slot) => (fits(slot)[0] ? [[slot.slotId, fits(slot)[0]!.id]] : []))),
-  );
   const [error, setError] = useState<string | null>(null);
-  const ready = slots.every((slot) => cast[slot.slotId]);
+  const [making, setMaking] = useState(false);
+  const fits = (slot: CharacterSlot) => characters.filter((character) => slot.ages.includes(character.look.age));
+  const everyoneFromFamily = slots.every((slot) => selected(slot.slotId) !== EXAMPLE);
 
-  const create = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const create = async () => {
+    setMaking(true);
+    setError(null);
     try {
+      const cast = Object.fromEntries(slots.map((slot) => [slot.slotId, selected(slot.slotId)]));
       const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast } }));
       await router.navigate({ to: "/books/$bookId", params: { bookId: id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
+      setMaking(false);
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Make our book</CardTitle>
-        <CardDescription>Choose who plays each part. Every page is drawn with their looks.</CardDescription>
+        <CardTitle>
+          <h2>Who's in this book</h2>
+        </CardTitle>
+        <CardDescription>
+          {canEdit
+            ? "Choose who plays each part. The pages below show them with their saved looks right away."
+            : "Preview the pages with your family. You're a viewer in this family, so a parent makes the book."}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form className="flex flex-wrap items-end gap-4" onSubmit={create} aria-label="Make our book">
-          {slots.map((slot) => (
-            <div key={slot.slotId} className="flex min-w-48 flex-col gap-2">
-              <Label htmlFor={`cast-${slot.slotId}`}>
-                {slot.label} <span className="text-muted-foreground font-normal">({agesLabel(slot)})</span>
-              </Label>
-              {fits(slot).length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  Nobody yet.{" "}
-                  <Link to="/characters/new" className="underline">
-                    Add someone ({agesLabel(slot)})
-                  </Link>
-                </p>
-              ) : (
-                <NativeSelect
-                  id={`cast-${slot.slotId}`}
-                  value={cast[slot.slotId]}
-                  disabled={!hydrated}
-                  onChange={(event) => setCast({ ...cast, [slot.slotId]: event.target.value })}
-                >
-                  {fits(slot).map((character) => (
-                    <option key={character.id} value={character.id}>
-                      {character.name}
-                    </option>
-                  ))}
-                </NativeSelect>
-              )}
-              {(() => {
-                const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
-                const missing = character ? notDrawable(manifest, slot.slotId, character) : [];
-                return (
-                  missing.length > 0 && (
-                    <p className="max-w-64 text-xs text-amber-700" data-testid={`cast-warning-${slot.slotId}`}>
-                      This story can't draw {character!.name}'s {missing.join(" or ")} yet. You'll pick a stand-in in the book.
+      <CardContent className="flex flex-col gap-4">
+        <ul className="grid gap-3 md:grid-cols-2" aria-label="Roles">
+          {slots.map((slot) => {
+            const role = roles.find((candidate) => candidate.slotId === slot.slotId)!;
+            const value = selected(slot.slotId);
+            const character = characters.find((candidate) => candidate.id === role.characterId);
+            const example = value === EXAMPLE;
+            return (
+              <li key={slot.slotId} className="flex min-w-0 gap-3 rounded-md border p-3" data-testid={`role-${slot.slotId}`}>
+                <img src={portraitUrl(role.member.look)} alt="" width={61} height={70} className="h-[70px] w-[61px] shrink-0 rounded-md ring-1 ring-black/10" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
+                  <label htmlFor={`cast-${slot.slotId}`} className="font-medium">
+                    {slot.label} <span className="text-muted-foreground font-normal">({agesLabel(slot)})</span>
+                  </label>
+                  <NativeSelect id={`cast-${slot.slotId}`} className="w-full min-w-0" value={value} disabled={!hydrated} onChange={(event) => onSelect(slot.slotId, event.target.value)}>
+                    {fits(slot).length > 0 && (
+                      <optgroup label="Your family">
+                        {fits(slot).map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Just previewing">
+                      <option value={EXAMPLE}>Try looks on {slot.example.name}, the story's example</option>
+                    </optgroup>
+                  </NativeSelect>
+                  {example ? (
+                    <p className="text-muted-foreground text-xs">
+                      {fits(slot).length === 0 ? `Nobody in your family is a ${agesLabel(slot)} yet. ` : ""}
+                      {slot.example.name} comes with the story.{" "}
+                      {trying(slot.slotId) ? (
+                        "Looks you try below show on the pages and aren't saved."
+                      ) : (
+                        <button type="button" className="underline" disabled={!hydrated} onClick={() => onSelect(slot.slotId, EXAMPLE)}>
+                          Try looks on {slot.example.name}
+                        </button>
+                      )}
+                      {fits(slot).length === 0 && canEdit && (
+                        <>
+                          {" "}
+                          <Link to="/characters/new" className="underline">
+                            Add someone ({agesLabel(slot)})
+                          </Link>
+                        </>
+                      )}
                     </p>
-                  )
-                );
-              })()}
-            </div>
-          ))}
-          <Button type="submit" disabled={!hydrated || !ready}>
-            Make the book
-          </Button>
-        </form>
+                  ) : (
+                    character && (
+                      <p className="text-muted-foreground text-xs">
+                        Drawn with {character.name}'s saved look.{" "}
+                        <Link to="/characters/$characterId" params={{ characterId: character.id }} className="underline">
+                          {canEdit ? "Change look" : "See look"}
+                        </Link>
+                      </p>
+                    )
+                  )}
+                  {role.wrongAge ? (
+                    <p className="text-xs text-amber-700" data-testid={`cast-warning-${slot.slotId}`}>
+                      {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()}, and this part is for {agesLabel(slot)}, so the pages leave them out.
+                    </p>
+                  ) : (
+                    role.unsupported.length > 0 && (
+                      <p className="text-xs text-amber-700" data-testid={`cast-warning-${slot.slotId}`}>
+                        This story can't draw {role.characterId ? `${role.member.name}'s ` : ""}
+                        {missingLabel(role)} yet, so the pages leave {role.member.name} out.
+                        {role.characterId && " In the book you'll pick a stand-in."}
+                      </p>
+                    )
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        {canEdit && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
+              Make the book
+            </Button>
+            <p className="text-muted-foreground text-xs">
+              {everyoneFromFamily
+                ? "Your book keeps this cast. You can edit its text and print a proof next."
+                : "Choose someone from your family for every part to make the book."}
+            </p>
+          </div>
+        )}
         {error && (
-          <p className="text-destructive mt-2 text-sm" role="alert">
+          <p className="text-destructive text-sm" role="alert">
             {error}
           </p>
         )}
@@ -102,3 +172,4 @@ export function MakeBook({ slug, manifest, characters }: { slug: string; manifes
     </Card>
   );
 }
+

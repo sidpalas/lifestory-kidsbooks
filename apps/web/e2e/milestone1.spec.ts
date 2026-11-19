@@ -121,10 +121,10 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
 
   // 4. A personalized book of the sample story: every page is composed with them, and the text names them.
   await owner.goto("/stories/the-moon-picnic");
-  const make = owner.getByRole("form", { name: "Make our book" });
+  const make = owner.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
   await make.getByLabel(/A grown-up/).selectOption({ label: grownup });
-  await make.getByRole("button", { name: "Make the book" }).click();
+  await owner.getByRole("button", { name: "Make the book" }).click();
   await expect(owner).toHaveURL(/\/books\/book_/);
   const bookPath = new URL(owner.url()).pathname;
   const allPages = owner.getByRole("region", { name: "All pages" }).getByTestId("book-page");

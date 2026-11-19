@@ -95,6 +95,19 @@ export const BookRole = Schema.Struct({
 });
 export type BookRole = typeof BookRole.Type;
 
+/**
+ * Who fills one role of a story preview: a family member (`characterId`), or the role's example character with a
+ * look being tried (`characterId` null). Like a book's role, one the story can't draw is left out of the pictures.
+ */
+export const PreviewRole = Schema.Struct({
+  slotId: Schema.String,
+  characterId: Schema.NullOr(Schema.String),
+  member: CastMember,
+  wrongAge: Schema.Boolean,
+  unsupported: Schema.Array(Schema.String),
+});
+export type PreviewRole = typeof PreviewRole.Type;
+
 /** A text block of a book page: the story's content, the family's edit if any, and the text as printed. */
 export const BookTextBlock = Schema.Struct({
   style: TextStyleName,
@@ -131,7 +144,7 @@ export type TaskState = typeof TaskState.Type;
 
 /**
  * What a proof shows besides the story version: who fills each slot and the family's text edits, fixed when the
- * proof is requested (D27). A story preview has no edits; a personalized book supplies its own.
+ * proof is requested (D27).
  */
 export const ProofContent = Schema.Struct({
   cast: Schema.Record(Schema.String, CastMember),

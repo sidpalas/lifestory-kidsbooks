@@ -128,9 +128,9 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await page.getByRole("button", { name: "Add to the family" }).click();
   await expect(page.getByTestId("characters")).toContainText(child);
   await page.getByTestId("stories").getByRole("link", { name: title }).click();
-  const make = page.getByRole("form", { name: "Make our book" });
+  const make = page.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
-  await make.getByRole("button", { name: "Make the book" }).click();
+  await page.getByRole("button", { name: "Make the book" }).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const book = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(book.first()).toContainText(`The kite flew up into the old oak, and ${child} looked up.`);

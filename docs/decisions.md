@@ -387,10 +387,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   have it). Its images and fonts load from `/api/files/<key>` like the editor's, and Chromium answers those requests
   straight from object storage, so the PDF uses the same objects, recoloured layers included, without the worker
   holding a session.
-- **Books and previews** both go through `createProof({ familyId, bookId?, storyVersionId, content: { cast, textEdits },
-  requestedBy })` (`packages/core/src/proofs.ts`). A book passes its cast as drawn and its text edits and sets
-  `book_id`; the story page's "Make a PDF proof" passes the example characters with the looks chosen in the picker
-  and no edits. Approval belongs to a book's proof (D32).
+- **Only books make proofs (D45):** `createProof({ familyId, bookId, storyVersionId, content: { cast, textEdits },
+  requestedBy })` (`packages/core/src/proofs.ts`) takes a book's cast as drawn and its text edits and sets `book_id`.
+  Proofs made from the story page before D45 have no `book_id`; they stay listed nowhere and expire as drafts (D32).
+  Approval belongs to a book's proof (D32).
 - **Chromium only in the worker image:** `playwright-core` is a dependency of `@lifestory/core` but loads on first
   use, so the web app never starts a browser. `apps/worker/Dockerfile` installs the matching headless shell with its
   system libraries and fonts (image 1.96 GB). On Railway the worker reaches the web app at its private domain.
@@ -570,6 +570,26 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** tiled tiles show faces redrawn more than single edits on an illustrator's art, or shared parts draw
   visibly wrong on a real illustrator's softer bases.
 
+### D45. The story page previews the family's own cast; example looks are a separate "try looks" mode; proofs belong to books — Made (2026-11-19)
+- **Why (Sid, on production):** "i selected characters from my family, but it didnt update the images and it also
+  still shows the placeholder pickers with default names?" The story page had a "Make our book" cast form that changed
+  nothing on the page, below it look pickers for each role's example character ("Leo as the child") as text
+  dropdowns, and a proof panel for the example cast, so it wasn't clear what the pages showed or what to do next.
+- **What:** "Who's in this book" lists each role with a portrait and a choice of the family members of an age the role
+  accepts (D29). The pages below are composed with that cast and their saved looks as soon as it changes, and start
+  with the first family member who fits each role, so a family sees itself before making the book. A role the story
+  can't draw (D28, D41) is left out of the pictures with the same warning the book gives. The choice is in the URL
+  (`?cast=`, character IDs of the user's active family; any other ID falls back to the example).
+- **Trying looks:** the role's last option, "Try looks on Mia, the story's example", opens the character builder's
+  visual picker (`LookPicker`, Sid asked to reuse it) limited to the role's ages, in its own card that says it's the
+  story's example and nothing is saved (`?looks=`). "Make the book" needs a family member in every role. A family with
+  nobody of a role's age sees the example, with a link to add someone.
+- **Proofs belong to books:** a proof is the print file of a family's book (D27, D32, D35), so the story page no
+  longer makes them; `requestStoryProof` and `listStoryProofs` are gone.
+- **Viewers** preview with their family's members and try looks (nothing is saved), and get no "Make the book".
+- **Reopen if:** families want a proof of a story before making a book, or want to try looks on their own family
+  member without saving them (then a "try on Clara" mode that offers saving to her character).
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no
@@ -596,13 +616,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Approval:** `proof.approved_at` and `proof.approved_by` (migration 0008, two nullable columns). The book page's
   proof list has "Approve for print" next to each ready proof's download link, for roles that edit books (owner,
   parent); a viewer sees who approved it and when, and downloads it, but can't approve. Only a ready proof of a book
-  can be approved: a story preview's proof has no book to print. Approval is final and happens once: approving again
+  can be approved: an older story-preview proof (D45) has no book to print. Approval is final and happens once: approving again
   keeps the first approval, and there is no "unapprove", because a print order will point at the approved proof and the
   PDF it approved never changes (D27). A book can have several approved proofs (one per round of changes); an order
   will name the one it prints. Approving doesn't require the download to have happened: the UI asks the
   parent to download and check it first, and checking can't be proven anyway.
 - **Retention:** an approved proof (row and PDF) stays as long as its family, because orders will reference it and
-  it records what was printed. An unapproved proof, of a book or a story preview, is a draft: the `storage.sweep`
+  it records what was printed. An unapproved proof is a draft: the `storage.sweep`
   task (D31) deletes its row 30 days after it was made, then deletes every `families/<id>/proofs/<proofId>.pdf` whose
   row is gone. The list shows each draft's deletion date. 30 days gives a parent time to come back to a proof, while a
   new one takes seconds to make (D27); a draft holds the children's names and looks, so it shouldn't stay forever.

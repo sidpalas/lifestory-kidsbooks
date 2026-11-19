@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+// A new account has a family with nobody in it yet, so the story's pages show its example characters.
+const newReader = () => `/__dev/log-me-in/reader-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}@lifestory.dev`;
+
 test("a family member previews the sample story's pages at print size, with the story's font and art", async ({ page }) => {
-  // The grandparent is a viewer and not the author: a published story is readable by anyone signed in.
-  await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
+  // A new account, not the author: a published story is readable by anyone signed in.
+  await page.goto(`${newReader()}?returnTo=/`);
   await page.getByTestId("stories").getByRole("link", { name: "The Moon Picnic" }).click();
   await expect(page).toHaveURL(/\/stories\/the-moon-picnic$/);
   await expect(page.getByTestId("story-meta")).toContainText("8.5 × 8.5 in · 6 pages");
@@ -40,7 +43,7 @@ test("a family member previews the sample story's pages at print size, with the 
 });
 
 test("the watercolour sample's raster art loads and recolours on every page", async ({ page }) => {
-  await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
+  await page.goto(`${newReader()}?returnTo=/`);
   await page.getByTestId("stories").getByRole("link", { name: "The Paper Boat" }).click();
   const pages = page.getByTestId("book-page");
   await expect(pages).toHaveCount(3);
@@ -56,21 +59,31 @@ test("the watercolour sample's raster art loads and recolours on every page", as
   expect(sources.filter((src) => /\.(jpg|webp)$/.test(src))).toHaveLength(4);
 });
 
-test("changing a look recomposes every page that shows the character", async ({ page }) => {
-  await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/stories/the-moon-picnic");
+test("trying a look on the story's example recomposes every page that shows the character", async ({ page }) => {
+  await page.goto(`${newReader()}?returnTo=/stories/the-moon-picnic`);
   const pages = page.getByTestId("book-page");
   await expect(pages).toHaveCount(6);
   const sources = () => pages.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).src));
   const before = await sources();
 
+  // Nobody in the family fits, so the roles show the examples, and their look pickers open on request. Trying looks
+  // is a preview: nothing to make a book from yet.
+  await expect(page.getByTestId("role-hero")).toContainText("Nobody in your family is a young child or older child yet.");
+  await expect(page.getByRole("button", { name: "Make the book" })).toBeDisabled();
+  await page.getByRole("button", { name: "Try looks on Mia" }).click();
+  const picker = page.getByTestId("try-hero");
+  await expect(picker).toContainText("Mia is the story's example character, not someone in your family.");
+  // The child's role takes young and older children only.
+  await expect(picker.getByRole("group", { name: /Age/ }).getByRole("button")).toHaveText([/Young child/, /Older child/]);
+
   // Glasses for Mia: one more part on each of her 6 appearances, and nothing else changes. The page stays where the
   // reader scrolled to, though the look is kept in the URL.
-  // The controls are enabled once React hydrated, after the router restored the initial scroll.
-  await expect(page.getByLabel("The child: Glasses")).toBeEnabled();
-  await page.getByLabel("The child: Glasses").evaluate((select) => select.scrollIntoView({ block: "center" }));
+  const glasses = picker.getByRole("button", { name: "Round glasses" });
+  await expect(glasses).toBeEnabled();
+  await glasses.evaluate((button) => button.scrollIntoView({ block: "center" }));
   const scrolled = await page.evaluate(() => window.scrollY);
   expect(scrolled).toBeGreaterThan(0);
-  await page.getByLabel("The child: Glasses").selectOption("glasses:round");
+  await glasses.click();
   await expect(page).toHaveURL(/glasses%3Around|glasses:round/);
   expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   await expect.poll(async () => (await sources()).length, { timeout: 30_000 }).toBe(before.length + 6);
@@ -79,6 +92,9 @@ test("changing a look recomposes every page that shows the character", async ({ 
     .toBe(0);
   const after = await sources();
   expect(after.filter((src) => !before.includes(src))).toHaveLength(6);
+  // The preview survives a reload.
+  await page.reload();
+  await expect(page.getByTestId("try-hero").getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("story assets need a session and a story the user may read", async ({ page, request }) => {

@@ -48,12 +48,6 @@ export class AuthRejected extends Schema.TaggedError<AuthRejected>()("AuthReject
   message: Schema.String,
 }) {}
 
-/** The story can't draw this look for the slot: these axes have options it doesn't supply (D26). */
-export class UnsupportedLook extends Schema.TaggedError<UnsupportedLook>()("UnsupportedLook", {
-  slotId: Schema.String,
-  axes: Schema.Array(Schema.String),
-}) {}
-
 /** A request the server can't accept as given; message says why, for the person who made it. */
 export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInput", {
   message: Schema.String,

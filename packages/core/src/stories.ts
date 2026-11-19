@@ -5,22 +5,21 @@ import { Effect, Schema } from "effect";
 import {
   additionAssets,
   type CastMember,
+  castLook,
   decodeStoryManifest,
   mergeAdditions,
   StoryAddition,
-  exampleCast,
   isVariableFont,
   manifestAssets,
   storyAssetKey,
   staticFontIssues,
   unapprovedParts,
-  unsupportedOptions,
   vocabularyGaps,
   type StoryManifest,
 } from "./book-format/index.ts";
-import type { StorySummary } from "./contracts.ts";
+import type { Character, PreviewRole, StorySummary } from "./contracts.ts";
 import { Database } from "./database.ts";
-import { NotFound, UnsupportedLook } from "./errors.ts";
+import { NotFound } from "./errors.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
@@ -105,39 +104,53 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
   return { story: story satisfies StorySummary, storyVersionId, version, manifest, additionRevision };
 });
 
-/** Fails with UnsupportedLook when the story can't draw someone in `cast` (D26). */
-export const checkCastSupported = (manifest: StoryManifest, cast: Readonly<Record<string, CastMember>>) =>
-  Effect.forEach(Object.entries(cast), ([slotId, member]) => {
-    const axes = unsupportedOptions(manifest, slotId, member.look);
-    return axes.length > 0 ? Effect.fail(new UnsupportedLook({ slotId, axes: [...axes] })) : Effect.void;
-  }, { discard: true });
-
-/** The cast of a story preview: each slot's example character, with the look from `looks` where one is given. */
-export const previewCast = (manifest: StoryManifest, looks: Readonly<Record<string, Look>>): Record<string, CastMember> =>
-  Object.fromEntries(
-    Object.entries(exampleCast(manifest)).map(([slotId, example]) => [slotId, { ...example, look: looks[slotId] ?? example.look }]),
-  );
+/**
+ * Who a story preview casts in each role. `looks[slotId]` tries a look on the role's example character;
+ * otherwise `cast[slotId]` names one of `characters`; a role with neither gets the first family member of an age it
+ * accepts, and the example when nobody fits. So a family sees itself in a story before making the book.
+ */
+export const previewRoles = (
+  manifest: StoryManifest,
+  characters: ReadonlyArray<Character>,
+  choice: { readonly cast?: Readonly<Record<string, string>>; readonly looks?: Readonly<Record<string, Look>> },
+): Array<PreviewRole> =>
+  manifest.characterSlots.map((slot) => {
+    const tried = choice.looks?.[slot.slotId];
+    const chosen = choice.cast?.[slot.slotId];
+    const character = tried
+      ? undefined
+      : chosen
+        ? characters.find((candidate) => candidate.id === chosen)
+        : characters.find((candidate) => slot.ages.includes(candidate.look.age));
+    const member: CastMember = character
+      ? { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: character.look }
+      : { ...slot.example, look: tried ?? slot.example.look };
+    const fill = castLook(manifest, slot.slotId, member.look);
+    return { slotId: slot.slotId, characterId: character?.id ?? null, member, wrongAge: fill.wrongAge, unsupported: [...fill.unsupported] };
+  });
 
 /**
- * A story with the newest version `userId` may read, for previewing its pages: each slot filled by its example,
- * or with `looks` given per slot, the example's name and pronouns with that look. Every page's illustration comes
- * back composed, as storage keys. Fails with NotFound when the story doesn't exist or isn't visible to the user,
- * and with UnsupportedLook when the story can't draw a given look.
+ * A story with the newest version `userId` may read, for previewing its pages with the roles `previewRoles` picks
+ * from the family's `characters`. Every page's illustration comes back composed, as storage keys; a role the story
+ * can't draw is left out of the pictures, as in a book (D28), and its name still fills the text. Fails with
+ * NotFound when the story doesn't exist or isn't visible to the user.
  */
 export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
   userId: string,
   slug: string,
-  looks: Readonly<Record<string, Look>> = {},
+  characters: ReadonlyArray<Character>,
+  choice: { readonly cast?: Readonly<Record<string, string>>; readonly looks?: Readonly<Record<string, Look>> } = {},
 ) {
   const { story, version, manifest } = yield* readableStoryVersion(userId, slug);
-  const cast = previewCast(manifest, looks);
-  yield* checkCastSupported(manifest, cast);
+  const roles = previewRoles(manifest, characters, choice);
+  const cast = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
+  const drawable = Object.fromEntries(roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]));
   const pages = yield* Effect.forEach(manifest.pages, (page) =>
-    resolveIllustration(story.id, version, composeIllustration(manifest, page, cast)).pipe(
+    resolveIllustration(story.id, version, composeIllustration(manifest, page, drawable)).pipe(
       Effect.map((layers) => ({ pageId: page.pageId, layers })),
     ),
   );
-  return { story, version, manifest, cast, pages };
+  return { story, version, manifest, roles, cast, pages };
 });
 
 // No ".." anywhere: some S3 servers normalize paths, which would let a key climb out of the story.
