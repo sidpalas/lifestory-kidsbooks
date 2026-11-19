@@ -373,10 +373,9 @@ Open needs found on the first production deploy (2026-11-19):
 
 - **Getting a story into production.** Done: `story-import.ts`, run once over `railway ssh` (D33). The authenticated
   upload endpoint came with the author tooling (D37).
-- **Agent access to production.** Proposed in D38 (an ordinary family the operator invites; no code changes),
-  waiting on Sid. An agent verifying a deploy can't sign in, so live checks behind a session (story
+- **Agent access to production.** Done (D38): an ordinary "Amp agent" family, with its email and password in Amp
+  project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD`. Before it, an agent verifying a deploy can't sign in, so live checks behind a session (story
   preview, worker jobs, proofs) need a person. Options: an ordinary "agent" family the operator invites, with its
   password kept as an Amp secret (no new API surface), or an API key (for example Better Auth's apiKey plugin),
   which is more capable but adds a way to authenticate on an app holding children's data.
-- **Email delivery.** Resend (D39, Sid): `EMAIL_PROVIDER=resend` is built; production switches once a sending domain
-  is verified in Resend (README "Email"). Until then links are logged (D23).
+- **Email delivery.** Done (D39): production sends with Resend from `mail.devopsdirective.com`.

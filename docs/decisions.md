@@ -72,12 +72,14 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** stories are authored outside the repository (the upload endpoint then replaces this), or a story's
   assets grow too large to ship in the image.
 
-### D38. Agents sign in to production as an ordinary family the operator invites — Proposed (waiting on Sid)
+### D38. Agents sign in to production as an ordinary family the operator invites — Decided (Sid, 2026-11-19)
 - **What:** the operator invites a new family named "Amp agent" with an address Sid receives (for example
   `sid+lifestory-agent@…`), sets its password from the set-password link in the web log (D23), and keeps the email and
   password as Amp project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD`. Agents sign in like anyone
   else: the `/sign-in` page in a browser, or `POST /api/auth/sign-in/email` with curl. README "Agent account" has the
-  steps. No code changes: it is the invite path that exists.
+  steps. No code changes: it is the invite path that exists. Set up 2026-11-19: Sid invited the family and set its
+  password; the secrets are in the Amp project, and an agent signed in to production, read both published stories,
+  and got 403 from an admin endpoint.
 - **What the agent can do:** what any family owner can: read published stories, add its own (made-up) characters,
   make books and proofs, which exercises the worker. It sees no other family's characters, books, or proofs, and it
   is not the operator (`role` `user`; Better Auth's admin endpoints answer 403, checked 2026-11-19 in the production

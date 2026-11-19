@@ -171,16 +171,14 @@ the link. Only the web service sends email.
 
 ### Agent account
 
-Agents verifying a deploy sign in as an ordinary family, "Amp agent", which the operator invites (D38, proposed). It
+Agents verifying a deploy sign in as an ordinary family, "Amp agent", which the operator invites (D38). It
 sees published stories and its own made-up characters, books, and proofs, never another family's, and it is not the
 operator. Set it up once:
 
 1. Sign in as the operator at https://lifestory.devopsdirective.com and, under "Invite a new family", invite name
    `Amp agent` with an address you receive, such as `sid+lifestory-agent@<your domain>`.
-2. Find its set-password link in the web log (until Resend sends email, D39):
-   `railway logs --service web | grep "email to sid+lifestory-agent"`.
-3. Generate a password (`openssl rand -base64 24`), open the link, and set it.
-4. In Amp Settings → Secrets, add project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD` for this
+2. Generate a password (`openssl rand -base64 24`) and set it from the link in the invitation email (D39).
+3. In Amp Settings → Secrets, add project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD` for this
    project.
 
 An agent then signs in at `/sign-in` with agent-browser, or with curl:
