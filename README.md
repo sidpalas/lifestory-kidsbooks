@@ -59,7 +59,7 @@ The app ships as two images, built from the repository root, that need only Post
 bucket. They read the variables in `.env.example`; production also sets `BETTER_AUTH_URL` to its public origin.
 
 - `apps/web/Dockerfile`: the web app on `$PORT`. Before each release, run `node packages/db/src/migrate.ts`
-  in the same image to apply migrations (idempotent).
+  in the same image to apply migrations (idempotent; it takes a lock, so the worker image can run it at the same time).
 - `apps/worker/Dockerfile`: the Absurd worker, with Chromium for PDF proofs. Set `PRINT_APP_URL` to the web app's
   origin as the worker reaches it (on Railway, its private domain).
 
@@ -75,21 +75,25 @@ The Railway project `lifestory-kidsbooks` (environment `production`) runs `web`,
 `lifestory-data` bucket. It's live at https://lifestory.devopsdirective.com, the web service's custom domain; always
 use it. `BETTER_AUTH_URL` is `https://${{RAILWAY_PUBLIC_DOMAIN}}`, which resolves to the custom domain, so sign-in from
 the service's `*.up.railway.app` domain fails with `INVALID_ORIGIN`. `.railway/railway.ts`
-declares the services, their Dockerfiles, the web app's pre-deploy migration and healthcheck, and every variable
-([Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)). The services have no GitHub
-source, so code is deployed from a checkout with the CLI (`npm install -g @railway/cli`, 5.74 or newer) and a
-project token in `RAILWAY_TOKEN`, or after `railway login` and `railway link`. `railway config` evaluates the file with
-the `railway` SDK from the root devDependencies (`mise run install`):
+declares the services, their GitHub source, Dockerfiles, pre-deploy migration, the web app's healthcheck, and every
+variable ([Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)).
+
+Both services deploy every push to `main` by themselves, once its GitHub checks pass (Railway's "wait for CI"; a push
+whose CI run was cancelled by a newer push is skipped, and the newer one deploys). Each runs the migration before it
+starts, so whichever service releases first migrates the database and the other finds nothing to do. To change the
+configuration, use the CLI (`npm install -g @railway/cli`, 5.74 or newer) with a project token in `RAILWAY_TOKEN`, or
+after `railway login` and `railway link`. `railway config` evaluates the file with the `railway` SDK from the root
+devDependencies (`mise run install`):
 
 ```sh
 railway config plan                    # preview config changes in .railway/railway.ts
 railway config apply                   # apply them
-railway up --service web --ci          # build and deploy the web app; migrations run before it starts
-railway up --service worker --ci       # then the worker
+railway deployment list --service web  # deployments, newest first
 curl https://lifestory.devopsdirective.com/api/health
 ```
 
-`railway up` uploads the working tree (minus `.gitignore`d files), so deploy from a clean checkout of `main`.
+`railway up --service <web|worker> --ci` still deploys the local working tree (minus `.gitignore`d files) by hand,
+for example to redeploy without a push; the next push to `main` replaces it.
 `BETTER_AUTH_SECRET` is set once on `web` (the worker references it) and stays out of the config file:
 `railway variables --service web --set "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"`. Railway buckets use
 virtual-hosted-style URLs, hence `S3_FORCE_PATH_STYLE=false`.

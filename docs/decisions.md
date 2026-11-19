@@ -326,15 +326,20 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   run from TypeScript source). Configuration is only environment variables, so any container host works.
 - **Web server:** `vite build` emits a fetch handler, not a listener, so `apps/web/server.ts` serves it with srvx
   1.0.8 (already in the lockfile through TanStack Start). Rejected: Nitro, whose only current release is an RC (D16).
-- **Migrations:** a separate command in the web image (`node packages/db/src/migrate.ts`) run before each release
-  (Railway's pre-deploy command), not on container start, so a failed migration stops the release instead of
-  crash-looping, and replicas don't race.
+- **Migrations:** a separate command (`node packages/db/src/migrate.ts`) run before each release (Railway's
+  pre-deploy command), not on container start, so a failed migration stops the release instead of crash-looping,
+  and replicas don't race. Both images run it, because with deploys from `main` (below) the two services release
+  independently and either may start first. It holds a Postgres advisory lock (Drizzle's migrator takes none), so
+  the second run waits and then finds nothing to apply (Sid, 2026-11-19).
 - **Railway:** `.railway/railway.ts` (Railway Infrastructure as Code, `railway` SDK 3.17.0) declares the services,
   Postgres, the bucket, and variables. `railway.json`/`railway.toml` are deprecated and stop being read on
-  2026-12-01 (Sid, 2026-11-18). Code deploys with `railway up` because a project token can't connect a GitHub repo.
+  2026-12-01 (Sid, 2026-11-18). Both services deploy each push to `main` from the GitHub repo once its checks pass
+  (`checkSuites`; Sid, 2026-11-19). Railway's GitHub app was installed by hand: a project token can't connect a
+  repo, which is why deploys used `railway up` until then.
 - **Storage URLs:** `S3_FORCE_PATH_STYLE` (default true for SeaweedFS); Railway buckets need virtual-hosted style.
-- **Reopen if:** a release needs steps the pre-deploy command can't run, or deploys should follow pushes to `main`
-  (then connect the GitHub repo as the services' source).
+- **Reopen if:** a release needs steps the pre-deploy command can't run, or a migration must finish before a
+  service's new code starts in a way the lock doesn't give (for example a destructive change the old code can't
+  survive).
 
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once

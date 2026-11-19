@@ -1,7 +1,7 @@
 # Web app image: TanStack Start served by srvx (apps/web/server.ts).
 # Build from the repository root:  docker build -f apps/web/Dockerfile -t lifestory-web .
 # Serves on $PORT (default 3000). Apply migrations before each release by running the same
-# image with `node packages/db/src/migrate.ts` (Railway: the web service's pre-deploy command).
+# image with `node packages/db/src/migrate.ts` (Railway: the pre-deploy command of both services).
 # Configuration comes from the environment; see .env.example and README "Deploying".
 # Node and pnpm versions match mise.toml.
 

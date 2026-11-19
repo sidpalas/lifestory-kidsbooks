@@ -1,8 +1,8 @@
 // Railway project "lifestory-kidsbooks", environment "production" (Railway Infrastructure as Code).
-// Preview with `railway config plan`, apply with `railway config apply`; deploy code with
-// `railway up`. See README "Deploying". The images and their environment are host-agnostic;
-// this file only wires them to Railway's Postgres and bucket.
-import { bucket, defineRailway, postgres, preserve, project, ref, service } from "railway/iac";
+// Preview with `railway config plan`, apply with `railway config apply`. Code deploys itself: both services
+// build every push to `main` once its GitHub checks pass. See README "Deploying". The images and their
+// environment are host-agnostic; this file only wires them to Railway's Postgres and bucket.
+import { bucket, defineRailway, github, postgres, preserve, project, ref, service } from "railway/iac";
 
 export default defineRailway(() => {
   const db = postgres("postgres");
@@ -23,12 +23,21 @@ export default defineRailway(() => {
     IMAGE_PROVIDER: "fake",
   };
 
+  // Each push to main deploys both services, after CI passes (checkSuites).
+  const source = github("sidpalas/lifestory-kidsbooks", { branch: "main", checkSuites: true });
+  // Both services run it, since either may start first; migrate.ts holds a lock, so concurrent runs are safe.
+  const preDeploy = "node packages/db/src/migrate.ts";
+
   const web = service("web", {
+    source,
     build: { builder: "DOCKERFILE", dockerfilePath: "apps/web/Dockerfile" },
-    preDeploy: "node packages/db/src/migrate.ts",
+    preDeploy,
     healthcheck: "/api/health",
     env: {
       ...appEnv,
+      // Railway injects PORT (8080) at runtime but doesn't expose it to references; declared so the worker's
+      // PRINT_APP_URL can use ${{web.PORT}}. The custom domain targets 8080 too.
+      PORT: "8080",
       BETTER_AUTH_URL: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
       // Set once with `railway variables --service web --set BETTER_AUTH_SECRET=...`; never in this file.
       BETTER_AUTH_SECRET: preserve(),
@@ -36,7 +45,9 @@ export default defineRailway(() => {
   });
 
   const worker = service("worker", {
+    source,
     build: { builder: "DOCKERFILE", dockerfilePath: "apps/worker/Dockerfile" },
+    preDeploy,
     env: {
       ...appEnv,
       BETTER_AUTH_SECRET: web.env.BETTER_AUTH_SECRET,

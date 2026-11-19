@@ -1,7 +1,8 @@
 # Worker image: the Absurd worker, run from TypeScript source (Node strips types). It also renders PDF proofs with
 # headless Chromium (D12, D27), so it carries Playwright's headless shell and the system libraries and fonts it needs.
 # Build from the repository root:  docker build -f apps/worker/Dockerfile -t lifestory-worker .
-# It needs a migrated database; see apps/web/Dockerfile for the migration command.
+# Apply migrations before each release by running the same image with `node packages/db/src/migrate.ts`
+# (Railway: the pre-deploy command of both services; the migration takes a lock, so they can run together).
 # Configuration comes from the environment; see .env.example and README "Deploying".
 # Node and pnpm versions match mise.toml.
 
@@ -22,6 +23,7 @@ RUN cd packages/core && node node_modules/playwright-core/cli.js install --with-
   && rm -rf /var/lib/apt/lists/*
 COPY packages/core/src packages/core/src
 COPY packages/db/src packages/db/src
+COPY packages/db/migrations packages/db/migrations
 COPY apps/worker/src apps/worker/src
 USER node
 CMD ["node", "apps/worker/src/main.ts"]
