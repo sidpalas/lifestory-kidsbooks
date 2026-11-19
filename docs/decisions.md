@@ -118,8 +118,9 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   a parent picks a base face (a handful per role, covering age, gender and facial structure, drawn by the illustrator),
   a skin tone, a hairstyle, a hair colour and extras such as glasses. Every option is approved by the illustrator before
   the story is published, and a book is a stack of approved layers composed on the CPU, so it is instant and needs no GPU.
-- **How:** for every appearance the illustrator delivers each base (bald, neutral skin) with region masks (skin, brows,
-  lips, line), an occluder layer and a head zone, plus skin and hair palettes. Authoring tooling generates each shape
+- **How:** for every appearance the illustrator delivers each base figure (bald, neutral skin) with region masks (skin
+  covering every visible body part, not only the face; brows, lips, line), an occluder layer with its own skin mask
+  (hands in front of the face) and a head zone, plus skin and hair palettes. Authoring tooling generates each shape
   option in place on the base (with a turnaround sheet per option for consistency), cuts it out by comparison with the
   base inside the head zone, and splits it by region. Skin and hair colour are a version-pinned recolour, not AI. The
   picker starts from a few curated looks and refines one feature at a time.

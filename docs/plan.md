@@ -171,12 +171,16 @@ and in print:
 
 ```
 plate (art) → for each figure on the page, in z-order:
-                base face (skin, lips, brows recoloured) → face overlays → beard → glasses → hair → occluders
+                base figure (skin, lips, brows recoloured) → face overlays → beard → glasses → hair
+                → occluders (their skin recoloured too)
             → foreground (art) → text
 ```
 
 - **Recolour** is a pure, version-pinned function (`gradient-map-v1`): a region mask from the illustrator plus a
-  palette maps the base's neutral tones to the chosen skin or hair colour, keeping the line work and texture. It runs
+  palette maps the base's neutral tones to the chosen skin or hair colour, keeping the line work and texture. The
+  skin mask covers all visible skin of the figure, not only the face: neck, arms, hands, legs and feet, including
+  hands in the occluder layer and skin a part reveals (a part is split by region, so its skin pixels take the same
+  palette). A page that shows only a hand still recolours it. It runs
   on the server in `packages/core`, and its output is cached in object storage under a key hashed from (asset bytes,
   palette, algorithm version). The editor and the print route load the same URLs, so the PDF has exactly the pixels
   the parent saw, and a changed algorithm is a new story version, not a silent change to approved art.
