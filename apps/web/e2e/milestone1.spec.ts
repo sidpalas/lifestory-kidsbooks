@@ -16,7 +16,7 @@ const evidence = async (page: Page, name: string) => {
 const imagesLoaded = (page: Page) =>
   expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
 
-/** A signed-out page of its own, so each person keeps their session. */
+/** A signed-out page of its own, so each person keeps their session. The test closes its context: the test browser outlives the test. */
 const personPage = async (browser: Browser) => (await browser.newContext()).newPage();
 
 /** The link in the newest email to `to`, from the dev mailbox, as a same-origin path. */
@@ -63,7 +63,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await inviteFamily.getByRole("button", { name: "Invite family" }).click();
   await expect(operator.getByTestId("invite-family").getByRole("status")).toContainText(`Invitation sent to ${ownerEmail}`);
   const setPassword = await emailedLink(operator, ownerEmail);
-  await operator.close();
+  await operator.context().close();
 
   const owner = await personPage(browser);
   await owner.goto(setPassword);
@@ -192,4 +192,5 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await expect(gran.getByRole("button", { name: "Approve for print" })).toHaveCount(0);
   const href = await granProof.getByRole("link", { name: /Download PDF/ }).getAttribute("href");
   expect((await gran.request.get(href!)).status()).toBe(200);
+  await Promise.all([owner, gran].map((person) => person.context().close()));
 });

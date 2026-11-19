@@ -32,7 +32,7 @@ Times measured on an `a1.small` orb.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~6–10 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`) | ~1–5 s |
-| `mise run test:e2e` | Playwright end-to-end tests (20; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run test:e2e` | Playwright end-to-end tests (21; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~2.8 min for all on `a1.small` (`CI=1`, cold Vite cache), ~45 s for `milestone1` alone (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
@@ -46,20 +46,42 @@ Times measured on an `a1.small` orb.
 
 ## Orb size
 
-Measured 2026-11-18 on `a1.small` (2 vCPU, 4 GB, no swap): with the `web` and `worker` services and an
-agent-browser session open, the orb uses ~2 GB. A `CI=1 mise run test:e2e` run on its own fits: it peaks at
-~1.8 GB used with no services running and ~3 GB next to the running services. The pressure comes from running it
-at the same time as `mise run typecheck` (or `mise run check`) on top of the services and agent-browser: that peaks at
-~3.4 GB, leaving ~0.5 GB. Run e2e and typecheck one after the other, not in parallel.
+The OOM killer fires at 3 GiB, not 4 GB: an orb caps everything agents start (commands, `amp orb services`, and
+the Docker containers) at `amp-workload.slice`'s `memory.max` = 3 GiB on `a1.small` (2 vCPU, 4 GB, no swap); the
+Amp CLI itself runs outside it. Watch `/sys/fs/cgroup/amp.slice/amp-workload.slice/memory.{current,peak}`, or `anon`
++ `shmem` in its `memory.stat` (page cache is reclaimable and doesn't count).
 
-Since 300 ppi proof flattening (D35), a `CI=1` e2e run with two Playwright workers was killed for memory on
-`a1.small` even alone (2026-11-19). `playwright.config.ts` therefore runs one worker on machines under 6 GB (~1.5 min
-for all tests); don't pass `--workers=2` there.
+Measured 2026-11-19, full `CI=1 mise run test:e2e` runs (21 tests, one Playwright worker, cold Vite cache, ~3 min):
 
-- **`a1.small`**: docs, small edits, unit tests (`mise run check`), and e2e runs (including `CI=1`) run one at a
-  time. Close agent-browser (`agent-browser close`) before running e2e.
-- **`a1.medium`** (4 vCPU, 8 GB): anything that runs the full stack plus browsers at once: feature work with UI
-  verification while running checks in parallel, PDF proof rendering (milestone 1).
+| | Before | After |
+| --- | --- | --- |
+| Peak (anon + shmem + kernel in the cap) | 3 GiB: killed ~70 s in | **2.29–2.50 GB** over 4 runs (≥0.5 GiB to spare) |
+| Same run next to the `web` and `worker` services (`mise run test:e2e`, reuses `web`) | — | **2.52 GB**, 21 passed |
+| Web dev server (`vite dev`) | 1.21 GB | 0.76 GB |
+| SeaweedFS | 0.29–0.34 GB | 0.17 GB |
+| Playwright runner + its test worker | 0.50 GB | 0.40 GB |
+| Test browser / worker's print Chromium / worker | — | ~0.47 / ~0.33–0.41 / ~0.37 GB |
+
+What took the memory, and what keeps it down now (don't undo these without measuring):
+- **Vite pre-bundling inside the dev server**: its dependency scan followed server functions into `@lifestory/core`
+  and pre-bundled playwright-core, sharp, pg, and the S3 SDK for the browser, on the first page view, inside the
+  server, which kept ~0.5 GB for good. `vite.config.ts` excludes `@lifestory/core` from `optimizeDeps`, and `dev:web`
+  runs `vite optimize` in its own short-lived process first.
+- **Contexts the specs never closed** (`browser.newContext()` lives as long as the test browser, i.e. the whole run):
+  `milestone1.spec.ts` and `authoring.spec.ts` close theirs. Close any context you open.
+- **`@lifestory/core` in the Playwright runner** (~0.2 GB, held for the run because the runner imports every spec to
+  list tests): specs that need it `await import("@lifestory/core")` inside the test.
+- **SeaweedFS**: `GOMEMLIMIT` in `compose.yaml`.
+- Not the cause: sharp's cache and concurrency (turning both off changed a 4-layer recolour by <10 MB) and Postgres
+  (~0.05 GB).
+
+`playwright.config.ts` runs one test worker on machines under 6 GB; two workers' proof renders don't fit.
+
+- **`a1.small`**: docs, edits, `mise run check`, and the whole e2e suite (`CI=1` included, also next to the running
+  services) in one run. Run e2e and `mise run check` one after the other, not in parallel, and close agent-browser
+  (`agent-browser close`) before running e2e: neither was measured alongside it.
+- **`a1.medium`** (4 vCPU, 8 GB): anything that runs the full stack plus browsers and checks at once, such as UI
+  verification while e2e or typecheck runs.
 - An orb can't be resized while it runs. To verify on a bigger machine, start a new thread with a larger size;
   it starts from the base branch, so push the work to a branch first.
 

@@ -52,7 +52,10 @@ run = "pnpm exec drizzle-kit generate"
 [tasks."dev:web"]
 description = "TanStack Start dev server on $PORT (default 3000)"
 dir = "apps/web"
-run = 'BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:${PORT:-3000}" BETTER_AUTH_URL="${BETTER_AUTH_URL:-${PUBLIC_URL:-http://localhost:${PORT:-3000}}}" pnpm exec vite dev --host 0.0.0.0 --port "${PORT:-3000}" --strictPort'
+# `vite optimize` pre-bundles the browser's dependencies in its own short-lived process (~2 s cold, ~1 s when the
+# cache is current). Left to the dev server, the bundling happens inside it on the first page view, and it keeps the
+# ~0.3 GB that took for good, which a 4 GB orb running the e2e tests can't spare. Vite calls the command deprecated.
+run = 'pnpm exec vite optimize --logLevel warn && BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:${PORT:-3000}" BETTER_AUTH_URL="${BETTER_AUTH_URL:-${PUBLIC_URL:-http://localhost:${PORT:-3000}}}" pnpm exec vite dev --host 0.0.0.0 --port "${PORT:-3000}" --strictPort'
 
 [tasks."dev:worker"]
 description = "Absurd worker, restarted on change"

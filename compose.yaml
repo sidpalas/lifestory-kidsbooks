@@ -28,6 +28,9 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: lifestory
       AWS_SECRET_ACCESS_KEY: lifestory-secret
+      # A soft limit for Go's garbage collector: SeaweedFS otherwise grows to ~0.34 GB during the e2e tests, and
+      # an orb counts containers against the same 3 GiB cap as the tests (AGENTS.md, "Orb size"). With it: ~0.16 GB.
+      GOMEMLIMIT: 96MiB
     ports:
       - "8333:8333"
     volumes:

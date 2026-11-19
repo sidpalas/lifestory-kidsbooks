@@ -58,7 +58,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(operator.getByRole("status")).toHaveText(`${authorEmail} can author stories now.`);
   await expect(operator.getByTestId("authors")).toContainText(authorEmail);
   await evidence(operator, "author-1-grant");
-  await operator.close();
+  await operator.context().close();
 
   // 2. The author starts a story; it opens on its version 1 draft.
   await author.reload();
@@ -201,7 +201,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await stranger.goto("/");
   await expect(stranger.getByTestId("stories")).toContainText(title);
   expect((await stranger.request.get(`/api/files/stories/${storyId}/v1/${fontAsset}`)).status()).toBe(200);
-  await stranger.close();
+  await stranger.context().close();
 
   // 8. A family makes a book of it: the author's own family adds a young child with curly hair and a round face, so
   // her hair is the generated part the version published.
@@ -235,4 +235,5 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(draftPreview.locator("img")).toHaveCount(4);
   await imagesLoaded(author);
   await evidence(author, "author-8-preview-as", false);
+  await author.context().close();
 });

@@ -1,19 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { expect, test } from "@playwright/test";
-import {
-  approvedParts,
-  Database,
-  decodeStoryManifest,
-  getPart,
-  importStoryVersion,
-  makeServerRuntime,
-  requestPart,
-  type ServerServices,
-  reviewPart,
-  type StoryPart,
-  withApprovedParts,
-} from "@lifestory/core";
+import type { ServerServices, StoryPart } from "@lifestory/core";
 import { Effect } from "effect";
 
 // Part generation has no screens yet (the authoring UI will call these functions), so this drives packages/core
@@ -23,6 +11,10 @@ const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.ur
 const operator = "user_operator";
 
 test("an author generates a part, reviews it on light and dark skin, and approves it into the draft", async ({ page }) => {
+  // Imported here, not at the top: Playwright's runner imports every spec to list the tests, and @lifestory/core would
+  // cost it ~0.2 GB for the whole run, which a 4 GB orb can't spare (AGENTS.md, "Orb size").
+  const { approvedParts, Database, decodeStoryManifest, getPart, importStoryVersion, makeServerRuntime, requestPart, reviewPart, withApprovedParts } =
+    await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   try {

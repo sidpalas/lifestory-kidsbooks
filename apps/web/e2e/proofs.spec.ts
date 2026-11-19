@@ -1,4 +1,3 @@
-import { checkPrintReady } from "@lifestory/core";
 import { expect, test } from "@playwright/test";
 
 // Chromium writes page dictionaries and font names uncompressed, so the PDF's structure can be read from its bytes.
@@ -37,6 +36,8 @@ test("a parent makes a PDF proof of the story with a chosen look, and the family
   const facts = pdfFacts(pdf);
   expect(facts.pages).toBe(6);
   expect(facts.fonts).toContain("Literata-Regular");
+  // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
+  const { checkPrintReady } = await import("@lifestory/core");
   const printReady = await checkPrintReady(pdf, { widthIn: 8.5, heightIn: 8.5 });
   expect(printReady.issues).toEqual([]);
   expect(printReady.images).toHaveLength(6);
