@@ -75,7 +75,7 @@ test("changing a look recomposes every page that shows the character", async ({ 
 });
 
 test("story assets need a session and a story the user may read", async ({ page, request }) => {
-  const asset = "/api/files/stories/story_moon_picnic/v4/pages/p01/background.svg";
+  const asset = "/api/files/stories/story_moon_picnic/v5/pages/p01/background.svg";
   expect((await request.get(asset)).status()).toBe(401);
 
   await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");

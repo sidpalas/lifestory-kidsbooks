@@ -1,6 +1,6 @@
 {
   "formatVersion": 2,
-  "trim": {"widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375},
+  "trim": {"widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.5},
   "fonts": [
     {
       "family": "Literata",

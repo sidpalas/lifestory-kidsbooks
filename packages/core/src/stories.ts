@@ -21,6 +21,7 @@ import { NotFound, UnsupportedLook } from "./errors.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
+import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
 
 /** Published stories, the catalogue a family picks from. */
@@ -156,6 +157,12 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
     if (problems.length > 0) {
       return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
     }
+  }
+  // The trim must suit the printer: Lulu's bleed and safe margin (D35). Checked here, like fonts below, so versions
+  // stored before the rule stay readable.
+  const trimProblems = printTrimIssues(manifest.trim);
+  if (trimProblems.length > 0) {
+    return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} won't print:\n${trimProblems.join("\n")}`));
   }
   // Fonts must be static so PDFs embed them as real fonts, not Type 3 (D27). Checked here, not when decoding,
   // so versions stored before the rule stay readable.

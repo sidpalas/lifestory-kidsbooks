@@ -1,7 +1,7 @@
 import { degrees, PDFDocument, StandardFonts } from "pdf-lib";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { checkPrintReady, setPrintBoxes } from "../src/print-ready.ts";
+import { checkPrintReady, printTrimIssues, setPrintBoxes } from "../src/print-ready.ts";
 
 // A small book keeps the fixtures fast: a 2 × 3 in trim, so a page with Lulu's 0.125 in bleed is 2.25 × 3.25 in
 // (162 × 234 pt), and art filling it at 300 ppi is 675 × 975 pixels.
@@ -107,5 +107,15 @@ describe("checkPrintReady", () => {
     const report = await checkPrintReady(text, trim);
     expect(report.issues).toContain("page 1: font Helvetica isn't embedded");
     expect(report.fonts).toEqual(["Helvetica (not embedded)"]);
+  });
+});
+
+describe("printTrimIssues", () => {
+  it("needs Lulu's 0.125 in bleed and text at least 0.5 in inside the trim", () => {
+    expect(printTrimIssues({ bleedIn: 0.125, safeMarginIn: 0.5 })).toEqual([]);
+    expect(printTrimIssues({ bleedIn: 0.125, safeMarginIn: 0.375 })).toEqual([
+      "trim.safeMarginIn: 0.375 in; Lulu needs text at least 0.5 in inside the trim",
+    ]);
+    expect(printTrimIssues({ bleedIn: 0.25, safeMarginIn: 0.75 })).toEqual(["trim.bleedIn: 0.25 in; Lulu prints a 0.125 in bleed"]);
   });
 });

@@ -43,7 +43,7 @@ and a later v2 gets a migration function from v1.
 ```jsonc
 {
   "formatVersion": 2,                         // 2 since D29; stored format 1 versions are upgraded when read
-  "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375 },
+  "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.5 },
   "fonts": [{ "family": "Literata", "asset": "fonts/literata-var.woff2" }],
   "characterSlots": [
     {

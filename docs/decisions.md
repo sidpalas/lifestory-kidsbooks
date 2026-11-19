@@ -452,9 +452,12 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   pages. poppler's `pdfimages`, `pdffonts` and `pdfinfo -box` agree.
 - **Left for print ordering:** proofs made before this aren't flattened, so an order runs `checkPrintReady` on the
   proof's PDF before sending it (or re-renders it). The page count each binding needs, page 1 printing on the right,
-  and the cover file come with the product chosen at order time. Lulu wants text 0.5 in inside the trim; the
-  sample's `safeMarginIn` is 0.375 (open question for Sid in this decision's thread). Painted art gives bigger JPEGs
+  and the cover file come with the product chosen at order time. Painted art gives bigger JPEGs
   (an estimate of 1–3 MB per page); Lulu recommends under 500 MB.
+- **Trim (Sid, 2026-11-19):** Lulu wants text 0.5 in inside the trim, since trimming varies by up to 0.125 in. A new
+  story version must have `safeMarginIn` ≥ 0.5 and Lulu's 0.125 in bleed (`printTrimIssues`, checked by
+  `importStoryVersion` like static fonts, so stored versions stay readable). Moon Picnic v5 moves from 0.375 to
+  0.5 in; on its proof the closest word sits 0.519 in inside the trim. The Paper Boat already used 0.5 in.
 - **Reopen if:** a print provider needs PDF/X or CMYK; Lulu rejects or normalizes a proof; flattened art at 300 ppi
   looks soft in print (then a higher resolution, up to Lulu's 600); or files of real art get too big to download.
 

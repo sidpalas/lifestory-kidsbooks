@@ -6,6 +6,8 @@
 //  - Lulu's Interior Job Options (attached to that article): PDF 1.3 compatibility with transparency not allowed,
 //    colours left unchanged, 8-bit images, layers not included, PDF/X checks off (so PDF/X isn't required).
 //  - The Print API's interior validation: at least 2 pages, all pages the same size, fonts embedded.
+//  - "What is Full Bleed?" (help.lulu.com, article 64000255584): text and other important elements 0.5 in inside the
+//    trim, because trimming can vary by up to 0.125 in.
 // TrimBox and BleedBox aren't on Lulu's list, but they are how a PDF states its trim to every prepress tool (PDF/X
 // requires them), and they cost nothing, so print-ready files carry them and the check requires them.
 import {
@@ -24,6 +26,8 @@ import {
 /** Lulu's interior file requirements, as numbers the check uses. */
 export const LULU_INTERIOR = {
   bleedIn: 0.125,
+  /** Text stays this far inside the trim (Sid, 2026-11-19: required of new story versions, D35). */
+  safeMarginIn: 0.5,
   minPages: 2,
   minPpi: 300,
   maxPpi: 600,
@@ -33,6 +37,17 @@ export interface TrimSize {
   readonly widthIn: number;
   readonly heightIn: number;
 }
+
+/**
+ * What keeps a story's trim from printing at Lulu: a bleed other than Lulu's, or a safe margin narrower than Lulu's.
+ * Checked when a story version is imported, so versions stored before the rule stay readable.
+ */
+export const printTrimIssues = (trim: { readonly bleedIn: number; readonly safeMarginIn: number }): ReadonlyArray<string> => [
+  ...(trim.bleedIn === LULU_INTERIOR.bleedIn ? [] : [`trim.bleedIn: ${trim.bleedIn} in; Lulu prints a ${LULU_INTERIOR.bleedIn} in bleed`]),
+  ...(trim.safeMarginIn >= LULU_INTERIOR.safeMarginIn
+    ? []
+    : [`trim.safeMarginIn: ${trim.safeMarginIn} in; Lulu needs text at least ${LULU_INTERIOR.safeMarginIn} in inside the trim`]),
+];
 
 export interface PrintReadyReport {
   /** Everything that keeps the PDF from meeting the requirements; empty when it's print-ready. */

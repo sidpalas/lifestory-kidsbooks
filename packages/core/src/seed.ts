@@ -39,7 +39,8 @@ export const seed = Effect.gen(function* () {
   yield* ObjectStorage.use((storage) => storage.ensureBucket);
   // The sample story's pages, text, character slots, and placeholder art (fixtures/stories/moon-picnic), as its
   // newest version. v2 replaced v1's variable Literata with static instances (D27); v3 is book format 2, whose roles
-  // accept several ages (D29); v4 calls the grown-up by their title ("Grandpa"). Databases seeded earlier keep their older versions.
+  // accept several ages (D29); v4 calls the grown-up by their title ("Grandpa"); v5 keeps text 0.5 in
+  // inside the trim, as Lulu asks (D35). Databases seeded earlier keep their older versions.
   // The Paper Boat (fixtures/stories/paper-boat) is the watercolour sample: raster art, to test recolouring and print on texture.
   for (const dir of sampleStoryDirs) yield* importStoryDirectory(dir, seedUsers.operator.id);
 });
