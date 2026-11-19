@@ -1,14 +1,16 @@
 name: Deploy check
 
-# After CI passes on main, Railway deploys web and worker (D22). This waits until the live site reports that
-# commit on both, then checks it without signing in (apps/web/scripts/check-deploy.ts, D34). A failed run emails
-# whoever pushed. Triggered by CI rather than Railway's deployment_status events: those are sent by railway-app[bot],
-# so a failed run would notify nobody, and a deploy that never happens sends no event at all (here it times out).
+# After Railway deploys web and worker (D22), this waits until the live site reports the deployed commit on both,
+# then checks it without signing in (apps/web/scripts/check-deploy.ts, D34). On failure it opens (or comments on) a
+# "Deploy check failed" issue that mentions the repository owner, so GitHub emails him.
+#
+# Triggered by Railway's GitHub deployment statuses, not by CI finishing: Railway's "Wait for CI" holds a deploy
+# until every Actions workflow on the commit finishes, so a check started before the deploy (workflow_run after CI)
+# would wait for the deploy while the deploy waited for it, and its failure would skip the deploy. Railway posts
+# "success" (or "failure") per service once it has deployed, so this run can't hold the deploy back. Those runs are
+# railway-app[bot]'s, and GitHub emails a failed run only to the actor, hence the issue.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  deployment_status:
   workflow_dispatch:
     inputs:
       url:
@@ -20,28 +22,50 @@ on:
         description: Minutes to wait for the deploy
         default: "0"
 
-concurrency:
-  group: deploy-check-${{ github.event.workflow_run.head_sha || github.run_id }}
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   check:
-    name: Live site runs the pushed commit
-    # A cancelled CI run (superseded by a newer push) doesn't deploy; Railway waits for passing checks.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    name: Live site runs the deployed commit
+    # Railway posts in_progress when a deploy starts waiting, then success or failure per service.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment.environment == 'lifestory-kidsbooks / production' &&
+       contains(fromJSON('["success","failure","error"]'), github.event.deployment_status.state))
+    # Both services post a status; the second run queues behind the first and passes quickly.
+    concurrency: deploy-check-${{ github.event.deployment.sha || github.run_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      SHA: ${{ github.event.deployment.sha || inputs.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           # The script reads the migration journal at this commit and asks git whether a newer commit is live.
-          ref: ${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}
+          ref: ${{ env.SHA }}
           fetch-depth: 0
       - uses: jdx/mise-action@v5
         with:
           version: 2026.11.8
       - run: cp .env.example .env
+      # A failed Railway deploy won't bring the commit live, so don't wait for it.
       - run: >-
           mise run deploy:check --
           --url "${{ inputs.url || 'https://lifestory.devopsdirective.com' }}"
-          --sha "${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}"
-          --wait-minutes "${{ inputs.wait-minutes || '25' }}"
+          --sha "$SHA"
+          --wait-minutes "${{ inputs.wait-minutes || (github.event.deployment_status.state == 'success' && '25') || '0' }}"
+      - name: Tell the owner
+        if: failure() && github.event_name == 'deployment_status'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          body="@$OWNER the deploy check failed for $SHA (Railway: ${{ github.event.deployment_status.state }}): $RUN_URL"
+          issue=$(gh issue list --state open --search 'in:title "Deploy check failed"' --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then gh issue comment "$issue" --body "$body"
+          else gh issue create --title "Deploy check failed" --body "$body
+          
+          Close this issue once production is healthy again; the next failure opens a new one."; fi

@@ -1,5 +1,5 @@
-// Post-deploy check of the live site, without signing in (.github/workflows/deploy-check.yml runs it after
-// each push to main). Waits until the web app and a worker both report the expected commit, then checks:
+// Post-deploy check of the live site, without signing in (.github/workflows/deploy-check.yml runs it when
+// Railway reports a deploy). Waits until the web app and a worker both report the expected commit, then checks:
 // /api/health is ok with this commit's migration count, the sign-in page and every stylesheet, font, and script
 // it links load (a missing stylesheet once shipped unstyled pages, commit fbd8a10), and the /__dev routes are 404.
 // Exits 1 listing every failure. If a newer commit is already live, this one was superseded and it exits 0.
