@@ -148,6 +148,11 @@ export const ProofSummary = Schema.Struct({
   /** ISO 8601. */
   createdAt: Schema.String,
   requestedBy: Schema.NullOr(Schema.String),
+  /** When a parent approved it for print (ISO 8601), and their name; null until then. */
+  approvedAt: Schema.NullOr(Schema.String),
+  approvedBy: Schema.NullOr(Schema.String),
+  /** When an unapproved proof is deleted (ISO 8601, D31); null once approved. */
+  expiresAt: Schema.NullOr(Schema.String),
   /** Who fills each slot, by name, in slot order, so proofs of different looks can be told apart. */
   castNames: Schema.Array(Schema.String),
 });

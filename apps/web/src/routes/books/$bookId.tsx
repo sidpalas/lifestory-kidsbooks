@@ -27,6 +27,8 @@ import { agesLabel } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
 import {
+  ApproveProofResult,
+  approveProofFn,
   BookProofsResult,
   BookResult,
   EditBookResult,
@@ -56,6 +58,10 @@ export const Route = createFileRoute("/books/$bookId")({
 });
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+const approveProof = async (proofId: string) => {
+  unwrapResult(ApproveProofResult)(await approveProofFn({ data: { proofId } }));
+};
 
 function BookEditor() {
   const { view, canEdit, characters } = Route.useLoaderData();
@@ -153,7 +159,7 @@ function BookEditor() {
         />
       </section>
 
-      <ProofPanel load={loadProofs} request={requestProof} hydrated />
+      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} hydrated />
 
       <section aria-label="All pages">
         <ol className="grid grid-cols-2 gap-4 md:grid-cols-3">

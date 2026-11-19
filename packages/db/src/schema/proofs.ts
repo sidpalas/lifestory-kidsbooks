@@ -1,6 +1,6 @@
 // A print-ready PDF proof (docs/plan.md, "Editor and print"; D27). It belongs to a family and records what it
 // shows: the story version, the cast, and the family's text edits at the moment it was requested, so the PDF never
-// changes after it's made and a print order can later reference it.
+// changes after it's made and a print order can later reference it. The parent approves a book's proof for print.
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth.ts";
 import { book } from "./books.ts";
@@ -30,6 +30,12 @@ export const proof = pgTable(
     pageCount: integer("page_count"),
     bytes: integer("bytes"),
     requestedBy: text("requested_by").references(() => user.id, { onDelete: "set null" }),
+    /**
+     * When a parent approved the PDF for print, and who; null until then. Only a ready proof of a book can be approved,
+     * once, and an approved proof is kept as long as its family (D31); an unapproved one expires.
+     */
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedBy: text("approved_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

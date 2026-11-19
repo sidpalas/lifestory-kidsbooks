@@ -2,25 +2,28 @@
 // headless Chromium from the app's print page and stores the PDF under the family. A proof records what it shows,
 // so later look or text changes never alter it, and a print order can later reference it by ID.
 //
-// The input is `ProofContent`, not a book: until personalized books land, a proof is made from a story preview
-// (the example cast with chosen looks, no text edits). A book plugs in by calling `createProof` with its own cast
-// and edits.
+// The input is `ProofContent`, not a book: a book (books.ts) passes its cast and text edits, and a story preview its
+// example cast with chosen looks. A parent approves a book's proof for print; unapproved proofs expire (D31).
 import { randomUUID } from "node:crypto";
 import { schema } from "@lifestory/db";
 import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { Effect, Schema } from "effect";
 import { decodeStoryManifest, type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
 import { Auth, type SessionUser } from "./auth.ts";
 import { ProofContent, type ProofSummary } from "./contracts.ts";
 import { Database } from "./database.ts";
-import { Forbidden, NotFound } from "./errors.ts";
-import { roleCan } from "./families.ts";
+import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
+import { requireFamilyAccess, roleCan } from "./families.ts";
 import { Jobs } from "./jobs.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
 import { checkCastSupported, previewCast, readableStoryVersion } from "./stories.ts";
 import { renderProof } from "./tasks/render-proof.ts";
+import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
+
+const approver = alias(schema.user, "approver");
 
 /** The caller's role in `familyId`, or null when they aren't a member. */
 const memberRole = (userId: string, familyId: string) =>
@@ -107,9 +110,12 @@ export const proofSummaries = Effect.fn("proofs.summaries")(function* (where: SQ
         content: schema.proof.content,
         createdAt: schema.proof.createdAt,
         requestedBy: schema.user.name,
+        approvedAt: schema.proof.approvedAt,
+        approvedBy: approver.name,
       })
       .from(schema.proof)
       .leftJoin(schema.user, eq(schema.user.id, schema.proof.requestedBy))
+      .leftJoin(approver, eq(approver.id, schema.proof.approvedBy))
       .where(where)
       .orderBy(desc(schema.proof.createdAt))
       .limit(20),
@@ -131,6 +137,9 @@ export const proofSummaries = Effect.fn("proofs.summaries")(function* (where: SQ
         bytes: row.bytes,
         createdAt: row.createdAt.toISOString(),
         requestedBy: row.requestedBy,
+        approvedAt: row.approvedAt?.toISOString() ?? null,
+        approvedBy: row.approvedAt ? row.approvedBy : null,
+        expiresAt: row.approvedAt ? null : new Date(row.createdAt.getTime() + PROOF_TTL_MS).toISOString(),
         castNames: manifest.characterSlots.map((slot) => content.cast[slot.slotId]?.name ?? slot.label),
       } satisfies ProofSummary;
     }),
@@ -148,6 +157,30 @@ export const listStoryProofs = Effect.fn("proofs.listForStory")(function* (user:
     manifest,
   );
   return { canRequest: roleCan(family.role, { book: ["edit"] }), proofs };
+});
+
+/**
+ * A parent approves a book's proof for print (brief, "Recommended design"): the PDF they downloaded and checked is the
+ * one a print order will use. Needs a role that edits books; only a ready proof of a book can be approved, and only
+ * once, so approving it again keeps the first approval. An approved proof is kept as long as its family (D31).
+ */
+export const approveProof = Effect.fn("proofs.approve")(function* (userId: string, proofId: string) {
+  const [row] = yield* Database.query((db) =>
+    db
+      .select({ familyId: schema.proof.familyId, bookId: schema.proof.bookId, status: schema.proof.status })
+      .from(schema.proof)
+      .where(eq(schema.proof.id, proofId)),
+  );
+  if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
+  yield* requireFamilyAccess(userId, row.familyId, "edit");
+  if (!row.bookId) return yield* new InvalidInput({ message: "Only a proof of a book can be approved for print." });
+  if (row.status !== "ready") return yield* new InvalidInput({ message: "The proof is still rendering. Approve it once you've checked the PDF." });
+  yield* Database.query((db) =>
+    db
+      .update(schema.proof)
+      .set({ approvedAt: new Date(), approvedBy: userId })
+      .where(and(eq(schema.proof.id, proofId), isNull(schema.proof.approvedAt))),
+  );
 });
 
 /** A page's text with the proof's edits applied, tokens resolved: what BookPage prints. */

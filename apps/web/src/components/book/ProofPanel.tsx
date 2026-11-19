@@ -1,5 +1,5 @@
 // The family's PDF proofs of a story preview or a book: make one from the cast shown, watch it render, download it
-// (D27). The page passes how to list and request them.
+// (D27), and for a book approve it for print. The page passes how to list, request, and approve them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -14,16 +14,20 @@ export interface ProofList {
 export function ProofPanel({
   load,
   request: requestProof,
+  approve,
   hydrated,
 }: {
   /** Lists the proofs. Must be stable for the same subject (the panel reloads when it changes). */
   load: () => Promise<ProofList>;
   /** Starts one; rejects with a message for the parent. */
   request: () => Promise<void>;
+  /** Approves a ready proof for print; only a book's proofs can be approved, so a story preview passes none. */
+  approve?: (proofId: string) => Promise<void>;
   hydrated: boolean;
 }) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
   const [requesting, setRequesting] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const rendering = state?.proofs.some((proof) => proof.status === "rendering") ?? false;
@@ -43,6 +47,20 @@ export function ProofPanel({
     };
   }, [load, rendering]);
 
+  const approveProof = async (proofId: string) => {
+    if (!approve) return;
+    setApproving(proofId);
+    setError(null);
+    try {
+      await approve(proofId);
+      setState(await load());
+    } catch (cause) {
+      setError(cause instanceof Error && cause.message ? cause.message : "The proof couldn't be approved.");
+    } finally {
+      setApproving(null);
+    }
+  };
+
   const request = async () => {
     setRequesting(true);
     setError(null);
@@ -61,7 +79,10 @@ export function ProofPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-medium">Print proof</h2>
-          <p className="text-muted-foreground text-sm">A print-ready PDF of the whole book with the characters as shown, with bleed.</p>
+          <p className="text-muted-foreground text-sm">
+            A print-ready PDF of the whole book with the characters as shown, with bleed.
+            {approve && " Download it and check every page, then approve it for print."}
+          </p>
         </div>
         {state?.canRequest && (
           <Button onClick={() => void request()} disabled={!hydrated || requesting}>
@@ -74,15 +95,42 @@ export function ProofPanel({
       {state && state.proofs.length > 0 && (
         <ul className="flex flex-col divide-y text-sm">
           {state.proofs.map((proof) => (
-            <li key={proof.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="proof" data-status={proof.status}>
-              <span>
-                {proof.castNames.join(" & ")} · {new Date(proof.createdAt).toLocaleString()}
-                {proof.requestedBy && <span className="text-muted-foreground"> · by {proof.requestedBy}</span>}
+            <li
+              key={proof.id}
+              className="flex flex-wrap items-center justify-between gap-2 py-2"
+              data-testid="proof"
+              data-status={proof.status}
+              data-approved={proof.approvedAt ? "true" : "false"}
+            >
+              <span className="flex flex-col">
+                <span>
+                  {proof.castNames.join(" & ")} · {new Date(proof.createdAt).toLocaleString()}
+                  {proof.requestedBy && <span className="text-muted-foreground"> · by {proof.requestedBy}</span>}
+                </span>
+                {proof.approvedAt ? (
+                  <span className="font-medium text-emerald-700" data-testid="proof-approval">
+                    ✓ Approved for print by {proof.approvedBy ?? "a former member"} on {new Date(proof.approvedAt).toLocaleString()}
+                  </span>
+                ) : (
+                  proof.expiresAt && (
+                    <span className="text-muted-foreground text-xs">
+                      Deleted on {new Date(proof.expiresAt).toLocaleDateString()}
+                      {approve ? " unless approved" : ""}
+                    </span>
+                  )
+                )}
               </span>
               {proof.status === "ready" ? (
-                <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
-                  Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
-                </a>
+                <span className="flex flex-wrap items-center gap-3">
+                  <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
+                    Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
+                  </a>
+                  {approve && state.canRequest && !proof.approvedAt && (
+                    <Button size="sm" variant="outline" onClick={() => void approveProof(proof.id)} disabled={!hydrated || approving !== null}>
+                      {approving === proof.id ? "Approving…" : "Approve for print"}
+                    </Button>
+                  )}
+                </span>
               ) : proof.status === "rendering" ? (
                 <span className="text-muted-foreground">Rendering…</span>
               ) : (

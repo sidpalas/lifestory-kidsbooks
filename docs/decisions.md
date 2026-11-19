@@ -18,7 +18,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** never expected.
 
 ### D3. Better Auth; a family is an organization; operator via the admin plugin without impersonation — Decided
-- **Why:** brief. Accounts hold photos of children, so nobody, the operator included, may sign in as someone else.
+- **Why:** brief. Accounts hold details about children (names, ages, looks; no photos since D26), so nobody, the
+  operator included, may sign in as someone else.
 - **How:** family roles `owner`, `parent` (edit books), `viewer` (read only), defined in `packages/core/src/auth.ts`
   with an extra `book: [read, edit]` statement. The operator role (`admin`) is a custom admin-plugin role whose
   permissions omit `impersonate` and `impersonate-admins`; the smoke test asserts the impersonation endpoint
@@ -71,7 +72,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   need invitations that don't create an account until accepted (for example to keep unaccepted invites out of user lists).
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided
-- **Why:** brief. Postgres is the only moving part; workflows can suspend for days (preview approval).
+- **Why:** brief. Postgres is the only moving part; workflows can suspend for days (an illustrator's review of
+  generated parts).
 - **How:** Absurd 0.5.1's SQL is vendored verbatim as a Drizzle custom migration, so `mise run db:migrate` is the only
   schema tool. The `Jobs` service and `step()` helper in `packages/core/src/jobs.ts` are the only places that touch
   the SDK, so tasks are Effect programs.
@@ -244,10 +246,10 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   have it). Its images and fonts load from `/api/files/<key>` like the editor's, and Chromium answers those requests
   straight from object storage, so the PDF uses the same objects, recoloured layers included, without the worker
   holding a session.
-- **Books plug in** through `createProof({ familyId, storyVersionId, content: { cast, textEdits }, requestedBy })`
-  (`packages/core/src/proofs.ts`). Until personalized books land, the story page's "Make a PDF proof" calls it with
-  the example characters and the looks chosen in the picker, and no text edits. The book adds a nullable `book_id`
-  to `proof` and approval (`approved_at`, `approved_by`), which belongs to the book.
+- **Books and previews** both go through `createProof({ familyId, bookId?, storyVersionId, content: { cast, textEdits },
+  requestedBy })` (`packages/core/src/proofs.ts`). A book passes its cast as drawn and its text edits and sets
+  `book_id`; the story page's "Make a PDF proof" passes the example characters with the looks chosen in the picker
+  and no edits. Approval belongs to a book's proof (D32).
 - **Chromium only in the worker image:** `playwright-core` is a dependency of `@lifestory/core` but loads on first
   use, so the web app never starts a browser. `apps/worker/Dockerfile` installs the matching headless shell with its
   system libraries and fonts (image 1.96 GB). On Railway the worker reaches the web app at its private domain.
@@ -316,7 +318,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   bucket listing is the inventory; no table records each object. The `storage.sweep` task deletes samples older than
   7 days with their `generation` rows, and everything under `families/<id>/` once that family no longer exists. Each
   worker spawns it at start and every 6 hours, with the 6-hour period as idempotency key (Absurd has no scheduler,
-  D4). Story assets, the recolour cache, and proofs of live families stay. Family deletion is off
+  D4). Story assets and the recolour cache stay; a live family's proofs follow D32 (approved: kept; unapproved: 30
+  days, row and PDF), and a proof PDF whose row is gone is deleted. Family deletion is off
   (`disableOrganizationDeletion`) until account deletion is designed, since it would leave the owner without a
   family (D3).
 - **Why:** before this, nothing ever deleted an object, and Better Auth's family delete orphaned the family's PDFs
@@ -328,6 +331,27 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   row and the object can't be written atomically.
 - **Reopen if:** we need per-family storage accounting, quotas, or deletion receipts (add the table on top of these
   keys), a new kind of object can't live under one owner's prefix, or listing `families/` gets slow.
+
+### D32. A parent approves a book's proof once, with who and when; unapproved proofs expire after 30 days — Made (2026-11-19)
+- **Approval:** `proof.approved_at` and `proof.approved_by` (migration 0008, two nullable columns). The book page's
+  proof list has "Approve for print" next to each ready proof's download link, for roles that edit books (owner,
+  parent); a viewer sees who approved it and when, and downloads it, but can't approve. Only a ready proof of a book
+  can be approved: a story preview's proof has no book to print. Approval is final and happens once: approving again
+  keeps the first approval, and there is no "unapprove", because a print order will point at the approved proof and the
+  PDF it approved never changes (D27). A book can have several approved proofs (one per round of changes); an order
+  will name the one it prints. Approving doesn't require the download to have happened: the UI asks the
+  parent to download and check it first, and checking can't be proven anyway.
+- **Retention:** an approved proof (row and PDF) stays as long as its family, because orders will reference it and
+  it records what was printed. An unapproved proof, of a book or a story preview, is a draft: the `storage.sweep`
+  task (D31) deletes its row 30 days after it was made, then deletes every `families/<id>/proofs/<proofId>.pdf` whose
+  row is gone. The list shows each draft's deletion date. 30 days gives a parent time to come back to a proof, while a
+  new one takes seconds to make (D27); a draft holds the children's names and looks, so it shouldn't stay forever.
+  The row is written before its render task starts, so a PDF without a row is always one whose proof expired.
+- **Rejected:** keeping only the newest unapproved proof per book (a parent comparing two drafts loses one without
+  warning); deleting older drafts when one is approved (it surprises a parent who wanted the other); a
+  per-proof `expires_at` column (a constant TTL from `created_at` says the same with no backfill).
+- **Reopen if:** print orders need approval to expire (for example a proof approved months before ordering), parents
+  ask to withdraw an approval, or families ask for drafts to be kept longer.
 
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
@@ -376,8 +400,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   derive from a hash of the request key, so retried steps write byte-identical objects.
 - **Reopen if:** never expected.
 
-### D14. Generation as an Absurd workflow that suspends for Modal's callback and for preview approval — Recommended
-- See [plan.md](plan.md#generation-workflow). The fake provider goes through the same suspend-and-callback path
+### D14. Generation as an Absurd workflow that suspends for Modal's callback and for the illustrator's approval — Recommended
+- See [plan.md](plan.md#authoring-time-part-generation-later-milestone). Since D26 it runs at authoring time only. The fake provider goes through the same suspend-and-callback path
   (it emits the completion event itself), so tests exercise the real workflow.
 - **Sid, 2026-11-18:** confirmed the callback design.
 - **Reopen if:** the Modal callback can't reach the app (then poll Modal's function-call result with

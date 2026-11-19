@@ -57,6 +57,13 @@
       "when": 1795062483966,
       "tag": "0007_character_title",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795064815843,
+      "tag": "0008_proof_approval",
+      "breakpoints": true
     }
   ]
 }
