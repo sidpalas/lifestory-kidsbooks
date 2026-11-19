@@ -10,6 +10,8 @@ export type Age = typeof Age.Type;
 export interface LookOption {
   readonly id: string;
   readonly label: string;
+  /** For colour axes: a representative colour for the picker's swatch (the mid tone of the portrait's palette). */
+  readonly swatch?: string;
 }
 
 /** Base faces: an illustrator-drawn figure per face, so the face is the only axis tied to age. */
@@ -21,11 +23,11 @@ export const faceOptions = [
 ] as const satisfies ReadonlyArray<LookOption & { readonly age: Age }>;
 
 export const skinOptions = [
-  { id: "skin:s1", label: "Very light" },
-  { id: "skin:s2", label: "Light" },
-  { id: "skin:s3", label: "Medium" },
-  { id: "skin:s4", label: "Brown" },
-  { id: "skin:s5", label: "Dark brown" },
+  { id: "skin:s1", label: "Very light", swatch: "#f6dcc8" },
+  { id: "skin:s2", label: "Light", swatch: "#eec6a8" },
+  { id: "skin:s3", label: "Medium", swatch: "#d6a07a" },
+  { id: "skin:s4", label: "Brown", swatch: "#b07548" },
+  { id: "skin:s5", label: "Dark brown", swatch: "#6e4428" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const hairOptions = [
@@ -35,10 +37,10 @@ export const hairOptions = [
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const hairColourOptions = [
-  { id: "hair-colour:black", label: "Black" },
-  { id: "hair-colour:brown", label: "Brown" },
-  { id: "hair-colour:blonde", label: "Blonde" },
-  { id: "hair-colour:grey", label: "Grey" },
+  { id: "hair-colour:black", label: "Black", swatch: "#342c2e" },
+  { id: "hair-colour:brown", label: "Brown", swatch: "#624028" },
+  { id: "hair-colour:blonde", label: "Blonde", swatch: "#cea660" },
+  { id: "hair-colour:grey", label: "Grey", swatch: "#96969c" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const glassesOptions = [

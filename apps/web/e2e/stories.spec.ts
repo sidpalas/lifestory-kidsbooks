@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("a family member previews the sample story's pages at print size, with the story's font and art", async ({ page }) => {
   // The grandparent is a viewer and not the author: a published story is readable by anyone signed in.
   await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
-  await page.getByRole("link", { name: "The Moon Picnic" }).click();
+  await page.getByTestId("stories").getByRole("link", { name: "The Moon Picnic" }).click();
   await expect(page).toHaveURL(/\/stories\/the-moon-picnic$/);
   await expect(page.getByTestId("story-meta")).toContainText("8.5 × 8.5 in · 6 pages");
 

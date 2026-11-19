@@ -2,18 +2,20 @@ import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+import { FamilyLibrary } from "~/components/family-library";
 import { FamilyPanel, InviteFamilyCard } from "~/components/family-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { NativeSelect } from "~/components/ui/native-select";
 import { signOut, SignOutResult } from "~/server/accounts";
+import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 import { FamiliesResult, getFamilies, switchFamilyFn, SwitchFamilyResult } from "~/server/families";
 import { getHome, getSampleFileStatus, HomeResult, SampleFileStatusResult, startSampleFile, StartSampleFileResult } from "~/server/functions";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
     try {
-      const [home, families] = await Promise.all([getHome(), getFamilies()]);
-      return { ...unwrapResult(HomeResult)(home), ...unwrapResult(FamiliesResult)(families) };
+      const [home, families, library] = await Promise.all([getHome(), getFamilies(), getFamilyLibrary()]);
+      return { ...unwrapResult(HomeResult)(home), ...unwrapResult(FamiliesResult)(families), library: unwrapResult(FamilyLibraryResult)(library) };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       throw error;
@@ -29,7 +31,7 @@ type JobView =
   | { readonly phase: "error"; readonly message: string };
 
 function Home() {
-  const { user, families, stories, active, isOperator } = Route.useLoaderData();
+  const { user, families, stories, active, isOperator, library } = Route.useLoaderData();
   const router = useRouter();
   const [job, setJob] = useState<JobView>({ phase: "idle" });
   // The server-rendered button does nothing until React hydrates, so keep it disabled until then.
@@ -100,6 +102,7 @@ function Home() {
       </header>
 
       {active && <FamilyPanel family={active} />}
+      <FamilyLibrary characters={library.characters} books={library.books} canEdit={library.canEdit} />
       {isOperator && <InviteFamilyCard />}
 
       <Card>

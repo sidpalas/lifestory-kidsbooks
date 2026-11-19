@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { Result, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import {
+  castLook,
   composeIllustration,
   exampleCast,
   isVariableFont,
@@ -117,6 +118,30 @@ describe("looks against a story (D26)", () => {
     const manifest = decoded(variant((m) => delete m.palettes.skin["skin:s5"]));
     expect(vocabularyGaps(manifest)).toEqual(['no palette for "skin:s5"']);
     expect(unsupportedOptions(manifest, "hero", { ...childLook("face:adult-1", "hair:short"), skin: "skin:s5" }).toSorted()).toEqual(["face", "skin"]);
+  });
+
+  it("a book's override stands in only for options the story can't draw, and never for another age", () => {
+    const manifest = decoded(
+      variant((m) => {
+        const hero = m.pages[3].illustration.layers.find((layer: any) => layer.slotId === "hero");
+        hero.parts = hero.parts.filter((part: any) => !(part.face === "face:child-2" && part.option === "hair:long"));
+      }),
+    );
+    const longOval = childLook("face:child-2", "hair:long");
+    expect(castLook(manifest, "hero", longOval)).toEqual({ look: longOval, wrongAge: false, unsupported: ["hair"] });
+    // The parent picks a stand-in hairstyle for this book; the other axes stay the character's own.
+    expect(castLook(manifest, "hero", longOval, { hair: "hair:curly", glasses: "glasses:round" })).toEqual({
+      look: { ...longOval, hair: "hair:curly" },
+      wrongAge: false,
+      unsupported: [],
+    });
+    // Once the character's own option is drawable (another face here), the override no longer applies.
+    const longRound = childLook("face:child-1", "hair:long");
+    expect(castLook(manifest, "hero", longRound, { hair: "hair:curly" }).look).toEqual(longRound);
+    // A stand-in the story can't draw either leaves the axis unsupported.
+    expect(castLook(manifest, "hero", longOval, { hair: "hair:long" }).unsupported).toEqual(["hair"]);
+    // A grown-up's face can't fill a child's role, whatever the override says.
+    expect(castLook(manifest, "hero", childLook("face:adult-1", "hair:short"), { face: "face:child-1" })).toMatchObject({ wrongAge: true, unsupported: ["face"] });
   });
 });
 

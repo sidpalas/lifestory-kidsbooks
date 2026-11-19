@@ -53,3 +53,8 @@ export class UnsupportedLook extends Schema.TaggedError<UnsupportedLook>()("Unsu
   slotId: Schema.String,
   axes: Schema.Array(Schema.String),
 }) {}
+
+/** A request the server can't accept as given; message says why, for the person who made it. */
+export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInput", {
+  message: Schema.String,
+}) {}

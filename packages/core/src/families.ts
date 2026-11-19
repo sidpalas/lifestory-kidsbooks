@@ -5,7 +5,7 @@ import { authCall } from "./accounts.ts";
 import { familyRoles, type FamilyRole, type SessionUser } from "./auth.ts";
 import type { FamilyMembership, FamilyOverview, InvitationDetails, InviteRole } from "./contracts.ts";
 import { Database } from "./database.ts";
-import { InviteInvalid, NotFound } from "./errors.ts";
+import { Forbidden, InviteInvalid, NotFound } from "./errors.ts";
 
 /** The families a user belongs to, with their role in each, by family name. */
 export const listUserFamilies = Effect.fn("families.listForUser")(function* (userId: string) {
@@ -23,6 +23,28 @@ export const listUserFamilies = Effect.fn("families.listForUser")(function* (use
 /** Whether a family role grants `permissions`. */
 export const roleCan = (role: string, permissions: Parameters<(typeof familyRoles)["owner"]["authorize"]>[0]) =>
   role in familyRoles && familyRoles[role as FamilyRole].authorize(permissions).success;
+
+/**
+ * Checks that `userId` belongs to the family that owns a row, and for "edit" that their role may edit its books and
+ * characters (`book: edit`; a viewer may not). Checks the row's family, never only the session's active one (D3).
+ * Fails with NotFound for a non-member, so other families' rows don't reveal that they exist.
+ */
+export const requireFamilyAccess = Effect.fn("families.requireAccess")(function* (
+  userId: string,
+  familyId: string,
+  access: "read" | "edit",
+) {
+  const [row] = yield* Database.query((db) =>
+    db
+      .select({ role: schema.member.role })
+      .from(schema.member)
+      .where(and(eq(schema.member.organizationId, familyId), eq(schema.member.userId, userId))),
+  );
+  if (!row) return yield* new NotFound({ entity: "family", id: familyId });
+  const canEdit = roleCan(row.role, { book: ["edit"] });
+  if (access === "edit" && !canEdit) return yield* new Forbidden({ message: "Viewers can read this family's books but not change them." });
+  return { role: row.role, canEdit };
+});
 
 /**
  * The family pages show: the session's active family if the user is still in it,

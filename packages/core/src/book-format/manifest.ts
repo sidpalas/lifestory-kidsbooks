@@ -344,6 +344,44 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
   return [...unsupported];
 };
 
+/**
+ * Options a book draws for one role instead of the character's own, for axes the pinned story version can't draw
+ * (D26: "a story-specific override with a supported option", picked by the parent).
+ */
+export const LookOverride = Schema.Struct({
+  face: Schema.optionalKey(Look.fields.face),
+  skin: Schema.optionalKey(Look.fields.skin),
+  hair: Schema.optionalKey(Look.fields.hair),
+  hairColour: Schema.optionalKey(Look.fields.hairColour),
+  glasses: Schema.optionalKey(Look.fields.glasses),
+});
+export type LookOverride = typeof LookOverride.Type;
+
+export interface CastLook {
+  /** What the pages draw: the character's look, with the override applied to the axes the story can't draw. */
+  readonly look: Look;
+  /** The character's face is another age than the role's: only faces of the role's age fill it, so no override helps. */
+  readonly wrongAge: boolean;
+  /** Axes still unsupported after the override. Empty (and `wrongAge` false) means every page composes. */
+  readonly unsupported: ReadonlyArray<keyof Look>;
+}
+
+/**
+ * How a character fills `slotId` in this story version (D26). The override replaces only options the story can't
+ * draw, so a look edit back to a supported option takes effect again on its own.
+ */
+export const castLook = (manifest: StoryManifest, slotId: string, look: Look, override: LookOverride = {}): CastLook => {
+  const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
+  if (slot && ageOfFace(look.face) !== slot.age) return { look, wrongAge: true, unsupported: ["face"] };
+  const patched: { -readonly [K in keyof Look]: Look[K] } = { ...look };
+  for (const axis of unsupportedOptions(manifest, slotId, look)) {
+    const option = override[axis];
+    if (option !== undefined) (patched as Record<keyof Look, string>)[axis] = option;
+  }
+  if (ageOfFace(patched.face) !== slot?.age) return { look, wrongAge: false, unsupported: ["face"] };
+  return { look: patched, wrongAge: false, unsupported: unsupportedOptions(manifest, slotId, patched) };
+};
+
 /** Parts still waiting for the illustrator's approval, by page; a published version must have none. */
 export const unapprovedParts = (manifest: StoryManifest): ReadonlyArray<string> =>
   manifest.pages.flatMap((page) =>

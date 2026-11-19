@@ -36,6 +36,13 @@
       "when": 1795055765698,
       "tag": "0004_proof",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795057969990,
+      "tag": "0005_characters_and_books",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@
 // and edits.
 import { randomUUID } from "node:crypto";
 import { schema } from "@lifestory/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 import { decodeStoryManifest, type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
 import { Auth, type SessionUser } from "./auth.ts";
@@ -51,6 +51,8 @@ const familyForNewProof = Effect.fn("proofs.familyForNew")(function* (user: Sess
  */
 export const createProof = Effect.fn("proofs.create")(function* (input: {
   readonly familyId: string;
+  /** The book it shows, when made from one. */
+  readonly bookId?: string;
   readonly storyVersionId: string;
   readonly content: ProofContent;
   readonly requestedBy: string;
@@ -61,6 +63,7 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
     db.insert(schema.proof).values({
       id,
       familyId: input.familyId,
+      bookId: input.bookId ?? null,
       storyVersionId: input.storyVersionId,
       content,
       requestedBy: input.requestedBy,
@@ -90,10 +93,8 @@ export const requestStoryProof = Effect.fn("proofs.requestForStory")(function* (
   return yield* createProof({ familyId: family.familyId, storyVersionId, content: { cast, textEdits: [] }, requestedBy: user.id });
 });
 
-/** The user's family's proofs of a story's newest readable version, newest first, and whether they may make one. */
-export const listStoryProofs = Effect.fn("proofs.listForStory")(function* (user: SessionUser, slug: string) {
-  const family = yield* familyForNewProof(user);
-  const { storyVersionId, manifest } = yield* readableStoryVersion(user.id, slug);
+/** The proofs matching `where`, newest first, as the family sees them. */
+export const proofSummaries = Effect.fn("proofs.summaries")(function* (where: SQL | undefined, manifest: StoryManifest) {
   const rows = yield* Database.query((db) =>
     db
       .select({
@@ -109,7 +110,7 @@ export const listStoryProofs = Effect.fn("proofs.listForStory")(function* (user:
       })
       .from(schema.proof)
       .leftJoin(schema.user, eq(schema.user.id, schema.proof.requestedBy))
-      .where(and(eq(schema.proof.familyId, family.familyId), eq(schema.proof.storyVersionId, storyVersionId)))
+      .where(where)
       .orderBy(desc(schema.proof.createdAt))
       .limit(20),
   );
@@ -133,6 +134,18 @@ export const listStoryProofs = Effect.fn("proofs.listForStory")(function* (user:
         castNames: manifest.characterSlots.map((slot) => content.cast[slot.slotId]?.name ?? slot.label),
       } satisfies ProofSummary;
     }),
+  );
+  return proofs;
+});
+
+/** The user's family's proofs of a story's newest readable version, newest first, and whether they may make one. */
+export const listStoryProofs = Effect.fn("proofs.listForStory")(function* (user: SessionUser, slug: string) {
+  const family = yield* familyForNewProof(user);
+  const { storyVersionId, manifest } = yield* readableStoryVersion(user.id, slug);
+  // Proofs of the story preview only; a book lists its own.
+  const proofs = yield* proofSummaries(
+    and(eq(schema.proof.familyId, family.familyId), eq(schema.proof.storyVersionId, storyVersionId), isNull(schema.proof.bookId)),
+    manifest,
   );
   return { canRequest: roleCan(family.role, { book: ["edit"] }), proofs };
 });

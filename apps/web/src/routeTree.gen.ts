@@ -15,6 +15,10 @@ import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
 import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiPortraitRouteImport } from './routes/api/portrait'
+import { Route as BooksBookIdRouteImport } from './routes/books/$bookId'
+import { Route as CharactersCharacterIdRouteImport } from './routes/characters/$characterId'
+import { Route as CharactersNewRouteImport } from './routes/characters/new'
 import { Route as InvitationsInvitationIdRouteImport } from './routes/invitations.$invitationId'
 import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$token'
 import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
@@ -52,6 +56,26 @@ const _devMailboxRoute = _devMailboxRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPortraitRoute = ApiPortraitRouteImport.update({
+  id: '/api/portrait',
+  path: '/api/portrait',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksBookIdRoute = BooksBookIdRouteImport.update({
+  id: '/books/$bookId',
+  path: '/books/$bookId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersCharacterIdRoute = CharactersCharacterIdRouteImport.update({
+  id: '/characters/$characterId',
+  path: '/characters/$characterId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersNewRoute = CharactersNewRouteImport.update({
+  id: '/characters/new',
+  path: '/characters/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvitationsInvitationIdRoute = InvitationsInvitationIdRouteImport.update({
@@ -101,6 +125,10 @@ export interface FileRoutesByFullPath {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/portrait': typeof ApiPortraitRoute
+  '/books/$bookId': typeof BooksBookIdRoute
+  '/characters/$characterId': typeof CharactersCharacterIdRoute
+  '/characters/new': typeof CharactersNewRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
@@ -117,6 +145,10 @@ export interface FileRoutesByTo {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/portrait': typeof ApiPortraitRoute
+  '/books/$bookId': typeof BooksBookIdRoute
+  '/characters/$characterId': typeof CharactersCharacterIdRoute
+  '/characters/new': typeof CharactersNewRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
@@ -134,6 +166,10 @@ export interface FileRoutesById {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/portrait': typeof ApiPortraitRoute
+  '/books/$bookId': typeof BooksBookIdRoute
+  '/characters/$characterId': typeof CharactersCharacterIdRoute
+  '/characters/new': typeof CharactersNewRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
@@ -152,6 +188,10 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/api/health'
+    | '/api/portrait'
+    | '/books/$bookId'
+    | '/characters/$characterId'
+    | '/characters/new'
     | '/invitations/$invitationId'
     | '/set-password/$token'
     | '/stories/$slug'
@@ -168,6 +208,10 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/api/health'
+    | '/api/portrait'
+    | '/books/$bookId'
+    | '/characters/$characterId'
+    | '/characters/new'
     | '/invitations/$invitationId'
     | '/set-password/$token'
     | '/stories/$slug'
@@ -184,6 +228,10 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/api/health'
+    | '/api/portrait'
+    | '/books/$bookId'
+    | '/characters/$characterId'
+    | '/characters/new'
     | '/invitations/$invitationId'
     | '/set-password/$token'
     | '/stories/$slug'
@@ -201,6 +249,10 @@ export interface RootRouteChildren {
   _devLogMeOutRoute: typeof _devLogMeOutRoute
   _devMailboxRoute: typeof _devMailboxRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiPortraitRoute: typeof ApiPortraitRoute
+  BooksBookIdRoute: typeof BooksBookIdRoute
+  CharactersCharacterIdRoute: typeof CharactersCharacterIdRoute
+  CharactersNewRoute: typeof CharactersNewRoute
   InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
   SetPasswordTokenRoute: typeof SetPasswordTokenRoute
   StoriesSlugRoute: typeof StoriesSlugRoute
@@ -254,6 +306,34 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portrait': {
+      id: '/api/portrait'
+      path: '/api/portrait'
+      fullPath: '/api/portrait'
+      preLoaderRoute: typeof ApiPortraitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books/$bookId': {
+      id: '/books/$bookId'
+      path: '/books/$bookId'
+      fullPath: '/books/$bookId'
+      preLoaderRoute: typeof BooksBookIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/$characterId': {
+      id: '/characters/$characterId'
+      path: '/characters/$characterId'
+      fullPath: '/characters/$characterId'
+      preLoaderRoute: typeof CharactersCharacterIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/new': {
+      id: '/characters/new'
+      path: '/characters/new'
+      fullPath: '/characters/new'
+      preLoaderRoute: typeof CharactersNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invitations/$invitationId': {
@@ -321,6 +401,10 @@ const rootRouteChildren: RootRouteChildren = {
   _devLogMeOutRoute: _devLogMeOutRoute,
   _devMailboxRoute: _devMailboxRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiPortraitRoute: ApiPortraitRoute,
+  BooksBookIdRoute: BooksBookIdRoute,
+  CharactersCharacterIdRoute: CharactersCharacterIdRoute,
+  CharactersNewRoute: CharactersNewRoute,
   InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
   SetPasswordTokenRoute: SetPasswordTokenRoute,
   StoriesSlugRoute: StoriesSlugRoute,

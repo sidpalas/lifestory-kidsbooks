@@ -1,7 +1,7 @@
 // Client-safe schemas shared by the web app's server functions and its UI.
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
-import { CastMember } from "./book-format/index.ts";
+import { CastMember, Look, LookOverride, PronounSet, StoryManifest, TextStyleName } from "./book-format/index.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
@@ -48,6 +48,70 @@ export const InvitationDetails = Schema.Struct({
   hasAccount: Schema.Boolean,
 });
 export type InvitationDetails = typeof InvitationDetails.Type;
+
+/** A family member as drawn in books (D26): name and pronouns for the text, a look for the pictures. */
+export const Character = Schema.Struct({
+  id: Schema.String,
+  familyId: Schema.String,
+  name: Schema.String,
+  pronouns: PronounSet,
+  look: Look,
+});
+export type Character = typeof Character.Type;
+
+export const CharacterInput = Schema.Struct({
+  name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(60)),
+  pronouns: PronounSet,
+  look: Look,
+});
+export type CharacterInput = typeof CharacterInput.Type;
+
+/** A family's book, as listed. */
+export const BookSummary = Schema.Struct({ id: Schema.String, title: Schema.String, storyTitle: Schema.String, cast: Schema.String });
+export type BookSummary = typeof BookSummary.Type;
+
+/** How one character fills one role of a book (castLook in the book format). */
+export const BookRole = Schema.Struct({
+  slotId: Schema.String,
+  characterId: Schema.String,
+  /** The character, with the look the pages draw. */
+  member: CastMember,
+  override: LookOverride,
+  wrongAge: Schema.Boolean,
+  unsupported: Schema.Array(Schema.String),
+});
+export type BookRole = typeof BookRole.Type;
+
+/** A text block of a book page: the story's content, the family's edit if any, and the text as printed. */
+export const BookTextBlock = Schema.Struct({
+  style: TextStyleName,
+  original: Schema.String,
+  edited: Schema.NullOr(Schema.String),
+  text: Schema.String,
+});
+export type BookTextBlock = typeof BookTextBlock.Type;
+
+const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
+
+/** Everything BookPage needs to draw a family's book, editor and print alike. */
+export const BookView = Schema.Struct({
+  book: Schema.Struct({ id: Schema.String, familyId: Schema.String, title: Schema.String }),
+  story: Schema.Struct({ id: Schema.String, slug: Schema.String, title: Schema.String, authorName: Schema.String }),
+  version: Schema.Number,
+  manifest: StoryManifest,
+  roles: Schema.Array(BookRole),
+  /** Who fills each slot, for the text tokens and BookPage's guides. */
+  cast: Schema.Record(Schema.String, CastMember),
+  /** Each page's illustration as storage keys (a role that can't be drawn is left out) and its text. */
+  pages: Schema.Array(
+    Schema.Struct({
+      pageId: Schema.String,
+      layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })),
+      text: Schema.Array(BookTextBlock),
+    }),
+  ),
+});
+export type BookView = typeof BookView.Type;
 
 export const SampleFileResult = Schema.Struct({
   key: Schema.String,

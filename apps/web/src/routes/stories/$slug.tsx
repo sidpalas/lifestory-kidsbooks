@@ -9,15 +9,25 @@ import {
   NotFound,
   resolvePageText,
   storyAssetKey,
+  UnsupportedLook,
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { Schema } from "effect";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
 import { NativeSelect } from "~/components/ui/native-select";
-import { getStoryPreviewFn, StoryPreviewResult } from "~/server/functions";
+import { MakeBook } from "~/components/make-book";
+import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
+import {
+  getStoryPreviewFn,
+  listStoryProofsFn,
+  RequestProofResult,
+  requestStoryProofFn,
+  StoryPreviewResult,
+  StoryProofsResult,
+} from "~/server/functions";
 
 // Looks for the preview, per slot, kept in the URL so a preview with a chosen look can be shared and reloaded.
 const PreviewSearch = Schema.Struct({ looks: Schema.optional(Schema.Record(Schema.String, LookSchema)) });
@@ -29,7 +39,8 @@ export const Route = createFileRoute("/stories/$slug")({
   loaderDeps: ({ search }) => ({ looks: search.looks }),
   loader: async ({ params, deps }) => {
     try {
-      return unwrapResult(StoryPreviewResult)(await getStoryPreviewFn({ data: { slug: params.slug, looks: deps.looks } }));
+      const [preview, library] = await Promise.all([getStoryPreviewFn({ data: { slug: params.slug, looks: deps.looks } }), getFamilyLibrary()]);
+      return { ...unwrapResult(StoryPreviewResult)(preview), library: unwrapResult(FamilyLibraryResult)(library) };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       if (error instanceof NotFound) throw notFound();
@@ -42,7 +53,7 @@ export const Route = createFileRoute("/stories/$slug")({
 const axisLabels: Record<LookAxis, string> = { face: "Face", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses" };
 
 function StoryPreview() {
-  const { story, version, manifest, cast, pages } = Route.useLoaderData();
+  const { story, version, manifest, cast, pages, library } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const router = useRouter();
   const [guides, setGuides] = useState(false);
@@ -66,6 +77,16 @@ function StoryPreview() {
     void router.navigate({ to: "/stories/$slug", params: { slug }, search: { looks: latest.current }, replace: true });
   };
 
+  const loadProofs = useCallback(async () => unwrapResult(StoryProofsResult)(await listStoryProofsFn({ data: { slug } })), [slug]);
+  const requestProof = async () => {
+    const looks = Object.fromEntries(Object.keys(cast).map((slotId) => [slotId, lookOf(slotId)]));
+    try {
+      unwrapResult(RequestProofResult)(await requestStoryProofFn({ data: { slug, looks } }));
+    } catch (cause) {
+      throw new Error(cause instanceof UnsupportedLook ? "This story can't draw one of the chosen looks." : "The proof couldn't be started.", { cause });
+    }
+  };
+
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
       <StoryFonts fonts={manifest.fonts} assetUrl={assetUrl} />
@@ -82,6 +103,8 @@ function StoryPreview() {
           Show trim, safe area, and figure boxes
         </label>
       </header>
+
+      {library.canEdit && <MakeBook slug={slug} slots={manifest.characterSlots} characters={library.characters} />}
 
       <section className="grid gap-4 md:grid-cols-2" aria-label="Characters">
         {manifest.characterSlots.map((slot) => {
@@ -132,7 +155,7 @@ function StoryPreview() {
         })}
       </section>
 
-      <ProofPanel slug={slug} looks={Object.fromEntries(Object.keys(cast).map((slotId) => [slotId, lookOf(slotId)]))} hydrated={hydrated} />
+      <ProofPanel load={loadProofs} request={requestProof} hydrated={hydrated} />
 
       <ol className="grid gap-8 md:grid-cols-2">
         {manifest.pages.map((page, i) => (

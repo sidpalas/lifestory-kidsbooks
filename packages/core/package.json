@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./contracts": "./src/contracts.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./portrait/*": "./src/looks/portrait/*"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1169.0",

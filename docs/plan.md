@@ -180,8 +180,9 @@ checks this (`vocabularyGaps`). An option added to the vocabulary later is missi
 story-specific override with one of the story's supported options, which the parent picks.
 
 - **Picker** (milestone 1, item 2): a character starts from one of a few curated looks (full option sets), then the
-  parent changes one axis at a time with a live preview: the role's portrait figure (the sample story's cover in
-  milestone 1) composed with the same parts and recolour as the pages. No photos and no matching from photos (D26).
+  parent changes one axis at a time with a live preview: a story-independent portrait composed with the same
+  pipeline as the pages (D28), each option shown as a thumbnail of the character with it. No photos and no matching
+  from photos (D26).
 - **Base faces:** a handful per role, covering age, gender and facial structure, each a separate illustrator-drawn
   base with its own parts. Skin tone and hair colour apply to every base.
 

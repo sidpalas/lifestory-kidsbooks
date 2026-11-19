@@ -1,14 +1,27 @@
-// The family's PDF proofs of a story: make one from the cast shown, watch it render, download it (D27).
-import { type Look, type ProofSummary, UnsupportedLook, unwrapResult } from "@lifestory/core/contracts";
+// The family's PDF proofs of a story preview or a book: make one from the cast shown, watch it render, download it
+// (D27). The page passes how to list and request them.
+import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
-import { listStoryProofsFn, RequestProofResult, requestStoryProofFn, StoryProofsResult } from "~/server/functions";
 
 const formatBytes = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
-const fetchProofsOf = async (slug: string) => unwrapResult(StoryProofsResult)(await listStoryProofsFn({ data: { slug } }));
+export interface ProofList {
+  readonly canRequest: boolean;
+  readonly proofs: ReadonlyArray<ProofSummary>;
+}
 
-export function ProofPanel({ slug, looks, hydrated }: { slug: string; looks: Readonly<Record<string, Look>>; hydrated: boolean }) {
+export function ProofPanel({
+  load,
+  request: requestProof,
+  hydrated,
+}: {
+  /** Lists the proofs. Must be stable for the same subject (the panel reloads when it changes). */
+  load: () => Promise<ProofList>;
+  /** Starts one; rejects with a message for the parent. */
+  request: () => Promise<void>;
+  hydrated: boolean;
+}) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +32,7 @@ export function ProofPanel({ slug, looks, hydrated }: { slug: string; looks: Rea
   useEffect(() => {
     let cancelled = false;
     const fetchProofs = async () => {
-      const next = await fetchProofsOf(slug);
+      const next = await load();
       if (!cancelled) setState(next);
     };
     void fetchProofs();
@@ -28,16 +41,16 @@ export function ProofPanel({ slug, looks, hydrated }: { slug: string; looks: Rea
       cancelled = true;
       clearInterval(timer);
     };
-  }, [slug, rendering]);
+  }, [load, rendering]);
 
   const request = async () => {
     setRequesting(true);
     setError(null);
     try {
-      unwrapResult(RequestProofResult)(await requestStoryProofFn({ data: { slug, looks: { ...looks } } }));
-      setState(await fetchProofsOf(slug));
+      await requestProof();
+      setState(await load());
     } catch (cause) {
-      setError(cause instanceof UnsupportedLook ? "This story can't draw one of the chosen looks." : "The proof couldn't be started.");
+      setError(cause instanceof Error && cause.message ? cause.message : "The proof couldn't be started.");
     } finally {
       setRequesting(false);
     }

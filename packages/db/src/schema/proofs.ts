@@ -3,6 +3,7 @@
 // changes after it's made and a print order can later reference it.
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth.ts";
+import { book } from "./books.ts";
 import { storyVersion } from "./stories.ts";
 
 export const proofStatus = pgEnum("proof_status", ["rendering", "ready"]);
@@ -14,6 +15,8 @@ export const proof = pgTable(
     familyId: text("family_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
+    /** The book it was made from; null for a proof of a story preview. A proof outlives its book. */
+    bookId: text("book_id").references(() => book.id, { onDelete: "set null" }),
     storyVersionId: text("story_version_id")
       .notNull()
       .references(() => storyVersion.id, { onDelete: "restrict" }),
@@ -33,5 +36,5 @@ export const proof = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("proof_family_idx").on(t.familyId, t.storyVersionId)],
+  (t) => [index("proof_family_idx").on(t.familyId, t.storyVersionId), index("proof_book_idx").on(t.bookId)],
 );

@@ -231,6 +231,25 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** a print provider needs PDF/X, flattened transparency or page boxes; longer books make one browser
   page too slow (then render in page ranges); real screen-versus-print mismatches show up (D12).
 
+### D28. The picker shows a story-independent portrait; books keep per-role overrides — Decided (Sid, 2026-11-19) / Made
+- **Portrait (Sid's request):** while a parent picks a look, the picker shows one character illustration that belongs
+  to no story (`packages/core/src/looks/portrait.ts`), served as `/api/portrait?<look>`. Each story then draws the same
+  option IDs with its own parts. The portrait is composed like a story figure (`composeFigure`, then `gradient-map-v1`),
+  from art shipped with the code because the vocabulary it covers ships with the code. This replaces plan.md's "the
+  sample story's cover" as the preview.
+- **Placeholder art (Made):** rebuilt by `looks/portrait/extract.py` from the FLUX 3 Klein 24-combination grid in
+  thread T-01a1f012-4acc-7483-a9a5-8d5c5353cdee (244 × 280 px). That thread is archived, so its full-resolution
+  files (608 × 1024) weren't reachable. The experiment drew one grown-up base, so every face option shows it for now;
+  its bob, coily afro, and braids stand for `hair:short`, `hair:curly`, and `hair:long`. Recolour artefacts remain
+  where the extraction guessed (a few pixels at the ear and the hairline).
+- **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
+  its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
+  character's own option is unsupported, so a later look change back to a supported option takes effect again. A role
+  still undrawable (no override yet, or a face of another age) is left out of the pictures, never drawn with a default,
+  and the editor asks the parent to pick a stand-in or someone else; the text still uses the name and pronouns.
+- **Reopen if:** the illustrator delivers real portrait bases (then replace the art; nothing else changes), or parents
+  are confused that the portrait and a story's drawings differ.
+
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.
@@ -250,7 +269,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 
 ### D9. TanStack Start; server functions for app calls, server routes for outside callers; no separate API — Recommended
 - **How:** Better Auth at `/api/auth/$`, file downloads at `/api/files/$`, dev sign-in at `/__dev/log-me-in/$email`.
-  The Modal callback will be a server route. Editor routes will set `ssr: false` (milestone 1).
+  The Modal callback is a server route. The book editor (`/books/$bookId`) sets `ssr: false`.
 - **Reopen if:** server rendering or routing blocks the print path or the editor.
 
 ### D10. Effect v4 as the server programming model, one shared runtime, Effect Schema for validation — Recommended

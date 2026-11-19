@@ -1,7 +1,7 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
-import type { CastMember, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { NO_PART_OPTIONS } from "./vocabulary.ts";
+import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
+import { type Look, NO_PART_OPTIONS } from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -28,10 +28,51 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
 };
 
 /**
- * The page's illustration, bottom to top. Each figure is its base face (skin and brows recoloured), the look's parts
- * in `partOrder`, then the occluder (its skin recoloured too). A slot without a cast member is left out. Callers
- * check `unsupportedOptions` first; an option the story lacks here is a bug, so it throws.
+ * One figure for `look`, bottom to top: its base face (skin and brows recoloured), the look's parts in `partOrder`,
+ * then the occluder (its skin recoloured too). Story pages and the picker's portrait both compose with this.
+ * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
  */
+export const composeFigure = (
+  palettes: StoryManifest["palettes"],
+  partOrder: StoryManifest["partOrder"],
+  layer: FigureLayer,
+  look: Look,
+): ReadonlyArray<LayerSpec> => {
+  const skin = palettes.skin[look.skin];
+  const hair = palettes.hairColour[look.hairColour];
+  const base = layer.bases.find((candidate) => candidate.face === look.face);
+  if (!skin || !hair || !base) throw new Error(`${layer.slotId}: can't draw this look`);
+  const regionPalettes = { skin, hairColour: hair } as const;
+
+  const parts =
+    layer.showsHead === false
+      ? []
+      : (layer.partOrder ?? partOrder).flatMap((axis) => {
+          const option = look[axis];
+          if (NO_PART_OPTIONS.has(option)) return [];
+          const drawn = layer.parts.filter((part) => part.face === look.face && part.axis === axis && part.option === option);
+          if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${look.face}"`);
+          return drawn.map((part) => ({
+            asset: part.asset,
+            rect: within(layer.box, part.at),
+            recolour: part.palette === "none" ? [] : [{ palette: regionPalettes[part.palette] }],
+          }));
+        });
+
+  return [
+    {
+      asset: base.asset,
+      rect: layer.box,
+      recolour: [{ mask: base.skinMask, palette: skin }, ...(base.browMask ? [{ mask: base.browMask, palette: hair }] : [])],
+    },
+    ...parts,
+    ...(base.occluder
+      ? [{ asset: base.occluder.asset, rect: layer.box, recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [] }]
+      : []),
+  ];
+};
+
+/** The page's illustration, bottom to top: its art and each figure (composeFigure). A slot without a cast member is left out. */
 export const composeIllustration = (
   manifest: StoryManifest,
   page: Page,
@@ -40,38 +81,5 @@ export const composeIllustration = (
   page.illustration.layers.flatMap((layer): ReadonlyArray<LayerSpec> => {
     if (layer.kind === "art") return [{ asset: layer.asset, rect: FULL, recolour: [] }];
     const member = cast[layer.slotId];
-    if (!member) return [];
-    const { look } = member;
-    const skin = manifest.palettes.skin[look.skin];
-    const hair = manifest.palettes.hairColour[look.hairColour];
-    const base = layer.bases.find((candidate) => candidate.face === look.face);
-    if (!skin || !hair || !base) throw new Error(`${page.pageId}/${layer.slotId}: the story can't draw this look`);
-    const palettes = { skin, hairColour: hair } as const;
-
-    const parts =
-      layer.showsHead === false
-        ? []
-        : (layer.partOrder ?? manifest.partOrder).flatMap((axis) => {
-            const option = look[axis];
-            if (NO_PART_OPTIONS.has(option)) return [];
-            const drawn = layer.parts.filter((part) => part.face === look.face && part.axis === axis && part.option === option);
-            if (drawn.length === 0) throw new Error(`${page.pageId}/${layer.slotId}: no part for "${option}" on "${look.face}"`);
-            return drawn.map((part) => ({
-              asset: part.asset,
-              rect: within(layer.box, part.at),
-              recolour: part.palette === "none" ? [] : [{ palette: palettes[part.palette] }],
-            }));
-          });
-
-    return [
-      {
-        asset: base.asset,
-        rect: layer.box,
-        recolour: [{ mask: base.skinMask, palette: skin }, ...(base.browMask ? [{ mask: base.browMask, palette: hair }] : [])],
-      },
-      ...parts,
-      ...(base.occluder
-        ? [{ asset: base.occluder.asset, rect: layer.box, recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [] }]
-        : []),
-    ];
+    return member ? composeFigure(manifest.palettes, manifest.partOrder, layer, member.look) : [];
   });
