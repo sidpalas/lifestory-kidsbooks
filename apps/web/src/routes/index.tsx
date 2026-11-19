@@ -106,7 +106,7 @@ function Home() {
       <Card>
         <CardHeader>
           <CardTitle>Stories</CardTitle>
-          <CardDescription>Published stories, read from Postgres.</CardDescription>
+          <CardDescription>Published stories you can make into a book with your family.</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="flex flex-col gap-3" data-testid="stories">

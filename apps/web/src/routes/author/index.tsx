@@ -169,7 +169,7 @@ function Authors({ authors }: { authors: ReadonlyArray<{ userId: string; name: s
     <Card data-testid="authors">
       <CardHeader>
         <CardTitle>Authors</CardTitle>
-        <CardDescription>You can always author. Let other accounts write and publish stories of their own (D37).</CardDescription>
+        <CardDescription>You can always author. Let other accounts write and publish stories of their own.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <ul className="flex flex-col gap-1 text-sm">

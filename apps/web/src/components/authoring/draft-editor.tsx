@@ -331,7 +331,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
           </div>
         )}
         <p className="text-muted-foreground max-w-md text-xs">
-          As BookPage prints it. Text and pictures follow your edits before you save.
+          As the page will print. Text and pictures follow your edits before you save.
         </p>
         {draft.characterSlots.length > 0 && (
           <fieldset className="flex max-w-md flex-col gap-2 rounded-md border p-2" data-testid="preview-as">
@@ -427,7 +427,7 @@ function StoryTab({
 
       <section className="flex flex-col gap-2" aria-label="Fonts">
         <h3 className="font-semibold">Fonts</h3>
-        <p className="text-muted-foreground text-xs">Static WOFF2 files, one per weight, so PDFs embed real fonts (D24). Fonts must allow embedding (e.g. SIL OFL).</p>
+        <p className="text-muted-foreground text-xs">One static WOFF2 file per weight, so the printed PDF uses the real font. Fonts must allow embedding (e.g. SIL OFL).</p>
         <ul className="flex flex-col gap-1 text-sm" data-testid="fonts">
           {draft.fonts.map((font) => (
             <li key={font.asset} className="flex items-center gap-2">
@@ -534,7 +534,7 @@ function RolesTab({ draft, change }: { draft: StoryDraft; change: Change }) {
   return (
     <div className="flex flex-col gap-4" data-testid="roles-tab">
       <p className="text-muted-foreground text-sm">
-        Each role is played by a family member. A role accepts some ages (D29) and covers every other look option. The example character plays it in
+        Each role is played by a family member. A role accepts some ages and covers every other look option. The example character plays it in
         previews.
       </p>
       {draft.characterSlots.map((slot, index) => (
