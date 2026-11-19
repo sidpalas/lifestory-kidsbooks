@@ -331,7 +331,7 @@ None of this is built in milestone 1; these are the seams that keep it from need
 ## Delivery
 
 Pull requests (or reviewed local branches, as Sid prefers) in this order, each with its tests. All seven are done
-(2026-11-19) except the part of item 7 marked open.
+(2026-11-19).
 
 1. Book format Schema, `story_version`, seeded sample story with placeholder art, `BookPage` and the print route.
 2. Families and invites (sign up by invite, roles, viewer read-only), family-scoped file access.
@@ -342,15 +342,13 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
 6. Modal provider and Python function, callback route, README instructions (done, D25); the hosted image API
    assessment (done, D30).
 7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
-   the `operator:create` command (D21). **Open:** how stories reach production is a separate decision ("Getting a
-   story into production" below); production has no stories until then, and the development seed never runs there.
+   the `operator:create` command (D21), and the `story:import` command that publishes a story in production (D33);
+   the development seed never runs there.
 
-Open needs found on the first production deploy (2026-11-19; not started, Sid to pick the approach):
+Open needs found on the first production deploy (2026-11-19):
 
-- **Getting a story into production.** `importStoryVersion` is called only by the development seed, which refuses
-  `NODE_ENV=production`, so production has no stories and `/stories/the-moon-picnic` is a 404 there. Options: a
-  `story-import.ts` command like `operator-create.ts` (the web image ships `fixtures/stories`, run once over
-  `railway ssh`, idempotent), or an authenticated upload endpoint, which author uploads will need anyway.
+- **Getting a story into production.** Done: `story-import.ts`, run once over `railway ssh` (D33). An authenticated
+  upload endpoint waits for the author tooling.
 - **Agent access to production.** An agent verifying a deploy can't sign in, so live checks behind a session (story
   preview, worker jobs, proofs) need a person. Options: an ordinary "agent" family the operator invites, with its
   password kept as an Amp secret (no new API surface), or an API key (for example Better Auth's apiKey plugin),

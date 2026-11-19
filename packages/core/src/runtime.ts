@@ -23,7 +23,7 @@ const ImageProviderLayer = Layer.unwrap(
  */
 export const ServerLayer = ImageProviderLayer.pipe(
   Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer)),
-  Layer.provideMerge(Mailer.log),
+  Layer.provideMerge(Mailer.layer),
   Layer.provideMerge(Database.layer),
   Layer.provideMerge(AppConfig.layer),
 );

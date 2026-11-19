@@ -51,6 +51,25 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   (`mise run db:seed`, with its published password) never runs against production.
 - **Reopen if:** a second operator or an automated environment needs operators without shell access.
 
+### D33. Stories reach production through a one-off import command, run like the operator command — Made (2026-11-19)
+- **How:** `node packages/core/src/story-import.ts --author <email> <story directory>...`, run inside the deployed web
+  container (for example over `railway ssh`), like `operator-create.ts` (D21); `mise run story:import -- ...` wraps it
+  locally. A story directory is `story.json` (ID, slug, title, summary, version number, publish date), `manifest.json`,
+  and the assets the manifest names; the web image ships `fixtures/stories`. The command records the story as
+  published and owned by the existing account with that email, then imports the manifest through
+  `importStoryVersion`: the same validation, publish checks (every part approved, the vocabulary covered, D26), static
+  fonts (D27), and object keys under `stories/<storyId>/v<n>/` (D31) as the development seed, which now imports the
+  sample story through the same function. Running it again changes nothing. It stops without changing anything when
+  the author has no account, the story belongs to another author, the slug belongs to another story, or a stored
+  version has a different manifest (a changed story needs a new version number in `story.json`).
+- **Why:** of the two options in plan.md, this needs no new endpoint on an app holding children's data, and it
+  publishes exactly what the seed and the e2e tests use. Shipping 0.9 MB of fixtures in the web image costs little.
+- **Rejected for now:** an authenticated upload endpoint. Author uploads (plan.md, "Community authoring") will need
+  one, with the manifest Schema as the validator; it should come with that tooling, designed for authors who
+  aren't the operator, not as a one-person shortcut now.
+- **Reopen if:** stories are authored outside the repository (the upload endpoint then replaces this), or a story's
+  assets grow too large to ship in the image.
+
 ### D23. A newly invited family sets its password from a single-use emailed link — Made (2026-11-18)
 - **How:** the operator's "Invite a new family" creates the account (no password yet) and its one-person family
   right away, through the same `createAccountWithFamily` path as `operator:create` (D21), and emails a link to
@@ -64,7 +83,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   needs a "pending family" record Better Auth has no model for (its invitations belong to an existing organization).
 - **Email:** there is no delivery provider yet. A `Mailer` service logs every email and keeps the last 50 in memory
   for the dev-only `/__dev/mailbox`. Until a provider is added, the operator copies the link from the web server's
-  log in production. Adding one means a second `Mailer` layer; nothing else changes.
+  log in production. `EMAIL_PROVIDER` picks the delivery (`log`, the default, is the only one so far): a provider is
+  one entry in `packages/core/src/mailer.ts` that delivers an `Email`; the outbox and everything else stay the same.
 - **Member invitations** use Better Auth's organization invitations (`/invitations/<id>`, also 7 days). Someone
   without an account creates one there with their name and password and joins only that family; someone with an
   account signs in and accepts. Opening the emailed link is what proves the email.

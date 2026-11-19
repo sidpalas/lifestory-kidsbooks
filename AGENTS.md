@@ -37,6 +37,7 @@ Times measured on an `a1.small` orb.
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
 | `mise run operator:create -- --email <email>` | Create or promote the operator with a one-person family (D21). Prompts for the password; reads two lines from stdin when piped. In production images (no mise): `node packages/core/src/operator-create.ts --email <email>` | ~1 s |
+| `mise run story:import -- --author <email> <dir>` | Publish a story directory (`story.json`, `manifest.json`, assets) under an existing account (D33); idempotent. In production images: `node packages/core/src/story-import.ts ...` | ~1 s |
 | `mise run db:generate --name <change>` | Generate a migration after editing `packages/db/src/schema` | ~2 s |
 | `mise run dev` | Web app (`dev:web`) and worker (`dev:worker`) in the foreground | ~2 s to ready |
 | `mise run stack` | Outside orbs: compose up, migrate, seed, then `dev` | ~15 s to ready |

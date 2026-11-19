@@ -30,6 +30,8 @@ RUN pnpm install --frozen-lockfile --prod --filter "@lifestory/web..." && pnpm s
 COPY packages/core/src packages/core/src
 COPY packages/db/src packages/db/src
 COPY packages/db/migrations packages/db/migrations
+# Story directories for packages/core/src/story-import.ts, run once over a shell (D33).
+COPY fixtures/stories fixtures/stories
 COPY apps/web/server.ts apps/web/
 COPY --from=build /app/apps/web/dist apps/web/dist
 USER node

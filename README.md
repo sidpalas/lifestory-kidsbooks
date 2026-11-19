@@ -122,6 +122,18 @@ node packages/core/src/operator-create.ts --email <email> --name "<name>"   # in
 It creates the `admin` account and its one-person family, or promotes an existing user; running it again changes
 nothing. Locally, `mise run operator:create -- --email <email>` runs the same script with `.env` loaded.
 
+Stories reach production the same way (D33): the web image ships `fixtures/stories`, and the import command publishes
+a story directory under an existing account, usually the operator's. It needs no prompt, so `railway ssh` can run it
+directly:
+
+```sh
+railway ssh --service web -- node packages/core/src/story-import.ts --author <operator email> fixtures/stories/moon-picnic
+```
+
+It prints `The Moon Picnic (/stories/the-moon-picnic) v4 is published, by <email>.`; running it again changes nothing.
+To publish a changed story, raise `version` in its `story.json` (stored versions never change) and run it again
+after the change deploys. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
+
 To switch to the real image model, change `IMAGE_PROVIDER` from `fake` to `modal` in `.railway/railway.ts`,
 add the Modal variables from "Image generation on Modal" below, then apply and redeploy both services.
 
