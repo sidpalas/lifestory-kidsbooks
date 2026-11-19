@@ -389,6 +389,10 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
       }
     }
   };
+  // The body comes before the rest of the interior: strands at a hairline are fine dark lines blended with the skin
+  // behind them, and sampled there the part's colour would come out as pale as they are (Paper Boat v3, 2026-11-19).
+  const body = erode(sure, width, height, r(6));
+  fill((p) => (body[p] ? 1 : 0));
   fill((p) => (sure[p] ? 1 : 0));
   fill((p) => clamp01((diff[p]! - CHANGED) / (SURE - CHANGED)) ** 2);
 
@@ -422,6 +426,25 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
     }
     // The part looks like the base here: the change can't be told from noise, so trust the segmentation.
     const a = norm < 0.06 * 0.06 ? (core[p] ? 1 : 0) : clamp01(dot / norm);
+    alpha[p] = a < 0.03 ? 0 : a;
+  }
+
+  // Near the part's edge, outside its body, alpha is the projection alone. The rules above call a strand opaque
+  // when it changed clearly or looks like the part nearby, but a hairline strand blended with the skin behind it is
+  // only partly the part: kept opaque, its light tone becomes a grey line under a dark hair colour on dark skin.
+  const edge = Uint8Array.from(dilate(Uint8Array.from(alpha, (a) => (a === 0 ? 1 : 0)), width, height, Math.max(3, r(12))), (e, p) => (e && !body[p] ? 1 : 0));
+  for (let p = 0; p < n; p++) {
+    if (!edge[p] || alpha[p] === 0 || !estimated[p]) continue;
+    const i = p * 3;
+    let dot = 0;
+    let norm = 0;
+    for (let c = 0; c < 3; c++) {
+      const e = estimate[i + c]! - B[i + c]!;
+      dot += (C[i + c]! - B[i + c]!) * e;
+      norm += e * e;
+    }
+    if (norm < 0.06 * 0.06) continue;
+    const a = clamp01(dot / norm);
     alpha[p] = a < 0.03 ? 0 : a;
   }
 

@@ -126,3 +126,36 @@ describe("cutOutPart", () => {
     expect(outside).toEqual([]);
   });
 });
+
+describe("cutOutPart at a hairline", () => {
+  // Dark hair over light skin, ending in a band of fine strands at half opacity that touch the hair: drawn so, they are
+  // a lighter tone right next to the hair, which a cut-out sampling the part's colour there takes for opaque pale
+  // hair, and a dark hair palette then draws as a grey line on dark skin (Paper Boat v3, 2026-11-19).
+  const width = 1024;
+  const height = 400;
+  const skin = 0.8;
+  const hair = [0.32, 0.26, 0.22];
+  const strands = new Uint8Array(width * height);
+  const base = new Float32Array(width * height * 3);
+  const edit = new Float32Array(width * height * 3);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const tone = skin + 0.02 * Math.sin(x / 3) * Math.cos(y / 4);
+      const a = y >= 60 && y < 220 && x >= 60 && x < 960 ? 1 : y >= 220 && y < 226 && x >= 70 && x < 950 ? 0.5 : 0;
+      if (a === 0.5) strands[p] = 1;
+      for (let c = 0; c < 3; c++) {
+        base[p * 3 + c] = tone;
+        edit[p * 3 + c] = a * hair[c]! + (1 - a) * tone;
+      }
+    }
+  }
+  const result = cutOutPart({ width, height, data: base }, { width, height, data: edit }, [20, 20, 1004, 380]);
+  const at = [...Array(width * height).keys()].filter((p) => strands[p]);
+
+  it("keeps the strands half-transparent in the hair's own colour", () => {
+    expect(mean(at.map((p) => result.alpha[p]!))).toBeLessThan(0.65);
+    expect(mean(at.map((p) => result.alpha[p]!))).toBeGreaterThan(0.35);
+    expect(mean(at.map((p) => result.colour[p * 3]!))).toBeLessThan(0.36);
+  });
+});
