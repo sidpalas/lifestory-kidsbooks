@@ -103,11 +103,13 @@ export function Landing() {
 
         <section className="grid items-center gap-8 md:grid-cols-2">
           <div className="flex flex-col gap-3 md:order-2">
-            <h2 className="text-2xl font-semibold">Looks the illustrator approved</h2>
+            <h2 className="text-2xl font-semibold">An illustrator's art, extended with AI</h2>
             <p className="text-muted-foreground">
-              Start from a look, then change one thing at a time with a live preview. Every option is approved by the
-              story's illustrator, so your family fits the art on every page.
+              An illustrator draws each story's characters, then works with AI to turn those drawings into many faces,
+              hairstyles, skin tones, and hair colours in the same style. The illustrator approves every option, so each
+              person in your family can look like themselves on every page.
             </p>
+            <p className="text-muted-foreground">Start from a look, then change one thing at a time with a live preview.</p>
           </div>
           <img
             src="/marketing/character-picker.webp"
