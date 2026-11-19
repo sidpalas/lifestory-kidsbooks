@@ -33,7 +33,7 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
   await addCharacter(page, child, "Young child", "Long blonde hair", "Red");
   await addCharacter(page, grownup, "Adult", "Long brown hair", "Red");
 
-  for (const [slug, version, name] of [["the-paper-boat", 2, "paper-boat"], ["the-moon-picnic", 5, "moon-picnic"]] as const) {
+  for (const [slug, version, name] of [["the-paper-boat", 3, "paper-boat"], ["the-moon-picnic", 5, "moon-picnic"]] as const) {
     await page.goto(`/stories/${slug}`);
     await expect(page.getByText(`version ${version}`)).toBeVisible();
     const make = page.getByRole("list", { name: "Roles" });

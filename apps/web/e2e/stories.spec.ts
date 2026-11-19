@@ -46,13 +46,14 @@ test("the watercolour sample's raster art loads and recolours on every page", as
   await expect(pages).toHaveCount(3);
   await expect(pages.first()).toContainText("After the rain, Leo and Mum folded");
   // JPEG plates, a WebP foreground, recoloured PNG figures, and each figure's overlay (blush, mouth) drawn as is.
-  // Example looks (Leo: short hair and glasses; Mum: curly hair): pages 1 to 3 stack 8, 9 (the reeds in front), and 8 images.
+  // Example looks (Leo: short hair and glasses; Mum: curly hair), each page in other poses (v3): pages 1 to 3 stack 8,
+  // 9 (the reeds in front), and 9 images (Mum's hand in front of her face, the occluder, recoloured too).
   await expect
     .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 })
     .toBe(0);
   const sources = await pages.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).src));
-  expect(sources).toHaveLength(25);
-  expect(sources.filter((src) => src.includes("/recoloured/"))).toHaveLength(12);
+  expect(sources).toHaveLength(26);
+  expect(sources.filter((src) => src.includes("/recoloured/"))).toHaveLength(13);
   expect(sources.filter((src) => /\.(jpg|webp)$/.test(src))).toHaveLength(4);
 });
 

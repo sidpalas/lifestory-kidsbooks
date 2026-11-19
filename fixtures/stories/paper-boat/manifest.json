@@ -338,6 +338,7 @@
     }
   },
   "partOrder": [
+    "facialHair",
     "hair",
     "glasses"
   ],
@@ -352,7 +353,7 @@
         },
         {
           "style": "body",
-          "content": "After the rain, {{hero.name}} and {{grownup.title}} folded yesterday’s newspaper into a boat with a pointy sail, and carried it to the pond."
+          "content": "After the rain, {{hero.name}} and {{grownup.title}} folded yesterday’s newspaper into a boat with a pointy sail. “The pond!” {{hero.name}} pointed, and off they went."
         }
       ],
       "illustration": {
@@ -365,39 +366,39 @@
             "kind": "figure",
             "slotId": "grownup",
             "box": [
-              240,
-              200,
-              520,
-              760
+              330,
+              210,
+              537,
+              680
             ],
             "bases": [
               {
                 "age": "adult",
                 "face": "face:round",
-                "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png",
-                "overlay": "figures/grownup/base-round-overlay.png"
+                "asset": "figures/grownup/back/base-round.png",
+                "skinMask": "figures/grownup/back/base-round-skin.png",
+                "overlay": "figures/grownup/back/base-round-overlay.png"
               },
               {
                 "age": "adult",
                 "face": "face:oval",
-                "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png",
-                "overlay": "figures/grownup/base-oval-overlay.png"
+                "asset": "figures/grownup/back/base-round.png",
+                "skinMask": "figures/grownup/back/base-round-skin.png",
+                "overlay": "figures/grownup/back/base-round-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:round",
-                "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png",
-                "overlay": "figures/grownup/base-round-overlay.png"
+                "asset": "figures/grownup/back/base-round.png",
+                "skinMask": "figures/grownup/back/base-round-skin.png",
+                "overlay": "figures/grownup/back/base-round-overlay.png"
               },
               {
                 "age": "older-adult",
                 "face": "face:oval",
-                "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png",
-                "overlay": "figures/grownup/base-oval-overlay.png"
+                "asset": "figures/grownup/back/base-round.png",
+                "skinMask": "figures/grownup/back/base-round-skin.png",
+                "overlay": "figures/grownup/back/base-round-overlay.png"
               }
             ],
             "parts": [
@@ -406,12 +407,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/grownup/round-short.png",
+                "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  255,
-                  30,
-                  750,
-                  260
+                  331,
+                  12,
+                  717,
+                  180
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -421,12 +422,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/grownup/round-curly.png",
+                "asset": "figures/grownup/back/round-curly.png",
                 "at": [
-                  290,
-                  30,
-                  710,
-                  215
+                  296,
+                  6,
+                  713,
+                  193
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -436,27 +437,27 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/grownup/round-long.png",
-                "at": [
-                  105,
-                  35,
-                  895,
-                  600
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/grownup/round-glasses.png",
+                "asset": "figures/grownup/back/round-long.png",
                 "at": [
                   245,
-                  100,
-                  765,
-                  265
+                  6,
+                  701,
+                  359
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/grownup/back/round-glasses.png",
+                "at": [
+                  622,
+                  69,
+                  752,
+                  121
                 ],
                 "palette": "none",
                 "approved": true
@@ -466,12 +467,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/grownup/oval-short.png",
+                "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  275,
-                  30,
-                  730,
-                  260
+                  331,
+                  12,
+                  717,
+                  180
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -481,12 +482,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/grownup/oval-curly.png",
+                "asset": "figures/grownup/back/round-curly.png",
                 "at": [
-                  315,
-                  25,
-                  730,
-                  260
+                  296,
+                  6,
+                  713,
+                  193
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -496,87 +497,87 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/grownup/oval-long.png",
-                "at": [
-                  130,
-                  30,
-                  845,
-                  595
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:oval",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/grownup/oval-glasses.png",
-                "at": [
-                  360,
-                  90,
-                  730,
-                  265
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "older-adult",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/grownup/round-short.png",
-                "at": [
-                  255,
-                  30,
-                  750,
-                  260
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-adult",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/grownup/round-curly.png",
-                "at": [
-                  290,
-                  30,
-                  710,
-                  215
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-adult",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/grownup/round-long.png",
-                "at": [
-                  105,
-                  35,
-                  895,
-                  600
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-adult",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/grownup/round-glasses.png",
+                "asset": "figures/grownup/back/round-long.png",
                 "at": [
                   245,
-                  100,
-                  765,
-                  265
+                  6,
+                  701,
+                  359
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/grownup/back/round-glasses.png",
+                "at": [
+                  622,
+                  69,
+                  752,
+                  121
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/grownup/back/round-short.png",
+                "at": [
+                  331,
+                  12,
+                  717,
+                  180
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/grownup/back/round-curly.png",
+                "at": [
+                  296,
+                  6,
+                  713,
+                  193
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/grownup/back/round-long.png",
+                "at": [
+                  245,
+                  6,
+                  701,
+                  359
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/grownup/back/round-glasses.png",
+                "at": [
+                  622,
+                  69,
+                  752,
+                  121
                 ],
                 "palette": "none",
                 "approved": true
@@ -586,12 +587,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/grownup/oval-short.png",
+                "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  275,
-                  30,
-                  730,
-                  260
+                  331,
+                  12,
+                  717,
+                  180
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -601,12 +602,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/grownup/oval-curly.png",
+                "asset": "figures/grownup/back/round-curly.png",
                 "at": [
-                  315,
-                  25,
-                  730,
-                  260
+                  296,
+                  6,
+                  713,
+                  193
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -616,12 +617,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/grownup/oval-long.png",
+                "asset": "figures/grownup/back/round-long.png",
                 "at": [
-                  130,
-                  30,
-                  845,
-                  595
+                  245,
+                  6,
+                  701,
+                  359
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -631,12 +632,12 @@
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/grownup/oval-glasses.png",
+                "asset": "figures/grownup/back/round-glasses.png",
                 "at": [
-                  360,
-                  90,
-                  730,
-                  265
+                  622,
+                  69,
+                  752,
+                  121
                 ],
                 "palette": "none",
                 "approved": true
@@ -647,39 +648,39 @@
             "kind": "figure",
             "slotId": "hero",
             "box": [
-              455,
-              350,
-              665,
-              770
+              560,
+              340,
+              769,
+              700
             ],
             "bases": [
               {
                 "age": "young-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/point/base-round.png",
+                "skinMask": "figures/hero/point/base-round-skin.png",
+                "overlay": "figures/hero/point/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/point/base-oval.png",
+                "skinMask": "figures/hero/point/base-oval-skin.png",
+                "overlay": "figures/hero/point/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/point/base-round.png",
+                "skinMask": "figures/hero/point/base-round-skin.png",
+                "overlay": "figures/hero/point/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/point/base-oval.png",
+                "skinMask": "figures/hero/point/base-oval-skin.png",
+                "overlay": "figures/hero/point/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -688,12 +689,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
+                "asset": "figures/hero/point/round-short.png",
                 "at": [
-                  270,
-                  45,
-                  740,
-                  350
+                  495,
+                  10,
+                  901,
+                  249
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -703,12 +704,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
+                "asset": "figures/hero/point/round-curly.png",
                 "at": [
-                  200,
-                  25,
-                  785,
-                  350
+                  471,
+                  6,
+                  929,
+                  267
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -718,12 +719,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
+                "asset": "figures/hero/point/round-long.png",
                 "at": [
-                  130,
-                  40,
-                  875,
-                  645
+                  381,
+                  9,
+                  1000,
+                  459
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -733,14 +734,119 @@
                 "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
+                "asset": "figures/hero/point/round-glasses.png",
                 "at": [
-                  270,
-                  130,
-                  740,
-                  350
+                  462,
+                  101,
+                  830,
+                  193
                 ],
                 "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:buzz",
+                "asset": "figures/hero/point/round-buzz.png",
+                "at": [
+                  527,
+                  19,
+                  891,
+                  213
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:ponytail",
+                "asset": "figures/hero/point/round-ponytail.png",
+                "at": [
+                  505,
+                  14,
+                  1000,
+                  293
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:braids",
+                "asset": "figures/hero/point/round-braids.png",
+                "at": [
+                  419,
+                  12,
+                  917,
+                  439
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:afro",
+                "asset": "figures/hero/point/round-afro.png",
+                "at": [
+                  452,
+                  3,
+                  932,
+                  272
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:locs",
+                "asset": "figures/hero/point/round-locs.png",
+                "at": [
+                  403,
+                  10,
+                  951,
+                  343
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:bun",
+                "asset": "figures/hero/point/round-bun.png",
+                "at": [
+                  511,
+                  5,
+                  897,
+                  264
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:bun",
+                "asset": "figures/hero/point/round-bun-skin.png",
+                "at": [
+                  858,
+                  93,
+                  892,
+                  175
+                ],
+                "palette": "skin",
                 "approved": true
               },
               {
@@ -748,12 +854,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
+                "asset": "figures/hero/point/oval-short.png",
                 "at": [
-                  285,
-                  40,
-                  705,
-                  345
+                  520,
+                  13,
+                  884,
+                  215
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -763,12 +869,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
+                "asset": "figures/hero/point/oval-curly.png",
                 "at": [
-                  230,
-                  30,
-                  760,
-                  320
+                  482,
+                  5,
+                  922,
+                  259
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -778,12 +884,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
+                "asset": "figures/hero/point/oval-long.png",
                 "at": [
-                  175,
-                  35,
-                  820,
-                  640
+                  406,
+                  13,
+                  1000,
+                  471
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -793,12 +899,12 @@
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/point/oval-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
+                  479,
+                  103,
+                  794,
+                  224
                 ],
                 "palette": "none",
                 "approved": true
@@ -808,12 +914,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
+                "asset": "figures/hero/point/round-short.png",
                 "at": [
-                  270,
-                  45,
-                  740,
-                  350
+                  495,
+                  10,
+                  901,
+                  249
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -823,12 +929,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
+                "asset": "figures/hero/point/round-curly.png",
                 "at": [
-                  200,
-                  25,
-                  785,
-                  350
+                  471,
+                  6,
+                  929,
+                  267
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -838,12 +944,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
+                "asset": "figures/hero/point/round-long.png",
                 "at": [
-                  130,
-                  40,
-                  875,
-                  645
+                  381,
+                  9,
+                  1000,
+                  459
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -853,14 +959,119 @@
                 "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
+                "asset": "figures/hero/point/round-glasses.png",
                 "at": [
-                  270,
-                  130,
-                  740,
-                  350
+                  462,
+                  101,
+                  830,
+                  193
                 ],
                 "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:buzz",
+                "asset": "figures/hero/point/round-buzz.png",
+                "at": [
+                  527,
+                  19,
+                  891,
+                  213
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:ponytail",
+                "asset": "figures/hero/point/round-ponytail.png",
+                "at": [
+                  505,
+                  14,
+                  1000,
+                  293
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:braids",
+                "asset": "figures/hero/point/round-braids.png",
+                "at": [
+                  419,
+                  12,
+                  917,
+                  439
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:afro",
+                "asset": "figures/hero/point/round-afro.png",
+                "at": [
+                  452,
+                  3,
+                  932,
+                  272
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:locs",
+                "asset": "figures/hero/point/round-locs.png",
+                "at": [
+                  403,
+                  10,
+                  951,
+                  343
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:bun",
+                "asset": "figures/hero/point/round-bun.png",
+                "at": [
+                  511,
+                  5,
+                  897,
+                  264
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:bun",
+                "asset": "figures/hero/point/round-bun-skin.png",
+                "at": [
+                  858,
+                  93,
+                  892,
+                  175
+                ],
+                "palette": "skin",
                 "approved": true
               },
               {
@@ -868,12 +1079,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
+                "asset": "figures/hero/point/oval-short.png",
                 "at": [
-                  285,
-                  40,
-                  705,
-                  345
+                  520,
+                  13,
+                  884,
+                  215
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -883,12 +1094,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
+                "asset": "figures/hero/point/oval-curly.png",
                 "at": [
-                  230,
-                  30,
-                  760,
-                  320
+                  482,
+                  5,
+                  922,
+                  259
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -898,12 +1109,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
+                "asset": "figures/hero/point/oval-long.png",
                 "at": [
-                  175,
-                  35,
-                  820,
-                  640
+                  406,
+                  13,
+                  1000,
+                  471
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -913,12 +1124,12 @@
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/point/oval-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
+                  479,
+                  103,
+                  794,
+                  224
                 ],
                 "palette": "none",
                 "approved": true
@@ -934,7 +1145,7 @@
       "text": [
         {
           "style": "body",
-          "content": "{{hero.name}} set the boat down on the water. It wobbled. It turned. Then the wind found its sail, and away it went."
+          "content": "{{hero.name}} knelt and set the boat down on the water. It wobbled. It turned. Then the wind found its sail, and away it went."
         }
       ],
       "illustration": {
@@ -947,10 +1158,10 @@
             "kind": "figure",
             "slotId": "grownup",
             "box": [
-              10,
-              360,
+              0,
               330,
-              1000
+              290,
+              910
             ],
             "bases": [
               {
@@ -1229,39 +1440,39 @@
             "kind": "figure",
             "slotId": "hero",
             "box": [
-              205,
-              500,
-              455,
-              1000
+              140,
+              380,
+              524,
+              800
             ],
             "bases": [
               {
                 "age": "young-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/kneel/base-round.png",
+                "skinMask": "figures/hero/kneel/base-round-skin.png",
+                "overlay": "figures/hero/kneel/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/kneel/base-oval.png",
+                "skinMask": "figures/hero/kneel/base-oval-skin.png",
+                "overlay": "figures/hero/kneel/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/kneel/base-round.png",
+                "skinMask": "figures/hero/kneel/base-round-skin.png",
+                "overlay": "figures/hero/kneel/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/kneel/base-oval.png",
+                "skinMask": "figures/hero/kneel/base-oval-skin.png",
+                "overlay": "figures/hero/kneel/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -1270,12 +1481,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
+                "asset": "figures/hero/kneel/round-short.png",
                 "at": [
-                  270,
-                  45,
-                  740,
-                  350
+                  486,
+                  12,
+                  911,
+                  329
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1285,56 +1496,11 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
+                "asset": "figures/hero/kneel/round-curly.png",
                 "at": [
-                  200,
-                  25,
-                  785,
-                  350
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
-                "at": [
-                  130,
-                  40,
-                  875,
-                  645
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
-                "at": [
-                  270,
-                  130,
-                  740,
-                  350
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
-                "at": [
-                  285,
-                  40,
-                  705,
+                  460,
+                  6,
+                  919,
                   345
                 ],
                 "palette": "hairColour",
@@ -1342,90 +1508,105 @@
               },
               {
                 "age": "young-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
-                "at": [
-                  230,
-                  30,
-                  760,
-                  320
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:oval",
+                "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
+                "asset": "figures/hero/kneel/round-long.png",
                 "at": [
-                  175,
-                  35,
-                  820,
-                  640
+                  168,
+                  12,
+                  926,
+                  555
                 ],
                 "palette": "hairColour",
                 "approved": true
               },
               {
                 "age": "young-child",
-                "face": "face:oval",
+                "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/kneel/round-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
-                "at": [
-                  270,
-                  45,
-                  740,
-                  350
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
-                "at": [
-                  200,
-                  25,
-                  785,
-                  350
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
-                "at": [
-                  130,
-                  40,
+                  636,
+                  237,
                   875,
-                  645
+                  366
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/hero/kneel/oval-short.png",
+                "at": [
+                  501,
+                  17,
+                  879,
+                  321
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/hero/kneel/oval-curly.png",
+                "at": [
+                  476,
+                  11,
+                  901,
+                  335
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/hero/kneel/oval-long.png",
+                "at": [
+                  170,
+                  14,
+                  899,
+                  561
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/hero/kneel/oval-glasses.png",
+                "at": [
+                  631,
+                  236,
+                  841,
+                  357
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/hero/kneel/round-short.png",
+                "at": [
+                  486,
+                  12,
+                  911,
+                  329
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1433,28 +1614,13 @@
               {
                 "age": "older-child",
                 "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
-                "at": [
-                  270,
-                  130,
-                  740,
-                  350
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:oval",
                 "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
+                "option": "hair:curly",
+                "asset": "figures/hero/kneel/round-curly.png",
                 "at": [
-                  285,
-                  40,
-                  705,
+                  460,
+                  6,
+                  919,
                   345
                 ],
                 "palette": "hairColour",
@@ -1462,15 +1628,60 @@
               },
               {
                 "age": "older-child",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/hero/kneel/round-long.png",
+                "at": [
+                  168,
+                  12,
+                  926,
+                  555
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/hero/kneel/round-glasses.png",
+                "at": [
+                  636,
+                  237,
+                  875,
+                  366
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/hero/kneel/oval-short.png",
+                "at": [
+                  501,
+                  17,
+                  879,
+                  321
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
+                "asset": "figures/hero/kneel/oval-curly.png",
                 "at": [
-                  230,
-                  30,
-                  760,
-                  320
+                  476,
+                  11,
+                  901,
+                  335
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1480,12 +1691,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
+                "asset": "figures/hero/kneel/oval-long.png",
                 "at": [
-                  175,
-                  35,
-                  820,
-                  640
+                  170,
+                  14,
+                  899,
+                  561
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1495,12 +1706,12 @@
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/kneel/oval-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
+                  631,
+                  236,
+                  841,
+                  357
                 ],
                 "palette": "none",
                 "approved": true
@@ -1520,7 +1731,7 @@
       "text": [
         {
           "style": "body",
-          "content": "It sailed all afternoon, all the way to the willow island. “It’s exploring,” said {{grownup.title}}. {{hero.They}} waved until the sky turned pink."
+          "content": "They sat on the bank and watched it sail all afternoon, all the way to the willow island. “It’s exploring,” said {{grownup.title}}. {{hero.They}} waved until the sky turned pink."
         }
       ],
       "illustration": {
@@ -1533,39 +1744,55 @@
             "kind": "figure",
             "slotId": "grownup",
             "box": [
-              170,
-              280,
-              430,
-              800
+              150,
+              360,
+              405,
+              760
             ],
             "bases": [
               {
                 "age": "adult",
                 "face": "face:round",
-                "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png",
-                "overlay": "figures/grownup/base-round-overlay.png"
+                "asset": "figures/grownup/sit/base-round.png",
+                "skinMask": "figures/grownup/sit/base-round-skin.png",
+                "overlay": "figures/grownup/sit/base-round-overlay.png",
+                "occluder": {
+                  "asset": "figures/grownup/sit/base-round-occluder.png",
+                  "skinMask": "figures/grownup/sit/base-round-occluder-skin.png"
+                }
               },
               {
                 "age": "adult",
                 "face": "face:oval",
-                "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png",
-                "overlay": "figures/grownup/base-oval-overlay.png"
+                "asset": "figures/grownup/sit/base-oval.png",
+                "skinMask": "figures/grownup/sit/base-oval-skin.png",
+                "overlay": "figures/grownup/sit/base-oval-overlay.png",
+                "occluder": {
+                  "asset": "figures/grownup/sit/base-oval-occluder.png",
+                  "skinMask": "figures/grownup/sit/base-oval-occluder-skin.png"
+                }
               },
               {
                 "age": "older-adult",
                 "face": "face:round",
-                "asset": "figures/grownup/base-round.png",
-                "skinMask": "figures/grownup/base-round-skin.png",
-                "overlay": "figures/grownup/base-round-overlay.png"
+                "asset": "figures/grownup/sit/base-round.png",
+                "skinMask": "figures/grownup/sit/base-round-skin.png",
+                "overlay": "figures/grownup/sit/base-round-overlay.png",
+                "occluder": {
+                  "asset": "figures/grownup/sit/base-round-occluder.png",
+                  "skinMask": "figures/grownup/sit/base-round-occluder-skin.png"
+                }
               },
               {
                 "age": "older-adult",
                 "face": "face:oval",
-                "asset": "figures/grownup/base-oval.png",
-                "skinMask": "figures/grownup/base-oval-skin.png",
-                "overlay": "figures/grownup/base-oval-overlay.png"
+                "asset": "figures/grownup/sit/base-oval.png",
+                "skinMask": "figures/grownup/sit/base-oval-skin.png",
+                "overlay": "figures/grownup/sit/base-oval-overlay.png",
+                "occluder": {
+                  "asset": "figures/grownup/sit/base-oval-occluder.png",
+                  "skinMask": "figures/grownup/sit/base-oval-occluder-skin.png"
+                }
               }
             ],
             "parts": [
@@ -1574,12 +1801,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/grownup/round-short.png",
+                "asset": "figures/grownup/sit/round-short.png",
                 "at": [
-                  255,
-                  30,
-                  750,
-                  260
+                  215,
+                  9,
+                  615,
+                  285
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1589,132 +1816,177 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/grownup/round-curly.png",
+                "asset": "figures/grownup/sit/round-curly.png",
+                "at": [
+                  171,
+                  1,
+                  630,
+                  289
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/grownup/sit/round-long.png",
+                "at": [
+                  117,
+                  11,
+                  700,
+                  513
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/grownup/sit/round-glasses.png",
                 "at": [
                   290,
-                  30,
-                  710,
-                  215
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/grownup/round-long.png",
-                "at": [
-                  105,
-                  35,
-                  895,
-                  600
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/grownup/round-glasses.png",
-                "at": [
-                  245,
-                  100,
-                  765,
-                  265
+                  113,
+                  647,
+                  194
                 ],
                 "palette": "none",
                 "approved": true
               },
               {
                 "age": "adult",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/grownup/oval-short.png",
-                "at": [
-                  275,
-                  30,
-                  730,
-                  260
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/grownup/oval-curly.png",
-                "at": [
-                  315,
-                  25,
-                  730,
-                  260
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/grownup/oval-long.png",
-                "at": [
-                  130,
-                  30,
-                  845,
-                  595
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "adult",
-                "face": "face:oval",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/grownup/oval-glasses.png",
-                "at": [
-                  360,
-                  90,
-                  730,
-                  265
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "older-adult",
                 "face": "face:round",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/grownup/round-short.png",
+                "axis": "facialHair",
+                "option": "facial-hair:stubble",
+                "asset": "figures/grownup/sit/round-stubble.png",
                 "at": [
-                  255,
-                  30,
-                  750,
-                  260
+                  319,
+                  209,
+                  618,
+                  315
                 ],
                 "palette": "hairColour",
                 "approved": true
               },
               {
-                "age": "older-adult",
+                "age": "adult",
                 "face": "face:round",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/grownup/round-curly.png",
+                "axis": "facialHair",
+                "option": "facial-hair:moustache",
+                "asset": "figures/grownup/sit/round-moustache.png",
+                "at": [
+                  441,
+                  183,
+                  659,
+                  240
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:round",
+                "axis": "facialHair",
+                "option": "facial-hair:beard",
+                "asset": "figures/grownup/sit/round-beard.png",
                 "at": [
                   290,
-                  30,
-                  710,
-                  215
+                  178,
+                  671,
+                  323
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/grownup/sit/oval-short.png",
+                "at": [
+                  232,
+                  14,
+                  596,
+                  202
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/grownup/sit/oval-curly.png",
+                "at": [
+                  215,
+                  3,
+                  598,
+                  274
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/grownup/sit/oval-long.png",
+                "at": [
+                  117,
+                  4,
+                  627,
+                  434
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "adult",
+                "face": "face:oval",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/grownup/sit/oval-glasses.png",
+                "at": [
+                  317,
+                  112,
+                  629,
+                  191
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/grownup/sit/round-short.png",
+                "at": [
+                  215,
+                  9,
+                  615,
+                  285
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/grownup/sit/round-curly.png",
+                "at": [
+                  171,
+                  1,
+                  630,
+                  289
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1724,12 +1996,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/grownup/round-long.png",
+                "asset": "figures/grownup/sit/round-long.png",
                 "at": [
-                  105,
-                  35,
-                  895,
-                  600
+                  117,
+                  11,
+                  700,
+                  513
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1739,14 +2011,59 @@
                 "face": "face:round",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/grownup/round-glasses.png",
+                "asset": "figures/grownup/sit/round-glasses.png",
                 "at": [
-                  245,
-                  100,
-                  765,
-                  265
+                  290,
+                  113,
+                  647,
+                  194
                 ],
                 "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "facialHair",
+                "option": "facial-hair:stubble",
+                "asset": "figures/grownup/sit/round-stubble.png",
+                "at": [
+                  319,
+                  209,
+                  618,
+                  315
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "facialHair",
+                "option": "facial-hair:moustache",
+                "asset": "figures/grownup/sit/round-moustache.png",
+                "at": [
+                  441,
+                  183,
+                  659,
+                  240
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-adult",
+                "face": "face:round",
+                "axis": "facialHair",
+                "option": "facial-hair:beard",
+                "asset": "figures/grownup/sit/round-beard.png",
+                "at": [
+                  290,
+                  178,
+                  671,
+                  323
+                ],
+                "palette": "hairColour",
                 "approved": true
               },
               {
@@ -1754,12 +2071,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/grownup/oval-short.png",
+                "asset": "figures/grownup/sit/oval-short.png",
                 "at": [
-                  275,
-                  30,
-                  730,
-                  260
+                  232,
+                  14,
+                  596,
+                  202
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1769,12 +2086,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/grownup/oval-curly.png",
+                "asset": "figures/grownup/sit/oval-curly.png",
                 "at": [
-                  315,
-                  25,
-                  730,
-                  260
+                  215,
+                  3,
+                  598,
+                  274
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1784,12 +2101,12 @@
                 "face": "face:oval",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/grownup/oval-long.png",
+                "asset": "figures/grownup/sit/oval-long.png",
                 "at": [
-                  130,
-                  30,
-                  845,
-                  595
+                  117,
+                  4,
+                  627,
+                  434
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1799,12 +2116,12 @@
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/grownup/oval-glasses.png",
+                "asset": "figures/grownup/sit/oval-glasses.png",
                 "at": [
-                  360,
-                  90,
-                  730,
-                  265
+                  317,
+                  112,
+                  629,
+                  191
                 ],
                 "palette": "none",
                 "approved": true
@@ -1815,39 +2132,39 @@
             "kind": "figure",
             "slotId": "hero",
             "box": [
-              340,
-              400,
-              540,
-              800
+              450,
+              440,
+              654,
+              760
             ],
             "bases": [
               {
                 "age": "young-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/sit/base-round.png",
+                "skinMask": "figures/hero/sit/base-round-skin.png",
+                "overlay": "figures/hero/sit/base-round-overlay.png"
               },
               {
                 "age": "young-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/sit/base-oval.png",
+                "skinMask": "figures/hero/sit/base-oval-skin.png",
+                "overlay": "figures/hero/sit/base-oval-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:round",
-                "asset": "figures/hero/base-round.png",
-                "skinMask": "figures/hero/base-round-skin.png",
-                "overlay": "figures/hero/base-round-overlay.png"
+                "asset": "figures/hero/sit/base-round.png",
+                "skinMask": "figures/hero/sit/base-round-skin.png",
+                "overlay": "figures/hero/sit/base-round-overlay.png"
               },
               {
                 "age": "older-child",
                 "face": "face:oval",
-                "asset": "figures/hero/base-oval.png",
-                "skinMask": "figures/hero/base-oval-skin.png",
-                "overlay": "figures/hero/base-oval-overlay.png"
+                "asset": "figures/hero/sit/base-oval.png",
+                "skinMask": "figures/hero/sit/base-oval-skin.png",
+                "overlay": "figures/hero/sit/base-oval-overlay.png"
               }
             ],
             "parts": [
@@ -1856,12 +2173,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
+                "asset": "figures/hero/sit/round-short.png",
                 "at": [
-                  270,
-                  45,
-                  740,
-                  350
+                  84,
+                  0,
+                  613,
+                  303
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1871,12 +2188,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
+                "asset": "figures/hero/sit/round-curly.png",
                 "at": [
-                  200,
-                  25,
-                  785,
-                  350
+                  65,
+                  0,
+                  647,
+                  373
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1886,71 +2203,11 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
+                "asset": "figures/hero/sit/round-long.png",
                 "at": [
-                  130,
-                  40,
-                  875,
-                  645
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
-                "at": [
-                  270,
-                  130,
-                  740,
-                  350
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
-                "at": [
-                  285,
-                  40,
-                  705,
-                  345
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
-                "at": [
-                  230,
-                  30,
-                  760,
-                  320
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
-                "at": [
-                  175,
-                  35,
-                  820,
+                  0,
+                  4,
+                  719,
                   640
                 ],
                 "palette": "hairColour",
@@ -1958,15 +2215,75 @@
               },
               {
                 "age": "young-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/hero/sit/round-glasses.png",
+                "at": [
+                  296,
+                  121,
+                  663,
+                  238
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/hero/sit/oval-short.png",
+                "at": [
+                  136,
+                  9,
+                  595,
+                  276
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/hero/sit/oval-curly.png",
+                "at": [
+                  94,
+                  5,
+                  618,
+                  361
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/hero/sit/oval-long.png",
+                "at": [
+                  0,
+                  5,
+                  673,
+                  632
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "young-child",
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/sit/oval-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
+                  296,
+                  127,
+                  645,
+                  238
                 ],
                 "palette": "none",
                 "approved": true
@@ -1976,12 +2293,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:short",
-                "asset": "figures/hero/round-short.png",
+                "asset": "figures/hero/sit/round-short.png",
                 "at": [
-                  270,
-                  45,
-                  740,
-                  350
+                  84,
+                  0,
+                  613,
+                  303
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1991,12 +2308,12 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:curly",
-                "asset": "figures/hero/round-curly.png",
+                "asset": "figures/hero/sit/round-curly.png",
                 "at": [
-                  200,
-                  25,
-                  785,
-                  350
+                  65,
+                  0,
+                  647,
+                  373
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -2006,71 +2323,11 @@
                 "face": "face:round",
                 "axis": "hair",
                 "option": "hair:long",
-                "asset": "figures/hero/round-long.png",
+                "asset": "figures/hero/sit/round-long.png",
                 "at": [
-                  130,
-                  40,
-                  875,
-                  645
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:round",
-                "axis": "glasses",
-                "option": "glasses:round",
-                "asset": "figures/hero/round-glasses.png",
-                "at": [
-                  270,
-                  130,
-                  740,
-                  350
-                ],
-                "palette": "none",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:short",
-                "asset": "figures/hero/oval-short.png",
-                "at": [
-                  285,
-                  40,
-                  705,
-                  345
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:curly",
-                "asset": "figures/hero/oval-curly.png",
-                "at": [
-                  230,
-                  30,
-                  760,
-                  320
-                ],
-                "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:oval",
-                "axis": "hair",
-                "option": "hair:long",
-                "asset": "figures/hero/oval-long.png",
-                "at": [
-                  175,
-                  35,
-                  820,
+                  0,
+                  4,
+                  719,
                   640
                 ],
                 "palette": "hairColour",
@@ -2078,15 +2335,75 @@
               },
               {
                 "age": "older-child",
+                "face": "face:round",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "figures/hero/sit/round-glasses.png",
+                "at": [
+                  296,
+                  121,
+                  663,
+                  238
+                ],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "figures/hero/sit/oval-short.png",
+                "at": [
+                  136,
+                  9,
+                  595,
+                  276
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "figures/hero/sit/oval-curly.png",
+                "at": [
+                  94,
+                  5,
+                  618,
+                  361
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
+                "face": "face:oval",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "figures/hero/sit/oval-long.png",
+                "at": [
+                  0,
+                  5,
+                  673,
+                  632
+                ],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "age": "older-child",
                 "face": "face:oval",
                 "axis": "glasses",
                 "option": "glasses:round",
-                "asset": "figures/hero/oval-glasses.png",
+                "asset": "figures/hero/sit/oval-glasses.png",
                 "at": [
-                  300,
-                  120,
-                  705,
-                  320
+                  296,
+                  127,
+                  645,
+                  238
                 ],
                 "palette": "none",
                 "approved": true

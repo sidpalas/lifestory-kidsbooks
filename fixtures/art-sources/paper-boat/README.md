@@ -13,6 +13,17 @@ $py prep.py out   # also the overlays (blush, open mouth)
 $py build.py ../../..
 ```
 
+Then v3's poses (TypeScript, from the repo root, using the app's own cut-out code; edits cached in `raw/v3`):
+
+```sh
+node fixtures/art-sources/paper-boat/bases.ts     # raw/v3/<role>-<pose>-<face>.png -> bases, skin masks, overlays, occluder
+node fixtures/art-sources/paper-boat/parts.ts     # part edits (partPrompt) and cut-outs (cutOutLayer), with review images
+node fixtures/art-sources/paper-boat/build-v3.ts  # pages, boxes and v3 manifest
+```
+
+`poses.ts` lists the poses, their shoe areas kept out of the skin mask and the occluder's area; `parts.ts` the zones
+and which pose gets D43's options; `takes.json` the retakes (stubble took two).
+
 A changed manifest or changed art needs a new `version` in `story.json`: stored versions never change.
 
 ## Prompts
@@ -68,3 +79,16 @@ Foreground (generate, 1536×1024, medium), `p02-foreground.png`: Loose tradition
 visible paper grain and pigment granulation, children's picture-book style: a clump of tall green reeds, cattails and
 long grass growing along the very bottom edge of the picture, painted only in the bottom third, leaning slightly.
 Everything above them is plain white paper. No water, no ground, no scenery, no text.
+
+### v3 poses
+
+All edits of `raw/v3/ref-<role>.png` (v2's round front base, recoloured to light peach, on white, 1024×1536), medium:
+"The first image shows a bald character from a children's picture book. Draw this exact same character again: the
+same age, body proportions, round face with full cheeks, light peach skin, smooth bare bald scalp with no hair at all,
+visible ears, the same clothes and colours, in the same loose traditional watercolour [...], in a new pose: <pose>
+Plain white paper background with nothing else on it [...]", where <pose> is one of: kneeling side-on setting
+something on water (hero, 1024²); three-quarter view pointing far to the right with an open-mouthed smile (hero;
+flipped so it points left); sitting hugging the knees (hero, 1024²); seen from behind, hands on hips (grown-up);
+sitting cross-legged with one hand flat against the forehead shading the eyes (grown-up, 1024²). Oval faces: the
+art import's `derivePrompt("face:oval")` on each pose. Occluder: "Change only the raised arm: lower it so that hand
+rests on the other knee too, and paint the bald forehead, eyebrow and ear that the hand covered [...]".
