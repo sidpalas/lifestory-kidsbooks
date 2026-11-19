@@ -26,7 +26,9 @@ The Mirrored checkbox flips the figure and every part together without regenerat
 Drives generation through the worker, fetches review files with author-only access, approves a part into the
 manifest, and generates four bases in one edit. Checks tile boundaries, shared generation, repeat requests and
 approved-reference metadata. Unit checks in `mise run check` cover head-only sharing versus long hair and mirrored
-layer placement. The authoring e2e checks the editor through publication and a personalized book.
+layer placement. The authoring e2e checks the editor through publication and a personalized book. A hair part's
+cut-out metrics include `crownGap`, the bald scalp it leaves above it; `part-cutout.test.ts` holds every hair part
+of the sample stories under `CROWN_GAP_LIMIT` except the published ones it lists.
 
 ## Gotchas
 
@@ -37,3 +39,6 @@ layer placement. The authoring e2e checks the editor through publication and a p
 - An edit can copy only an already approved drawing. Approve a front part before generating its other poses.
 - Inspect both skin extremes on the review sheet. The hairline transparency fix affects future cut-outs, not
   existing published assets; passing generation metrics do not establish clean edges on every skin palette.
+- A `crownGap` above `CROWN_GAP_LIMIT` (9) means the model drew the hair smaller than the bald head: retake it with
+  a note asking the hair to cover the scalp's whole outline. The editor doesn't show the metric yet; it is stored
+  with the part. A hairline on the forehead, ears and translucent strands aren't counted.

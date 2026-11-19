@@ -27,6 +27,9 @@ manifest's D43 subset. `parts.ts` generates every D43 option for every pose/face
 `build-v3.ts` puts the newly covered options in `additions/2.json`, not the immutable manifest. Red hair remains
 addition 1. Supported ages share drawings, as do both faces of the back view.
 
+Each part's printed metrics include `crownGap`; above `CROWN_GAP_LIMIT` the hair leaves bald scalp above it (retake it
+with the scalp-coverage note in `parts.ts`). `packages/core/test/part-cutout.test.ts` checks every committed part.
+
 `takes.json` records approved take numbers: missing means the first take, `2` means one rejected edit then an
 approved retake. The full-coverage pass used 72 initial edits and nine retakes (eight buns that exposed the scalp
 silhouette and one standing round adult stubble that covered only the chin), 81 calls for US$3.862529. Combined

@@ -4,7 +4,7 @@
 import sharp, { type Sharp } from "sharp";
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
-import { alphaBounds, cutOutPart, type CutOutMetrics, findShift, neutralize, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
+import { alphaBounds, crownGap, cutOutPart, type CutOutMetrics, findShift, neutralize, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
 
 /** The cut-out runs at most at this size; provider outputs are 1536 px at most, so more adds nothing. */
 const WORKING_SIZE = 1536;
@@ -142,7 +142,7 @@ export const cutOutLayer = async (
   skinMask: Uint8Array,
   zone: Rect,
   options: { readonly neutral: boolean },
-): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: CutOutMetrics & { readonly skinPixels: number } }> => {
+): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: CutOutMetrics & { readonly skinPixels: number; readonly crownGap?: number } }> => {
   const { width, height, padding } = prepared;
   const base = await toRgb(sharp(prepared.base));
   const aligned = await unpadEdit(edit, padding, width, height);
@@ -155,7 +155,7 @@ const splitLayers = async <M extends CutOutMetrics>(
   { alpha, colour, metrics }: { readonly alpha: Float32Array; readonly colour: Float32Array; readonly metrics: M },
   skinMask: Uint8Array,
   options: { readonly neutral: boolean },
-): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: M & { readonly skinPixels: number } }> => {
+): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: M & { readonly skinPixels: number; readonly crownGap?: number } }> => {
   const { width, height } = base;
   const mask = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
   // Hair can't carry skin-coloured highlights away as skin, but an accessory has no skin of its own: skin the model
@@ -169,7 +169,8 @@ const splitLayers = async <M extends CutOutMetrics>(
   ]);
   return {
     layers: layers.filter((layer): layer is PartLayer => layer !== null),
-    metrics: { ...metrics, skinPixels: skin.reduce((sum, v) => sum + v, 0) },
+    // Hair only: bald scalp left above it (CROWN_GAP_LIMIT).
+    metrics: { ...metrics, skinPixels: skin.reduce((sum, v) => sum + v, 0), ...(options.neutral ? { crownGap: crownGap(partAlpha, new Uint8Array(mask), width, height) } : {}) },
   };
 };
 

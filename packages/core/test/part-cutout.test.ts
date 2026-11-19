@@ -1,5 +1,7 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
+import { rasterize } from "../src/looks/recolour.ts";
+import { CROWN_GAP_LIMIT, crownGap, cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
@@ -157,5 +159,82 @@ describe("cutOutPart at a hairline", () => {
     expect(mean(at.map((p) => result.alpha[p]!))).toBeLessThan(0.65);
     expect(mean(at.map((p) => result.alpha[p]!))).toBeGreaterThan(0.35);
     expect(mean(at.map((p) => result.colour[p * 3]!))).toBeLessThan(0.36);
+  });
+});
+
+describe("crownGap", () => {
+  // A bald head (a skin disc with ears) and a hair cap: one that reaches the head's outline with a hairline on the
+  // forehead, and one drawn smaller than the head, leaving a band of scalp above it (Paper Boat v5's pointing bun).
+  const width = 400, height = 400, r = 120;
+  const head = (x: number, y: number) => Math.hypot(x - 200, y - 220) < r || Math.hypot(x - 76, y - 230) < 18 || Math.hypot(x - 324, y - 230) < 18;
+  const mask = new Uint8Array(width * height);
+  for (let p = 0; p < mask.length; p++) mask[p] = head(p % width, Math.floor(p / width)) ? 255 : 0;
+  const cap = (inset: number) =>
+    Float32Array.from(mask, (_, p) => {
+      const x = p % width, y = Math.floor(p / width);
+      // Down to a hairline 40 px into the face, and only over the head (the ears stay bare).
+      return Math.hypot(x - 200, y - 220) < r - inset && y < 180 ? 1 : 0;
+    });
+
+  it("doesn't count a hairline or ears, only scalp left above the hair", () => {
+    expect(crownGap(cap(0), mask, width, height)).toBe(0);
+    expect(crownGap(cap(2), mask, width, height)).toBeLessThan(CROWN_GAP_LIMIT);
+    expect(crownGap(cap(12), mask, width, height)).toBeGreaterThan(CROWN_GAP_LIMIT);
+  });
+});
+
+describe("the sample stories' hair", () => {
+  // Every hair part, published or added (D41), on each base it is drawn on, as composeFigure places it.
+  /**
+   * Published parts that leave scalp showing (2026-11-19); a published version never changes (D24, D41), so they
+   * leave this list with the version that redraws them.
+   */
+  const known = new Set([
+    // Drawn smaller than the bald head: a crescent over the crown, a patch at the top, a band above a buzz cut.
+    "paper-boat/figures/hero/point/round-bun.png",
+    "paper-boat/figures/grownup/back/round-short.png",
+    "paper-boat/figures/hero/point/round-buzz.png",
+    // The oval-faced grown-up's head is square at the top; the cap is round, so both corners show beside it.
+    ...["p02", "p03", "p04", "p05", "p06"].flatMap((page) => ["short", "long"].map((style) => `moon-picnic/pages/${page}/grownup/adult-1-${style}.svg`)),
+  ]);
+  const stories = new URL("../../../fixtures/stories/", import.meta.url);
+  const pairs = readdirSync(stories).flatMap((story) => {
+    const dir = new URL(`${story}/`, stories);
+    const json = (path: string) => JSON.parse(readFileSync(new URL(path, dir), "utf8"));
+    const additions = readdirSync(new URL("additions/", dir)).map((file) => json(`additions/${file}`));
+    return json("manifest.json").pages.flatMap((page: any) =>
+      page.illustration.layers
+        .filter((layer: any) => layer.kind === "figure")
+        .flatMap((layer: any) => {
+          const added = additions.flatMap((a) => a.figures ?? []).filter((f: any) => f.pageId === page.pageId && f.slotId === layer.slotId);
+          const bases = [...layer.bases, ...added.flatMap((f: any) => f.bases ?? [])];
+          const parts = [...layer.parts, ...added.flatMap((f: any) => f.parts ?? [])];
+          return parts
+            .filter((part: any) => part.axis === "hair" && part.palette !== "skin")
+            .flatMap((part: any) => {
+              const base = bases.find((b: any) => b.age === part.age && b.face === part.face && b.features === part.features);
+              return base ? [{ story, dir, base, part }] : [];
+            });
+        }),
+    );
+  });
+  const unique = [...new Map(pairs.map((pair) => [`${pair.story}/${pair.base.skinMask}/${pair.part.asset}`, pair])).values()];
+
+  it("covers the scalp up to the head's outline", async () => {
+    const gaps = await Promise.all(
+      unique.map(async ({ story, dir, base, part }) => {
+        const read = (asset: string) => rasterize(new Uint8Array(readFileSync(new URL(asset, dir))));
+        const { data: mask, info } = await (await read(base.skinMask)).extractChannel(3).raw().toBuffer({ resolveWithObject: true });
+        const [x0, y0, x1, y1] = [part.at[0] * info.width, part.at[1] * info.height, part.at[2] * info.width, part.at[3] * info.height].map((v) => Math.round(v / 1000)) as [number, number, number, number];
+        const layer = await (await read(part.asset)).resize(x1 - x0, y1 - y0, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+        const alpha = new Float32Array(info.width * info.height);
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) alpha[y * info.width + x] = layer[(y - y0) * (x1 - x0) + (x - x0)]! / 255;
+        return { part: `${story}/${part.asset}`, gap: crownGap(alpha, new Uint8Array(mask), info.width, info.height) };
+      }),
+    );
+    expect(gaps.length).toBeGreaterThan(100);
+    expect(gaps.filter(({ part, gap }) => gap > CROWN_GAP_LIMIT && !known.has(part))).toEqual([]);
+    // The known ones still fail, so the check catches them (and a redrawn one leaves the list).
+    expect(gaps.filter(({ part, gap }) => gap > CROWN_GAP_LIMIT && known.has(part)).map(({ part }) => part).toSorted()).toEqual([...known].toSorted());
   });
 });

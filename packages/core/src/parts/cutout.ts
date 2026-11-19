@@ -538,6 +538,40 @@ export const cutOutPart = (base: Rgb, rawEdit: Rgb, zone: PixelRect): CutOut => 
   };
 };
 
+/**
+ * crownGap above this leaves bald scalp a reader sees on the page. Measured 2026-11-19 on every hair part of the
+ * sample stories: those above 9 (10.0–27.6) all show scalp on the lightest or darkest skin; the rest are at most 7.6.
+ */
+export const CROWN_GAP_LIMIT = 9;
+
+/**
+ * Bald scalp a hair part leaves showing above it, where the model drew the hair smaller than the bald head (the
+ * edit left the crown as it was, so the cut-out has nothing there). In each column the part covers, the run of the
+ * base's skin directly above the part's top, less an outline's width (1% of the part's width); the mean run per
+ * column, in thousandths of the part's width. A hairline isn't counted (the part lies above the forehead), nor
+ * ears or hands beside the hair (no part under them in the column), nor runs longer than 15% of the part's width.
+ * `skinMask` is the base's mask at the part's canvas size, 0..255.
+ */
+export const crownGap = (alpha: Float32Array, skinMask: Uint8Array, width: number, height: number) => {
+  const tops: Array<number> = [];
+  for (let x = 0; x < width; x++) {
+    let y = 0;
+    while (y < height && alpha[y * width + x]! < 0.5) y++;
+    if (y < height) tops.push(y * width + x);
+  }
+  if (tops.length === 0) return 0;
+  const partWidth = (tops.at(-1)! % width) - (tops[0]! % width) + 1;
+  const outline = 0.01 * partWidth;
+  const longest = 0.15 * partWidth;
+  let sum = 0;
+  for (const top of tops) {
+    let run = 0;
+    while (top - (run + 1) * width >= 0 && skinMask[top - (run + 1) * width]! >= 128) run++;
+    if (run <= longest) sum += Math.max(0, run - outline);
+  }
+  return Number(((1000 * sum) / tops.length / partWidth).toFixed(2));
+};
+
 /** The bounding box of the pixels with alpha, grown by `pad` and clipped; null when there are none. */
 export const alphaBounds = (alpha: Float32Array, width: number, height: number, pad = 2): PixelRect | null => {
   let x0 = width, y0 = height, x1 = -1, y1 = -1;
