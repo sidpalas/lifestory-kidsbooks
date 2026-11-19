@@ -852,6 +852,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   (CI failures already email the pusher). No Railway token and no new service.
 - **Reopen if:** agents get a production login (then add signed-in checks), deploys take longer than 25 minutes, or a
   failed check goes unnoticed (then notify, for example with an issue mentioning Sid).
+- **Possible later (Sid, 2026-11-19: not now):** signed-in steps through the verify CLI, such as
+  `mise run verify -- picker --config live` and `proof --config live` as the agent family (D38). They need the agent's
+  email and password as GitHub secrets, and `proof` writes a proof row in the agent family each run.
 
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once
