@@ -19,7 +19,7 @@ import {
   type Rect,
   type StoryPart,
 } from "@lifestory/core/contracts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
 import { type DraftFiles, draftFileUrl, RectFields, UploadField } from "./fields";
@@ -123,7 +123,9 @@ function BasesGrid({
   ages: ReadonlyArray<Age>;
   onChange: (figure: FigureLayer) => void;
 }) {
-  // A base needs its drawing and its skin mask; whichever arrives first waits here for the other.
+  // A base needs its drawing and its skin mask; whichever arrives first waits here for the other. The ref holds the
+  // latest uploads: both can finish before a re-render, and the second must see the first.
+  const pendingRef = useRef<Record<string, { asset?: string; skinMask?: string }>>({});
   const [pending, setPending] = useState<Record<string, { asset?: string; skinMask?: string }>>({});
   const set = (age: Age, face: FigureBase["face"], field: "asset" | "skinMask" | "browMask", asset: string) => {
     const existing = figure.bases.find((base) => base.age === age && base.face === face);
@@ -132,13 +134,14 @@ function BasesGrid({
       return;
     }
     const key = `${age}/${face}`;
-    const next = { ...pending[key], [field]: asset };
+    const next = { ...pendingRef.current[key], [field]: asset };
     if (next.asset && next.skinMask) {
       onChange({ ...figure, bases: [...figure.bases, { age, face, asset: next.asset, skinMask: next.skinMask }] });
-      setPending((all) => Object.fromEntries(Object.entries(all).filter(([k]) => k !== key)));
+      pendingRef.current = Object.fromEntries(Object.entries(pendingRef.current).filter(([k]) => k !== key));
     } else {
-      setPending({ ...pending, [key]: next });
+      pendingRef.current = { ...pendingRef.current, [key]: next };
     }
+    setPending(pendingRef.current);
   };
 
   return (
