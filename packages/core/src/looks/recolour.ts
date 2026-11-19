@@ -67,5 +67,7 @@ export const recolour = async (
       for (let c = 0; c < 3; c++) out[i + c] = Math.round(out[i + c]! + ((colour[c]! - out[i + c]!) * m) / 255);
     }
   }
-  return new Uint8Array(await sharp(out, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 9 }).toBuffer());
+  // zlib level 6, not 9: on textured raster art (the watercolour sample) level 9 took ~90% of a recolour (~0.8 s of
+  // ~0.85 s for an 800 × 1600 figure) for files only 4–5% smaller. The pixels, and so the cache key, are the same.
+  return new Uint8Array(await sharp(out, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 6 }).toBuffer());
 };

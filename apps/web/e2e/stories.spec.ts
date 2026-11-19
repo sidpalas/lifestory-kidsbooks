@@ -39,6 +39,23 @@ test("a family member previews the sample story's pages at print size, with the 
   await expect(page.getByTestId("safe-guide")).toHaveCount(6);
 });
 
+test("the watercolour sample's raster art loads and recolours on every page", async ({ page }) => {
+  await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
+  await page.getByTestId("stories").getByRole("link", { name: "The Paper Boat" }).click();
+  const pages = page.getByTestId("book-page");
+  await expect(pages).toHaveCount(3);
+  await expect(pages.first()).toContainText("After the rain, Leo and Mum folded");
+  // JPEG plates, a WebP foreground, and recoloured PNG figures. Example looks (Leo: short hair and glasses; Mum:
+  // curly hair): pages 1 to 3 stack 6, 7 (the reeds in front), and 6 images.
+  await expect
+    .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 })
+    .toBe(0);
+  const sources = await pages.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).src));
+  expect(sources).toHaveLength(19);
+  expect(sources.filter((src) => src.includes("/recoloured/"))).toHaveLength(12);
+  expect(sources.filter((src) => /\.(jpg|webp)$/.test(src))).toHaveLength(4);
+});
+
 test("changing a look recomposes every page that shows the character", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/stories/the-moon-picnic");
   const pages = page.getByTestId("book-page");

@@ -19,7 +19,7 @@ export const seedUsers = {
 
 export const seedFamily = { id: "org_example_family", name: "The Example Family", slug: "example-family" } as const;
 
-const sampleStoryDir = fileURLToPath(new URL("../../../fixtures/stories/moon-picnic/", import.meta.url));
+const sampleStoryDirs = ["moon-picnic", "paper-boat"].map((name) => fileURLToPath(new URL(`../../../fixtures/stories/${name}/`, import.meta.url)));
 
 export const seed = Effect.gen(function* () {
   const { db } = yield* Database;
@@ -40,7 +40,8 @@ export const seed = Effect.gen(function* () {
   // The sample story's pages, text, character slots, and placeholder art (fixtures/stories/moon-picnic), as its
   // newest version. v2 replaced v1's variable Literata with static instances (D27); v3 is book format 2, whose roles
   // accept several ages (D29); v4 calls the grown-up by their title ("Grandpa"). Databases seeded earlier keep their older versions.
-  yield* importStoryDirectory(sampleStoryDir, seedUsers.operator.id);
+  // The Paper Boat (fixtures/stories/paper-boat) is the watercolour sample: raster art, to test recolouring and print on texture.
+  for (const dir of sampleStoryDirs) yield* importStoryDirectory(dir, seedUsers.operator.id);
 });
 
 if (import.meta.main) {

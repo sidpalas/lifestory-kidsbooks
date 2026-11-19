@@ -167,6 +167,17 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
     asset paths that stay inside the version's folder) and reports every problem with its path, so it can serve as the upload validator.
   - **Placeholder art is SVG**, at 1 unit = 0.01 in, so it's small, diffable, and sharp at any print resolution.
     The format also accepts PNG, JPEG, and WebP for real illustrations.
+  - **A raster sample tests the recolour on texture (2026-11-19):** "The Paper Boat" (`fixtures/stories/paper-boat`,
+    3 pages) has watercolour art drawn with OpenAI `gpt-image-2.6-sunburst` like an illustrator's: JPEG plates, a
+    WebP foreground, and per role two bald base figures with skin masks and hair and glasses parts cut out of in-place
+    edits as RGBA PNGs (its `ART.md` has the source, licence, and how the layers were made). Rendered at 300 ppi
+    with every skin tone and hair colour: paper grain, granulation and wash edges carry over, with no banding and no
+    halos at mask edges; the editor and the print-ready proof (D35) show the same art (mean colour difference under
+    0.03 levels, 0–0.8% of pixels off by more than 5% at 96 dpi, all at resampled edges). What a gradient map can't
+    keep is colour inside the skin: the cheek blush became a dark smudge and an open mouth's tongue turned skin-brown on
+    dark skin, so the sample evens out the blush in its bases and leaves the mouth out of the skin mask. Writing PNGs
+    at zlib level 6 instead of 9 cut a recolour of an 800 × 1600 raster figure from ~0.8 s to ~0.3 s (the encoder
+    took ~90%), for files 4–5% larger and the same pixels.
 - **Published versions don't change:** `importStoryVersion` (used by the seed) leaves an existing version alone and
   fails if its manifest differs, so editing the fixture means adding a version (or resetting a dev database).
 - **Story assets** under `/api/files/stories/<storyId>/v<n>/` follow the story's read rule: published story and

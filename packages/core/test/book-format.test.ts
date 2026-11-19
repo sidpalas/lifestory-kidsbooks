@@ -46,6 +46,15 @@ describe("StoryManifest", () => {
     expect(assets.filter((asset) => !existsSync(new URL(asset, fixture)))).toEqual([]);
   });
 
+  it("accepts the watercolour sample, whose raster figures cover the vocabulary with approved parts", () => {
+    const dir = new URL("../../../fixtures/stories/paper-boat/", import.meta.url);
+    const manifest = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
+    expect(unapprovedParts(manifest)).toEqual([]);
+    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
+    expect(manifestAssets(manifest).filter((asset) => !existsSync(new URL(asset, dir)))).toEqual([]);
+  });
+
   it("rejects a format version it doesn't know", () => {
     expect(errorOf(variant((m) => (m.formatVersion = 3)))).toContain("formatVersion");
   });

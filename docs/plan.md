@@ -227,7 +227,8 @@ plate (art) → for each figure on the page, in z-order:
   invalidate and no progress to track.
 - **Proofs pin what was printed:** an approved proof is an immutable PDF, so later look changes don't alter it.
 - **Milestone 1 assets:** the sample story ships placeholder bases, masks, palettes and a small set of parts, all
-  marked approved, loaded by the seed from `fixtures/stories/moon-picnic/`.
+  marked approved, loaded by the seed from `fixtures/stories/moon-picnic/`. A second sample,
+  `fixtures/stories/paper-boat/`, has textured raster art (watercolour) to test the recolour and print on it (D24).
 
 ## Authoring-time part generation (later milestone)
 
