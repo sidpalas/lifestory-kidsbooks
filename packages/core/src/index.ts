@@ -18,6 +18,7 @@ export { approvedParts, getPart, listParts, partPrompt, requestPart, reviewPart,
 export * from "./runtime.ts";
 export * from "./storage.ts";
 export * from "./stories.ts";
+export * from "./authoring.ts";
 export * from "./proofs.ts";
 export * from "./print-ready.ts";
 export * from "./tasks/index.ts";

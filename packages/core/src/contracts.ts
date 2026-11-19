@@ -1,7 +1,8 @@
 // Client-safe schemas shared by the web app's server functions and its UI.
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
-import { CastMember, Look, LookOverride, PronounSet, StoryManifest, TextStyleName } from "./book-format/index.ts";
+import { CastMember, Look, LookOverride, PronounSet, StoryDraft, StoryManifest, TextStyleName } from "./book-format/index.ts";
+import { StoryPart } from "./parts/contract.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
@@ -158,3 +159,28 @@ export const ProofSummary = Schema.Struct({
   castNames: Schema.Array(Schema.String),
 });
 export type ProofSummary = typeof ProofSummary.Type;
+
+/** A story as its author lists it (D37): the version being drafted, if any, and the newest published one. */
+export const AuthoredStory = Schema.Struct({
+  id: Schema.String,
+  slug: Schema.String,
+  title: Schema.String,
+  summary: Schema.String,
+  status: Schema.String,
+  draftVersion: Schema.NullOr(Schema.Number),
+  publishedVersion: Schema.NullOr(Schema.Number),
+});
+export type AuthoredStory = typeof AuthoredStory.Type;
+
+/** A story draft in the authoring editor (D37): its manifest as saved, its generated parts, and every page composed for the slots' examples. */
+export const DraftView = Schema.Struct({
+  story: Schema.Struct({ id: Schema.String, slug: Schema.String, title: Schema.String, summary: Schema.String, status: Schema.String }),
+  storyVersionId: Schema.String,
+  version: Schema.Number,
+  revision: Schema.Number,
+  /** As saved, without generated parts; the pictures in `pages` include them. */
+  draft: StoryDraft,
+  parts: Schema.Array(StoryPart),
+  pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
+});
+export type DraftView = typeof DraftView.Type;

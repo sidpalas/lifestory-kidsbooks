@@ -16,6 +16,7 @@ import {
 } from "@lifestory/core/contracts";
 import {
   Auth,
+  canAuthor,
   getStoryPreview,
   Jobs,
   listPublishedStories,
@@ -34,6 +35,7 @@ export const HomeResult = ResultSchema(
   Schema.Struct({
     user: Schema.Struct({ name: Schema.String, email: Schema.String }),
     stories: Schema.Array(StorySummary),
+    canAuthor: Schema.Boolean,
   }),
   NotAuthenticated,
 );
@@ -56,7 +58,7 @@ export const getHome = createServerFn({ method: "GET" }).handler(() =>
     Effect.gen(function* () {
       const user = yield* currentUser;
       const stories = yield* listPublishedStories();
-      return { user: { name: user.name, email: user.email }, stories };
+      return { user: { name: user.name, email: user.email }, stories, canAuthor: yield* canAuthor(user) };
     }),
   ),
 );

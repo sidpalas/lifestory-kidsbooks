@@ -43,12 +43,12 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
   return rows satisfies ReadonlyArray<StorySummary>;
 });
 
-/** Who may read a story version: anyone once the story and version are published, and its author always. */
+/**
+ * Who may read a story version: a published version of a published story, anyone; of a story not published yet, its
+ * author. An unpublished version is the author's draft (D37), read only through authoring and its files.
+ */
 const readableBy = (userId: string) =>
-  or(
-    eq(schema.story.authorId, userId),
-    and(eq(schema.story.status, "published"), isNotNull(schema.storyVersion.publishedAt)),
-  );
+  and(isNotNull(schema.storyVersion.publishedAt), or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")));
 
 /** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
 export const readableStoryVersion = Effect.fn("stories.readableVersion")(function* (userId: string, slug: string) {
@@ -121,6 +121,11 @@ export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (us
   const match = STORY_ASSET_KEY.exec(key);
   if (!match) return false;
   const [, storyId, version] = match;
+  // The author reads every version's files, including the unpublished draft's (D37).
+  const authored = yield* Database.query((db) =>
+    db.select({ id: schema.story.id }).from(schema.story).where(and(eq(schema.story.id, storyId!), eq(schema.story.authorId, userId))),
+  );
+  if (authored.length > 0) return true;
   const rows = yield* Database.query((db) =>
     db
       .select({ id: schema.storyVersion.id })

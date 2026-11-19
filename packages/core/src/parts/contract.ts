@@ -69,8 +69,7 @@ export type PartDecision = typeof PartDecision.Type;
 
 /**
  * A generated part as the manifest's `Part` entries for its figure, one per layer, approved once the illustrator
- * approved it. For callers that record generated parts in a draft's manifest, such as the authoring UI's
- * `recordDraftParts`: record on `pending_review`, and again after the review.
+ * approved it. The authoring editor merges them into the draft it shows and publishes (`withGeneratedParts`, D37).
  */
 export const manifestParts = (
   part: Pick<StoryPart, "age" | "face" | "axis" | "option" | "status"> & {

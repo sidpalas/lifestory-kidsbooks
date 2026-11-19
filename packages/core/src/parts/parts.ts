@@ -7,7 +7,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { Effect, Schema } from "effect";
 import type { FigureLayer, Part, Rect, StoryManifest } from "../book-format/manifest.ts";
-import { decodeStoryManifest, storyAssetKey } from "../book-format/index.ts";
+import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
 import { Database } from "../database.ts";
 import { Forbidden, InvalidInput, NotFound } from "../errors.ts";
 import { Jobs } from "../jobs.ts";
@@ -129,7 +129,8 @@ const authoredVersion = Effect.fn("parts.authoredVersion")(function* (userId: st
   );
   if (!row) return yield* new NotFound({ entity: "story version", id: storyVersionId });
   if (row.authorId !== userId) return yield* new Forbidden({ message: "only the story's author generates and reviews its parts" });
-  const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
+  // A draft only has the format's shape until it's published (D37).
+  const manifest = yield* decodeStoryVersion(row.manifest, row.publishedAt).pipe(Effect.orDie);
   return { ...row, manifest };
 });
 

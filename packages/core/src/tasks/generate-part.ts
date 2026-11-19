@@ -1,7 +1,7 @@
 import { schema } from "@lifestory/db";
 import { eq } from "drizzle-orm";
 import { Effect } from "effect";
-import { decodeStoryManifest, storyAssetKey } from "../book-format/index.ts";
+import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
 import type { Rect } from "../book-format/manifest.ts";
 import { Database } from "../database.ts";
 import { generateImage } from "../generations.ts";
@@ -15,13 +15,13 @@ import { ObjectStorage } from "../storage.ts";
 const loadPart = Effect.fn("parts.load")(function* (partId: string) {
   const [row] = yield* Database.query((db) =>
     db
-      .select({ part: schema.storyPart, storyId: schema.storyVersion.storyId, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest })
+      .select({ part: schema.storyPart, storyId: schema.storyVersion.storyId, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest, publishedAt: schema.storyVersion.publishedAt })
       .from(schema.storyPart)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.storyPart.storyVersionId))
       .where(eq(schema.storyPart.id, partId)),
   );
   if (!row) return yield* Effect.die(new Error(`part ${partId} doesn't exist`));
-  const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
+  const manifest = yield* decodeStoryVersion(row.manifest, row.publishedAt).pipe(Effect.orDie);
   const appearance = findAppearance(manifest, row.part.pageId, row.part.slotId, row.part.age as Age, row.part.face);
   if ("problem" in appearance) return yield* Effect.die(new Error(`part ${partId}: ${appearance.problem}`));
   const storage = yield* ObjectStorage;
@@ -116,7 +116,7 @@ export const generatePart = defineTask({
         "review-images",
         Effect.gen(function* () {
           const part = yield* loadPart(partId);
-          const { palettes } = yield* decodeStoryManifest(part.manifest).pipe(Effect.orDie);
+          const { palettes } = yield* decodeStoryVersion(part.manifest, part.publishedAt).pipe(Effect.orDie);
           const skins = byLightness(palettes.skin);
           const hairs = byLightness(palettes.hairColour);
           const [base, skinMask, browMask, layers] = yield* Effect.all([

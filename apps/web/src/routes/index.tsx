@@ -31,7 +31,7 @@ type JobView =
   | { readonly phase: "error"; readonly message: string };
 
 function Home() {
-  const { user, families, stories, active, isOperator, library } = Route.useLoaderData();
+  const { user, families, stories, active, isOperator, library, canAuthor } = Route.useLoaderData();
   const router = useRouter();
   const [job, setJob] = useState<JobView>({ phase: "idle" });
   // The server-rendered button does nothing until React hydrates, so keep it disabled until then.
@@ -104,6 +104,19 @@ function Home() {
       {active && <FamilyPanel family={active} />}
       <FamilyLibrary characters={library.characters} books={library.books} canEdit={library.canEdit} />
       {isOperator && <InviteFamilyCard />}
+      {(canAuthor || isOperator) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Write stories</CardTitle>
+            <CardDescription>Author a story: pages, art, roles, and text, published as a version families can make books of.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/author" className="font-medium hover:underline">
+              Open your stories →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

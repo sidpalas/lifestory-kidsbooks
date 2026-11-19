@@ -1,0 +1,805 @@
+// The story draft editor (D37): story details, trim, fonts and text styles; roles with their accepted ages, pronoun
+// tokens, and example character; pages with their layout, text, art layers and figures. The selected page shows as
+// BookPage renders it (the same component the book editor and the PDF use), with the text live and the pictures as
+// of the last save. Checking runs the publishing checks; publishing makes an immutable story version.
+import {
+  type Age,
+  ageOptions,
+  type CharacterSlot,
+  DraftChanged,
+  type DraftView,
+  exampleCast,
+  type FigureLayer,
+  type IllustrationLayer,
+  type LookAxis,
+  type LookOption,
+  lookVocabulary,
+  type Page,
+  PageLayout,
+  PronounSet,
+  resolvePageText,
+  type StoryDraft,
+  StoryNotPublishable,
+  type TextStyle,
+  tokenIssues,
+  unwrapResult,
+} from "@lifestory/core/contracts";
+import { Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
+import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { NativeSelect } from "~/components/ui/native-select";
+import {
+  CheckDraftResult,
+  checkDraftFn,
+  DraftPartResult,
+  DraftResult,
+  getDraftFn,
+  PublishDraftResult,
+  publishDraftFn,
+  requestDraftPartFn,
+  reviewDraftPartFn,
+  SaveDraftResult,
+  saveDraftFn,
+} from "~/server/authoring";
+import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
+import { FigureEditor, type Generation } from "./figure-editor";
+
+type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
+
+const tabs = [
+  { id: "story", label: "Story and type" },
+  { id: "roles", label: "Roles" },
+  { id: "pages", label: "Pages" },
+] as const;
+type Tab = (typeof tabs)[number]["id"];
+
+const layoutLabels: Record<PageLayout, string> = {
+  "full-bleed-art/text-bottom": "Full-bleed art, text at the bottom",
+  "full-bleed-art/text-top": "Full-bleed art, text at the top",
+  "art-left/text-right": "Art on the left, text on the right",
+};
+
+const PRONOUN_FIELDS = ["name", "title", "they", "them", "their", "theirs", "themself"] as const;
+
+export function DraftEditor({ initial }: { initial: DraftView }) {
+  const router = useRouter();
+  const [view, setView] = useState(initial);
+  const [draft, setDraft] = useState<StoryDraft>(initial.draft);
+  const [title, setTitle] = useState(initial.story.title);
+  const [summary, setSummary] = useState(initial.story.summary);
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ readonly error: boolean; readonly text: string } | null>(null);
+  const [issues, setIssues] = useState<ReadonlyArray<string> | null>(null);
+  const [tab, setTab] = useState<Tab>("story");
+  const [selected, setSelected] = useState(initial.draft.pages[0]?.pageId ?? "");
+  const files: DraftFiles = { storyId: view.story.id, version: view.version };
+  const change: Change = (edit) => {
+    setDraft((current) => edit(current));
+    setDirty(true);
+    setIssues(null);
+  };
+  const page = draft.pages.find((candidate) => candidate.pageId === selected) ?? draft.pages[0];
+
+  // Generated parts (D37) live in story_part, not in the saved manifest: reloading the view picks up their status and
+  // recomposes the pictures with them. Unsaved edits stay as they are.
+  const refresh = async () => {
+    const next = unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: files.storyId } }));
+    setView(next);
+    return next;
+  };
+  const generationFor = (pageId: string, slotId: string): Generation => {
+    const twice = (draft.pages.find((p) => p.pageId === pageId)?.illustration.layers ?? []).filter((l) => l.kind === "figure" && l.slotId === slotId).length > 1;
+    return {
+      parts: view.parts.filter((part) => part.pageId === pageId && part.slotId === slotId),
+      blocked: twice ? "Generation needs one figure of this role on the page." : dirty ? "Save first: parts are generated from the saved draft." : busy ? "Working…" : null,
+      generate: (requests) =>
+        void (async () => {
+          setBusy(true);
+          setStatus(null);
+          try {
+            for (const request of requests) {
+              unwrapResult(DraftPartResult)(await requestDraftPartFn({ data: { storyId: files.storyId, pageId, slotId, ...request } }));
+            }
+            // Parts generate on the worker; follow them until none is still generating (up to 5 minutes).
+            for (let i = 0; i < 300; i++) {
+              const next = await refresh();
+              if (!next.parts.some((part) => part.status === "generating")) break;
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+          } catch (cause) {
+            setStatus({ error: true, text: `Couldn't generate: ${message(cause)}` });
+          } finally {
+            setBusy(false);
+          }
+        })(),
+      review: (partId, decision) =>
+        void (async () => {
+          try {
+            unwrapResult(DraftPartResult)(await reviewDraftPartFn({ data: { storyId: files.storyId, partId, decision } }));
+            setIssues(null);
+            await refresh();
+          } catch (cause) {
+            setStatus({ error: true, text: message(cause) });
+          }
+        })(),
+    };
+  };
+  const addPage = () => {
+    const pageId = nextPageId(draft);
+    change((d) => ({ ...d, pages: [...d.pages, { pageId, layout: "full-bleed-art/text-bottom", text: [{ style: "body", content: "" }], illustration: { layers: [] } }] }));
+    setSelected(pageId);
+    setTab("pages");
+  };
+
+  const save = async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const next = unwrapResult(SaveDraftResult)(await saveDraftFn({ data: { storyId: files.storyId, revision: view.revision, draft, title, summary } }));
+      setView(next);
+      setDraft(next.draft);
+      setDirty(false);
+      setStatus({ error: false, text: `Saved. Pictures recomposed.` });
+    } catch (cause) {
+      setStatus({
+        error: true,
+        text:
+          cause instanceof DraftChanged
+            ? "This draft changed somewhere else (another tab, or generated parts). Reload the page to see it; edits here aren't saved."
+            : `Couldn't save: ${message(cause)}`,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const check = async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      setIssues(unwrapResult(CheckDraftResult)(await checkDraftFn({ data: { storyId: files.storyId } })).issues);
+    } catch (cause) {
+      setStatus({ error: true, text: message(cause) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const publish = async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      unwrapResult(PublishDraftResult)(await publishDraftFn({ data: { storyId: files.storyId, revision: view.revision } }));
+      await router.invalidate();
+    } catch (cause) {
+      if (cause instanceof StoryNotPublishable) setIssues(cause.issues);
+      else setStatus({ error: true, text: cause instanceof DraftChanged ? "This draft changed somewhere else; reload the page." : message(cause) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <StoryFonts fonts={draft.fonts} assetUrl={(asset) => draftFileUrl(files.storyId, files.version, asset)} />
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-2">
+          <div role="tablist" className="flex gap-1">
+            {tabs.map((candidate) => (
+              <Button
+                key={candidate.id}
+                role="tab"
+                aria-selected={tab === candidate.id}
+                size="sm"
+                variant={tab === candidate.id ? "default" : "outline"}
+                onClick={() => setTab(candidate.id)}
+              >
+                {candidate.label}
+              </Button>
+            ))}
+          </div>
+          <span className="flex-1" />
+          <span className="text-muted-foreground text-xs" data-testid="draft-state">
+            {dirty ? "Unsaved changes" : `Saved · revision ${view.revision}`}
+          </span>
+          <Button size="sm" onClick={() => void save()} disabled={busy || !dirty}>
+            Save draft
+          </Button>
+        </div>
+        {status && (
+          <p role={status.error ? "alert" : "status"} className={status.error ? "text-destructive text-sm" : "text-muted-foreground text-sm"}>
+            {status.text}
+          </p>
+        )}
+
+        {tab === "story" && <StoryTab files={files} draft={draft} change={change} title={title} summary={summary} setTitle={(t) => { setTitle(t); setDirty(true); }} setSummary={(s) => { setSummary(s); setDirty(true); }} />}
+        {tab === "roles" && <RolesTab draft={draft} change={change} />}
+        {tab === "pages" && page && <PageTab files={files} draft={draft} page={page} change={change} generationFor={generationFor} />}
+        {tab === "pages" && !page && (
+          <Button className="self-start" onClick={addPage}>
+            Add a page
+          </Button>
+        )}
+
+        <section aria-label="Publish" className="flex flex-col gap-2 rounded-md border p-4">
+          <h3 className="font-semibold">Check and publish version {view.version}</h3>
+          <p className="text-muted-foreground text-xs">
+            Publishing runs the book format's checks: every reference resolves, every look option has a palette or an approved part on every figure, every
+            file is uploaded, and fonts are static. A published version never changes; later edits go into the next version.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => void check()} disabled={busy || dirty}>
+              Check
+            </Button>
+            <Button size="sm" onClick={() => void publish()} disabled={busy || dirty}>
+              Publish version {view.version}
+            </Button>
+            {dirty && <span className="text-muted-foreground self-center text-xs">Save first.</span>}
+          </div>
+          {issues && (
+            <div data-testid="publish-issues" data-count={issues.length}>
+              {issues.length === 0 ? (
+                <p className="text-sm text-green-700">Ready to publish: no problems found.</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">{issues.length === 1 ? "1 thing" : `${issues.length} things`} to fix before publishing:</p>
+                  <ul className="mt-1 max-h-64 list-disc overflow-auto pl-5 text-xs">
+                    {issues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="Page preview">
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Pages">
+          {draft.pages.map((candidate, i) => (
+            <Button
+              key={candidate.pageId}
+              size="sm"
+              role="tab"
+              aria-selected={candidate.pageId === page?.pageId}
+              variant={candidate.pageId === page?.pageId ? "default" : "outline"}
+              onClick={() => {
+                setSelected(candidate.pageId);
+                setTab("pages");
+              }}
+            >
+              Page {i + 1}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={addPage}>
+            + Page
+          </Button>
+        </div>
+        {page && (
+          <div className="w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="draft-preview">
+            <ScaledPage trim={draft.trim} scale={0.55}>
+              <BookPage
+                manifest={draft}
+                page={page}
+                text={resolvePageText(page, exampleCast(draft))}
+                illustration={(view.pages.find((composed) => composed.pageId === page.pageId)?.layers ?? []).map((layer) => ({
+                  url: `/api/files/${layer.key}`,
+                  rect: layer.rect,
+                }))}
+                cast={exampleCast(draft)}
+                guides
+              />
+            </ScaledPage>
+          </div>
+        )}
+        <p className="text-muted-foreground max-w-md text-xs">
+          As BookPage prints it, with each role played by its example character. Text follows your typing; pictures update when you save.
+        </p>
+        {view.story.status === "published" && (
+          <Link to="/stories/$slug" params={{ slug: view.story.slug }} className="text-sm hover:underline">
+            Open the published story →
+          </Link>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+const nextPageId = (draft: StoryDraft) => {
+  const used = new Set(draft.pages.map((page) => page.pageId));
+  let n = draft.pages.length + 1;
+  while (used.has(`p${String(n).padStart(2, "0")}`)) n++;
+  return `p${String(n).padStart(2, "0")}`;
+};
+
+// ---- Story and type ----------------------------------------------------------------
+
+function StoryTab({
+  files,
+  draft,
+  change,
+  title,
+  summary,
+  setTitle,
+  setSummary,
+}: {
+  files: DraftFiles;
+  draft: StoryDraft;
+  change: Change;
+  title: string;
+  summary: string;
+  setTitle: (title: string) => void;
+  setSummary: (summary: string) => void;
+}) {
+  const [family, setFamily] = useState(draft.fonts[0]?.family ?? "");
+  const [weight, setWeight] = useState("400");
+  const families = [...new Set(draft.fonts.map((font) => font.family))];
+  const setTrim = (field: keyof StoryDraft["trim"], value: number) => change((d) => ({ ...d, trim: { ...d.trim, [field]: value } }));
+  const setStyle = (name: "title" | "body", edit: Partial<TextStyle>) =>
+    change((d) => ({ ...d, textStyles: { ...d.textStyles, [name]: { ...d.textStyles[name], ...edit } } }));
+
+  return (
+    <div className="flex flex-col gap-6" data-testid="story-tab">
+      <section className="grid gap-3 md:grid-cols-2" aria-label="Story details">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Title
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium md:col-span-2">
+          Summary
+          <textarea className="min-h-16 rounded-md border px-3 py-2 text-sm font-normal" value={summary} onChange={(event) => setSummary(event.target.value)} />
+        </label>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label="Trim">
+        <h3 className="font-semibold">Trim</h3>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <NumberField label="Width (in)" step={0.125} value={draft.trim.widthIn} onChange={(n) => setTrim("widthIn", n)} />
+          <NumberField label="Height (in)" step={0.125} value={draft.trim.heightIn} onChange={(n) => setTrim("heightIn", n)} />
+          <NumberField label="Bleed (in)" step={0.0625} value={draft.trim.bleedIn} onChange={(n) => setTrim("bleedIn", n)} />
+          <NumberField label="Safe margin (in)" step={0.0625} value={draft.trim.safeMarginIn} onChange={(n) => setTrim("safeMarginIn", n)} />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label="Fonts">
+        <h3 className="font-semibold">Fonts</h3>
+        <p className="text-muted-foreground text-xs">Static WOFF2 files, one per weight, so PDFs embed real fonts (D24). Fonts must allow embedding (e.g. SIL OFL).</p>
+        <ul className="flex flex-col gap-1 text-sm" data-testid="fonts">
+          {draft.fonts.map((font) => (
+            <li key={font.asset} className="flex items-center gap-2">
+              <span className="font-medium">{font.family}</span>
+              <span>{font.weight ?? "no weight"}</span>
+              <code className="text-muted-foreground truncate text-xs">{font.asset}</code>
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => change((d) => ({ ...d, fonts: d.fonts.filter((f) => f !== font) }))}>
+                Remove
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap items-end gap-2 rounded-md border p-2">
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            Font family
+            <Input className="h-8 w-40" value={family} onChange={(event) => setFamily(event.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            Weight
+            <NativeSelect aria-label="Font weight" className="h-8" value={weight} onChange={(event) => setWeight(event.target.value)}>
+              {["100", "200", "300", "400", "450", "500", "600", "700", "800", "900"].map((w) => (
+                <option key={w}>{w}</option>
+              ))}
+            </NativeSelect>
+          </label>
+          {family.trim() ? (
+            <UploadField
+              files={files}
+              folder="fonts"
+              label="Upload a WOFF2 font file"
+              accept=".woff2,font/woff2"
+              asset={undefined}
+              onUploaded={(asset) => change((d) => ({ ...d, fonts: [...d.fonts, { family: family.trim(), asset, weight, style: "normal" }] }))}
+            />
+          ) : (
+            <span className="text-muted-foreground text-xs">Name the family to upload its file.</span>
+          )}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label="Text styles">
+        <h3 className="font-semibold">Text styles</h3>
+        {(["title", "body"] as const).map((name) => {
+          const style = draft.textStyles[name];
+          const label = name === "title" ? "Title" : "Body";
+          return (
+            <div key={name} className="grid grid-cols-2 items-end gap-2 md:grid-cols-5" data-testid={`text-style-${name}`}>
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {label} font
+                <NativeSelect aria-label={`${label} font`} className="h-8" value={style.fontFamily} onChange={(event) => setStyle(name, { fontFamily: event.target.value })}>
+                  {!families.includes(style.fontFamily) && <option value={style.fontFamily}>{style.fontFamily || "Choose a font"}</option>}
+                  {families.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </NativeSelect>
+              </label>
+              <NumberField label={`${label} size (pt)`} value={style.sizePt} onChange={(n) => setStyle(name, { sizePt: n })} />
+              <NumberField label={`${label} line height`} step={0.05} value={style.lineHeight} onChange={(n) => setStyle(name, { lineHeight: n })} />
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {label} weight
+                <NativeSelect aria-label={`${label} weight`} className="h-8" value={String(style.weight)} onChange={(event) => setStyle(name, { weight: Number(event.target.value) })}>
+                  {[...new Set([String(style.weight), ...draft.fonts.filter((f) => f.family === style.fontFamily).flatMap((f) => (f.weight ? [f.weight] : []))])].map((w) => (
+                    <option key={w}>{w}</option>
+                  ))}
+                </NativeSelect>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {label} alignment
+                <NativeSelect aria-label={`${label} alignment`} className="h-8" value={style.align} onChange={(event) => setStyle(name, { align: event.target.value as TextStyle["align"] })}>
+                  <option value="left">Left</option>
+                  <option value="center">Centre</option>
+                  <option value="right">Right</option>
+                </NativeSelect>
+              </label>
+            </div>
+          );
+        })}
+      </section>
+    </div>
+  );
+}
+
+// ---- Roles ---------------------------------------------------------------------------
+
+const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras" };
+
+const newSlot = (draft: StoryDraft): CharacterSlot => {
+  const used = new Set(draft.characterSlots.map((slot) => slot.slotId));
+  const slotId = used.has("hero") ? `role-${draft.characterSlots.length + 1}` : "hero";
+  return {
+    slotId,
+    label: slotId === "hero" ? "The child" : "Another character",
+    description: "",
+    ages: ["young-child"],
+    example: {
+      name: "Mia",
+      pronouns: "she/her",
+      look: { age: "young-child", face: "face:round", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:none" },
+    },
+  };
+};
+
+function RolesTab({ draft, change }: { draft: StoryDraft; change: Change }) {
+  return (
+    <div className="flex flex-col gap-4" data-testid="roles-tab">
+      <p className="text-muted-foreground text-sm">
+        Each role is played by a family member. A role accepts some ages (D29) and covers every other look option. The example character plays it in
+        previews.
+      </p>
+      {draft.characterSlots.map((slot, index) => (
+        <RoleEditor key={index} slot={slot} index={index} change={change} />
+      ))}
+      <Button variant="outline" className="self-start" onClick={() => change((d) => ({ ...d, characterSlots: [...d.characterSlots, newSlot(d)] }))}>
+        Add a role
+      </Button>
+    </div>
+  );
+}
+
+function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: number; change: Change }) {
+  const setSlot = (edit: (slot: CharacterSlot) => CharacterSlot) =>
+    change((d) => {
+      const next = edit(d.characterSlots[index]!);
+      const renamed = next.slotId !== slot.slotId;
+      return {
+        ...d,
+        characterSlots: d.characterSlots.map((s, i) => (i === index ? next : s)),
+        // Figures follow a renamed role; text tokens are the author's to update, and the check lists any left.
+        pages: renamed
+          ? d.pages.map((page) => ({
+              ...page,
+              illustration: { layers: page.illustration.layers.map((layer) => (layer.kind === "figure" && layer.slotId === slot.slotId ? { ...layer, slotId: next.slotId } : layer)) },
+            }))
+          : d.pages,
+      };
+    });
+  const toggleAge = (age: Age, on: boolean) =>
+    setSlot((s) => {
+      const ages = ageOptions.map((option) => option.id).filter((id) => (id === age ? on : s.ages.includes(id)));
+      if (ages.length === 0) return s;
+      const exampleAge = ages.includes(s.example.look.age) ? s.example.look.age : ages[0]!;
+      return { ...s, ages, example: { ...s.example, look: { ...s.example.look, age: exampleAge } } };
+    });
+  const { title: _, ...withoutTitle } = slot.example;
+
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-md border p-3" data-testid={`role-${slot.slotId}`}>
+      <legend className="px-1 text-sm font-semibold">{slot.label}</legend>
+      <div className="grid gap-2 md:grid-cols-3">
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Role ID (used in tokens)
+          <Input className="h-8" value={slot.slotId} onChange={(event) => setSlot((s) => ({ ...s, slotId: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Role name for parents
+          <Input className="h-8" value={slot.label} onChange={(event) => setSlot((s) => ({ ...s, label: event.target.value }))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Guidance for parents
+          <Input className="h-8" value={slot.description} onChange={(event) => setSlot((s) => ({ ...s, description: event.target.value }))} />
+        </label>
+      </div>
+      <fieldset className="flex flex-wrap gap-3 text-xs">
+        <legend className="mb-1 font-medium">Ages this role accepts</legend>
+        {ageOptions.map((option) => (
+          <label key={option.id} className="flex items-center gap-1">
+            <input type="checkbox" checked={slot.ages.includes(option.id)} onChange={(event) => toggleAge(option.id, event.target.checked)} />
+            {option.label} ({option.years})
+          </label>
+        ))}
+      </fieldset>
+      <div className="grid gap-2 md:grid-cols-3">
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Example name
+          <Input className="h-8" value={slot.example.name} onChange={(event) => setSlot((s) => ({ ...s, example: { ...s.example, name: event.target.value } }))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Example title (optional, e.g. Dad)
+          <Input
+            className="h-8"
+            value={slot.example.title ?? ""}
+            onChange={(event) => setSlot((s) => ({ ...s, example: event.target.value ? { ...s.example, title: event.target.value } : withoutTitle }))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Example pronouns
+          <NativeSelect
+            aria-label="Example pronouns"
+            className="h-8"
+            value={slot.example.pronouns}
+            onChange={(event) => setSlot((s) => ({ ...s, example: { ...s.example, pronouns: event.target.value as PronounSet } }))}
+          >
+            {PronounSet.literals.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </NativeSelect>
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+        {(Object.keys(axisLabels) as Array<LookAxis>).map((axis) => (
+          <label key={axis} className="flex flex-col gap-1 text-xs font-medium">
+            Example {axisLabels[axis].toLowerCase()}
+            <NativeSelect
+              aria-label={`Example ${axisLabels[axis].toLowerCase()}`}
+              className="h-8"
+              value={slot.example.look[axis]}
+              onChange={(event) => setSlot((s) => ({ ...s, example: { ...s.example, look: { ...s.example.look, [axis]: event.target.value } } }))}
+            >
+              {(lookVocabulary[axis] as ReadonlyArray<LookOption>)
+                .filter((option) => axis !== "age" || slot.ages.includes(option.id as Age))
+                .map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+            </NativeSelect>
+          </label>
+        ))}
+      </div>
+      <p className="text-muted-foreground text-xs" data-testid="role-tokens">
+        Tokens: {PRONOUN_FIELDS.map((field) => `{{${slot.slotId}.${field}}}`).join(" ")} · capitalize the field ({`{{${slot.slotId}.They}}`}) to
+        capitalize the word.
+      </p>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="self-start"
+        onClick={() => change((d) => ({ ...d, characterSlots: d.characterSlots.filter((_s, i) => i !== index) }))}
+      >
+        Remove this role
+      </Button>
+    </fieldset>
+  );
+}
+
+// ---- Pages -----------------------------------------------------------------------------
+
+function PageTab({
+  files,
+  draft,
+  page,
+  change,
+  generationFor,
+}: {
+  files: DraftFiles;
+  draft: StoryDraft;
+  page: Page;
+  change: Change;
+  generationFor: (pageId: string, slotId: string) => Generation;
+}) {
+  const index = draft.pages.indexOf(page);
+  const slotIds = new Set(draft.characterSlots.map((slot) => slot.slotId));
+  const setPage = (edit: (page: Page) => Page) => change((d) => ({ ...d, pages: d.pages.map((p) => (p.pageId === page.pageId ? edit(p) : p)) }));
+  const setLayers = (edit: (layers: ReadonlyArray<IllustrationLayer>) => ReadonlyArray<IllustrationLayer>) =>
+    setPage((p) => ({ ...p, illustration: { layers: edit(p.illustration.layers) } }));
+  const firstFigure = page.illustration.layers.findIndex((layer) => layer.kind === "figure");
+  const move = (from: number, to: number) =>
+    setLayers((layers) => {
+      if (to < 0 || to >= layers.length) return layers;
+      const next = [...layers];
+      [next[from], next[to]] = [next[to]!, next[from]!];
+      return next;
+    });
+  const movePage = (to: number) =>
+    change((d) => {
+      if (to < 0 || to >= d.pages.length) return d;
+      const next = [...d.pages];
+      [next[index], next[to]] = [next[to]!, next[index]!];
+      return { ...d, pages: next };
+    });
+
+  return (
+    <div className="flex flex-col gap-6" data-testid="page-tab">
+      <div className="flex flex-wrap items-end gap-2">
+        <h3 className="mr-2 font-semibold">
+          Page {index + 1} <span className="text-muted-foreground text-xs font-normal">({page.pageId})</span>
+        </h3>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Layout
+          <NativeSelect aria-label="Layout" className="h-8" value={page.layout} onChange={(event) => setPage((p) => ({ ...p, layout: event.target.value as PageLayout }))}>
+            {PageLayout.literals.map((layout) => (
+              <option key={layout} value={layout}>
+                {layoutLabels[layout]}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+        <Button size="sm" variant="outline" onClick={() => movePage(index - 1)} disabled={index === 0}>
+          Move earlier
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => movePage(index + 1)} disabled={index === draft.pages.length - 1}>
+          Move later
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => change((d) => ({ ...d, pages: d.pages.filter((p) => p.pageId !== page.pageId) }))}>
+          Delete page
+        </Button>
+      </div>
+
+      <section className="flex flex-col gap-2" aria-label="Text">
+        <h3 className="font-semibold">Text</h3>
+        {page.text.map((block, b) => {
+          const problems = tokenIssues(block.content, slotIds);
+          return (
+            <div key={b} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <NativeSelect
+                  aria-label={`Style of text block ${b + 1}`}
+                  className="h-7 text-xs"
+                  value={block.style}
+                  onChange={(event) => setPage((p) => ({ ...p, text: p.text.map((t, i) => (i === b ? { ...t, style: event.target.value as "title" | "body" } : t)) }))}
+                >
+                  <option value="title">Title</option>
+                  <option value="body">Body</option>
+                </NativeSelect>
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => setPage((p) => ({ ...p, text: p.text.filter((_t, i) => i !== b) }))}>
+                  Remove
+                </Button>
+              </div>
+              <textarea
+                aria-label={`Text block ${b + 1}`}
+                className="min-h-20 rounded-md border px-3 py-2 font-serif text-sm"
+                value={block.content}
+                onChange={(event) => setPage((p) => ({ ...p, text: p.text.map((t, i) => (i === b ? { ...t, content: event.target.value } : t)) }))}
+              />
+              {problems.map((problem) => (
+                <p key={problem} role="alert" className="text-destructive text-xs">
+                  {problem}
+                </p>
+              ))}
+            </div>
+          );
+        })}
+        <Button size="sm" variant="outline" className="self-start" onClick={() => setPage((p) => ({ ...p, text: [...p.text, { style: "body", content: "" }] }))}>
+          Add a paragraph
+        </Button>
+        <p className="text-muted-foreground text-xs">
+          Write {"{{role.name}}"}, {"{{role.title}}"}, or a pronoun such as {"{{role.they}}"} where the family's names go; the Roles tab lists each role's tokens.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-3" aria-label="Illustration layers">
+        <h3 className="font-semibold">Illustration, bottom to top</h3>
+        <ol className="flex flex-col gap-3">
+          {page.illustration.layers.map((layer, l) => (
+            <li key={l} className="flex flex-col gap-2 rounded-md border p-3" data-testid="layer" data-kind={layer.kind}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">
+                  {layer.kind === "art" ? (firstFigure === -1 || l < firstFigure ? "Plate (behind the characters)" : "Foreground (in front of the characters)") : `Figure: ${draft.characterSlots.find((s) => s.slotId === layer.slotId)?.label ?? layer.slotId}`}
+                </span>
+                <span className="flex-1" />
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => move(l, l - 1)} disabled={l === 0}>
+                  Down
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => move(l, l + 1)} disabled={l === page.illustration.layers.length - 1}>
+                  Up
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => setLayers((layers) => layers.filter((_x, i) => i !== l))}>
+                  Remove
+                </Button>
+              </div>
+              {layer.kind === "art" ? (
+                <UploadField
+                  files={files}
+                  folder={`pages/${page.pageId}`}
+                  label={`Replace art layer ${l + 1}`}
+                  asset={layer.asset}
+                  onUploaded={(asset) => setLayers((layers) => layers.map((x, i) => (i === l ? { kind: "art", asset } : x)))}
+                />
+              ) : (
+                <FigureEditor
+                  files={files}
+                  pageId={page.pageId}
+                  figure={layer}
+                  slots={draft.characterSlots}
+                  generation={generationFor(page.pageId, layer.slotId)}
+                  onChange={(figure: FigureLayer) => setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))}
+                />
+              )}
+            </li>
+          ))}
+        </ol>
+        <div className="grid gap-3 rounded-md border border-dashed p-3 md:grid-cols-3">
+          <UploadField
+            files={files}
+            folder={`pages/${page.pageId}`}
+            label="Add plate art"
+            asset={undefined}
+            onUploaded={(asset) =>
+              setLayers((layers) => {
+                const at = layers.findIndex((layer) => layer.kind === "figure");
+                const next = [...layers];
+                next.splice(at === -1 ? layers.length : at, 0, { kind: "art", asset });
+                return next;
+              })
+            }
+          />
+          <UploadField files={files} folder={`pages/${page.pageId}`} label="Add foreground art" asset={undefined} onUploaded={(asset) => setLayers((layers) => [...layers, { kind: "art", asset }])} />
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="font-medium">Place a character</span>
+            {draft.characterSlots.length === 0 ? (
+              <span className="text-muted-foreground">Add a role first.</span>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {draft.characterSlots.map((slot) => (
+                  <Button
+                    key={slot.slotId}
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setLayers((layers) => {
+                        // Above the plate and the other figures, below any foreground art added after them.
+                        const lastFigure = layers.findLastIndex((layer) => layer.kind === "figure");
+                        const next = [...layers];
+                        next.splice(lastFigure === -1 ? layers.length : lastFigure + 1, 0, {
+                          kind: "figure",
+                          slotId: slot.slotId,
+                          box: [350, 300, 650, 900],
+                          bases: [],
+                          parts: [],
+                        });
+                        return next;
+                      })
+                    }
+                  >
+                    Place {slot.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

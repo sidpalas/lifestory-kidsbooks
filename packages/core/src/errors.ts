@@ -58,3 +58,11 @@ export class UnsupportedLook extends Schema.TaggedError<UnsupportedLook>()("Unsu
 export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInput", {
   message: Schema.String,
 }) {}
+
+/** A story draft that fails the book format's checks for publishing; each issue names where it is. */
+export class StoryNotPublishable extends Schema.TaggedError<StoryNotPublishable>()("StoryNotPublishable", {
+  issues: Schema.Array(Schema.String),
+}) {}
+
+/** The draft changed since the editor loaded it (another tab, or parts the generation pipeline added); reload it. */
+export class DraftChanged extends Schema.TaggedError<DraftChanged>()("DraftChanged", {}) {}

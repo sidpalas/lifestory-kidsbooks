@@ -2,7 +2,7 @@
 // personalized copy of a story is a separate record (`book`, added with
 // personalization) that pins one story version (see docs/plan.md, "Data model").
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
 
 export const storyStatus = pgEnum("story_status", ["draft", "published", "archived"]);
@@ -31,7 +31,9 @@ export const story = pgTable(
 // One authored edition of a story: its pages, text, character slots, and layered
 // illustrations, as a book format manifest (packages/core/src/book-format). Assets
 // live in object storage under stories/<storyId>/v<version>/. A version is
-// immutable once published, so a family's book can pin it.
+// immutable once published, so a family's book can pin it. Until then it is the author's draft (D37): at most one
+// per story, its manifest a StoryDraft (the format's shape; publishing runs the checks), and `revision` counts
+// saves so a stale editor tab never overwrites a newer save.
 export const storyVersion = pgTable(
   "story_version",
   {
@@ -43,7 +45,22 @@ export const storyVersion = pgTable(
     /** Validated by StoryManifest on the way in and decoded on the way out. */
     manifest: jsonb("manifest").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    revision: integer("revision").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("story_version_story_version_key").on(t.storyId, t.version), check("story_version_version_positive", sql`${t.version} > 0`)],
+  (t) => [
+    unique("story_version_story_version_key").on(t.storyId, t.version),
+    check("story_version_version_positive", sql`${t.version} > 0`),
+    uniqueIndex("story_version_one_draft").on(t.storyId).where(sql`${t.publishedAt} is null`),
+  ],
 );
+
+// Who may author stories besides the operator (D37): a grant the operator gives an existing account. Studios
+// (plan.md, "How Coming later fits") will later grant authoring through their own membership instead.
+export const storyAuthor = pgTable("story_author", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  grantedBy: text("granted_by").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

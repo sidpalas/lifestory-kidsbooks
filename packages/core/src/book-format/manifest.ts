@@ -155,7 +155,8 @@ export const FigureLayer = Schema.Struct({
   showsHead: Schema.optionalKey(Schema.Boolean),
   /** Overrides the manifest's `partOrder` on this appearance, e.g. glasses over hair. */
   partOrder: Schema.optionalKey(Schema.Array(PartAxis)),
-  bases: Schema.Array(FigureBase).check(Schema.isMinLength(1)),
+  /** At least one in a published version; a draft's new figure starts with none. */
+  bases: Schema.Array(FigureBase),
   parts: Schema.Array(Part),
 });
 export type FigureLayer = typeof FigureLayer.Type;
@@ -183,7 +184,7 @@ export const Page = Schema.Struct({
   text: Schema.Array(TextBlock),
   illustration: Schema.Struct({
     /** Bottom to top. Art layers are the illustrator's files and never change; character layers are filled per family. */
-    layers: Schema.Array(IllustrationLayer).check(Schema.isMinLength(1)),
+    layers: Schema.Array(IllustrationLayer),
   }),
 });
 export type Page = typeof Page.Type;
@@ -198,7 +199,11 @@ export const FORMAT_VERSION = 2;
 
 const duplicates = (values: ReadonlyArray<string>) => values.filter((value, i) => values.indexOf(value) !== i);
 
-export const StoryManifest = Schema.Struct({
+/**
+ * The manifest's shape without its completeness and cross-reference checks: what an author's draft holds while
+ * they work on it (D37). Publishing decodes it as a StoryManifest, which adds every check.
+ */
+export const StoryDraft = Schema.Struct({
   /** Readers reject versions they don't know; a later version ships a migration from v1. */
   formatVersion: Schema.Literal(FORMAT_VERSION),
   trim: Trim,
@@ -209,12 +214,16 @@ export const StoryManifest = Schema.Struct({
   palettes: Schema.Struct({ skin: Schema.Record(Schema.String, Palette), hairColour: Schema.Record(Schema.String, Palette) }),
   /** Bottom to top, the part axes drawn between the base face and the occluder. */
   partOrder: Schema.Array(PartAxis),
-  pages: Schema.Array(Page).check(Schema.isMinLength(1)),
-}).check(
+  pages: Schema.Array(Page),
+});
+export type StoryDraft = typeof StoryDraft.Type;
+
+export const StoryManifest = StoryDraft.check(
   // References inside the manifest must resolve, so a page never names a slot,
   // font, or token that doesn't exist. Uploads by any author go through this check.
   Schema.makeFilter((manifest) => {
     const issues: Array<Schema.FilterIssue> = [];
+    if (manifest.pages.length === 0) issues.push({ path: ["pages"], issue: "a story needs at least one page" });
     const { widthIn, heightIn, safeMarginIn } = manifest.trim;
     if (safeMarginIn * 2 >= Math.min(widthIn, heightIn)) {
       issues.push({ path: ["trim", "safeMarginIn"], issue: "safe margin leaves no room for text" });
@@ -250,9 +259,11 @@ export const StoryManifest = Schema.Struct({
       for (const age of new Set(duplicates(slot.ages))) issues.push({ path: ["characterSlots", s, "ages"], issue: `"${age}" twice` });
     });
     manifest.pages.forEach((page, p) => {
+      if (page.illustration.layers.length === 0) issues.push({ path: ["pages", p, "illustration", "layers"], issue: "a page needs at least one layer" });
       page.illustration.layers.forEach((layer, l) => {
         if (layer.kind !== "figure") return;
         const path = ["pages", p, "illustration", "layers", l];
+        if (layer.bases.length === 0) issues.push({ path: [...path, "bases"], issue: "a figure needs at least one base" });
         const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId);
         if (!slot) {
           issues.push({ path: [...path, "slotId"], issue: `unknown slot "${layer.slotId}"` });
@@ -448,6 +459,12 @@ export const upgradeFormat1 = (input: unknown): unknown => {
 /** Decodes and validates a manifest of any known format, as the current format; fails with every problem found. */
 export const decodeStoryManifest = (input: unknown) =>
   Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgradeFormat1(input)));
+
+/** Decodes a draft (D37): the format's shape, upgraded from format 1 like a manifest, without the publishing checks. */
+export const decodeStoryDraft = (input: unknown) => Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgradeFormat1(input)));
+
+/** Decodes a stored story version: published ones as manifests, the author's unpublished draft only by its shape. */
+export const decodeStoryVersion = (input: unknown, publishedAt: Date | null) => (publishedAt ? decodeStoryManifest(input) : decodeStoryDraft(input));
 
 /** Every asset the manifest references, each once: what an upload or import must provide. */
 export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> => [

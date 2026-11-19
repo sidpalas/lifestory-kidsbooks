@@ -10,6 +10,7 @@ import {
   manifestAssets,
   resolvePageText,
   resolveText,
+  StoryDraft,
   StoryManifest,
   staticFontIssues,
   unapprovedParts,
@@ -90,8 +91,28 @@ describe("StoryManifest", () => {
     ["a palette for an unknown option", (m: any) => (m.palettes.skin["skin:s9"] = m.palettes.skin["skin:s1"]), `"skin:s9" is not a skin option`],
     ["a part order missing an axis", (m: any) => (m.partOrder = ["hair"]), "must list each of hair, glasses once"],
     ["a safe margin wider than the page", (m: any) => (m.trim.safeMarginIn = 4.25), "no room for text"],
+    ["a story without pages", (m: any) => (m.pages = []), "a story needs at least one page"],
+    ["a page without layers", (m: any) => (m.pages[1].illustration.layers = []), "a page needs at least one layer"],
+    ["a figure without bases", (m: any) => (m.pages[0].illustration.layers[1].bases = []), "a figure needs at least one base"],
   ])("rejects %s", (_, edit, message) => {
     expect(errorOf(variant(edit))).toContain(message);
+  });
+});
+
+describe("StoryDraft", () => {
+  // An author's draft (D37) is the format's shape only, so work in progress saves; publishing decodes it as a StoryManifest.
+  it("accepts what publishing rejects: an empty page, a figure with no bases, a token naming no role", () => {
+    const draft = variant((m) => {
+      m.pages[0].illustration.layers[1].bases = [];
+      m.pages[1].illustration.layers = [];
+      m.pages[2].text[0].content = "{{friend.name}}";
+    });
+    expect(Result.isSuccess(Schema.decodeUnknownResult(StoryDraft)(draft))).toBe(true);
+    expect(errorOf(draft)).toContain('unknown slot "friend"');
+  });
+
+  it("still rejects what isn't the format's shape", () => {
+    expect(Result.isFailure(Schema.decodeUnknownResult(StoryDraft)(variant((m) => (m.pages[0].layout = "two-column"))))).toBe(true);
   });
 });
 
