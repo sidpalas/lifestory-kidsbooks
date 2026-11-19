@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// The smoke test needs Postgres and SeaweedFS running, migrated, and seeded
-// (`mise run infra:up db:migrate db:seed` or .agents/setup). It starts the web app
+// The end-to-end tests need Postgres and SeaweedFS running, migrated, and seeded
+// (`mise run infra:up db:migrate db:seed` or .agents/setup). Playwright starts the web app
 // and the worker itself, or reuses a web app already listening on port 3000.
 
 // Playwright sets FORCE_COLOR=1 for the web servers and test workers it starts; with NO_COLOR also

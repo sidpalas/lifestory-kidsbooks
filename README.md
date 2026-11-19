@@ -1,18 +1,27 @@
 # lifestory-kidsbooks
 
-Custom picture books for families. Human authors and illustrators write the stories and draw the art;
-AI adds the family's own members as characters in the illustrations. See [docs/brief.md](docs/brief.md).
+Custom picture books for families. Human authors and illustrators write the stories and draw the art, including a
+range of looks for each character; parents pick how each family member looks from options the illustrator approved,
+and can edit the text. No photos are uploaded and no AI runs when a family makes a book. See
+[docs/brief.md](docs/brief.md).
 
 This is a demo codebase: an open-source, realistic product used to test background coding agents.
 
-**Status:** foundation only. You can sign in as a seeded user, see stories read from Postgres, open the sample
-story "The Moon Picnic" with its pages rendered at print size, its characters composed from placeholder variant
-parts, and change each character's look (face, skin, hair, hair colour, glasses) in a picker, make a print-ready
-PDF proof of the book with those looks (rendered by the worker with headless Chromium) and download it, and run a
-worker job that writes a file to object storage. Families and invites work: the operator invites a new family,
-an owner invites a parent or a view-only member, and a user in several families switches between them
-(emails go to `/__dev/mailbox` in development). Milestone 1 is planned in [docs/plan.md](docs/plan.md);
-decisions are in [docs/decisions.md](docs/decisions.md).
+**Status:** milestone 1 (invite-only vertical slice) is complete:
+
+1. The operator invites a new family; the invitee sets a password and owns a one-person family. An owner invites a
+   parent or a view-only member (emails go to `/__dev/mailbox` in development).
+2. Family members become characters in a picker: an age, a curated look, then one feature at a time with a live
+   portrait.
+3. The seeded sample story "The Moon Picnic" (book format v2, placeholder art, approved variant parts per role).
+4. A family makes a personalized book of it; every page is composed from the approved parts, and a look change shows
+   on every page at once.
+5. The editor shows a page as it will print and edits its text.
+6. The worker renders a print-ready PDF proof with headless Chromium; the parent downloads it and approves it for
+   print.
+
+`apps/web/e2e/milestone1.spec.ts` walks all six in order. Plan: [docs/plan.md](docs/plan.md); decisions:
+[docs/decisions.md](docs/decisions.md).
 
 ## Stack
 
@@ -48,8 +57,12 @@ In an Amp orb, `.agents/setup` does all of the above except starting the app; ru
 
 ```sh
 mise run check      # typecheck, lint, unit tests
-mise run test:e2e   # needs the stack's Postgres and SeaweedFS running, migrated and seeded
+mise run test:e2e   # Playwright; needs the stack's Postgres and SeaweedFS running, migrated and seeded
+mise run test:e2e -- milestone1   # only the walk through the whole milestone 1 slice
 ```
+
+`test:e2e` starts its own worker, and a web app unless one is already on :3000. Set `E2E_SCREENSHOTS=<dir>` to keep
+screenshots of the picker and the editor and the downloaded proof PDF.
 
 CI (`.github/workflows/ci.yml`) runs the same mise tasks.
 
@@ -114,8 +127,10 @@ add the Modal variables from "Image generation on Modal" below, then apply and r
 
 ## Image generation on Modal
 
-Development, tests, and CI use the fake image provider, which needs no GPU. Real images come from FLUX 3 Image Klein
-running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
+Image generation is authoring tooling for illustrators (D26); no family's data reaches it. Development, tests, and CI
+use the fake image provider, which needs no GPU. OpenAI `gpt-image-2.6-sunburst` was chosen as the primary provider
+(D30) and comes with the illustrator tooling in a later milestone; until then the one real provider is the fallback,
+FLUX 3 Image Klein running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
 calls back `/api/webhooks/modal` when the image is in object storage. Each cold job costs about US$0.09 of A100 time,
 and a warm one about US$0.014. The GPU scales to zero 60 s after the last job (docs/decisions.md D25).
 

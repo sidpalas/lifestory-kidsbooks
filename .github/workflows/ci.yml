@@ -24,7 +24,7 @@ jobs:
       - run: mise run check
 
   e2e:
-    name: Playwright smoke test
+    name: Playwright end-to-end tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

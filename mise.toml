@@ -77,7 +77,7 @@ description = "Vitest unit tests"
 run = "vitest run"
 
 [tasks."test:e2e"]
-description = "Playwright smoke test (needs infra up, migrated, and seeded)"
+description = "Playwright end-to-end tests, milestone1.spec.ts walks the whole slice (needs infra up, migrated, and seeded)"
 run = "playwright test"
 
 [tasks.check]

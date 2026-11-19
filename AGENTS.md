@@ -32,7 +32,7 @@ Times measured on an `a1.small` orb.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~6–10 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`) | ~1–5 s |
-| `mise run test:e2e` | Playwright smoke test. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~7–9 s reusing the `web` service; ~11–14 s without it. `CI=1` always starts fresh (~11–13 s) and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run test:e2e` | Playwright end-to-end tests (17); `milestone1.spec.ts` walks the whole milestone 1 slice, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |

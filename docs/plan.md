@@ -115,7 +115,7 @@ Better Auth owns `user`, `session`, `account`, `verification`, `organization` (=
 | `book_cast` | book | `book_id`, `slot_id`, `character_id` | Which family member fills each slot. A book stores only this and text edits; pages are composed from them. |
 | `book_text_edit` | book | `book_id`, `page_id`, `block_index`, `content` | Overrides; absent row = story text. |
 | `generation` (exists) | any | `provider`, `external_id`, `request` jsonb, `status`, `event_name` | One row per provider job; the Modal callback looks it up. Used by authoring tooling only, never when a book is made. |
-| `proof` (exists) | family | `family_id`, `story_version_id`, `content` jsonb, `status`, `task_id`, `object_key`, `page_count`, `bytes` | An immutable print-ready PDF and the cast and text edits it shows (D27). Books add `book_id`, `approved_at`, `approved_by`. |
+| `proof` (exists) | family | `family_id`, `story_version_id`, `content` jsonb, `status`, `task_id`, `object_key`, `page_count`, `bytes` | An immutable print-ready PDF and the cast and text edits it shows (D27), with `book_id` when made from a book and `approved_at`, `approved_by` once a parent approves it (D32). |
 
 Access rules, enforced in `packages/core` (not in route code): every family-owned row is reached through
 `family_id`, and a `FamilyAccess` service checks the caller's membership and role (`book:edit` for writes).
@@ -279,8 +279,10 @@ publish.
   worker only (a short-lived signed token, not a session), from what the proof recorded (D27).
 - `proof.render(proofId)` task: Playwright Chromium on the worker opens the print route, waits for fonts and images,
   calls `page.pdf({ preferCSSPageSize: true, printBackground: true })`, stores `families/<familyId>/proofs/<proofId>.pdf`,
-  and records the page count. The parent downloads it, checks it, and approves it; an approved proof is immutable.
-- The e2e test (`proofs.spec.ts`) checks the PDF's page count, page size and font, and who may download it.
+  and records the page count. The parent downloads it, checks it, and approves it (who and when, once); an approved
+  proof is kept with the family, and an unapproved one is deleted after 30 days (D32).
+- The e2e tests check the PDF's page count, page size and font, and who may download it (`proofs.spec.ts`), and
+  `milestone1.spec.ts` walks the whole slice from the invitation to the downloaded, approved proof.
 
 ## Invites and families
 
@@ -328,19 +330,20 @@ None of this is built in milestone 1; these are the seams that keep it from need
 
 ## Delivery
 
-Pull requests (or reviewed local branches, as Sid prefers) in this order, each with its tests:
+Pull requests (or reviewed local branches, as Sid prefers) in this order, each with its tests. All seven are done
+(2026-11-19) except the part of item 7 marked open.
 
 1. Book format Schema, `story_version`, seeded sample story with placeholder art, `BookPage` and the print route.
 2. Families and invites (sign up by invite, roles, viewer read-only), family-scoped file access.
 3. Characters and the look picker: the look vocabulary, curated looks, one feature at a time, live preview.
 4. Personalization: cast slots, recolour and its cache, pages composed from approved parts, a look change shown on
    every page.
-5. Editor text editing; PDF proof task, download, and approval.
+5. Editor text editing; PDF proof task, download, and approval (D32, with how long proofs are kept).
 6. Modal provider and Python function, callback route, README instructions (done, D25); the hosted image API
    assessment (done, D30).
 7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
-   the `operator:create` command (D21), with production loading the sample story under the real operator
-   instead of running the development seed.
+   the `operator:create` command (D21). **Open:** how stories reach production is a separate decision ("Getting a
+   story into production" below); production has no stories until then, and the development seed never runs there.
 
 Open needs found on the first production deploy (2026-11-19; not started, Sid to pick the approach):
 
