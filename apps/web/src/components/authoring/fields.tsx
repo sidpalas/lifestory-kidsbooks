@@ -1,6 +1,7 @@
 // Small controls the story draft editor shares: file uploads into the draft's folder, numbers, and rectangles.
 import { storyAssetKey } from "@lifestory/core/contracts";
 import { useState } from "react";
+import { FileInput } from "~/components/ui/file-input";
 import { Input } from "~/components/ui/input";
 
 export const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -57,10 +58,14 @@ export function UploadField({
   };
   return (
     <div className="flex min-w-0 flex-col gap-1 text-xs">
-      <label className="flex flex-col gap-1 font-medium">
-        {label}
-        <input type="file" aria-label={label} accept={accept} disabled={busy} className="text-xs" onChange={(event) => void choose(event.currentTarget)} />
-      </label>
+      <FileInput
+        label={label}
+        accept={accept}
+        disabled={busy}
+        buttonText={asset ? "Replace file" : "Choose file"}
+        emptyText={asset ? "" : undefined}
+        onChange={(event) => void choose(event.currentTarget)}
+      />
       {asset && (
         <span className="flex min-w-0 items-center gap-2" data-testid="uploaded">
           {!asset.endsWith(".woff2") && <img src={draftFileUrl(files.storyId, files.version, asset)} alt="" className="size-10 shrink-0 rounded border bg-white object-contain" />}

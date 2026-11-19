@@ -20,6 +20,7 @@ import {
 } from "@lifestory/core/contracts";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+import { FileInput } from "~/components/ui/file-input";
 import { Input } from "~/components/ui/input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { ArtImportStartResult, ArtImportStatusResult, artImportStatusFn, requestArtImportFn } from "~/server/authoring";
@@ -267,10 +268,7 @@ export function ArtImport({
           </NativeSelect>
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-xs font-medium">
-        Art file
-        <input type="file" aria-label="Art file" multiple accept=".psd,image/png,image/jpeg,image/webp" className="text-xs" onChange={(event) => void choose(event.currentTarget)} />
-      </label>
+      <FileInput label="Art file" multiple accept=".psd,image/png,image/jpeg,image/webp" onChange={(event) => void choose(event.currentTarget)} />
 
       {layers.length > 0 && (
         <ol className="flex flex-col gap-1" aria-label="Layers, bottom to top" data-testid="import-layers">
