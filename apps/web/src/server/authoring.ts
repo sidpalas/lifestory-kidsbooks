@@ -2,6 +2,7 @@
 // Permission checks happen in @lifestory/core (authoring.ts). File uploads are a server route
 // (routes/api/authoring/stories.$storyId.assets.ts), since they carry bytes.
 import {
+  ArtImportRequest,
   AuthoredStory,
   DraftChanged,
   DraftView,
@@ -16,10 +17,13 @@ import {
   StoryDraft,
   StoryNotPublishable,
   StoryPart,
+  ImportStatus,
 } from "@lifestory/core/contracts";
 import {
+  artImportStatus,
   Auth,
   canAuthor,
+  requestArtImport,
   checkDraft,
   createStory,
   getDraft,
@@ -170,3 +174,16 @@ export const PreviewDraftResult = ResultSchema(DraftView.fields.pages, DraftFail
 export const previewDraftFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, draft: StoryDraft, looks: Schema.Record(Schema.String, Look) })))
   .handler(({ data }) => runEffect(PreviewDraftResult, currentUser.pipe(Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft, data.looks)))));
+
+// Importing art made outside the app: start an import of uploaded art, and follow it.
+export const ArtImportStartResult = ResultSchema(Schema.Struct({ taskId: Schema.String }), PartFailures);
+
+export const requestArtImportFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, request: ArtImportRequest })))
+  .handler(({ data }) => runEffect(ArtImportStartResult, currentUser.pipe(Effect.flatMap((user) => requestArtImport(user, data.storyId, data.request)))));
+
+export const ArtImportStatusResult = ResultSchema(ImportStatus, DraftFailures);
+
+export const artImportStatusFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, taskId: Schema.String })))
+  .handler(({ data }) => runEffect(ArtImportStatusResult, currentUser.pipe(Effect.flatMap((user) => artImportStatus(user, data.storyId, data.taskId)))));

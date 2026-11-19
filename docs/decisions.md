@@ -653,6 +653,36 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   moderation needs a review step before a version reaches families, or uploads need to go straight to storage
   (presigned PUTs) because art outgrows the 40 MB limit.
 
+### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Made (2026-11-19); model-drawn hidden pixels waiting on Sid
+- **What (design: the "Story art import design" artifact in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1):** authors
+  draw in their own tools and bring a layered file (PSD, which Photoshop, Procreate, Krita, Affinity and Clip Studio all
+  export), several PNG layers, or one flat picture per page. The `/author` page tab's import turns it into what D24 and
+  D26 already define, as ordinary draft files the author applies to the page: the plate (and foreground), the figure's
+  box, a bald base in neutral skin tones with its skin mask and face overlay (and occluder), and the drawn hair as the
+  part for the hairstyle the author names. "Draw the other face type" makes the next base from it, and the part pipeline
+  (D36) draws every other option. Nothing in the book format, the database or the vendors changes.
+- **How:** one Absurd task, `page.import` (`packages/core/src/imports`), in steps a rerun repeats harmlessly; the editor
+  follows it with `Jobs.status` (no table). Layers are stacked by the use the author gives each (suggested from its name).
+  A flat page goes through the D30 provider twice, "remove the character" and "make them bald", and D36's
+  known-background cut-out separates them against each edit. The skin mask is a colour model of the skin (Lab, a
+  histogram peak among warm colours refined to 3σ) with the features it encloses and the ink outline around it; blush,
+  lips and an open mouth go to the overlay by their redness over the skin around them, unmixed against it; the skin's
+  tones map so its median lands on the palettes' 0.77. Everything is reviewed on the lightest and darkest skin before it's
+  applied, and every file stays replaceable by an upload. PSDs are read in the browser (ag-psd, MIT) with its advice for
+  files from outside (structure first, sizes checked, one layer decoded at a time), so the server never parses one.
+- **Measured (2026-11-19, gouache art drawn outside the app with OpenAI, US$0.17 for the art):** a PSD with a hair layer
+  imports with no model call; a flat page took two edits (US$0.099), the other face type one (US$0.047). On the darkest
+  skin the blush stays rose and the open mouth keeps its colours. `art-import.spec.ts` runs both paths with the fake
+  provider, through publishing and a family's book.
+- **Waiting on Sid:** D26 keeps model output off the art. The import keeps the author's pixels everywhere visible, but a
+  flat page's plate behind the figure and the scalp under drawn hair come from the model (the author reviews both and can
+  replace either). A: allow it, author-reviewed (recommended, built); B: flat pages only propose, and the author uploads
+  their own plate and bald base.
+- **Rejected for now:** an in-process segmentation model (BiRefNet, SAM 2: a 100–900 MB model and 1–2 GB per run in the
+  worker, and it still needs inpainting), a hosted segmentation API (a vendor sign-up), reading PSDs on the server.
+- **Reopen if:** the provider's removals miss parts of figures often (then a segmentation prior), colour masks fail on
+  real illustrators' palettes (then a mask brush), or plates need full resolution behind removed figures.
+
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.

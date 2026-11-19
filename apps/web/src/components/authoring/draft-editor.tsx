@@ -48,6 +48,7 @@ import {
   saveDraftFn,
 } from "~/server/authoring";
 import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
+import { ArtImport } from "./art-import";
 import { FigureEditor, type Generation } from "./figure-editor";
 
 type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
@@ -766,6 +767,8 @@ function PageTab({
           Write {"{{role.name}}"}, {"{{role.title}}"}, or a pronoun such as {"{{role.they}}"} where the family's names go; the Roles tab lists each role's tokens.
         </p>
       </section>
+
+      <ArtImport files={files} page={page} slots={draft.characterSlots} onApply={setPage} />
 
       <section className="flex flex-col gap-3" aria-label="Illustration layers">
         <h3 className="font-semibold">Illustration, bottom to top</h3>

@@ -10,7 +10,7 @@ import { alphaBounds, cutOutPart, type CutOutMetrics, neutralize, type PixelRect
 const WORKING_SIZE = 1536;
 
 /** Where a base has no pixels, the provider sees this light neutral, like paper. */
-const PAPER = { r: 243, g: 239, b: 231 };
+export const PAPER = { r: 243, g: 239, b: 231 };
 
 /** Output sizes the image APIs accept, by aspect (D30: a portrait base is padded to 2:3). */
 const providerSize = (width: number, height: number) => {
@@ -70,9 +70,19 @@ export const prepareBase = async (asset: Uint8Array): Promise<PreparedBase> => {
   };
 };
 
-const toRgb = async (image: Sharp): Promise<Rgb> => {
+export const toRgb = async (image: Sharp): Promise<Rgb> => {
   const { data, info } = await image.removeAlpha().raw().toBuffer({ resolveWithObject: true });
   return { width: info.width, height: info.height, data: Float32Array.from(data, (v: number) => v / 255) };
+};
+
+/** The provider's edit of a padded input, back on the base's working canvas (undoing prepareBase's padding). */
+export const unpadEdit = async (edit: Uint8Array, padding: Padding, width: number, height: number) => {
+  const unpadded = await sharp(edit)
+    .flatten({ background: PAPER })
+    .resize(padding.paddedWidth, padding.paddedHeight, { fit: "fill", kernel: "lanczos3" })
+    .png()
+    .toBuffer();
+  return toRgb(sharp(unpadded).extract({ left: padding.left, top: padding.top, width, height }));
 };
 
 /** A rect in thousandths of a width × height canvas, to pixels. */
@@ -135,12 +145,7 @@ export const cutOutLayer = async (
 ): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: CutOutMetrics & { readonly skinPixels: number } }> => {
   const { width, height, padding } = prepared;
   const base = await toRgb(sharp(prepared.base));
-  const unpadded = await sharp(edit)
-    .flatten({ background: PAPER })
-    .resize(padding.paddedWidth, padding.paddedHeight, { fit: "fill", kernel: "lanczos3" })
-    .png()
-    .toBuffer();
-  const aligned = await toRgb(sharp(unpadded).extract({ left: padding.left, top: padding.top, width, height }));
+  const aligned = await unpadEdit(edit, padding, width, height);
   const { alpha, colour, metrics } = cutOutPart(base, aligned, rectToPixels(zone, width, height));
   const mask = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
   // Hair can't carry skin-coloured highlights away as skin, but an accessory has no skin of its own: skin the model

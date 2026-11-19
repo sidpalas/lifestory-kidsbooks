@@ -188,7 +188,7 @@ export const erode = (mask: Uint8Array, width: number, height: number, radius: n
   Uint8Array.from(dilate(Uint8Array.from(mask, (m) => 1 - m), width, height, radius), (m) => 1 - m);
 
 /** The 8-connected components of `mask`, as lists of pixel indices. */
-const components = (mask: Uint8Array, width: number, height: number) => {
+export const components = (mask: Uint8Array, width: number, height: number) => {
   const found: Array<Array<number>> = [];
   const seen = new Uint8Array(mask.length);
   const stack: Array<number> = [];
@@ -270,7 +270,7 @@ export const enclosed = (mask: Uint8Array, width: number, height: number) => {
 };
 
 /** Box sums through an integral image: the mean of `values` (stride `channels`) in a (2r+1)² window, clamped. */
-const boxSum = (values: Float64Array, channels: number, width: number, height: number, r: number) => {
+export const boxSum = (values: Float64Array, channels: number, width: number, height: number, r: number) => {
   const W = width + 1;
   const integral = new Float64Array(W * (height + 1) * channels);
   for (let y = 0; y < height; y++) {

@@ -8,7 +8,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { schema } from "@lifestory/db";
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
-import { Effect, SchemaIssue } from "effect";
+import { Effect, Schema, SchemaIssue } from "effect";
 import type { SessionUser } from "./auth.ts";
 import {
   decodeStoryDraft,
@@ -35,6 +35,9 @@ import { manifestParts, type PartDecision, type PartRequest, type StoryPart } fr
 import { getPart, listParts, requestPart, reviewPart, withApprovedParts } from "./parts/parts.ts";
 import { ObjectStorage } from "./storage.ts";
 import { withStoredAdditions } from "./stories.ts";
+import { type ArtImportRequest, ImportResult, type ImportStatus } from "./imports/contract.ts";
+import { importTask } from "./imports/task.ts";
+import { Jobs } from "./jobs.ts";
 
 // ---- Who may author ------------------------------------------------------------
 
@@ -529,4 +532,43 @@ export const startNextVersion = Effect.fn("authoring.startNextVersion")(function
     db.insert(schema.storyVersion).values({ id: versionId(storyId, version), storyId, version, manifest, publishedAt: null }).onConflictDoNothing(),
   );
   return { version };
+});
+
+// ---- Importing art made outside the app ------------------------------------------------------
+
+const IMPORT_ASSET = /^pages\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/[a-z0-9-]+\.(?:png|jpg|webp)$/;
+const ID = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * Starts importing art for one page and role of the draft (`page.import`): a layered file's layers or a flat page,
+ * already uploaded to the draft's folder, or another face type drawn from an earlier import. The same request
+ * returns the same task; another seed is another attempt.
+ */
+export const requestArtImport = Effect.fn("authoring.requestImport")(function* (user: SessionUser, storyId: string, request: ArtImportRequest) {
+  const { draft } = yield* draftOf(user, storyId);
+  if (!ID.test(request.pageId) || !ID.test(request.slotId)) return yield* new InvalidInput({ message: "Pick a page and a role." });
+  const assets =
+    request.kind === "derive" ? [request.from] : request.source.kind === "flat" ? [request.source.asset] : request.source.layers.map((layer) => layer.asset);
+  if (assets.some((asset) => !IMPORT_ASSET.test(asset))) return yield* new InvalidInput({ message: "Upload the art to this draft first." });
+  const key = createHash("sha256").update(JSON.stringify([draft.id, request])).digest("hex").slice(0, 32);
+  const { taskId } = yield* Jobs.use((jobs) =>
+    jobs.spawn(importTask, { storyId, version: draft.version, request }, { idempotencyKey: `page.import:${key}` }),
+  ).pipe(Effect.orDie);
+  return { taskId };
+});
+
+const ImportOutcome = Schema.Union([Schema.Struct({ result: ImportResult }), Schema.Struct({ storyId: Schema.String, error: Schema.String })]);
+
+/** How an import is going: working, done with its result for the author to review, or failed with why. */
+export const artImportStatus = Effect.fn("authoring.importStatus")(function* (user: SessionUser, storyId: string, taskId: string) {
+  yield* draftOf(user, storyId);
+  const task = yield* Jobs.use((jobs) => jobs.status(taskId)).pipe(Effect.mapError(() => new NotFound({ entity: "import", id: taskId })));
+  if (task.state === "failed" || task.state === "cancelled") return { taskId, state: "failed", result: null, error: "The import stopped; try again." } satisfies ImportStatus;
+  if (task.state !== "completed") return { taskId, state: "working", result: null, error: null } satisfies ImportStatus;
+  const outcome = yield* Schema.decodeUnknownEffect(ImportOutcome)(task.result).pipe(Effect.orDie);
+  const owner = "result" in outcome ? outcome.result.storyId : outcome.storyId;
+  if (owner !== storyId) return yield* new NotFound({ entity: "import", id: taskId });
+  return "result" in outcome
+    ? ({ taskId, state: "done", result: outcome.result, error: null } satisfies ImportStatus)
+    : ({ taskId, state: "failed", result: null, error: outcome.error } satisfies ImportStatus);
 });
