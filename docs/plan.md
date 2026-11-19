@@ -344,6 +344,13 @@ None of this is built in milestone 1; these are the seams that keep it from need
   `report` table; the operator's admin role gets moderation permissions (still without impersonation).
 - **Public sign-ups.** Flip `disableSignUp` off and keep invitation acceptance as is; nothing else assumes
   every user was invited (families are created by their first member, not by the operator).
+- **Look options drawn when a family first picks them (Sid, 2026-11-19: a future idea, not now).** A story would
+  pre-draw a base set of options, and a variant beyond it would be generated for that story when a family picks it,
+  through the same part pipeline (D36, tiled as in D44): one rare hairstyle in a 24-page book is 24–48 parts, about
+  US$0.30–0.60 tiled. The target is about 30 seconds from the request to the variant shown in the editor. That
+  means parallel edits and cut-outs, not the Batch API. It changes D26's "every story supports every option" and its
+  "a human reviews every image before families see it", so the app would say that variants beyond the base set
+  are generated on the fly. The publish check would require only the base set. No format change.
 - **Server-rendered catalogue pages for search engines.** Catalogue routes keep TanStack Start's SSR on (only the
   editor turns it off) and read published stories only, with no session required.
 

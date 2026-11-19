@@ -541,6 +541,35 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   orange-red to copper (`#8c3a1c`).
 - **Not here:** auburn (a palette, through additions like red, D41).
 
+### D44. Parts cost less per option: tiled edits, head-only parts shared across features, and a `flip` on figures — Decided (Sid, 2026-11-19); not built yet
+- **Why (assessment of 2026-11-19, artifact "Per-pose parts: cost and consistency" in thread
+  T-01a1f50e-6d8e-70ce-bea8-adf2e7932795):** with D43's vocabulary a figure needs a part per option on every base
+  (hero: 4 bases × 10 = 40 parts; a grown-up with softer bases: 8 × 13 = 104), so a 24-page book with 2 roles comes to
+  2,352–6,360 generated pieces, US$115–312 at US$0.049 per edit, and an estimated 13–80 h of review at 20–45 s per
+  piece (not measured). Counted with `vocabularyGaps` itself on synthetic manifests. Sid keeps every option, because
+  they make characters look like the family, so these changes make each option cheaper.
+- **Tiled edits:** part generation edits several bases of one appearance in one image (four at 512 × 768 in a
+  1024 × 1536 edit, two for large figures) and cuts each tile out against its own base. Measured on four Paper Boat
+  bases: one sunburst edit (US$0.047) gave four parts with `cutOutPart`, children's faces changed 0.6–1.5% of
+  eye-to-mouth pixels (a single-figure edit: 0.4%), and all four drew visibly the same hairstyle. Each tile needs
+  ~110 px of headroom above the head (with 30 px the model moved two heads down 32 px and clipped the curls).
+- **Head-only parts shared between softer and defined bases:** short, curly, buzz cut, coily afro, bun, glasses and
+  facial hair are drawn once per face type and listed again for the other features (the format already lets two
+  parts name the same asset). Measured on the portrait bases: short hair and glasses fit the other base cleanly (skin
+  masks overlap 0.90–0.94 IoU); long hair didn't (hard cut and a halo at the narrower shoulders), so styles that
+  touch the body keep a part per base.
+- **`flip` on figures:** an optional field mirrors a figure (base, masks, overlay, occluder and parts together), so
+  a pose facing the other way reuses its drawing and parts. Additive: stored versions stay valid.
+- **Together with OpenAI's Batch API** (50% off edits within 24 h; documented for sunburst 2.5, to confirm for 2.6):
+  about US$20–45 per book. Review stays the larger cost, so the editor should review one sheet per option across all
+  bases and appearances.
+- **Not chosen:** a 3D model posed per page (the story's watercolour still needs an edit per pose, so it saves
+  nothing), Klein or another cheap model (redraws faces, D30), a head-only crop (US$0.052, more than the full
+  figure), quality `low` (30% cheaper, but the hairstyle changes character), heads split from bodies (a one-way format
+  change; held back). Options generated when a family first picks them: plan.md, "How Coming later fits".
+- **Reopen if:** tiled tiles show faces redrawn more than single edits on an illustrator's art, or shared parts draw
+  visibly wrong on a real illustrator's softer bases.
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The
