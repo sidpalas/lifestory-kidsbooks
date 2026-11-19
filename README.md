@@ -86,8 +86,8 @@ the commit the web app runs (`APP_VERSION`, else Railway's `RAILWAY_GIT_COMMIT_S
 last 90 seconds, each with its commit.
 
 After every production deploy, the "Deploy check" workflow (triggered by Railway's GitHub deployment statuses) waits for
-both services to run the deployed commit and checks the live site without signing in (D34); a failure opens or comments
-on a "Deploy check failed" issue that mentions the owner. Don't "Run workflow" on `main` while a deploy waits for CI:
+both services to run the deployed commit and checks the live site without signing in (D34); a failure shows as a failed run
+and a red check on the commit, without an email. Don't "Run workflow" on `main` while a deploy waits for CI:
 Railway waits for that run too, and skips the deploy if it fails. Run it by hand with
 `mise run deploy:check -- --sha <commit> [--url <origin>] [--wait-minutes <n>]`, or "Run workflow" on GitHub.
 

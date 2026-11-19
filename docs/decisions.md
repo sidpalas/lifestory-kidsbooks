@@ -582,8 +582,9 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   deployed commit for the web app
   and for a worker, then checks: health is ok with as many migrations as the commit's journal; `/sign-in` loads and
   every stylesheet, font (preloaded or named in the CSS), and script it links returns 200 with a non-HTML type (the
-  failure in commit fbd8a10); every `/__dev` route is 404 (D17). It lists every failure, fails the run, and opens
-  (or comments on) a "Deploy check failed" issue mentioning the repository owner, which GitHub emails him. A failed
+  failure in commit fbd8a10); every `/__dev` route is 404 (D17). It lists every failure and fails the run, which
+  shows on the commit and in Actions but emails nobody: the run is `railway-app[bot]`'s, and GitHub emails a failed
+  run only to its actor. Sid chose that over an alerting issue (2026-11-19: "extra process"). A failed
   Railway deploy is checked without waiting, so it fails too. If a newer commit is already live, the run passes as
   superseded.
 - **Version and worker heartbeat:** both services read their commit from `APP_VERSION`, else Railway's
@@ -595,11 +596,11 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   every Actions workflow run on the commit has finished, and skips it if one fails. A check started after CI is one
   of those runs: it waited for the deploy while the deploy waited for it (seen 2026-11-19 on 165ba0a and dc95252,
   released by cancelling the runs). Railway posts `success`/`failure` per service only after deciding to deploy,
-  so a check started then can't hold the deploy back. Those runs belong to `railway-app[bot]`, and GitHub emails a
-  failed run only to its actor, hence the issue. Also because of Wait for CI: a manual "Run workflow" on `main`
+  so a check started then can't hold the deploy back. Also because of Wait for CI: a manual "Run workflow" on `main`
   while a deploy is waiting would hold it, and its failure would skip it. Not caught: a deploy Railway never starts
   (CI failures already email the pusher). No Railway token and no new service.
-- **Reopen if:** agents get a production login (then add signed-in checks), or deploys take longer than 25 minutes.
+- **Reopen if:** agents get a production login (then add signed-in checks), deploys take longer than 25 minutes, or a
+  failed check goes unnoticed (then notify, for example with an issue mentioning Sid).
 
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once

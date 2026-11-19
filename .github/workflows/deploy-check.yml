@@ -1,14 +1,13 @@
 name: Deploy check
 
 # After Railway deploys web and worker (D22), this waits until the live site reports the deployed commit on both,
-# then checks it without signing in (apps/web/scripts/check-deploy.ts, D34). On failure it opens (or comments on) a
-# "Deploy check failed" issue that mentions the repository owner, so GitHub emails him.
+# then checks it without signing in (apps/web/scripts/check-deploy.ts, D34). A failure shows as a failed run and a red
+# check on the commit; GitHub emails nobody, since the run is railway-app[bot]'s (Sid, 2026-11-19).
 #
 # Triggered by Railway's GitHub deployment statuses, not by CI finishing: Railway's "Wait for CI" holds a deploy
 # until every Actions workflow on the commit finishes, so a check started before the deploy (workflow_run after CI)
 # would wait for the deploy while the deploy waited for it, and its failure would skip the deploy. Railway posts
-# "success" (or "failure") per service once it has deployed, so this run can't hold the deploy back. Those runs are
-# railway-app[bot]'s, and GitHub emails a failed run only to the actor, hence the issue.
+# "success" (or "failure") per service once it has deployed, so this run can't hold the deploy back.
 on:
   deployment_status:
   workflow_dispatch:
@@ -24,7 +23,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   check:
@@ -56,16 +54,3 @@ jobs:
           --url "${{ inputs.url || 'https://lifestory.devopsdirective.com' }}"
           --sha "$SHA"
           --wait-minutes "${{ inputs.wait-minutes || (github.event.deployment_status.state == 'success' && '25') || '0' }}"
-      - name: Tell the owner
-        if: failure() && github.event_name == 'deployment_status'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          OWNER: ${{ github.repository_owner }}
-        run: |
-          body="@$OWNER the deploy check failed for $SHA (Railway: ${{ github.event.deployment_status.state }}): $RUN_URL"
-          issue=$(gh issue list --state open --search 'in:title "Deploy check failed"' --json number --jq '.[0].number')
-          if [ -n "$issue" ]; then gh issue comment "$issue" --body "$body"
-          else gh issue create --title "Deploy check failed" --body "$body
-          
-          Close this issue once production is healthy again; the next failure opens a new one."; fi
