@@ -22,7 +22,7 @@ test("a parent makes a PDF proof of the story with a chosen look, and the family
   await expect(proofs).toHaveCount(before + 1);
   // The worker renders it with headless Chromium; the list polls until it's ready.
   await expect(proofs.first()).toHaveAttribute("data-status", "ready", { timeout: 60_000 });
-  await expect(proofs.first()).toContainText("Mia & Grandpa Joe");
+  await expect(proofs.first()).toContainText("Mia & Joe");
   await expect(proofs.first()).toContainText("6 pages");
 
   const href = await proofs.first().getByRole("link", { name: /Download PDF/ }).getAttribute("href");

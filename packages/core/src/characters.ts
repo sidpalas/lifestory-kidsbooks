@@ -1,4 +1,4 @@
-// A family's members as characters (D26): a name, pronouns, and a look from the shared vocabulary, owned by the
+// A family's members as characters (D26): a name, an optional title ("Dad"), pronouns, and a look from the shared vocabulary, owned by the
 // family. Anyone in the family reads them; owners and parents edit them (a viewer can't).
 import { schema } from "@lifestory/db";
 import { asc, eq } from "drizzle-orm";
@@ -14,6 +14,7 @@ const columns = {
   id: schema.character.id,
   familyId: schema.character.familyId,
   name: schema.character.name,
+  title: schema.character.title,
   pronouns: schema.character.pronouns,
   look: schema.character.look,
 };

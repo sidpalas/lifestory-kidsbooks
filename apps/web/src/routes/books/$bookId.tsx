@@ -285,7 +285,7 @@ function TextEditor({
           </div>
         );
       })}
-      <p className="text-muted-foreground text-xs">Names and pronouns fill in from the cast: {tokens}, {`{{hero.they}}`}, {`{{hero.their}}`}…</p>
+      <p className="text-muted-foreground text-xs">Names, titles, and pronouns fill in from the cast: {tokens}, {`{{${view.manifest.characterSlots.at(-1)!.slotId}.title}}`} (what the kids call them), {`{{hero.they}}`}, {`{{hero.their}}`}…</p>
     </div>
   );
 }

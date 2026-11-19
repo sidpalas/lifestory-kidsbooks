@@ -23,7 +23,7 @@ export function FamilyLibrary({ characters, books, canEdit }: { characters: Read
                 >
                   <img src={portraitUrl(character.look)} alt="" width={61} height={70} className="rounded-md ring-1 ring-black/10" />
                   <span className="w-full truncate text-center font-medium">{character.name}</span>
-                  <span className="text-muted-foreground text-xs">{character.pronouns}</span>
+                  <span className="text-muted-foreground text-xs">{character.title ? `${character.title} · ${character.pronouns}` : character.pronouns}</span>
                 </Link>
               </li>
             ))}

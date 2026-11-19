@@ -63,10 +63,16 @@ export const PronounSet = Schema.Literals(["she/her", "he/him", "they/them"]);
 export type PronounSet = typeof PronounSet.Type;
 
 /**
- * Who fills a slot: a family member, or the slot's example in a story preview. Text tokens resolve from the name
- * and pronouns; the figures on every page are composed from the look (D26).
+ * Who fills a slot: a family member, or the slot's example in a story preview. Text tokens resolve from the name,
+ * title, and pronouns; the figures on every page are composed from the look (D26).
  */
-export const CastMember = Schema.Struct({ name: Schema.String.check(Schema.isMinLength(1)), pronouns: PronounSet, look: Look });
+export const CastMember = Schema.Struct({
+  name: Schema.String.check(Schema.isMinLength(1)),
+  /** What the children call them ("Dad", "Nana"), for `{{slot.title}}`; the name stands in when absent. */
+  title: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
+  pronouns: PronounSet,
+  look: Look,
+});
 export type CastMember = typeof CastMember.Type;
 
 export const CharacterSlot = Schema.Struct({

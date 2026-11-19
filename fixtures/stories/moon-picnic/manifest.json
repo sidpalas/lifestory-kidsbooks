@@ -59,7 +59,8 @@
       "label": "A grown-up",
       "description": "A parent or grandparent who comes along",
       "example": {
-        "name": "Grandpa Joe",
+        "name": "Joe",
+        "title": "Grandpa",
         "pronouns": "he/him",
         "look": {
           "age": "adult",
@@ -388,7 +389,7 @@
       "text": [
         {
           "style": "body",
-          "content": "“Where shall we have our picnic?” asked {{grownup.name}}. {{hero.name}} pointed straight up at the Moon. “There!”"
+          "content": "“Where shall we have our picnic?” asked {{grownup.title}}. {{hero.name}} pointed straight up at the Moon. “There!”"
         }
       ],
       "illustration": {
@@ -797,7 +798,7 @@
       "text": [
         {
           "style": "body",
-          "content": "{{grownup.name}} checked the fuel. {{hero.name}} checked the cocoa. {{hero.They}} buckled {{hero.themself}} in tight."
+          "content": "{{grownup.title}} checked the fuel. {{hero.name}} checked the cocoa. {{hero.They}} buckled {{hero.themself}} in tight."
         },
         {"style": "body", "content": "Three, two, one… WHOOSH!"}
       ],
@@ -1618,7 +1619,7 @@
       "text": [
         {
           "style": "body",
-          "content": "“Your cheese looks just like the Moon,” said {{grownup.name}}. {{hero.name}} laughed so hard that cocoa came out of {{hero.their}} nose."
+          "content": "“Your cheese looks just like the Moon,” said {{grownup.title}}. {{hero.name}} laughed so hard that cocoa came out of {{hero.their}} nose."
         }
       ],
       "illustration": {
@@ -2041,7 +2042,7 @@
       "pageId": "p06",
       "layout": "art-left/text-right",
       "text": [
-        {"style": "body", "content": "Back home, {{grownup.name}} tucked {{hero.them}} into bed."},
+        {"style": "body", "content": "Back home, {{grownup.title}} tucked {{hero.them}} into bed."},
         {"style": "body", "content": "“Same time tomorrow?” asked {{hero.name}}. And the Moon winked."}
       ],
       "illustration": {

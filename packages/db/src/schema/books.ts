@@ -13,7 +13,7 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-/** A family member as drawn in books (D26): a name, pronouns, and a look from the shared vocabulary. No photos. */
+/** A family member as drawn in books (D26): a name, an optional title, pronouns, and a look from the shared vocabulary. No photos. */
 export const character = pgTable(
   "character",
   {
@@ -22,6 +22,8 @@ export const character = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** What the children call them ("Dad", "Nana"), for the `{{slot.title}}` text token; null to use the name. */
+    title: text("title"),
     /** One of the book format's pronoun sets ("she/her", "he/him", "they/them"). */
     pronouns: text("pronouns").notNull(),
     /** One option ID per axis (packages/core looks/vocabulary.ts), decoded with the Look schema. */

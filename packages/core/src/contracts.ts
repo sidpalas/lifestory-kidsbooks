@@ -49,11 +49,13 @@ export const InvitationDetails = Schema.Struct({
 });
 export type InvitationDetails = typeof InvitationDetails.Type;
 
-/** A family member as drawn in books (D26): name and pronouns for the text, a look for the pictures. */
+/** A family member as drawn in books (D26): name, title, and pronouns for the text, a look for the pictures. */
 export const Character = Schema.Struct({
   id: Schema.String,
   familyId: Schema.String,
   name: Schema.String,
+  /** What the children call them, such as "Dad" or "Nana"; null when they go by their name. */
+  title: Schema.NullOr(Schema.String),
   pronouns: PronounSet,
   look: Look,
 });
@@ -61,6 +63,7 @@ export type Character = typeof Character.Type;
 
 export const CharacterInput = Schema.Struct({
   name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(60)),
+  title: Schema.NullOr(Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(30))),
   pronouns: PronounSet,
   look: Look,
 });

@@ -36,6 +36,7 @@ const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
             id: schema.character.id,
             familyId: schema.character.familyId,
             name: schema.character.name,
+            title: schema.character.title,
             pronouns: schema.character.pronouns,
             look: schema.character.look,
           })
@@ -168,7 +169,7 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     roles.push({
       slotId: slot.slotId,
       characterId: character.id,
-      member: { name: character.name, pronouns: character.pronouns, look: fill.look },
+      member: { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: fill.look },
       override,
       wrongAge: fill.wrongAge,
       unsupported: [...fill.unsupported],

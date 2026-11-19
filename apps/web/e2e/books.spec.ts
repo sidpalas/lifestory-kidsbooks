@@ -65,7 +65,11 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     await imagesLoaded(page);
     await evidence(page, "picker");
   });
-  await addCharacter(page, grownup, "they/them", "Older adult", "Short grey hair, glasses");
+  // A title, separate from the name, is what the children call them; stories write it as {{grownup.title}}.
+  await addCharacter(page, grownup, "they/them", "Older adult", "Short grey hair, glasses", async () => {
+    await page.getByLabel(/What the kids call them/).fill("Grandpa");
+  });
+  await expect(page.getByTestId("characters")).toContainText("Grandpa · they/them");
 
   // Make a book: each role is filled by a family member of an age it accepts (the grown-up's role takes adults and
   // older adults).
@@ -79,7 +83,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
 
   const allPages = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(allPages).toHaveCount(6);
-  await expect(allPages.nth(2)).toContainText(`${grownup} checked the fuel. ${child} checked the cocoa. She buckled herself in tight.`);
+  await expect(allPages.nth(2)).toContainText(`Grandpa checked the fuel. ${child} checked the cocoa. She buckled herself in tight.`);
   await imagesLoaded(page);
   // Composed from the cast's looks. The story preview with its example cast stacks 39 images (stories.spec.ts); Sam
   // has Grandpa Joe's parts (short hair, glasses) and Ada adds glasses to the child's 6 appearances: 39 + 6 = 45.

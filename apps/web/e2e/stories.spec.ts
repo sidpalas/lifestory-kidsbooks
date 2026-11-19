@@ -10,7 +10,7 @@ test("a family member previews the sample story's pages at print size, with the 
   const pages = page.getByTestId("book-page");
   await expect(pages).toHaveCount(6);
   await expect(pages.first()).toContainText("Mia packed the picnic basket");
-  await expect(pages.nth(2)).toContainText("Grandpa Joe checked the fuel. Mia checked the cocoa. She buckled herself in tight.");
+  await expect(pages.nth(2)).toContainText("Grandpa checked the fuel. Mia checked the cocoa. She buckled herself in tight.");
   // Figures are composed from the example looks: no boxes unless the guides are on.
   await expect(page.getByTestId("figure-box")).toHaveCount(0);
 
@@ -58,7 +58,7 @@ test("changing a look recomposes every page that shows the character", async ({ 
 });
 
 test("story assets need a session and a story the user may read", async ({ page, request }) => {
-  const asset = "/api/files/stories/story_moon_picnic/v3/pages/p01/background.svg";
+  const asset = "/api/files/stories/story_moon_picnic/v4/pages/p01/background.svg";
   expect((await request.get(asset)).status()).toBe(401);
 
   await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");

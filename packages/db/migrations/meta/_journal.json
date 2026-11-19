@@ -50,6 +50,13 @@
       "when": 1795059331189,
       "tag": "0006_looks_with_ages",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795062483966,
+      "tag": "0007_character_title",
+      "breakpoints": true
     }
   ]
 }

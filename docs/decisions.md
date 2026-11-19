@@ -134,7 +134,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
     The server caches each recoloured layer under `stories/<id>/v<n>/recoloured/<hash>.png`, keyed by the asset,
     the palettes, masks, and the algorithm name, so the editor and print load the same pixels. Measured on
     `a1.small`: a cold preview of the sample (24 recolours) takes about 1.8 s, then about 40 ms.
-  - **Text tokens:** `{{slot.name}}` and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
+  - **Text tokens:** `{{slot.name}}`, `{{slot.title}}` (what the children call them, such as "Dad", separate from
+    the name and falling back to it when a member has none; Sid, 2026-11-19), and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
     `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. Pronouns don't fix verb agreement
     ("they are" against "she is"), so authors write around it, as in past tense.
   - **Layouts** (closed set): `full-bleed-art/text-bottom`, `full-bleed-art/text-top` (text on a light panel so it
@@ -175,7 +176,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   option in place on the base (with a turnaround sheet per option for consistency), cuts it out by comparison with the
   base inside the head zone, and splits it by region. Skin and hair colour are a version-pinned recolour, not AI. The
   picker starts from a few curated looks and refines one feature at a time.
-- **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, pronouns and a look,
+- **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, an optional title ("Dad", "Nana"), pronouns and a look,
   and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
   and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role accepts some ages
   (D29), and covers every other option at each of them; falling back to a default would draw someone who doesn't look like the

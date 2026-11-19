@@ -1,4 +1,4 @@
-// Adding or changing a family member: name, pronouns, and a look from the picker. Viewers see it read-only.
+// Adding or changing a family member: name, what the children call them, pronouns, and a look from the picker. Viewers see it read-only.
 import { type Character, curatedLooks, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -9,10 +9,14 @@ import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
 import { saveCharacterFn, SaveCharacterResult } from "~/server/books";
 
+/** Suggestions only: families use many words and spellings, so the field takes any text. */
+const titleSuggestions = ["Mum", "Mom", "Dad", "Mama", "Papa", "Grandma", "Grandpa", "Nana", "Granny", "Abuela", "Abuelo", "Auntie", "Uncle"];
+
 export function CharacterForm({ character, canEdit }: { character?: Character; canEdit: boolean }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [name, setName] = useState(character?.name ?? "");
+  const [title, setTitle] = useState(character?.title ?? "");
   const [pronouns, setPronouns] = useState<PronounSet>(character?.pronouns ?? "she/her");
   const [look, setLook] = useState<Look>(character?.look ?? curatedLooks.find((curated) => curated.look.age === "young-child")!.look);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +27,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
     event.preventDefault();
     setSaving(true);
     try {
-      unwrapResult(SaveCharacterResult)(await saveCharacterFn({ data: { characterId: character?.id, character: { name, pronouns, look } } }));
+      unwrapResult(SaveCharacterResult)(await saveCharacterFn({ data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } } }));
       await router.navigate({ to: "/" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -43,6 +47,25 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
           <div className="flex min-w-56 flex-col gap-2">
             <Label htmlFor="character-name">Name</Label>
             <Input id="character-name" value={name} required maxLength={60} disabled={locked} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="flex min-w-48 flex-col gap-2">
+            <Label htmlFor="character-title">
+              What the kids call them <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="character-title"
+              value={title}
+              maxLength={30}
+              list="character-titles"
+              placeholder="Dad, Nana, Abuela…"
+              disabled={locked}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            <datalist id="character-titles">
+              {titleSuggestions.map((suggestion) => (
+                <option key={suggestion} value={suggestion} />
+              ))}
+            </datalist>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="character-pronouns">Pronouns</Label>

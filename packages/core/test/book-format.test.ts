@@ -102,8 +102,16 @@ describe("resolveText", () => {
     const page = manifest.pages.find((p) => p.pageId === "p03")!;
     expect(resolvePageText(page, exampleCast(manifest))[0]).toEqual({
       style: "body",
-      text: "Grandpa Joe checked the fuel. Mia checked the cocoa. She buckled herself in tight.",
+      text: "Grandpa checked the fuel. Mia checked the cocoa. She buckled herself in tight.",
     });
+  });
+
+  it("calls a member by their title where the story asks for it, and by name when they have none", () => {
+    const titled = "{{grownup.Title}} hugged {{grownup.name}}'s {{hero.title}}, {{hero.name}}.";
+    const cast = { hero: { name: "Ada", pronouns: "she/her" as const }, grownup: { name: "Sam", title: "nana", pronouns: "she/her" as const } };
+    // A capitalized field capitalizes the title as it does a pronoun; a title is otherwise printed as typed.
+    expect(resolveText(titled, cast)).toBe("Nana hugged Sam's Ada, Ada.");
+    expect(resolveText("{{grownup.title}}", cast)).toBe("nana");
   });
 });
 
