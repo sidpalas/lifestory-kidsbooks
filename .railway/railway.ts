@@ -43,6 +43,11 @@ export default defineRailway(() => {
       BETTER_AUTH_SECRET: preserve(),
       // Set once with `railway variables --service web --set OPENAI_API_KEY=...` before applying (README "Railway").
       OPENAI_API_KEY: preserve(),
+      // Invitations and set-password links go out with Resend from the domain verified there (D39; README "Email").
+      EMAIL_PROVIDER: "resend",
+      EMAIL_FROM: "Lifestory <hello@mail.devopsdirective.com>",
+      // Set once with `railway variables --service web --set RESEND_API_KEY=... --skip-deploys`; never in this file.
+      RESEND_API_KEY: preserve(),
     },
   });
 

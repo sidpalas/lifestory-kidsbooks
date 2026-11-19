@@ -159,7 +159,7 @@ Modal" below, then apply and redeploy both services.
 
 Production logs invitation and set-password links until Resend sends them (D39). To switch, once:
 
-1. In Resend, add a sending domain (for example `mail.devopsdirective.com`) and create its DNS records (SPF, DKIM)
+1. In Resend, add a sending domain (production uses `mail.devopsdirective.com`) and create its DNS records (SPF, DKIM)
    until Resend shows it verified.
 2. Set the key on the web service, never in `.railway/railway.ts`:
    `railway variables --service web --set "RESEND_API_KEY=<key>" --skip-deploys`.
