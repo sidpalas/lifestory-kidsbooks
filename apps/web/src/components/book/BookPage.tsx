@@ -116,6 +116,9 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
                   lineHeight: style.lineHeight,
                   fontWeight: style.weight,
                   textAlign: style.align,
+                  // Lay out with the font's own fractional advances. Without it the worker's headless Chromium rounds
+                  // each word to whole CSS pixels, so print drifted up to 3.4 pt along a line from the editor (D12).
+                  textRendering: "geometricPrecision",
                 }}
               >
                 {block.text}

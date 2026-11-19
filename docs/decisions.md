@@ -446,7 +446,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   BookPage, against D12); rendering a separate file at approval (above).
 - **Measured 2026-11-19** (the sample story, `a1.small`): 6 pages of 630 × 630 pt with TrimBox [9 9 621 621]; one
   2625 × 2625 JPEG per page at 300 ppi in ICC sRGB, no soft masks, no opacity below 1; Literata Regular and Bold
-  embedded as CID TrueType; 1.1 MB (0.84 MB before); a render takes 2.7–3 s (1–1.6 s before). poppler's `pdfimages`, `pdffonts` and `pdfinfo -box` agree.
+  embedded as CID TrueType; 1.1 MB (0.84 MB before); a render takes 2.7–3 s (1–1.6 s before). The watercolour Paper Boat: 7.2 MB for 3
+  pages. poppler's `pdfimages`, `pdffonts` and `pdfinfo -box` agree.
 - **Left for print ordering:** proofs made before this aren't flattened, so an order runs `checkPrintReady` on the
   proof's PDF before sending it (or re-renders it). The page count each binding needs, page 1 printing on the right,
   and the cover file come with the product chosen at order time. Lulu wants text 0.5 in inside the trim; the
@@ -495,6 +496,14 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   Playwright Chromium and calls `page.pdf` at the trim size plus bleed. Chromium lives in the worker container,
   not the web container. Fonts are self-hosted with fontsource (Nunito today), so screen and print use the same files.
 - **Sid, 2026-11-18:** confirmed rendering proofs on the worker.
+- **Screen vs print, 2026-11-19:** the Paper Boat proof printed words up to 3.4 pt right of where the editor drew
+  them, with identical line breaks. Cause: the worker's Chromium headless shell lays text out with each word rounded
+  to whole CSS pixels, while Chrome uses the font's fractional advances (reproduced at device scales 1, 2 and 3.125,
+  and in print media; the headless shell's own screen layout and PDF agree exactly). BookPage text now sets
+  `text-rendering: geometricPrecision`, which makes the headless shell use fractional advances and leaves Chrome's
+  layout unchanged: editor and PDF agree within 0.01 pt on every word. A renderer setting, not a layout-engine
+  limit, so this doesn't meet the reopen condition. Unchecked: the editor in Safari and Firefox (no WebKit or
+  Firefox in orbs).
 - **Reopen if:** real screen-versus-print mismatches show up (then precomputed layout, per the brief).
 
 ### D13. One image provider interface; a deterministic fake provider by default — Recommended
