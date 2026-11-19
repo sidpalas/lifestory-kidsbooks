@@ -38,11 +38,10 @@ const subscribeNarrow = (change: () => void) => {
 const usePageScale = () => (useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW).matches, () => false) ? 0.4 : 0.5);
 
 function StoryPreview() {
-  const { story, version, manifest, roles, cast, pages, characters, canEdit } = Route.useLoaderData();
+  const { story, version, manifest, roles, cast, pages, characters, canEdit, books } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const router = useRouter();
   const updating = useRouterState({ select: (state) => state.isLoading });
-  const [guides, setGuides] = useState(false);
   const pageScale = usePageScale();
   // A click before React hydrates would be lost, so the controls wait for it.
   const hydrated = useHydrated();
@@ -97,6 +96,7 @@ function StoryPreview() {
         slots={slots}
         roles={roles}
         characters={characters}
+        books={books}
         canEdit={canEdit}
         selected={selected}
         trying={(slotId) => choice.looks[slotId] !== undefined}
@@ -132,10 +132,6 @@ function StoryPreview() {
             The pages with {shown}
             {updating && <span className="text-muted-foreground ml-2 text-sm font-normal">Updating…</span>}
           </h2>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={guides} disabled={!hydrated} onChange={(event) => setGuides(event.target.checked)} />
-            Show trim, safe area, and figure boxes
-          </label>
         </div>
         <ol className="grid gap-8 md:grid-cols-2">
           {manifest.pages.map((page, i) => (
@@ -148,7 +144,6 @@ function StoryPreview() {
                     text={resolvePageText(page, cast)}
                     illustration={pages[i]!.layers.map((layer) => ({ url: `/api/files/${layer.key}`, rect: layer.rect }))}
                     cast={cast}
-                    guides={guides}
                   />
                 </ScaledPage>
               </div>

@@ -2,7 +2,7 @@
 // right away; then make the book. A role can instead try looks on the story's example character, which is a preview
 // only and never touches the family. A role accepts some character ages (D29), so only family members of those ages
 // are offered, and a look the story can't draw yet is left out of the pictures with a warning (D28, D41).
-import { ageLabel, type Character, type CharacterSlot, type LookAxis, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
+import { ageLabel, type BookSummary, type Character, type CharacterSlot, type LookAxis, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
@@ -24,6 +24,7 @@ export function StoryCast({
   slots,
   roles,
   characters,
+  books,
   canEdit,
   selected,
   trying,
@@ -35,6 +36,8 @@ export function StoryCast({
   /** Who the pages show now. */
   roles: ReadonlyArray<PreviewRole>;
   characters: ReadonlyArray<Character>;
+  /** The family's books of this story already made. */
+  books: ReadonlyArray<BookSummary>;
   canEdit: boolean;
   /** What each role's select shows: a character ID, or EXAMPLE. Runs ahead of `roles` while pages recompose. */
   selected: (slotId: string) => string;
@@ -76,6 +79,21 @@ export function StoryCast({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {books.length > 0 && (
+          <div className="rounded-md bg-muted/50 p-3 text-sm" data-testid="story-books">
+            <p className="font-medium">Your {books.length === 1 ? "book" : "books"} of this story</p>
+            <ul className="mt-1 flex flex-col gap-0.5">
+              {books.map((book) => (
+                <li key={book.id}>
+                  <Link to="/books/$bookId" params={{ bookId: book.id }} className="underline">
+                    {book.title} with {book.cast}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {canEdit && <p className="text-muted-foreground mt-1 text-xs">Open one to edit its text and print it, or make another below.</p>}
+          </div>
+        )}
         <ul className="grid gap-3 md:grid-cols-2" aria-label="Roles">
           {slots.map((slot) => {
             const role = roles.find((candidate) => candidate.slotId === slot.slotId)!;
@@ -158,7 +176,7 @@ export function StoryCast({
             </Button>
             <p className="text-muted-foreground text-xs">
               {everyoneFromFamily
-                ? "Your book keeps this cast. You can edit its text and print a proof next."
+                ? "Makes a new book with this cast. Next you can edit its text and print a proof."
                 : "Choose someone from your family for every part to make the book."}
             </p>
           </div>

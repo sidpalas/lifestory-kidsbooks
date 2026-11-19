@@ -21,6 +21,7 @@ import {
   Auth,
   createBook,
   createCharacter,
+  deleteBook,
   getBook,
   getCharacter,
   listBooks,
@@ -175,6 +176,11 @@ export const saveTextEditFn = createServerFn({ method: "POST" })
   .handler(({ data }) =>
     runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => saveTextEdit(user.id, data)), done)),
   );
+
+/** Deletes a book and its proofs (books.ts, deleteBook). */
+export const deleteBookFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String })))
+  .handler(({ data }) => runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => deleteBook(user.id, data.bookId)), done)));
 
 export const BookProofsResult = ResultSchema(
   Schema.Struct({ canRequest: Schema.Boolean, proofs: Schema.Array(ProofSummary) }),

@@ -22,6 +22,7 @@ import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
+import { confirmDeleteBook } from "~/components/family-library";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { agesLabel } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
@@ -68,7 +69,6 @@ function BookEditor() {
   const { page: selected } = Route.useSearch();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const [guides, setGuides] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { manifest, story, version } = view;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
@@ -107,6 +107,24 @@ function BookEditor() {
           Our edition of {story.title} by {story.authorName} · version {version}
           {!canEdit && " · you're a viewer, so you can read it but not change it"}
         </p>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-fit"
+            onClick={async () => {
+              setError(null);
+              try {
+                const cast = view.roles.map((role) => role.member.name).join(", ");
+                if (await confirmDeleteBook({ id: view.book.id, title: view.book.title, cast })) await router.navigate({ to: "/" });
+              } catch (cause) {
+                setError(message(cause));
+              }
+            }}
+          >
+            Delete this book
+          </Button>
+        )}
       </header>
 
       <section aria-label="Cast" className="grid gap-3 md:grid-cols-2">
@@ -139,14 +157,10 @@ function BookEditor() {
             <span>
               Page {pageIndex + 1} of {manifest.pages.length}, as it will print ({manifest.trim.widthIn} × {manifest.trim.heightIn} in plus bleed)
             </span>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={guides} onChange={(event) => setGuides(event.target.checked)} />
-              Guides
-            </label>
           </div>
           <div className="w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="editor-page">
             <ScaledPage trim={manifest.trim} scale={0.72}>
-              <TextDraftPage key={page.pageId} view={view} pageIndex={pageIndex} illustration={illustration(pageIndex)} guides={guides} />
+              <TextDraftPage key={page.pageId} view={view} pageIndex={pageIndex} illustration={illustration(pageIndex)} />
             </ScaledPage>
           </div>
         </div>
@@ -208,14 +222,14 @@ const useDrafts = () => {
   return drafts;
 };
 
-function TextDraftPage({ view, pageIndex, illustration, guides }: { view: BookView; pageIndex: number; illustration: ReadonlyArray<{ url: string; rect: readonly [number, number, number, number] }>; guides: boolean }) {
+function TextDraftPage({ view, pageIndex, illustration }: { view: BookView; pageIndex: number; illustration: ReadonlyArray<{ url: string; rect: readonly [number, number, number, number] }> }) {
   const current = useDrafts();
   const page = view.manifest.pages[pageIndex]!;
   const text = view.pages[pageIndex]!.text.map((block, i) => {
     const draft = current.get(`${page.pageId}/${i}`);
     return { style: block.style, text: draft === undefined ? block.text : resolveText(draft, view.cast) };
   });
-  return <BookPage manifest={view.manifest} page={page} text={text} illustration={illustration} cast={view.cast} guides={guides} />;
+  return <BookPage manifest={view.manifest} page={page} text={text} illustration={illustration} cast={view.cast} />;
 }
 
 function TextEditor({

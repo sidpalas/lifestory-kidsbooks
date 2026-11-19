@@ -35,11 +35,8 @@ test("a family member previews the sample story's pages at print size, with the 
   const fontSize = await pages.first().locator("p").last().evaluate((p) => parseFloat(getComputedStyle(p).fontSize));
   expect(fontSize).toBeCloseTo((17 * 96) / 72, 2);
 
+  // Trim and figure guides are for authors and the book editor, not the story page.
   await expect(page.getByTestId("trim-guide")).toHaveCount(0);
-  await page.getByLabel("Show trim, safe area, and figure boxes").check();
-  await expect(page.getByTestId("trim-guide")).toHaveCount(6);
-  await expect(page.getByTestId("figure-box")).toHaveCount(12);
-  await expect(page.getByTestId("safe-guide")).toHaveCount(6);
 });
 
 test("the watercolour sample's raster art loads and recolours on every page", async ({ page }) => {

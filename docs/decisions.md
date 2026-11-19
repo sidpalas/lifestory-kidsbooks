@@ -587,6 +587,15 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Proofs belong to books:** a proof is the print file of a family's book (D27, D32, D35), so the story page no
   longer makes them; `requestStoryProof` and `listStoryProofs` are gone.
 - **Viewers** preview with their family's members and try looks (nothing is saved), and get no "Make the book".
+- **Books the family made are listed on the story page**, so a parent opens the one they made instead of making it
+  again; "Make the book" makes another.
+- **Deleting a book (Sid: "there's no way to delete a book"; Made, Sid can veto):** a parent or owner deletes a book
+  from Our books or its page, after a confirmation that names it. Its cast, text edits, and proofs go with it,
+  approved proofs too: no print order references a proof yet, so D32's "kept as long as the family" has nothing to
+  protect. The `storage.sweep` task then deletes the PDFs. The family's characters stay. When orders exist, a book
+  with an ordered proof should be kept or archived instead.
+- **No guides for families (Sid):** trim, safe area, and figure boxes are for authors placing art; parents edit only
+  text, so the story page and the book editor no longer offer them. The author's draft editor keeps them.
 - **Reopen if:** families want a proof of a story before making a book, or want to try looks on their own family
   member without saving them (then a "try on Clara" mode that offers saving to her character).
 
@@ -621,7 +630,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   PDF it approved never changes (D27). A book can have several approved proofs (one per round of changes); an order
   will name the one it prints. Approving doesn't require the download to have happened: the UI asks the
   parent to download and check it first, and checking can't be proven anyway.
-- **Retention:** an approved proof (row and PDF) stays as long as its family, because orders will reference it and
+- **Retention:** an approved proof (row and PDF) stays as long as its family or its book (D45), because orders will reference it and
   it records what was printed. An unapproved proof is a draft: the `storage.sweep`
   task (D31) deletes its row 30 days after it was made, then deletes every `families/<id>/proofs/<proofId>.pdf` whose
   row is gone. The list shows each draft's deletion date. 30 days gives a parent time to come back to a proof, while a

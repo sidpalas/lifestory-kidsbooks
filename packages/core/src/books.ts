@@ -67,7 +67,7 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
   const access = yield* requireFamilyAccess(userId, familyId, "read");
   const rows = yield* Database.query((db) =>
     db
-      .select({ id: schema.book.id, title: schema.book.title, storyTitle: schema.story.title, name: schema.character.name })
+      .select({ id: schema.book.id, title: schema.book.title, storySlug: schema.story.slug, storyTitle: schema.story.title, name: schema.character.name })
       .from(schema.book)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
       .innerJoin(schema.story, eq(schema.story.id, schema.storyVersion.storyId))
@@ -76,9 +76,9 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
       .where(eq(schema.book.familyId, familyId))
       .orderBy(asc(schema.book.createdAt), asc(schema.bookCast.slotId)),
   );
-  const books = new Map<string, { id: string; title: string; storyTitle: string; names: Array<string> }>();
+  const books = new Map<string, { id: string; title: string; storySlug: string; storyTitle: string; names: Array<string> }>();
   for (const row of rows) {
-    const book = books.get(row.id) ?? { id: row.id, title: row.title, storyTitle: row.storyTitle, names: [] };
+    const book = books.get(row.id) ?? { id: row.id, title: row.title, storySlug: row.storySlug, storyTitle: row.storyTitle, names: [] };
     if (row.name) book.names.push(row.name);
     books.set(row.id, book);
   }
@@ -313,4 +313,19 @@ export const listBookProofs = Effect.fn("books.listProofs")(function* (userId: s
   const { book, canEdit } = yield* bookFor(userId, bookId, "read");
   const proofs = yield* proofSummaries(eq(schema.proof.bookId, bookId), book.manifest);
   return { canRequest: canEdit, proofs };
+});
+
+/**
+ * Deletes a book for a role that edits books: its cast and text edits (cascaded), and its proofs, approved or not.
+ * No print orders exist yet to keep an approved proof for (D32); the `storage.sweep` task deletes the PDFs whose proof
+ * row is gone. The family's characters stay.
+ */
+export const deleteBook = Effect.fn("books.delete")(function* (userId: string, bookId: string) {
+  yield* bookFor(userId, bookId, "edit");
+  yield* Database.query((db) =>
+    db.transaction(async (tx) => {
+      await tx.delete(schema.proof).where(eq(schema.proof.bookId, bookId));
+      await tx.delete(schema.book).where(eq(schema.book.id, bookId));
+    }),
+  );
 });

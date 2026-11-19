@@ -180,5 +180,30 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(viewer.getByRole("link", { name: "Add someone" })).toHaveCount(0);
   await viewer.getByRole("link", { name: new RegExp(child) }).click();
   await expect(viewer.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+  // The viewer previews the story with the family but can't make or delete books.
+  await viewer.goto("/stories/the-moon-picnic");
+  await expect(viewer.getByTestId("story-books")).toContainText(child);
+  await expect(viewer.getByRole("button", { name: "Make the book" })).toHaveCount(0);
+  await viewer.goto(bookUrl);
+  await expect(viewer.getByRole("button", { name: "Delete this book" })).toHaveCount(0);
+  await viewer.goto("/");
+  await expect(viewer.getByTestId("books")).toContainText(child);
+  await expect(viewer.getByRole("button", { name: /^Delete/ })).toHaveCount(0);
   await viewer.close();
+
+  // The story page lists the book; the parent deletes it from "Our books" after confirming, and it's gone everywhere.
+  await page.goto("/stories/the-moon-picnic");
+  await expect(page.getByTestId("story-books").getByRole("link", { name: new RegExp(child) })).toHaveAttribute("href", bookUrl);
+  await page.goto("/");
+  const remove = page.getByRole("button", { name: new RegExp(`^Delete The Moon Picnic with .*${child}`) });
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await remove.click();
+  await expect(remove).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await remove.click();
+  await expect(remove).toHaveCount(0);
+  await expect(page.getByTestId("characters")).toContainText(child);
+  await page.goto(bookUrl);
+  await expect(page.getByText(/not found/i)).toBeVisible();
+  await expect(page.getByRole("region", { name: "All pages" })).toHaveCount(0);
 });

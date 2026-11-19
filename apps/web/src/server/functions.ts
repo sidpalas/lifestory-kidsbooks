@@ -6,7 +6,7 @@ import {
   ResultSchema,
   StoryManifest,
   StorySummary,
-  JobError,
+  BookSummary,
   Character,
   PreviewRole,
   TextStyleName,
@@ -16,6 +16,7 @@ import {
   Auth,
   canAuthor,
   getStoryPreview,
+  listBooks,
   listCharacters,
   listPublishedStories,
   printableProof,
@@ -73,6 +74,8 @@ export const StoryPreviewResult = ResultSchema(
     /** The active family's members, who can fill the roles, and whether the user may make books in it. */
     characters: Schema.Array(Character),
     canEdit: Schema.Boolean,
+    /** The family's books of this story, newest first. */
+    books: Schema.Array(BookSummary),
   }),
   Schema.Union([NotAuthenticated, NotFound]),
 );
@@ -94,8 +97,9 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
         const user = yield* currentUser;
         const { active } = yield* activeFamily(user);
         const { characters, canEdit } = active ? yield* listCharacters(user.id, active.id) : { characters: [], canEdit: false };
+        const { books } = active ? yield* listBooks(user.id, active.id) : { books: [] };
         const preview = yield* getStoryPreview(user.id, data.slug, characters, { cast: data.cast, looks: data.looks });
-        return { ...preview, characters, canEdit };
+        return { ...preview, characters, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
       }),
     ),
   );

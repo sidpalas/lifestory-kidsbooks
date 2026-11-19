@@ -80,7 +80,7 @@ export const CharacterInput = Schema.Struct({
 export type CharacterInput = typeof CharacterInput.Type;
 
 /** A family's book, as listed. */
-export const BookSummary = Schema.Struct({ id: Schema.String, title: Schema.String, storyTitle: Schema.String, cast: Schema.String });
+export const BookSummary = Schema.Struct({ id: Schema.String, title: Schema.String, storySlug: Schema.String, storyTitle: Schema.String, cast: Schema.String });
 export type BookSummary = typeof BookSummary.Type;
 
 /** How one character fills one role of a book (castLook in the book format). */
