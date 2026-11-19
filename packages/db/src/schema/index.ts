@@ -4,3 +4,4 @@ export * from "./generations.ts";
 export * from "./proofs.ts";
 export * from "./books.ts";
 export * from "./workers.ts";
+export * from "./parts.ts";

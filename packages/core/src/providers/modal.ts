@@ -32,7 +32,7 @@ export const ModalImageProvider = Layer.effect(
 
     return {
       name: "modal",
-      extension: "png",
+      extension: () => "png",
       submit: (job) =>
         Effect.gen(function* () {
           const fail = (message: string) => new GenerationFailed({ generationId: job.generationId, message });

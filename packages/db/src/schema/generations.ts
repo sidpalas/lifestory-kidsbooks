@@ -1,6 +1,6 @@
 // One row per image provider job (docs/plan.md, "Data model"). The ID derives from the request key, so a
 // retried workflow step finds the same row; the Modal callback looks it up before resuming the workflow.
-import { jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { jsonb, numeric, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const generationStatus = pgEnum("generation_status", ["submitted", "succeeded", "failed"]);
 
@@ -16,6 +16,10 @@ export const generation = pgTable("generation", {
   /** Where the provider writes the image. */
   objectKey: text("object_key").notNull(),
   error: text("error"),
+  /** What the provider reported using (OpenAI's token counts), when it reports anything. */
+  usage: jsonb("usage"),
+  /** What the job cost in US dollars, computed from `usage` and the model's prices; null when unknown (Modal). */
+  costUsd: numeric("cost_usd", { precision: 12, scale: 6, mode: "number" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

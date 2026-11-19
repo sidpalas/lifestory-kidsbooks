@@ -197,3 +197,24 @@ The app needs a public URL for the callback, and Modal must reach object storage
 SeaweedFS on a laptop, expose both through a tunnel. Signed callbacks that arrive twice are harmless. "Write a sample
 file" on the home page runs one real generation. Logs: `modal app logs lifestory-flux-klein`; runs:
 https://modal.com/apps (app `lifestory-flux-klein`).
+
+## Generating story parts
+
+Authoring tooling generates each option's part on a role's base (plan.md, "Authoring-time part generation"; D30,
+D36). There are no screens for it yet: the authoring UI calls `requestPart`, `getPart`, `listParts`, `reviewPart`,
+`approvedParts`, and `withApprovedParts` from `@lifestory/core`, for the author of a draft story version. The worker
+runs the `part.generate` task: the provider's in-place edit of the base, then the cut-out, which stores RGBA layers
+and review images of the part on the story's lightest and darkest skin under `stories/<storyId>/v<n>/parts/<partId>/`.
+
+The fake provider (the default) answers with a deterministic edit, so the whole path runs locally and in CI
+(`apps/web/e2e/parts.spec.ts`). For real parts, set on the worker and restart it:
+
+```sh
+IMAGE_PROVIDER=openai
+OPENAI_API_KEY=<key>                      # every edit is billed, ~US$0.05 each at medium quality
+OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst # the default; a successor gets the assessment's test set first (D30)
+OPENAI_IMAGE_QUALITY=medium               # the default
+```
+
+Each part's provider, token usage, and cost are on its `generation` row (`select provider, cost_usd from
+generation`) and in `getPart`.

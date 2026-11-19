@@ -6,6 +6,7 @@ import { CastMember, Look, LookOverride, PronounSet, StoryManifest, TextStyleNam
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
 export * from "./rpc.ts";
+export * from "./parts/contract.ts";
 
 /** Better Auth's minimum, and what every password form checks before submitting. */
 export const MIN_PASSWORD_LENGTH = 12;

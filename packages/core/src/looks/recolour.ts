@@ -14,7 +14,7 @@ const DPI = 300;
  * (its 72-dpi width is inches × 72): librsvg applies `density` as the DPI and sharp then scales by density / 72
  * again, so DPI needs density √(72 · DPI), and the resize corrects SVGs sized in pixels rather than inches.
  */
-const raster = async (body: Uint8Array) => {
+export const rasterize = async (body: Uint8Array) => {
   const { format, width, height } = await sharp(body).metadata();
   if (format !== "svg" || !width || !height) return sharp(body).ensureAlpha();
   const scale = DPI / 72;
@@ -49,13 +49,13 @@ export const recolour = async (
   asset: Uint8Array,
   regions: ReadonlyArray<{ readonly mask?: Uint8Array; readonly palette: Palette }>,
 ): Promise<Uint8Array> => {
-  const { data, info } = await (await raster(asset)).raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await (await rasterize(asset)).raw().toBuffer({ resolveWithObject: true });
   const { width, height } = info;
   const original = Uint8Array.from(data);
   const out = Uint8Array.from(data);
   for (const region of regions) {
     const mask = region.mask
-      ? await sharp(await (await raster(region.mask)).png().toBuffer()).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer()
+      ? await sharp(await (await rasterize(region.mask)).png().toBuffer()).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer()
       : null;
     const lut = Array.from({ length: 256 }, (_, tone) => paletteAt(region.palette, tone / 255));
     for (let p = 0; p < width * height; p++) {

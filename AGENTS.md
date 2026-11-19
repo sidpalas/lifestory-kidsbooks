@@ -32,7 +32,7 @@ Times measured on an `a1.small` orb.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~6–10 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`) | ~1–5 s |
-| `mise run test:e2e` | Playwright end-to-end tests (18; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run test:e2e` | Playwright end-to-end tests (20; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
@@ -152,9 +152,10 @@ in `packages/core/src/tasks/sweep-storage.ts` if it shouldn't live as long as it
 All generation goes through the `ImageProvider` service, called from tasks with `generateImage(ctx, name, request)`
 (`packages/core/src/generations.ts`): it submits (a step), suspends until the `generation.done:<id>` event, and
 records the outcome in the `generation` table. `FakeImageProvider` (deterministic SVG per key, emits the event
-itself) is the default everywhere; there is no GPU in orbs or CI. `IMAGE_PROVIDER=modal` uses FLUX 3 Klein on Modal,
-which calls back `/api/webhooks/modal`; the README's "Image generation on Modal" has the runbook. Don't deploy or run
-the Modal app unless asked: it spends GPU money.
+itself) is the default everywhere; there is no GPU in orbs or CI. `IMAGE_PROVIDER=openai` edits with OpenAI (D30, the primary for
+part generation; README, "Generating story parts"), and `IMAGE_PROVIDER=modal` uses FLUX 3 Klein on Modal, which calls
+back `/api/webhooks/modal`; the README's "Image generation on Modal" has the runbook. Don't run real providers unless
+asked, and keep it to a few dollars: OpenAI bills every edit, Modal spends GPU money.
 
 ### Dependencies
 

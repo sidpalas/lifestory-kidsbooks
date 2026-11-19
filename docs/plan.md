@@ -21,7 +21,7 @@ packages/
     families/ characters/ stories/ books/ proofs/   domain modules (new)
     book-format/            Schema for the book format, v1 (new)
     looks/                  look vocabulary, recolour (gradient-map-v1), part stacking (new)
-    tasks/                  render-proof (new); part-generation tasks come with the variant tooling (later)
+    tasks/                  render-proof (new); generate-part (variant tooling, D36)
     providers/modal.ts      Modal ImageProvider (new)
   db/                       Drizzle schema and migrations
 modal/                      Python: FLUX 3 Image Klein function, `modal deploy` target (new)
@@ -230,24 +230,33 @@ plate (art) → for each figure on the page, in z-order:
   marked approved, loaded by the seed from `fixtures/stories/moon-picnic/`. A second sample,
   `fixtures/stories/paper-boat/`, has textured raster art (watercolour) to test the recolour and print on it (D24).
 
-## Authoring-time part generation (later milestone)
+## Authoring-time part generation
 
-The variant tooling for illustrators is not in milestone 1 (brief, "Done means"); this is the shape it will take, on
-the foundation that exists now.
+The variant tooling for illustrators wasn't in milestone 1 (brief, "Done means"). The pipeline below is built
+(2026-11-19, D36) in `packages/core/src/parts` and `tasks/generate-part.ts`; the authoring screens that call it are
+the Story authoring work.
 
 ```
-generate-part(storyVersionDraftId, appearanceId, axis, optionId, seed)
-  step  submit       → generation row, provider.submit(key = part:<appearance>:<axis>:<option>:<seed>)
-  await event        generation.done:<generationId>          (provider callback, or the fake provider)
-  step  cut out      → align and colour-match to the base, segment the part, matte it against the base,
-                       split by region, store RGBA crops
-  step  record       → part status = generated, waiting for review
+requestPart(author, { storyVersionId, pageId, slotId, age, face, axis, option, zone, seed?, note? })
+  → story_part row (ID from the request, so repeating it is the same part), spawn part.generate
+part.generate(partId)
+  step  prepare      → the base flattened at working size (B) and padded to the provider's 2:3 size
+  step  edit:submit  → generation row, provider.submit(key = part:<partId>)   (generateImage)
+  await event        generation.done:<generationId>          (OpenAI and the fake emit it themselves; Modal calls back)
+  step  edit:record  → generation status, usage, cost
+  step  cut-out      → align and colour-match to B, segment, matte against B, unmix, split by region → RGBA layers
+  step  review-images→ the layers on the lightest and the darkest skin of the story's palettes, and a sheet
+  step  record       → status pending_review
+reviewPart(author, partId, approve | reject); approvedParts + withApprovedParts → the draft's manifest Parts
 ```
 
-Turnaround sheets (one per hairstyle and base) run the same way and are referenced by the part edits. The
+Turnaround sheets (one per hairstyle and base) will run the same way and be referenced by the part edits. The
 illustrator reviews parts and pair sheets in the tooling; approving all of them is what lets the story version
 publish.
 
+- **The zone** (where the part may be, in thousandths of the base) comes with each request: D26's head zone, which
+  the format doesn't carry. Long hair needs a taller zone than glasses; a part cut off at the zone's edge shows as
+  `zoneEdgeContact` and as a red outline on the review sheet.
 - **Suspending.** `generateImage(ctx, name, request)` submits in a step and `ctx.awaitEvent` suspends the run without
   holding a worker. Absurd events are first-emit-wins and cached, so each wait uses a unique name (the generation ID)
   and a late or duplicate callback is harmless. Steps are idempotent: object keys derive from domain IDs and the
@@ -257,15 +266,19 @@ publish.
   GET URLs, uploads its output to a presigned PUT URL, and POSTs `/api/webhooks/modal` with an HMAC signature over
   the generation ID; the route verifies it and emits the event. OpenAI (D30, primary): the edit API is
   synchronous, so the submit step calls it, stores the output, and emits the event itself; the model ID is
-  configuration. Fake: renders a deterministic placeholder, uploads it, and emits the same event, so dev, CI and
-  tests run the real suspend and resume path. If inbound callbacks prove unreliable, the fallback is polling the
+  configuration. Fake: renders a deterministic placeholder, or with a reference image an edit of it (shifted a
+  pixel, re-toned, with hair or glasses drawn on), uploads it, and emits the same event, so dev, CI and tests run the
+  real suspend and resume path and the whole cut-out. If inbound callbacks prove unreliable, the fallback is polling the
   provider with `ctx.sleepFor` (D14).
-- **Cutting parts out.** The edit C and the base B give C = a·F + (1 − a)·B, so the part (colour F, alpha a) is
-  found by known-background matting, not by thresholding the difference: thresholding lost thin glasses frames and
-  baby wisps and kept a band of the old skin. Steps: align C to B; colour-match it outside the part zone; segment the
-  part (the change region as a prior, later a hair or glasses segmenter); matte inside that segment against B;
-  unmix F; then composite on the lightest and darkest skin tones for the illustrator's review. Measured on CPU at
-  ~3 s per part (assessment, 2026-11-19); pencil-like texture is the hardest case.
+- **Cutting parts out** (`parts/cutout.ts`, D36). The edit C and the base B give C = a·F + (1 − a)·B, so the part
+  (colour F, alpha a) is found by known-background matting, not by thresholding the difference: thresholding lost
+  thin glasses frames and baby wisps and kept a band of the old skin. Steps: align C to B (integer shift, ±6 px);
+  colour-match it outside the zone (linear per channel); segment the part: pixels that changed and whose colour
+  isn't within 2 px in B (line work the model moved by a pixel isn't new), kept as the part's large pieces and the
+  small ones that touch them; estimate F nearby from the part's opaque interior; matte by projecting C − B onto
+  F − B; unmix F; split off skin the model redrew (unmixed colour within 3σ of the base's skin, inside its skin
+  mask) as a layer the skin palette recolours; turn hair into neutral tones for the hair palette. Then compose on
+  the lightest and darkest skin for the illustrator's review. 2–8 s per part on an `a1.small` orb.
 - **Running Modal for real:** `modal deploy modal/flux_klein.py`, then set `IMAGE_PROVIDER=modal`,
   `MODAL_ENDPOINT_URL`, `MODAL_CALLBACK_SECRET`, `PUBLIC_APP_URL` (for the callback), and `S3_PUBLIC_ENDPOINT` if
   storage isn't reachable from Modal at `S3_ENDPOINT`. The app needs no Modal token (D25). The README has the steps.

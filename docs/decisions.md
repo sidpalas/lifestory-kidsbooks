@@ -261,6 +261,41 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   Nano Banana 2.1 level with it on faces (then Gemini through Vertex directly, not AI Studio); OpenAI's terms change;
   or BFL offers zero retention and no training to us.
 
+### D36. Part generation runs as `part.generate`; the cut-out is known-background matting in TypeScript; parts live in `story_part` until approved — Made (2026-11-19)
+- **What:** `requestPart` records a `story_part` row for an appearance (page, role, age, face) and an option and
+  spawns `part.generate` (plan.md, "Authoring-time part generation"). The OpenAI provider (`IMAGE_PROVIDER=openai`,
+  D30) edits the base padded to the provider's 2:3 size; the cut-out (`packages/core/src/parts/cutout.ts`) stores
+  RGBA layers under the version's folder (D31) with review images on the story's lightest and darkest skin. The
+  author approves or rejects; `approvedParts` and `withApprovedParts` (or `manifestParts` for a caller recording
+  draft parts) put approved layers into the draft's manifest as ordinary `Part`s, so composing a book never reads
+  the table. Each `generation` row records the provider's usage and `cost_usd`.
+- **Cut-out in TypeScript, not pymatting (refines D30's "known-background matting"):** the assessment's prototype
+  ran Levin's closed-form matting in Python (pymatting) on the edit alone. Here alpha comes from the known base: the
+  change C − B projected onto F − B, with F estimated from the part's opaque interior nearby. It needs no sparse
+  solver and no Python in the worker image (D1), and runs in 2–8 s per part on an `a1.small` orb; a process
+  cutting out and composing a 1024×1536 part peaked at ~630 MB resident. Measured on seven sunburst edits (US$0.34;
+  three bases: the Klein-drawn portrait, the Painter gouache child, the sample's placeholder) and a synthetic test with known alpha
+  (`part-cutout.test.ts`: alpha error < 0.02, 2 px frames, half-transparent wisps).
+- **What the light/dark check found, and the fixes:**
+  - The assessment's 1 px opening of the change mask erased 2 px glasses frames. Speckle now goes by piece size
+    relative to the part instead.
+  - The model redraws line work by a pixel or two (eyes, jaw), which put ghost lines in the layer. A change now
+    counts only where nothing within 2 px of the base looks like it.
+  - Skin the model drew inside a part (an ear over a glasses arm) kept the base's tone on every skin. Such pixels
+    (colour within 3σ of the base's skin, inside its skin mask, in patches rather than streaks) are split into a
+    layer with `palette: "skin"`; the format already allowed it. This is the plan's "split by region".
+  - Hair over a base outline of its own colour (gouache) left a dark arc. Pixels coloured like the part inside its
+    closed opaque mass are opaque.
+- **Hair is asked for in dark brown** and turned into neutral tones (median 0.40, where the hair palettes put the
+  colour), so it stands out from every skin and still takes any hair colour.
+- **The zone is per request,** not in the format (D26's head zone): the authoring UI asks the illustrator for it.
+- **Open:** pencil textures weren't tried; a real illustrator's base (D30's "Watch") is still the test that counts;
+  the portrait base's own extraction artefacts (D28) show up as small changes the model "repairs"; figures are
+  addressed by page and role (`slotId`), so a page with the same role twice needs another key.
+- **Reopen if:** illustrators reject more than a few parts for cut-out defects rather than drawing (then try a
+  learned hair or glasses segmenter as the prior, or closed-form matting); the worker can't afford the memory of a
+  cut-out (~630 MB peak for the process at 1024×1536).
+
 ### D27. PDF proofs: printed by the worker from a token-gated print page, recorded with what they show — Made (2026-11-19)
 - **How:** a `proof` row belongs to a family and pins a story version plus its **content**: the cast (name,
   pronouns, look per slot) and the text edits, copied when the proof is requested, so later look or text changes never

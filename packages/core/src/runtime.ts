@@ -7,13 +7,17 @@ import { FakeImageProvider } from "./image-provider.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
 import { ModalImageProvider } from "./providers/modal.ts";
+import { OpenAIImageProvider } from "./providers/openai.ts";
 import { ObjectStorage } from "./storage.ts";
 
-/** IMAGE_PROVIDER picks the provider: `fake` (the default; development, tests, CI) or `modal` (FLUX 3 Klein). */
+/**
+ * IMAGE_PROVIDER picks the provider: `fake` (the default; development, tests, CI), `openai` (the primary for part
+ * generation, D30), or `modal` (FLUX 3 Klein, the fallback).
+ */
 const ImageProviderLayer = Layer.unwrap(
   Effect.map(
-    Config.Literals(["fake", "modal"], "IMAGE_PROVIDER").pipe(Config.withDefault("fake" as const)),
-    (provider) => (provider === "modal" ? ModalImageProvider : FakeImageProvider),
+    Config.Literals(["fake", "openai", "modal"], "IMAGE_PROVIDER").pipe(Config.withDefault("fake" as const)),
+    (provider) => ({ fake: FakeImageProvider, openai: OpenAIImageProvider, modal: ModalImageProvider })[provider],
   ),
 );
 

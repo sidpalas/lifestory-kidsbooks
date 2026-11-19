@@ -71,6 +71,13 @@
       "when": 1795067662652,
       "tag": "0009_worker_heartbeat",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795069188484,
+      "tag": "0010_part_generation",
+      "breakpoints": true
     }
   ]
 }

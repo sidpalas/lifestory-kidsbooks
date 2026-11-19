@@ -21,7 +21,7 @@ export class Generations extends Context.Service<
     readonly get: (id: string) => Effect.Effect<Option.Option<GenerationRow>>;
     readonly update: (
       id: string,
-      patch: Partial<Pick<GenerationRow, "externalId" | "status" | "error">>,
+      patch: Partial<Pick<GenerationRow, "externalId" | "status" | "error" | "usage" | "costUsd">>,
     ) => Effect.Effect<void>;
   }
 >()("@lifestory/core/Generations") {
@@ -72,7 +72,7 @@ export const generateImage = Effect.fn("generations.generateImage")(function* (
   const provider = yield* ImageProvider;
   const generations = yield* Generations;
   const generationId = `gen_${digest(request.key).toString("hex").slice(0, 32)}`;
-  const outputKey = `${request.outputKey}.${provider.extension}`;
+  const outputKey = `${request.outputKey}.${provider.extension({ references: request.references ?? [] })}`;
 
   yield* step(
     ctx,
@@ -95,8 +95,14 @@ export const generateImage = Effect.fn("generations.generateImage")(function* (
         eventName: generationEvent(generationId),
         objectKey: outputKey,
       });
-      const { externalId } = yield* provider.submit(job);
-      if (externalId) yield* generations.update(generationId, { externalId });
+      const { externalId, usage, costUsd } = yield* provider.submit(job);
+      if (externalId || usage || costUsd !== undefined) {
+        yield* generations.update(generationId, {
+          ...(externalId ? { externalId } : {}),
+          ...(usage ? { usage } : {}),
+          ...(costUsd !== undefined ? { costUsd } : {}),
+        });
+      }
       return { generationId };
     }),
   );

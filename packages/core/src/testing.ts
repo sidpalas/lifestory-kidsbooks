@@ -75,6 +75,8 @@ export const memoryGenerations = (rows: Map<string, GenerationRow> = new Map()) 
           externalId: null,
           status: "submitted",
           error: null,
+          usage: null,
+          costUsd: null,
           createdAt: now,
           updatedAt: now,
           ...row,

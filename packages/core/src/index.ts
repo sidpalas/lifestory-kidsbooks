@@ -13,6 +13,8 @@ export * from "./pages.ts";
 export { recolour, RECOLOUR_ALGORITHM } from "./looks/recolour.ts";
 export * from "./mailer.ts";
 export * from "./providers/modal.ts";
+export * from "./providers/openai.ts";
+export { approvedParts, getPart, listParts, partPrompt, requestPart, reviewPart, withApprovedParts } from "./parts/parts.ts";
 export * from "./runtime.ts";
 export * from "./storage.ts";
 export * from "./stories.ts";
