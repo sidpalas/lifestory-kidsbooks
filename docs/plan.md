@@ -116,15 +116,22 @@ implementation next to `fake` and `modal`; the workflow doesn't change. Nothing 
 
 **What we need from a provider**, in order of weight:
 
-1. **Edits in place:** redraw one part (a hairstyle, glasses, a beard) on the illustrator's base crop and leave
-   the face, hands and props pixel-identical, so the part can be cut out by comparison with the base.
+1. **A clean part layer:** each part (a hairstyle, glasses, a beard) has to end up as a layer that holds only
+   that part, because at book time it is stacked on the illustrator's base without AI (D26). Any one of three
+   routes is enough:
+   - an edit of the base crop that leaves everything outside the part unchanged, so we cut the part out by
+     comparison with the base;
+   - a masked edit that changes nothing outside its mask;
+   - native transparent (RGBA) output of the part alone, drawn to fit the base.
+
+   A provider that also redraws the face, hands or props on every edit fails this: the difference from the base
+   then includes them, and there is no clean way to separate the part.
 2. **Style fidelity** to the illustrator's references across many parts, with no drift in age or proportions.
 3. **Consistency:** the same hairstyle from its turnaround sheet across poses and pages.
-4. **Transparent output,** if the provider has it, which could replace the comparison cut-out.
-5. **Terms on inputs:** the illustrator's art is their IP, so we need no training on inputs, short retention, and
+4. **Terms on inputs:** the illustrator's art is their IP, so we need no training on inputs, short retention, and
    output ownership compatible with publishing. Content filtering on the provider's side counts toward FLUX §2e only
    for FLUX models.
-6. **Price and throughput** per accepted part. A story needs ~470 parts per base face (D26), generated once, so
+5. **Price and throughput** per accepted part. A story needs ~470 parts per base face (D26), generated once, so
    rejections cost more in illustrator time than per-image price does.
 
 **Candidates** (prices and features as published, not verified by us):
@@ -138,8 +145,10 @@ implementation next to `fake` and `modal`; the workflow doesn't change. Nothing 
 
 **Assessment:** run the same set through each provider with the same base, references and prompts: four
 hairstyles, glasses and a beard on the bald sitting base; one hairstyle on two poses from its turnaround sheet; and
-one transparent-output part where supported. Score each output on face pixels unchanged outside the head zone
-(automatic), cut-out halo and holes at print size, style match and age drift (Sid or the illustrator, blind), and
+the same parts as masked edits and as transparent output where supported. Score each output on whether it gives a
+clean part layer (automatic: pixels outside the head zone or mask unchanged, or for transparent output, no face or
+background pixels in the layer and a correct fit on the base), halo and holes at print size, style match and age
+drift (Sid or the illustrator, blind), and
 cost and time per accepted part. Record the provider terms checked. The result becomes a decision naming the
 primary provider.
 
