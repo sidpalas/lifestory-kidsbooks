@@ -410,11 +410,16 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   option IDs with its own parts. The portrait is composed like a story figure (`composeFigure`, then `gradient-map-v1`),
   from art shipped with the code because the vocabulary it covers ships with the code. This replaces plan.md's "the
   sample story's cover" as the preview.
-- **Placeholder art (Made):** rebuilt by `looks/portrait/extract.py` from the FLUX 3 Klein 24-combination grid in
-  thread T-01a1f012-4acc-7483-a9a5-8d5c5353cdee (244 × 280 px). That thread is archived, so its full-resolution
-  files (608 × 1024) weren't reachable. The experiment drew one grown-up base, so every face option shows it for now;
-  its bob, coily afro, and braids stand for `hair:short`, `hair:curly`, and `hair:long`. Recolour artefacts remain
-  where the extraction guessed (a few pixels at the ear and the hairline).
+- **Art (Sid chose the style, 2026-11-19):** gouache with an ink outline, drawn with OpenAI `gpt-image-2.6-sunburst`
+  (D30) in thread T-01a1f24f-b041-739f-953a-45680530a7c3, replacing the FLUX 3 Klein placeholder (one grown-up base
+  for every age and face type). Sid picked it from four samples (gouache, watercolour, flat mid-century, crayon).
+  Each age and face type has its own base (14), each an edit of the chosen sample; teens, adults and older adults
+  needed a second prompt asking for adult proportions, or they read as children. Each base's skin mask is found by
+  colour (eyes, mouth and line work stay as drawn), and its skin's median luminance is set to 0.684, the portrait
+  palettes' tone stop. The 46 parts (hairstyles at every age that has them, glasses from young child up) were made
+  and cut out like story parts (D36) and reviewed on the lightest and darkest skin; two were retaken (a redrawn
+  chin line, an eyebrow on a lens). Stored at 488 × 560 (the picker shows 244 × 280), parts cropped to their pixels
+  and listed in `portrait/parts.json`. US$3.78 in all (4 samples, 20 base edits, 48 part edits).
 - **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
   its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
   character's own option is unsupported, so a later look change back to a supported option takes effect again. A role

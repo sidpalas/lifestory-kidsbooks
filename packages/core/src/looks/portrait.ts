@@ -3,11 +3,11 @@
 // It is composed exactly like a story figure (composeFigure, then the gradient-map recolour), from art shipped
 // with the code, because the vocabulary it must cover ships with the code too.
 //
-// Placeholder art (portrait/, 244 × 280 px): rebuilt by portrait/extract.py from the FLUX 3 Klein experiment in
-// thread T-01a1f012-4acc-7483-a9a5-8d5c5353cdee (its 24-combination grid): a bald base, its skin mask, and in-place
-// hairstyle and glasses parts. That experiment drew one grown-up base only, so every age and face type shows that
-// base until the illustrator's bases arrive (D29); hair:short is its bob, hair:curly its coily afro, hair:long its
-// braids. Axes an age has no parts for (a baby's hairstyle, a toddler's glasses) are left out, as in books.
+// Art (portrait/, 488 × 560 px, shown at 244 × 280): gouache with an ink outline, drawn with OpenAI
+// gpt-image-2.6-sunburst (D28, D30). One base per age and face type (bases/<age>-<face>.png), each an edit of the style
+// sample Sid chose, with a skin mask found by colour and the skin's median luminance set to 0.684; then each base's
+// hairstyles and glasses (parts.json, parts/) made and cut out like story parts (D36) and reviewed on the lightest and
+// darkest skin. Axes an age has no parts for (a baby's hairstyle, a toddler's glasses) are left out, as in books.
 // Server-only (sharp, node:fs).
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -16,20 +16,21 @@ import sharp from "sharp";
 import type { FigureLayer, Part, StoryManifest } from "../book-format/manifest.ts";
 import { composeFigure } from "./compose.ts";
 import { recolour } from "./recolour.ts";
-import { ageOptions, faceOptions, hairOptions, type Look, partAxesAt } from "./vocabulary.ts";
+import partsByBase from "./portrait/parts.json" with { type: "json" };
+import { ageOptions, faceOptions, type Look } from "./vocabulary.ts";
 
 const FULL = [0, 0, 1000, 1000] as const;
 
-/** Tones map on the base's luminance (its skin's median is 0.684), like the experiment's multiplicative shift. */
+/** Tones map on the base's luminance; every base's skin has its median at 0.684. */
 const skinPalette = (shadow: string, tone: string, light: string) => [
   { at: 0, colour: shadow },
   { at: 0.684, colour: tone },
   { at: 1, colour: light },
 ];
-/** Hair parts are neutral greys stretched to 0.1-0.85, so one three-stop map per colour fits every hairstyle. */
+/** Hair parts are neutral greys with their median at 0.40 (the cut-out's neutral tones), so the swatch is the hair's main colour. */
 const hairPalette = (dark: string, mid: string, light: string) => [
   { at: 0.1, colour: dark },
-  { at: 0.475, colour: mid },
+  { at: 0.4, colour: mid },
   { at: 0.85, colour: light },
 ];
 
@@ -50,32 +51,23 @@ export const portraitPalettes: StoryManifest["palettes"] = {
   },
 };
 
-/** The experiment drew glasses under the hair. */
+/** Glasses go under the hair, which falls over their arms. */
 const partOrder: StoryManifest["partOrder"] = ["glasses", "hair"];
 
 const atEveryAge = ageOptions.flatMap((age) => faceOptions.map((face) => ({ age: age.id, face: face.id })));
+
+const baseName = (at: (typeof atEveryAge)[number]) => `${at.age}-${at.face.slice("face:".length)}`;
 
 export const portraitFigure: FigureLayer = {
   kind: "figure",
   slotId: "portrait",
   box: FULL,
-  bases: atEveryAge.map((at) => ({ ...at, asset: "base.png", skinMask: "skin-mask.png" })),
-  parts: atEveryAge.flatMap((at): ReadonlyArray<Part> => [
-    ...(partAxesAt(at.age).includes("hair")
-      ? hairOptions.map((hair) => ({
-          ...at,
-          axis: "hair" as const,
-          option: hair.id,
-          asset: `hair-${hair.id.slice("hair:".length)}.png`,
-          at: FULL,
-          palette: "hairColour" as const,
-          approved: true,
-        }))
-      : []),
-    ...(partAxesAt(at.age).includes("glasses")
-      ? [{ ...at, axis: "glasses" as const, option: "glasses:round", asset: "glasses-round.png", at: FULL, palette: "none" as const, approved: true }]
-      : []),
-  ]),
+  bases: atEveryAge.map((at) => ({ ...at, asset: `bases/${baseName(at)}.png`, skinMask: `bases/${baseName(at)}-skin.png` })),
+  parts: atEveryAge.flatMap((at): ReadonlyArray<Part> =>
+    Object.entries((partsByBase as unknown as Record<string, Record<string, ReadonlyArray<Pick<Part, "asset" | "at" | "palette">>>>)[baseName(at)] ?? {}).flatMap(
+      ([option, layers]) => layers.map((layer) => ({ ...at, axis: option.startsWith("hair:") ? "hair" : "glasses", option, ...layer, approved: true })),
+    ),
+  ),
 };
 
 // Resolved through the package, not relative to this file: the web build bundles this module into apps/web/dist,
@@ -84,9 +76,9 @@ const require = createRequire(import.meta.url);
 const read = (asset: string) => readFile(require.resolve(`@lifestory/core/portrait/${asset}`));
 
 const render = async (look: Look): Promise<Uint8Array> => {
-  // Every portrait layer fills the canvas, so they stack without offsets.
+  const specs = composeFigure(portraitPalettes, partOrder, portraitFigure, look);
   const layers = await Promise.all(
-    composeFigure(portraitPalettes, partOrder, portraitFigure, look).map(async (layer) =>
+    specs.map(async (layer) =>
       layer.recolour.length === 0
         ? read(layer.asset)
         : recolour(
@@ -95,13 +87,16 @@ const render = async (look: Look): Promise<Uint8Array> => {
           ),
     ),
   );
+  // The base fills the canvas; each part is cropped to its pixels and placed at its rect.
   const [base, ...rest] = layers;
-  return new Uint8Array(
-    await sharp(base!)
-      .composite(rest.map((input) => ({ input: Buffer.from(input) })))
-      .png()
-      .toBuffer(),
+  const { width, height } = await sharp(base!).metadata();
+  const placed = await Promise.all(
+    rest.map(async (input, i) => {
+      const [x0, y0, x1, y1] = specs[i + 1]!.rect.map((v, k) => Math.round((v * (k % 2 === 0 ? width! : height!)) / 1000));
+      return { input: await sharp(input).resize(x1! - x0!, y1! - y0!, { fit: "fill" }).png().toBuffer(), left: x0!, top: y0! };
+    }),
   );
+  return new Uint8Array(await sharp(base!).composite(placed).png().toBuffer());
 };
 
 // Bounded by the vocabulary: 7 ages × 2 faces × 5 tones × 3 hairstyles × 4 colours × 2 ≈ 1,700 looks of ~170 KB at
