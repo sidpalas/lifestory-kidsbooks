@@ -341,3 +341,14 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
 7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
    the `operator:create` command (D21), with production loading the sample story under the real operator
    instead of running the development seed.
+
+Open needs found on the first production deploy (2026-11-19; not started, Sid to pick the approach):
+
+- **Getting a story into production.** `importStoryVersion` is called only by the development seed, which refuses
+  `NODE_ENV=production`, so production has no stories and `/stories/the-moon-picnic` is a 404 there. Options: a
+  `story-import.ts` command like `operator-create.ts` (the web image ships `fixtures/stories`, run once over
+  `railway ssh`, idempotent), or an authenticated upload endpoint, which author uploads will need anyway.
+- **Agent access to production.** An agent verifying a deploy can't sign in, so live checks behind a session (story
+  preview, worker jobs, proofs) need a person. Options: an ordinary "agent" family the operator invites, with its
+  password kept as an Amp secret (no new API surface), or an API key (for example Better Auth's apiKey plugin),
+  which is more capable but adds a way to authenticate on an app holding children's data.
