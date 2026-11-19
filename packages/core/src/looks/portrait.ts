@@ -6,7 +6,7 @@
 // Art (portrait/, 488 × 560 px, shown at 244 × 280): gouache with an ink outline, drawn with OpenAI
 // gpt-image-2.6-sunburst (D28, D30). One base per age and face type (bases/<age>-<face>.png), each an edit of the style
 // sample Sid chose (from teen up also one with softer features, D40, an edit of the defined one), with a skin mask found by colour and the skin's median luminance set to 0.684; then each base's
-// hairstyles and glasses (parts.json, parts/) made and cut out like story parts (D36) and reviewed on the lightest and
+// hairstyles, glasses and, for adults, facial hair (parts.json, parts/) made and cut out like story parts (D36) and reviewed on the lightest and
 // darkest skin. Axes an age has no parts for (a baby's hairstyle, a toddler's glasses) are left out, as in books.
 // Server-only (sharp, node:fs).
 import { readFile } from "node:fs/promises";
@@ -48,12 +48,12 @@ export const portraitPalettes: StoryManifest["palettes"] = {
     "hair-colour:brown": hairPalette("#281810", "#624028", "#aa825e"),
     "hair-colour:blonde": hairPalette("#785628", "#cea660", "#f6e2aa"),
     "hair-colour:grey": hairPalette("#46464c", "#96969c", "#e4e4e8"),
-    "hair-colour:red": hairPalette("#4a180c", "#a8482a", "#eaa47c"),
+    "hair-colour:red": hairPalette("#3a140a", "#8c3a1c", "#d8875a"),
   },
 };
 
-/** Glasses go under the hair, which falls over their arms. */
-const partOrder: StoryManifest["partOrder"] = ["glasses", "hair"];
+/** Facial hair at the bottom; glasses go under the hair, which falls over their arms. */
+const partOrder: StoryManifest["partOrder"] = ["facialHair", "glasses", "hair"];
 
 const atEveryAge = ageOptions.flatMap((age) =>
   faceOptions.flatMap((face) =>
@@ -71,7 +71,7 @@ export const portraitFigure: FigureLayer = {
   bases: atEveryAge.map((at) => ({ ...at, asset: `bases/${baseName(at)}.png`, skinMask: `bases/${baseName(at)}-skin.png` })),
   parts: atEveryAge.flatMap((at): ReadonlyArray<Part> =>
     Object.entries((partsByBase as unknown as Record<string, Record<string, ReadonlyArray<Pick<Part, "asset" | "at" | "palette">>>>)[baseName(at)] ?? {}).flatMap(
-      ([option, layers]) => layers.map((layer) => ({ ...at, axis: option.startsWith("hair:") ? "hair" : "glasses", option, ...layer, approved: true })),
+      ([option, layers]) => layers.map((layer) => ({ ...at, axis: option.startsWith("hair:") ? "hair" : option.startsWith("facial-hair:") ? "facialHair" : "glasses", option, ...layer, approved: true })),
     ),
   ),
 };
@@ -112,7 +112,7 @@ const cache = new Map<string, Promise<Uint8Array>>();
 
 /** The portrait of `look` as a PNG. Deterministic, so a recent look is served from memory. */
 export const lookPortrait = Effect.fn("looks.portrait")(function* (look: Look) {
-  const key = JSON.stringify([look.age, look.face, look.features, look.skin, look.hair, look.hairColour, look.glasses]);
+  const key = JSON.stringify([look.age, look.face, look.features, look.skin, look.hair, look.hairColour, look.glasses, look.facialHair]);
   let png = cache.get(key);
   if (!png) {
     png = render(look);

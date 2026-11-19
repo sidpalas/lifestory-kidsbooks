@@ -51,10 +51,10 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     await page.getByRole("button", { name: "Young child", exact: true }).click();
     // Pronouns order the starting looks and hairstyles, likelier first, and never hide one (D29).
     const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Curly hair", "Short hair"]);
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Coily afro hair", "Locs hair", "Short hair", "Buzz cut hair"]);
     await expect.poll(() => labels(/Start from a look/)).toEqual(["Long blonde hair", "Curly black hair", "Short brown hair, glasses"]);
     await page.getByLabel("Pronouns").selectOption("he/him");
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Curly hair", "Long hair"]);
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Buzz cut hair", "Curly hair", "Coily afro hair", "Locs hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair"]);
     await expect.poll(() => labels(/Start from a look/)).toEqual(["Short brown hair, glasses", "Curly black hair", "Long blonde hair"]);
     await page.getByLabel("Pronouns").selectOption("she/her");
     await page.getByRole("button", { name: "Long hair" }).click();
@@ -120,6 +120,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
   await page.getByRole("button", { name: "Blonde hair colour" }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
+  // Saving returns home; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/$/);
   await page.goto(bookUrl);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(page);

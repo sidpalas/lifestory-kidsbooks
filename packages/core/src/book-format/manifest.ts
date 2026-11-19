@@ -10,16 +10,20 @@ import { Effect } from "effect";
 import {
   Age,
   FaceOption,
+  FacialHairOption,
   faceOptions,
   DEFAULT_FEATURES,
   drawnFeatures,
   FeaturesOption,
   hasFeatures,
+  LATER_PART_AXES,
+  type LookOption,
   lookVocabulary,
   Look,
   NO_PART_OPTIONS,
   PartAxis,
   partAxesAt,
+  requiredAt,
   sameAppearance,
 } from "../looks/vocabulary.ts";
 import { tokenIssues } from "./text.ts";
@@ -271,10 +275,7 @@ export const StoryManifest = StoryDraft.check(
         }
       }
     }
-    const partAxes = [...new Set(manifest.partOrder)];
-    if (partAxes.length !== manifest.partOrder.length || partAxes.length !== PartAxis.literals.length) {
-      issues.push({ path: ["partOrder"], issue: `must list each of ${PartAxis.literals.join(", ")} once` });
-    }
+    if (partOrderIssue(manifest.partOrder)) issues.push({ path: ["partOrder"], issue: partOrderIssue(manifest.partOrder)! });
     manifest.characterSlots.forEach((slot, s) => {
       if (!slot.ages.includes(slot.example.look.age)) {
         issues.push({ path: ["characterSlots", s, "example", "look", "age"], issue: `the example is not one of the slot's ages` });
@@ -307,6 +308,12 @@ export type StoryManifest = typeof StoryManifest.Type;
 const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> => (figure.age ? [figure.age] : slot.ages);
 
 /** What a figure has extra or misplaced, given the ages it draws. Paths are relative to the figure. */
+/** A `partOrder` lists each part axis once; axes added later may be missing, and go at the bottom (D43). */
+const partOrderIssue = (order: ReadonlyArray<PartAxis>): string | undefined =>
+  new Set(order).size !== order.length || PartAxis.literals.some((axis) => !order.includes(axis) && !LATER_PART_AXES.includes(axis))
+    ? `must list each of ${PartAxis.literals.filter((axis) => !LATER_PART_AXES.includes(axis)).join(", ")} once${LATER_PART_AXES.map((axis) => `, and ${axis} at most once`).join("")}`
+    : undefined;
+
 const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
   const issues: Array<{ path: ReadonlyArray<PropertyKey>; issue: string }> = [];
   const keys = figure.bases.map((base) => `${base.age}/${base.face}${hasFeatures(base.age) ? `/${base.features ?? "features:defined"}` : ""}`);
@@ -315,9 +322,7 @@ const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyAr
     if (!ages.includes(base.age)) issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
     else if (base.features && !hasFeatures(base.age)) issues.push({ path: ["bases", b, "features"], issue: `"${base.age}" bases have no features` });
   });
-  if (figure.partOrder && (new Set(figure.partOrder).size !== figure.partOrder.length || figure.partOrder.length !== PartAxis.literals.length)) {
-    issues.push({ path: ["partOrder"], issue: `must list each of ${PartAxis.literals.join(", ")} once` });
-  }
+  if (figure.partOrder && partOrderIssue(figure.partOrder)) issues.push({ path: ["partOrder"], issue: partOrderIssue(figure.partOrder)! });
   if (figure.showsHead === false) {
     if (figure.parts.length > 0) issues.push({ path: ["parts"], issue: "a figure without a head has no parts" });
     return issues;
@@ -334,24 +339,31 @@ const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyAr
 };
 
 /**
- * What a story version lacks from the look vocabulary as it stands today. Publishing requires none (Sid,
- * 2026-11-19: every story supports every option except faces of another age). A stored version is never
- * rechecked, so options added to the vocabulary later are simply unsupported there; see `unsupportedOptions`.
+ * What a story version published at `publishedAt` lacks from the look vocabulary. Publishing requires none (Sid,
+ * 2026-11-19: every story supports every option except faces of another age), except options added to the
+ * vocabulary after `publishedAt` (D43): a version published earlier simply doesn't support them, and a book asks for
+ * a stand-in; see `unsupportedOptions`.
  */
-export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> => coverageGaps(manifest).map((gap) => gap.text);
+export const vocabularyGaps = (manifest: StoryManifest, publishedAt: Date = new Date()): ReadonlyArray<string> =>
+  coverageGaps(manifest, publishedAt).map((gap) => gap.text);
 
 /**
  * The vocabulary options a story version can't draw anywhere it should, such as a hair colour added after it was
- * published: what its author still has to add (D41). Missing bases aren't options and aren't listed.
+ * published: what its author still has to add (D41), including options its version needn't have had (D43). Missing
+ * bases aren't options and aren't listed.
  */
 export const uncoveredOptions = (manifest: StoryManifest): ReadonlyArray<string> => [
   ...new Set(coverageGaps(manifest).flatMap((gap) => (gap.option ? [gap.option] : []))),
 ];
 
-const coverageGaps = (manifest: StoryManifest): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
+/** Gaps in the vocabulary's coverage; with `publishedAt`, only those in options a version published then must draw. */
+const coverageGaps = (manifest: StoryManifest, publishedAt?: Date): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
   const gaps: Array<{ text: string; option?: string }> = [];
+  const required = (option: LookOption) => !publishedAt || requiredAt(option, publishedAt);
   for (const axis of ["skin", "hairColour"] as const) {
-    for (const option of lookVocabulary[axis]) if (!manifest.palettes[axis][option.id]) gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
+    for (const option of lookVocabulary[axis]) {
+      if (required(option) && !manifest.palettes[axis][option.id]) gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
+    }
   }
   for (const page of manifest.pages) {
     for (const layer of page.illustration.layers) {
@@ -367,7 +379,7 @@ const coverageGaps = (manifest: StoryManifest): ReadonlyArray<{ readonly text: s
             if (layer.showsHead === false) continue;
             for (const axis of partAxesAt(age)) {
               for (const option of lookVocabulary[axis]) {
-                if (NO_PART_OPTIONS.has(option.id)) continue;
+                if (NO_PART_OPTIONS.has(option.id) || !required(option)) continue;
                 if (!layer.parts.some((part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id)) {
                   gaps.push({ text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`, option: option.id });
                 }
@@ -427,6 +439,7 @@ export const LookOverride = Schema.Struct({
   hair: Schema.optionalKey(Look.fields.hair),
   hairColour: Schema.optionalKey(Look.fields.hairColour),
   glasses: Schema.optionalKey(Look.fields.glasses),
+  facialHair: Schema.optionalKey(FacialHairOption),
 });
 export type LookOverride = typeof LookOverride.Type;
 

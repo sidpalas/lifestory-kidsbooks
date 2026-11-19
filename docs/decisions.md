@@ -517,6 +517,30 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** authors need to withdraw an addition (then a withdrawal that pinned proofs ignore), or additions grow
   so many that merging them on every read gets slow (then cache the merged manifest per revision).
 
+### D43. Six more hairstyles and facial hair; options added later are optional for stories published before them — Decided (Sid, 2026-11-19) / Made
+- **What (Sid):** hairstyles buzz cut, ponytail, braids, coily afro, locs and bun join short, curly and long, and a
+  facial hair axis (none, stubble, moustache, full beard) is offered from adult up. Pronouns order the hairstyles
+  (she/her starts with long, ponytail and braids; he/him with short and buzz cut) and never hide one. Facial hair is
+  a part like glasses, drawn in neutral tones and recoloured with the hair colour, below the glasses and hair.
+- **Stories published before an option stay valid (Made; Sid can veto):** each option added after the first stories
+  carries `addedAt`. Publishing still requires every option (D26), except those added after the version's
+  `publishedAt`; a stored `partOrder` may lack an axis added later, which then goes at the bottom (`fullPartOrder`).
+  Moon Picnic and The Paper Boat keep their versions; a parent who picks a new option sees the book's stand-in
+  prompt (D28) until the story draws it, and `/author` lists the options as uncovered; the author adds them as
+  additions (D41). Without this, every new option would stop the samples (and any older version) importing on a fresh
+  database until each story drew it in its own style. Looks saved before the axis decode with no facial hair.
+- **Facial hair's place for stories that don't list it (D41's "new axes later"):** a stored `partOrder` without
+  `facialHair` draws it at the bottom, under glasses and hair, which is where a beard goes; additions don't carry a
+  `partOrder` yet, so a story that wants it elsewhere needs a new version.
+- **Portrait art:** the new hairstyles on every base from toddler up (108 parts) and the facial hair on every adult
+  and older adult base, defined and softer (24), made and cut out like the rest (D28, D36) and reviewed on the
+  lightest and darkest skin; US$7.30 on OpenAI, including one retake of the stubble. Stubble stays faint on older
+  adults: the model draws it as sparse dots close to the skin's tone, which the cut-out drops as noise or skin, so a
+  stronger prompt only helped younger adults. Each base keeps the stronger of the two takes; tuning the cut-out for
+  stippled texture would fix it without new edits. Red hair's portrait palette (D41) is retuned from a bright
+  orange-red to copper (`#8c3a1c`).
+- **Not here:** auburn (a palette, through additions like red, D41).
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The

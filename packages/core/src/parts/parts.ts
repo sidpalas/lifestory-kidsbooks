@@ -57,6 +57,15 @@ const optionWords: Record<string, string> = {
   "hair:curly": "now has curly dark brown hair",
   "hair:long": "now has long dark brown hair",
   "glasses:round": "now wears round thin black wire-frame glasses",
+  "hair:buzz": "now has a very short dark brown buzz cut that follows the shape of the scalp",
+  "hair:ponytail": "now has dark brown hair pulled back into a ponytail, with the ponytail visible behind the head",
+  "hair:braids": "now has dark brown hair in two braids that fall over the shoulders",
+  "hair:afro": "now has a full, rounded, tightly coiled dark brown afro",
+  "hair:locs": "now has dark brown locs (dreadlocks) falling to the shoulders",
+  "hair:bun": "now has dark brown hair pulled up into a bun on top of the head",
+  "facial-hair:stubble": "now has short, dense dark brown stubble on the jaw, chin and upper lip: tiny dark brown dots, clearly darker than the skin, like a five o'clock shadow",
+  "facial-hair:moustache": "now has a dark brown moustache",
+  "facial-hair:beard": "now has a full, neatly trimmed dark brown beard and moustache",
 };
 
 /**

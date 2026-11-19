@@ -267,7 +267,7 @@ function PartsGrid({
       option: cell.option.id,
       asset,
       at: sibling?.at ?? [0, 0, 1000, 1000],
-      palette: cell.axis === "hair" ? "hairColour" : "none",
+      palette: cell.axis === "glasses" ? "none" : "hairColour",
       approved: false,
     };
     onChange({ ...figure, parts: [...figure.parts, part] });

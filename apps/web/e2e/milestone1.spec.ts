@@ -137,6 +137,8 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
   await owner.getByRole("button", { name: "Blonde hair colour" }).click();
   await owner.getByRole("button", { name: "Save changes" }).click();
+  // Saving returns home; opening the book sooner can read the look from before the save.
+  await expect(owner).toHaveURL(/\/$/);
   await owner.goto(bookPath);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(owner);

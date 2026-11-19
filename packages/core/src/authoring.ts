@@ -112,7 +112,7 @@ const starterDraft = (title: string): StoryDraft => ({
   },
   characterSlots: [],
   palettes: starterPalettes,
-  partOrder: ["hair", "glasses"],
+  partOrder: ["facialHair", "hair", "glasses"],
   pages: [{ pageId: "p01", layout: "full-bleed-art/text-bottom", text: [{ style: "title", content: title }], illustration: { layers: [] } }],
 });
 

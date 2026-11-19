@@ -1,5 +1,41 @@
 {
  "adult-oval": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/adult-oval-facial-hair-beard.png",
+    "at": [
+     276,
+     421,
+     694,
+     714
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/adult-oval-facial-hair-moustache.png",
+    "at": [
+     376,
+     528,
+     604,
+     584
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/adult-oval-facial-hair-stubble.png",
+    "at": [
+     319,
+     536,
+     626,
+     711
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/adult-oval-glasses-round.png",
@@ -10,6 +46,54 @@
      486
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/adult-oval-hair-afro.png",
+    "at": [
+     171,
+     26,
+     802,
+     462
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/adult-oval-hair-braids.png",
+    "at": [
+     198,
+     108,
+     779,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/adult-oval-hair-bun.png",
+    "at": [
+     250,
+     22,
+     724,
+     439
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/adult-oval-hair-buzz.png",
+    "at": [
+     260,
+     125,
+     707,
+     417
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -24,6 +108,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/adult-oval-hair-locs.png",
+    "at": [
+     139,
+     94,
+     839,
+     853
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/adult-oval-hair-long.png",
@@ -32,6 +128,18 @@
      87,
      902,
      916
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/adult-oval-hair-ponytail.png",
+    "at": [
+     245,
+     112,
+     753,
+     779
     ],
     "palette": "hairColour"
    }
@@ -50,6 +158,42 @@
   ]
  },
  "adult-oval-soft": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/adult-oval-soft-facial-hair-beard.png",
+    "at": [
+     282,
+     413,
+     691,
+     698
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/adult-oval-soft-facial-hair-moustache.png",
+    "at": [
+     382,
+     517,
+     599,
+     575
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/adult-oval-soft-facial-hair-stubble.png",
+    "at": [
+     334,
+     526,
+     642,
+     683
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/adult-oval-soft-glasses-round.png",
@@ -60,6 +204,54 @@
      491
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/adult-oval-soft-hair-afro.png",
+    "at": [
+     142,
+     19,
+     836,
+     583
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/adult-oval-soft-hair-braids.png",
+    "at": [
+     208,
+     114,
+     766,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/adult-oval-soft-hair-bun.png",
+    "at": [
+     248,
+     24,
+     718,
+     452
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/adult-oval-soft-hair-buzz.png",
+    "at": [
+     261,
+     140,
+     707,
+     418
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -74,6 +266,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/adult-oval-soft-hair-locs.png",
+    "at": [
+     141,
+     91,
+     818,
+     874
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/adult-oval-soft-hair-long.png",
@@ -82,6 +286,18 @@
      107,
      883,
      874
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/adult-oval-soft-hair-ponytail.png",
+    "at": [
+     252,
+     113,
+     728,
+     804
     ],
     "palette": "hairColour"
    }
@@ -100,6 +316,42 @@
   ]
  },
  "adult-round": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/adult-round-facial-hair-beard.png",
+    "at": [
+     261,
+     399,
+     730,
+     725
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/adult-round-facial-hair-moustache.png",
+    "at": [
+     371,
+     500,
+     634,
+     562
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/adult-round-facial-hair-stubble.png",
+    "at": [
+     278,
+     501,
+     719,
+     704
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/adult-round-glasses-round.png",
@@ -110,6 +362,54 @@
      475
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/adult-round-hair-afro.png",
+    "at": [
+     154,
+     5,
+     840,
+     441
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/adult-round-hair-braids.png",
+    "at": [
+     167,
+     67,
+     824,
+     998
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/adult-round-hair-bun.png",
+    "at": [
+     239,
+     4,
+     766,
+     441
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/adult-round-hair-buzz.png",
+    "at": [
+     237,
+     100,
+     747,
+     412
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -124,6 +424,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/adult-round-hair-locs.png",
+    "at": [
+     106,
+     56,
+     884,
+     860
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/adult-round-hair-long.png",
@@ -132,6 +444,18 @@
      63,
      935,
      840
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/adult-round-hair-ponytail.png",
+    "at": [
+     225,
+     75,
+     796,
+     785
     ],
     "palette": "hairColour"
    }
@@ -150,6 +474,42 @@
   ]
  },
  "adult-round-soft": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/adult-round-soft-facial-hair-beard.png",
+    "at": [
+     266,
+     429,
+     721,
+     708
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/adult-round-soft-facial-hair-moustache.png",
+    "at": [
+     375,
+     500,
+     620,
+     559
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/adult-round-soft-facial-hair-stubble.png",
+    "at": [
+     294,
+     506,
+     699,
+     690
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/adult-round-soft-glasses-round.png",
@@ -160,6 +520,54 @@
      483
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/adult-round-soft-hair-afro.png",
+    "at": [
+     130,
+     0,
+     853,
+     590
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/adult-round-soft-hair-braids.png",
+    "at": [
+     202,
+     78,
+     781,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/adult-round-soft-hair-bun.png",
+    "at": [
+     237,
+     10,
+     750,
+     430
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/adult-round-soft-hair-buzz.png",
+    "at": [
+     241,
+     102,
+     739,
+     404
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -174,6 +582,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/adult-round-soft-hair-locs.png",
+    "at": [
+     119,
+     61,
+     847,
+     886
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/adult-round-soft-hair-long.png",
@@ -182,6 +602,18 @@
      67,
      955,
      893
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/adult-round-soft-hair-ponytail.png",
+    "at": [
+     239,
+     76,
+     759,
+     808
     ],
     "palette": "hairColour"
    }
@@ -200,6 +632,42 @@
   ]
  },
  "older-adult-oval": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/older-adult-oval-facial-hair-beard.png",
+    "at": [
+     257,
+     401,
+     726,
+     725
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/older-adult-oval-facial-hair-moustache.png",
+    "at": [
+     376,
+     499,
+     624,
+     563
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/older-adult-oval-facial-hair-stubble.png",
+    "at": [
+     307,
+     517,
+     608,
+     709
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-oval-glasses-round.png",
@@ -210,6 +678,54 @@
      459
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-adult-oval-hair-afro.png",
+    "at": [
+     143,
+     0,
+     846,
+     445
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-adult-oval-hair-braids.png",
+    "at": [
+     178,
+     46,
+     807,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-adult-oval-hair-bun.png",
+    "at": [
+     224,
+     0,
+     757,
+     418
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-adult-oval-hair-buzz.png",
+    "at": [
+     229,
+     71,
+     747,
+     397
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -224,6 +740,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-adult-oval-hair-locs.png",
+    "at": [
+     107,
+     29,
+     860,
+     863
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-adult-oval-hair-long.png",
@@ -232,6 +760,18 @@
      36,
      927,
      983
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-adult-oval-hair-ponytail.png",
+    "at": [
+     216,
+     45,
+     772,
+     785
     ],
     "palette": "hairColour"
    }
@@ -250,6 +790,42 @@
   ]
  },
  "older-adult-oval-soft": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/older-adult-oval-soft-facial-hair-beard.png",
+    "at": [
+     272,
+     439,
+     714,
+     711
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/older-adult-oval-soft-facial-hair-moustache.png",
+    "at": [
+     362,
+     498,
+     619,
+     569
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/older-adult-oval-soft-facial-hair-stubble.png",
+    "at": [
+     288,
+     507,
+     659,
+     669
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-oval-soft-glasses-round.png",
@@ -260,6 +836,54 @@
      468
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-afro.png",
+    "at": [
+     132,
+     1,
+     848,
+     508
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-braids.png",
+    "at": [
+     187,
+     40,
+     796,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-bun.png",
+    "at": [
+     227,
+     1,
+     753,
+     414
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-buzz.png",
+    "at": [
+     234,
+     75,
+     743,
+     399
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -274,6 +898,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-locs.png",
+    "at": [
+     134,
+     24,
+     841,
+     875
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-adult-oval-soft-hair-long.png",
@@ -282,6 +918,18 @@
      34,
      948,
      906
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-adult-oval-soft-hair-ponytail.png",
+    "at": [
+     225,
+     49,
+     762,
+     813
     ],
     "palette": "hairColour"
    }
@@ -300,6 +948,42 @@
   ]
  },
  "older-adult-round": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/older-adult-round-facial-hair-beard.png",
+    "at": [
+     252,
+     484,
+     742,
+     750
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/older-adult-round-facial-hair-moustache.png",
+    "at": [
+     355,
+     500,
+     631,
+     584
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/older-adult-round-facial-hair-stubble.png",
+    "at": [
+     283,
+     533,
+     706,
+     725
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-round-glasses-round.png",
@@ -310,6 +994,54 @@
      492
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-adult-round-hair-afro.png",
+    "at": [
+     133,
+     11,
+     858,
+     476
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-adult-round-hair-braids.png",
+    "at": [
+     154,
+     91,
+     830,
+     998
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-adult-round-hair-bun.png",
+    "at": [
+     210,
+     7,
+     776,
+     454
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-adult-round-hair-buzz.png",
+    "at": [
+     220,
+     104,
+     764,
+     422
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -324,6 +1056,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-adult-round-hair-locs.png",
+    "at": [
+     94,
+     61,
+     881,
+     901
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-adult-round-hair-long.png",
@@ -332,6 +1076,18 @@
      66,
      976,
      864
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-adult-round-hair-ponytail.png",
+    "at": [
+     200,
+     79,
+     801,
+     795
     ],
     "palette": "hairColour"
    }
@@ -350,6 +1106,42 @@
   ]
  },
  "older-adult-round-soft": {
+  "facial-hair:beard": [
+   {
+    "asset": "parts/older-adult-round-soft-facial-hair-beard.png",
+    "at": [
+     257,
+     490,
+     735,
+     729
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:moustache": [
+   {
+    "asset": "parts/older-adult-round-soft-facial-hair-moustache.png",
+    "at": [
+     371,
+     514,
+     624,
+     585
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "facial-hair:stubble": [
+   {
+    "asset": "parts/older-adult-round-soft-facial-hair-stubble.png",
+    "at": [
+     316,
+     535,
+     608,
+     713
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-round-soft-glasses-round.png",
@@ -360,6 +1152,54 @@
      502
     ],
     "palette": "none"
+   }
+  ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-afro.png",
+    "at": [
+     107,
+     7,
+     883,
+     617
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-braids.png",
+    "at": [
+     168,
+     81,
+     823,
+     997
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-bun.png",
+    "at": [
+     221,
+     9,
+     775,
+     463
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-buzz.png",
+    "at": [
+     224,
+     93,
+     762,
+     440
+    ],
+    "palette": "hairColour"
    }
   ],
   "hair:curly": [
@@ -374,6 +1214,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-locs.png",
+    "at": [
+     109,
+     63,
+     878,
+     911
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-adult-round-soft-hair-long.png",
@@ -382,6 +1234,18 @@
      49,
      934,
      993
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-adult-round-soft-hair-ponytail.png",
+    "at": [
+     215,
+     83,
+     776,
+     824
     ],
     "palette": "hairColour"
    }
@@ -412,6 +1276,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-child-oval-hair-afro.png",
+    "at": [
+     137,
+     15,
+     846,
+     500
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-child-oval-hair-braids.png",
+    "at": [
+     216,
+     100,
+     772,
+     993
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-child-oval-hair-bun.png",
+    "at": [
+     239,
+     17,
+     754,
+     456
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-child-oval-hair-buzz.png",
+    "at": [
+     256,
+     118,
+     738,
+     432
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/older-child-oval-hair-curly.png",
@@ -424,6 +1336,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-child-oval-hair-locs.png",
+    "at": [
+     155,
+     79,
+     823,
+     835
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-child-oval-hair-long.png",
@@ -432,6 +1356,18 @@
      79,
      897,
      959
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-child-oval-hair-ponytail.png",
+    "at": [
+     239,
+     93,
+     757,
+     803
     ],
     "palette": "hairColour"
    }
@@ -462,6 +1398,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/older-child-round-hair-afro.png",
+    "at": [
+     112,
+     34,
+     874,
+     505
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/older-child-round-hair-braids.png",
+    "at": [
+     181,
+     124,
+     811,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/older-child-round-hair-bun.png",
+    "at": [
+     206,
+     25,
+     776,
+     498
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/older-child-round-hair-buzz.png",
+    "at": [
+     205,
+     146,
+     779,
+     489
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/older-child-round-hair-curly.png",
@@ -474,6 +1458,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/older-child-round-hair-locs.png",
+    "at": [
+     114,
+     98,
+     873,
+     844
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/older-child-round-hair-long.png",
@@ -482,6 +1478,18 @@
      119,
      929,
      929
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/older-child-round-hair-ponytail.png",
+    "at": [
+     206,
+     126,
+     784,
+     815
     ],
     "palette": "hairColour"
    }
@@ -512,6 +1520,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/teen-oval-hair-afro.png",
+    "at": [
+     150,
+     19,
+     838,
+     465
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/teen-oval-hair-braids.png",
+    "at": [
+     208,
+     101,
+     774,
+     996
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/teen-oval-hair-bun.png",
+    "at": [
+     246,
+     12,
+     740,
+     452
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/teen-oval-hair-buzz.png",
+    "at": [
+     255,
+     123,
+     730,
+     421
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/teen-oval-hair-curly.png",
@@ -524,6 +1580,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/teen-oval-hair-locs.png",
+    "at": [
+     147,
+     89,
+     839,
+     847
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/teen-oval-hair-long.png",
@@ -532,6 +1600,18 @@
      91,
      906,
      1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/teen-oval-hair-ponytail.png",
+    "at": [
+     241,
+     97,
+     749,
+     799
     ],
     "palette": "hairColour"
    }
@@ -562,6 +1642,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/teen-oval-soft-hair-afro.png",
+    "at": [
+     144,
+     11,
+     845,
+     580
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/teen-oval-soft-hair-braids.png",
+    "at": [
+     217,
+     85,
+     777,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/teen-oval-soft-hair-bun.png",
+    "at": [
+     246,
+     11,
+     745,
+     463
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/teen-oval-soft-hair-buzz.png",
+    "at": [
+     256,
+     120,
+     731,
+     423
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/teen-oval-soft-hair-curly.png",
@@ -574,6 +1702,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/teen-oval-soft-hair-locs.png",
+    "at": [
+     140,
+     82,
+     839,
+     894
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/teen-oval-soft-hair-long.png",
@@ -582,6 +1722,18 @@
      86,
      964,
      934
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/teen-oval-soft-hair-ponytail.png",
+    "at": [
+     255,
+     102,
+     748,
+     818
     ],
     "palette": "hairColour"
    }
@@ -612,6 +1764,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/teen-round-hair-afro.png",
+    "at": [
+     158,
+     11,
+     826,
+     431
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/teen-round-hair-braids.png",
+    "at": [
+     190,
+     56,
+     795,
+     989
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/teen-round-hair-bun.png",
+    "at": [
+     238,
+     5,
+     749,
+     453
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/teen-round-hair-buzz.png",
+    "at": [
+     236,
+     95,
+     746,
+     405
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/teen-round-hair-curly.png",
@@ -624,6 +1824,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/teen-round-hair-locs.png",
+    "at": [
+     139,
+     59,
+     847,
+     823
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/teen-round-hair-long.png",
@@ -632,6 +1844,18 @@
      61,
      928,
      849
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/teen-round-hair-ponytail.png",
+    "at": [
+     238,
+     66,
+     768,
+     787
     ],
     "palette": "hairColour"
    }
@@ -662,6 +1886,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/teen-round-soft-hair-afro.png",
+    "at": [
+     142,
+     0,
+     847,
+     565
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/teen-round-soft-hair-braids.png",
+    "at": [
+     214,
+     77,
+     777,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/teen-round-soft-hair-bun.png",
+    "at": [
+     237,
+     8,
+     744,
+     430
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/teen-round-soft-hair-buzz.png",
+    "at": [
+     238,
+     97,
+     744,
+     411
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/teen-round-soft-hair-curly.png",
@@ -674,6 +1946,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/teen-round-soft-hair-locs.png",
+    "at": [
+     140,
+     64,
+     853,
+     875
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/teen-round-soft-hair-long.png",
@@ -682,6 +1966,18 @@
      69,
      975,
      907
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/teen-round-soft-hair-ponytail.png",
+    "at": [
+     230,
+     78,
+     757,
+     794
     ],
     "palette": "hairColour"
    }
@@ -700,6 +1996,54 @@
   ]
  },
  "toddler-oval": {
+  "hair:afro": [
+   {
+    "asset": "parts/toddler-oval-hair-afro.png",
+    "at": [
+     135,
+     29,
+     847,
+     516
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/toddler-oval-hair-braids.png",
+    "at": [
+     206,
+     125,
+     777,
+     987
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/toddler-oval-hair-bun.png",
+    "at": [
+     227,
+     39,
+     757,
+     483
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/toddler-oval-hair-buzz.png",
+    "at": [
+     235,
+     143,
+     742,
+     482
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/toddler-oval-hair-curly.png",
@@ -712,6 +2056,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/toddler-oval-hair-locs.png",
+    "at": [
+     142,
+     101,
+     840,
+     834
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/toddler-oval-hair-long.png",
@@ -720,6 +2076,18 @@
      111,
      883,
      930
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/toddler-oval-hair-ponytail.png",
+    "at": [
+     227,
+     115,
+     831,
+     643
     ],
     "palette": "hairColour"
    }
@@ -738,6 +2106,54 @@
   ]
  },
  "toddler-round": {
+  "hair:afro": [
+   {
+    "asset": "parts/toddler-round-hair-afro.png",
+    "at": [
+     128,
+     64,
+     856,
+     533
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/toddler-round-hair-braids.png",
+    "at": [
+     183,
+     158,
+     801,
+     983
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/toddler-round-hair-bun.png",
+    "at": [
+     207,
+     50,
+     785,
+     530
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/toddler-round-hair-buzz.png",
+    "at": [
+     210,
+     176,
+     765,
+     507
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/toddler-round-hair-curly.png",
@@ -750,6 +2166,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/toddler-round-hair-locs.png",
+    "at": [
+     124,
+     134,
+     863,
+     855
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/toddler-round-hair-long.png",
@@ -758,6 +2186,18 @@
      132,
      903,
      945
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/toddler-round-hair-ponytail.png",
+    "at": [
+     205,
+     137,
+     833,
+     533
     ],
     "palette": "hairColour"
    }
@@ -788,6 +2228,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/young-child-oval-hair-afro.png",
+    "at": [
+     130,
+     23,
+     854,
+     528
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/young-child-oval-hair-braids.png",
+    "at": [
+     196,
+     105,
+     786,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/young-child-oval-hair-bun.png",
+    "at": [
+     225,
+     24,
+     758,
+     494
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/young-child-oval-hair-buzz.png",
+    "at": [
+     237,
+     125,
+     740,
+     484
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/young-child-oval-hair-curly.png",
@@ -800,6 +2288,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/young-child-oval-hair-locs.png",
+    "at": [
+     146,
+     101,
+     831,
+     848
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/young-child-oval-hair-long.png",
@@ -808,6 +2308,18 @@
      92,
      878,
      935
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/young-child-oval-hair-ponytail.png",
+    "at": [
+     224,
+     106,
+     763,
+     819
     ],
     "palette": "hairColour"
    }
@@ -838,6 +2350,54 @@
     "palette": "none"
    }
   ],
+  "hair:afro": [
+   {
+    "asset": "parts/young-child-round-hair-afro.png",
+    "at": [
+     115,
+     43,
+     869,
+     525
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:braids": [
+   {
+    "asset": "parts/young-child-round-hair-braids.png",
+    "at": [
+     176,
+     140,
+     811,
+     1000
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:bun": [
+   {
+    "asset": "parts/young-child-round-hair-bun.png",
+    "at": [
+     202,
+     27,
+     793,
+     537
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:buzz": [
+   {
+    "asset": "parts/young-child-round-hair-buzz.png",
+    "at": [
+     200,
+     154,
+     779,
+     516
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:curly": [
    {
     "asset": "parts/young-child-round-hair-curly.png",
@@ -850,6 +2410,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:locs": [
+   {
+    "asset": "parts/young-child-round-hair-locs.png",
+    "at": [
+     110,
+     120,
+     867,
+     875
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:long": [
    {
     "asset": "parts/young-child-round-hair-long.png",
@@ -858,6 +2430,18 @@
      119,
      934,
      987
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:ponytail": [
+   {
+    "asset": "parts/young-child-round-hair-ponytail.png",
+    "at": [
+     202,
+     125,
+     816,
+     803
     ],
     "palette": "hairColour"
    }

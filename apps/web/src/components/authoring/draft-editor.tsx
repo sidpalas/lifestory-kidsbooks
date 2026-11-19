@@ -512,7 +512,7 @@ function StoryTab({
 
 // ---- Roles ---------------------------------------------------------------------------
 
-const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras" };
+const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras", facialHair: "Facial hair" };
 
 const newSlot = (draft: StoryDraft): CharacterSlot => {
   const used = new Set(draft.characterSlots.map((slot) => slot.slotId));
@@ -525,7 +525,7 @@ const newSlot = (draft: StoryDraft): CharacterSlot => {
     example: {
       name: "Mia",
       pronouns: "she/her",
-      look: { age: "young-child", face: "face:round", features: "features:defined", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:none" },
+      look: { age: "young-child", face: "face:round", features: "features:defined", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" },
     },
   };
 };

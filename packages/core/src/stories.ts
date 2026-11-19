@@ -215,10 +215,11 @@ const storeVersionFiles = Effect.fn("stories.storeVersionFiles")(function* (
 export const importStoryVersion = Effect.fn("stories.importVersion")(function* (input: StoryVersionImport) {
   const manifest: StoryManifest = yield* decodeStoryManifest(input.manifest).pipe(Effect.orDie);
   if (input.publishedAt) {
-    // Publishing needs every part approved and the whole look vocabulary covered (D26), counting its additions (D41).
+    // Publishing needs every part approved and the whole look vocabulary covered (D26), counting its additions (D41),
+    // except options added to the vocabulary after it was published (D43).
     const additions = yield* Effect.forEach(input.coveredWith ?? [], (addition) => decodeAddition(addition).pipe(Effect.orDie));
     const covered = yield* mergeAdditions(manifest, additions).pipe(Effect.orDie);
-    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(covered)];
+    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(covered, input.publishedAt)];
     if (problems.length > 0) {
       return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
     }

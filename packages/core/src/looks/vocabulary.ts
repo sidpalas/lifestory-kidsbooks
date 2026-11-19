@@ -1,6 +1,7 @@
 // The shared look vocabulary (D26): every axis a family member's look has, with stable option IDs.
 // A look is one option per axis. It belongs to the family member, not to a story, so it works in every story:
-// each story must supply parts or palettes for every option here, at every age it draws a role (D26, D29).
+// each story must supply parts or palettes for every option here, at every age it draws a role (D26, D29), except
+// options added after it was published (`addedAt`, D43): those it may lack, and a book asks for a stand-in.
 // Browser-safe.
 import { Effect, Schema } from "effect";
 
@@ -9,7 +10,15 @@ export interface LookOption {
   readonly label: string;
   /** For colour axes: a representative colour for the picker's swatch (the mid tone of the portrait's palette). */
   readonly swatch?: string;
+  /**
+   * When the option joined the vocabulary, for options added after the first stories were published (D43). A story
+   * version published before then isn't required to draw it.
+   */
+  readonly addedAt?: string;
 }
+
+/** When the hairstyles from buzz cut to bun and the facial hair axis joined the vocabulary (D43). */
+const D43 = "2026-11-19T19:30:00Z";
 
 /**
  * Character ages (D29): buckets split where the body changes enough that one drawn base can't cover both, or where
@@ -63,6 +72,12 @@ export const hairOptions = [
   { id: "hair:short", label: "Short" },
   { id: "hair:curly", label: "Curly" },
   { id: "hair:long", label: "Long" },
+  { id: "hair:buzz", label: "Buzz cut", addedAt: D43 },
+  { id: "hair:ponytail", label: "Ponytail", addedAt: D43 },
+  { id: "hair:braids", label: "Braids", addedAt: D43 },
+  { id: "hair:afro", label: "Coily afro", addedAt: D43 },
+  { id: "hair:locs", label: "Locs", addedAt: D43 },
+  { id: "hair:bun", label: "Bun", addedAt: D43 },
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const hairColourOptions = [
@@ -70,7 +85,7 @@ export const hairColourOptions = [
   { id: "hair-colour:brown", label: "Brown", swatch: "#624028" },
   { id: "hair-colour:blonde", label: "Blonde", swatch: "#cea660" },
   { id: "hair-colour:grey", label: "Grey", swatch: "#96969c" },
-  { id: "hair-colour:red", label: "Red", swatch: "#a8482a" },
+  { id: "hair-colour:red", label: "Red", swatch: "#8c3a1c" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const glassesOptions = [
@@ -78,8 +93,19 @@ export const glassesOptions = [
   { id: "glasses:round", label: "Round glasses" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
+/** Facial hair (D43), drawn as a part from adult up and recoloured with the hair colour. */
+export const facialHairOptions = [
+  { id: "facial-hair:none", label: "No facial hair" },
+  { id: "facial-hair:stubble", label: "Stubble", addedAt: D43 },
+  { id: "facial-hair:moustache", label: "Moustache", addedAt: D43 },
+  { id: "facial-hair:beard", label: "Full beard", addedAt: D43 },
+] as const satisfies ReadonlyArray<LookOption>;
+
 /** Options with no part to draw. */
-export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["glasses:none"]);
+export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["glasses:none", "facial-hair:none"]);
+
+/** Whether a story version published at `publishedAt` must draw `option`: options added since are optional (D43). */
+export const requiredAt = (option: LookOption, publishedAt: Date) => option.addedAt === undefined || new Date(option.addedAt) <= publishedAt;
 
 const ids = <T extends ReadonlyArray<LookOption>>(options: T) => options.map((option) => option.id) as { [K in keyof T]: T[K]["id"] };
 
@@ -92,6 +118,7 @@ export const SkinOption = Schema.Literals(ids(skinOptions));
 export const HairOption = Schema.Literals(ids(hairOptions));
 export const HairColourOption = Schema.Literals(ids(hairColourOptions));
 export const GlassesOption = Schema.Literals(ids(glassesOptions));
+export const FacialHairOption = Schema.Literals(ids(facialHairOptions));
 
 /** A family member's look: one option per axis. */
 export const Look = Schema.Struct({
@@ -102,12 +129,14 @@ export const Look = Schema.Struct({
   hair: HairOption,
   hairColour: HairColourOption,
   glasses: GlassesOption,
+  /** Looks saved before the axis existed have none (D43). */
+  facialHair: FacialHairOption.pipe(Schema.withDecodingDefaultKey(Effect.succeed("facial-hair:none" as const))),
 });
 export type Look = typeof Look.Type;
 export type LookAxis = keyof Look;
 
 /** Axes drawn as parts on top of the base face; their order on a page is the manifest's `partOrder`. */
-export const PartAxis = Schema.Literals(["hair", "glasses"]);
+export const PartAxis = Schema.Literals(["hair", "glasses", "facialHair"]);
 export type PartAxis = typeof PartAxis.Type;
 
 /** Axes applied as a recolour of the illustrator's neutral tones. */
@@ -122,17 +151,29 @@ export const lookVocabulary = {
   hair: hairOptions,
   hairColour: hairColourOptions,
   glasses: glassesOptions,
+  facialHair: facialHairOptions,
 } as const satisfies Record<LookAxis, ReadonlyArray<LookOption>>;
 
-/** Part axes drawn at each age: a baby has no hairstyle part, and neither babies nor toddlers wear glasses. */
+/**
+ * Part axes added after stories were published, bottom to top, with where they go when a stored `partOrder` doesn't
+ * list them: facial hair under the hair and glasses (D43).
+ */
+export const LATER_PART_AXES: ReadonlyArray<PartAxis> = ["facialHair"];
+/** `partOrder` with the axes added since it was written placed at the bottom. */
+export const fullPartOrder = (order: ReadonlyArray<PartAxis>): ReadonlyArray<PartAxis> => [
+  ...LATER_PART_AXES.filter((axis) => !order.includes(axis)),
+  ...order,
+];
+
+/** Part axes drawn at each age: a baby has no hairstyle part, neither babies nor toddlers wear glasses, and facial hair starts at adult. */
 const partAxesByAge: Record<Age, ReadonlyArray<PartAxis>> = {
   baby: [],
   toddler: ["hair"],
   "young-child": ["hair", "glasses"],
   "older-child": ["hair", "glasses"],
   teen: ["hair", "glasses"],
-  adult: ["hair", "glasses"],
-  "older-adult": ["hair", "glasses"],
+  adult: ["hair", "glasses", "facialHair"],
+  "older-adult": ["hair", "glasses", "facialHair"],
 };
 export const partAxesAt = (age: Age): ReadonlyArray<PartAxis> => partAxesByAge[age];
 
@@ -184,20 +225,20 @@ export const optionLabel = (id: string): string => {
 
 /** Where the picker starts: a few complete looks per age, refined one axis at a time. */
 export const curatedLooks: ReadonlyArray<{ readonly id: string; readonly label: string; readonly look: Look }> = [
-  { id: "baby-a", label: "Brown skin, black hair", look: { age: "baby", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "baby-b", label: "Light skin, blonde hair", look: { age: "baby", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:none" } },
-  { id: "toddler-a", label: "Curly brown hair", look: { age: "toddler", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:brown", glasses: "glasses:none" } },
-  { id: "toddler-b", label: "Short black hair", look: { age: "toddler", features: "features:defined", face: "face:oval", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "young-child-a", label: "Curly black hair", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "young-child-b", label: "Long blonde hair", look: { age: "young-child", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:long", hairColour: "hair-colour:blonde", glasses: "glasses:none" } },
-  { id: "young-child-c", label: "Short brown hair, glasses", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round" } },
-  { id: "older-child-a", label: "Long black hair", look: { age: "older-child", features: "features:defined", face: "face:oval", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "older-child-b", label: "Short brown hair, glasses", look: { age: "older-child", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round" } },
-  { id: "teen-a", label: "Curly black hair", look: { age: "teen", features: "features:defined", face: "face:oval", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "teen-b", label: "Long brown hair, glasses", look: { age: "teen", features: "features:soft", face: "face:round", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:round" } },
-  { id: "adult-a", label: "Long brown hair", look: { age: "adult", features: "features:soft", face: "face:oval", skin: "skin:s3", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:none" } },
-  { id: "adult-b", label: "Curly black hair", look: { age: "adult", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none" } },
-  { id: "adult-c", label: "Short blonde hair, glasses", look: { age: "adult", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:round" } },
-  { id: "older-adult-a", label: "Short grey hair, glasses", look: { age: "older-adult", features: "features:defined", face: "face:round", skin: "skin:s2", hair: "hair:short", hairColour: "hair-colour:grey", glasses: "glasses:round" } },
-  { id: "older-adult-b", label: "Long grey hair", look: { age: "older-adult", features: "features:soft", face: "face:oval", skin: "skin:s4", hair: "hair:long", hairColour: "hair-colour:grey", glasses: "glasses:none" } },
+  { id: "baby-a", label: "Brown skin, black hair", look: { age: "baby", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "baby-b", label: "Light skin, blonde hair", look: { age: "baby", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "toddler-a", label: "Curly brown hair", look: { age: "toddler", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "toddler-b", label: "Short black hair", look: { age: "toddler", features: "features:defined", face: "face:oval", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "young-child-a", label: "Curly black hair", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "young-child-b", label: "Long blonde hair", look: { age: "young-child", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:long", hairColour: "hair-colour:blonde", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "young-child-c", label: "Short brown hair, glasses", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
+  { id: "older-child-a", label: "Long black hair", look: { age: "older-child", features: "features:defined", face: "face:oval", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "older-child-b", label: "Short brown hair, glasses", look: { age: "older-child", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
+  { id: "teen-a", label: "Curly black hair", look: { age: "teen", features: "features:defined", face: "face:oval", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "teen-b", label: "Long brown hair, glasses", look: { age: "teen", features: "features:soft", face: "face:round", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
+  { id: "adult-a", label: "Long brown hair", look: { age: "adult", features: "features:soft", face: "face:oval", skin: "skin:s3", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "adult-b", label: "Curly black hair", look: { age: "adult", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
+  { id: "adult-c", label: "Short blonde hair, glasses", look: { age: "adult", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:round", facialHair: "facial-hair:none" } },
+  { id: "older-adult-a", label: "Short grey hair, glasses", look: { age: "older-adult", features: "features:defined", face: "face:round", skin: "skin:s2", hair: "hair:short", hairColour: "hair-colour:grey", glasses: "glasses:round", facialHair: "facial-hair:none" } },
+  { id: "older-adult-b", label: "Long grey hair", look: { age: "older-adult", features: "features:soft", face: "face:oval", skin: "skin:s4", hair: "hair:long", hairColour: "hair-colour:grey", glasses: "glasses:none", facialHair: "facial-hair:none" } },
 ];

@@ -94,14 +94,14 @@ export const generatePart = defineTask({
           ]);
           const { layers, metrics } = yield* Effect.promise(() =>
             cutOutLayer({ base, width: prepared.width, height: prepared.height, padding: prepared.padding }, output.body, skinMask, part.part.zone as Rect, {
-              neutral: part.part.axis === "hair",
+              neutral: part.part.axis !== "glasses",
             }),
           );
           const stored: Array<StoredLayer> = [];
           for (const layer of layers) {
             const asset = layer.region === "skin" ? part.assets.skin : part.assets.part;
             yield* part.put(asset, layer.png);
-            stored.push({ asset, at: layer.at, palette: layer.region === "skin" ? "skin" : part.part.axis === "hair" ? "hairColour" : "none" });
+            stored.push({ asset, at: layer.at, palette: layer.region === "skin" ? "skin" : part.part.axis !== "glasses" ? "hairColour" : "none" });
           }
           return { layers: stored, metrics };
         }),

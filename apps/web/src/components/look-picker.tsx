@@ -8,18 +8,21 @@ import type * as React from "react";
 import { cn } from "~/lib/utils";
 
 export const portraitUrl = (look: Look) =>
-  `/api/portrait?${new URLSearchParams({ age: look.age, face: look.face, features: look.features, skin: look.skin, hair: look.hair, hairColour: look.hairColour, glasses: look.glasses })}`;
+  `/api/portrait?${new URLSearchParams({ age: look.age, face: look.face, features: look.features, skin: look.skin, hair: look.hair, hairColour: look.hairColour, glasses: look.glasses, facialHair: look.facialHair })}`;
 
-export const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras" };
+export const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin tone", hair: "Hairstyle", hairColour: "Hair colour", glasses: "Extras", facialHair: "Facial hair" };
 
-/** "Young child, round face, medium skin, curly black hair, glasses", leaving out what the age doesn't draw. */
+/** "Adult, round face, defined, medium skin, curly black hair, full beard, glasses", leaving out what the age doesn't draw. */
 export const describeLook = (look: Look) => {
   const label = (axis: LookAxis) => (lookVocabulary[axis] as ReadonlyArray<{ id: string; label: string }>).find((option) => option.id === look[axis])?.label ?? look[axis];
   const drawn = partAxesAt(look.age);
-  const hair = drawn.includes("hair") ? `${label("hair").toLowerCase()} ${label("hairColour").toLowerCase()} hair` : `${label("hairColour").toLowerCase()} hair`;
+  const [style, colour] = [label("hair").toLowerCase(), label("hairColour").toLowerCase()];
+  // "Curly black hair", but "black braids": the newer hairstyles name the hair themselves.
+  const hair = !drawn.includes("hair") ? `${colour} hair` : ["hair:short", "hair:curly", "hair:long"].includes(look.hair) ? `${style} ${colour} hair` : `${colour} ${style}`;
   const glasses = drawn.includes("glasses") && look.glasses !== "glasses:none" ? ", glasses" : "";
+  const facialHair = drawn.includes("facialHair") && look.facialHair !== "facial-hair:none" ? `, ${label("facialHair").toLowerCase()}` : "";
   const features = hasFeatures(look.age) ? `, ${label("features").toLowerCase()}` : "";
-  return `${ageLabel(look.age)}, ${label("face").toLowerCase()}${features}, ${label("skin").toLowerCase()} skin, ${hair}${glasses}`;
+  return `${ageLabel(look.age)}, ${label("face").toLowerCase()}${features}, ${label("skin").toLowerCase()} skin, ${hair}${facialHair}${glasses}`;
 };
 
 export { ageLabel };
@@ -81,8 +84,8 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
  * hide an option: a boy may have long hair and a girl short (D29).
  */
 const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
-  "she/her": ["hair:long", "hair:curly", "hair:short"],
-  "he/him": ["hair:short", "hair:curly", "hair:long"],
+  "she/her": ["hair:long", "hair:ponytail", "hair:braids", "hair:curly", "hair:bun", "hair:afro", "hair:locs", "hair:short", "hair:buzz"],
+  "he/him": ["hair:short", "hair:buzz", "hair:curly", "hair:afro", "hair:locs", "hair:long", "hair:ponytail", "hair:braids", "hair:bun"],
   "they/them": lookVocabulary.hair.map((option) => option.id),
 };
 /**
@@ -106,15 +109,16 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
-  const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", ...(hasFeatures(look.age) ? ["features"] : []), "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...drawn.filter((axis) => axis === "glasses")];
+  const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", ...(hasFeatures(look.age) ? ["features"] : []), "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
   const step = (key: string, title: string) => `${shown.indexOf(key) + 1}. ${title}`;
-  // Another age keeps the face, colours, and hairstyle; glasses go when the new age doesn't wear them, and growing
+  // Another age keeps the face, colours, and hairstyle; glasses and facial hair go when the new age doesn't draw them, and growing
   // into an age with features starts from the ones the pronouns suggest.
   const setAge = (age: Look["age"]) =>
     onChange({
       ...(hasFeatures(age) && !hasFeatures(look.age) ? withPronounFeatures(look, pronouns) : look),
       age,
       ...(partAxesAt(age).includes("glasses") ? {} : { glasses: "glasses:none" }),
+      ...(partAxesAt(age).includes("facialHair") ? {} : { facialHair: "facial-hair:none" }),
     });
 
   return (
@@ -191,6 +195,15 @@ export function LookPicker({ look, pronouns, onChange, disabled }: { look: Look;
             </Choice>
           ))}
         </Step>
+        {drawn.includes("facialHair") && (
+          <Step title={step("facialHair", axisLabels.facialHair)}>
+            {lookVocabulary.facialHair.map((option) => (
+              <Choice key={option.id} pressed={look.facialHair === option.id} label={option.label} disabled={disabled} onClick={() => set({ facialHair: option.id })}>
+                <Thumb look={{ ...look, facialHair: option.id }} label={option.id === "facial-hair:none" ? "None" : option.label} />
+              </Choice>
+            ))}
+          </Step>
+        )}
         {drawn.includes("glasses") && (
           <Step title={step("glasses", axisLabels.glasses)}>
             {lookVocabulary.glasses.map((option) => (

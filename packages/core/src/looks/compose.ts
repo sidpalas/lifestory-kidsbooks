@@ -1,7 +1,7 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
 import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { drawnFeatures, type Look, NO_PART_OPTIONS, partAxesAt, sameAppearance } from "./vocabulary.ts";
+import { drawnFeatures, fullPartOrder, type Look, NO_PART_OPTIONS, partAxesAt, sameAppearance } from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -50,7 +50,7 @@ export const composeFigure = (
   const parts =
     layer.showsHead === false
       ? []
-      : (layer.partOrder ?? partOrder).flatMap((axis) => {
+      : fullPartOrder(layer.partOrder ?? partOrder).flatMap((axis) => {
           const option = look[axis];
           if (NO_PART_OPTIONS.has(option) || !partAxesAt(age).includes(axis)) return [];
           const drawn = layer.parts.filter((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option);

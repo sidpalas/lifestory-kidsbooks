@@ -94,11 +94,11 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await save(page);
 
   // 4. The part pipeline draws every other part from the imported bases; the author approves them all and publishes.
-  await expect(page.getByTestId("parts-count")).toHaveText("1 of 8 drawn, 1 waiting for approval");
-  await page.getByRole("button", { name: "Generate 7 missing parts" }).click();
+  await expect(page.getByTestId("parts-count")).toHaveText("1 of 20 drawn, 1 waiting for approval");
+  await page.getByRole("button", { name: "Generate 19 missing parts" }).click();
   const generated = page.getByTestId("generated-part");
-  await expect(generated).toHaveCount(7, { timeout: 60_000 });
-  await expect.poll(() => generated.evaluateAll((parts) => parts.filter((p) => p.getAttribute("data-status") === "pending_review").length), { timeout: 300_000 }).toBe(7);
+  await expect(generated).toHaveCount(19, { timeout: 60_000 });
+  await expect.poll(() => generated.evaluateAll((parts) => parts.filter((p) => p.getAttribute("data-status") === "pending_review").length), { timeout: 300_000 }).toBe(19);
   await imagesLoaded(page);
   // The example (round face, short hair) is drawn now: plate, base, (face overlay,) and the generated short hair.
   await expect.poll(() => page.getByTestId("draft-preview").locator("img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
@@ -111,7 +111,7 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
     await expect(cell).toHaveAttribute("data-state", "approved");
   }
   await page.getByRole("button", { name: "Approve every uploaded part of this figure" }).click();
-  await expect(page.getByTestId("parts-count")).toHaveText("8 of 8 drawn, 0 waiting for approval");
+  await expect(page.getByTestId("parts-count")).toHaveText("20 of 20 drawn, 0 waiting for approval");
   await save(page);
   await page.getByRole("button", { name: "Check" }).click();
   await expect(page.getByTestId("publish-issues")).toContainText("Ready to publish");

@@ -49,7 +49,7 @@ export const Route = createFileRoute("/stories/$slug")({
   component: StoryPreview,
 });
 
-const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses" };
+const axisLabels: Record<LookAxis, string> = { age: "Age", face: "Face", features: "Features", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses", facialHair: "Facial hair" };
 
 function StoryPreview() {
   const { story, version, manifest, cast, pages, library } = Route.useLoaderData();

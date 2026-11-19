@@ -92,7 +92,8 @@ test("an addition draws in an existing book at once, and a proof made before it 
   const family = "org_example_family";
   try {
     // A published story as it stood before red hair existed: the sample's v5, without its addition. (Coverage is
-    // checked against today's vocabulary, which has red, so the import counts red's palette in.)
+    // checked against the vocabulary, which has red, so the import counts red's palette in. It's published when the
+    // sample was, so the hairstyles and facial hair added since needn't be covered, D43.)
     const suffix = unique();
     const storyId = `story_e2e_additions_${suffix}`;
     const storyVersionId = `${storyId}_v1`;
@@ -107,8 +108,8 @@ test("an addition draws in an existing book at once, and a proof made before it 
         ),
       ),
     );
-    await run(importStoryVersion({ id: storyVersionId, storyId, version: 1, manifest, readAsset, publishedAt: new Date(), coveredWith: [redHair] }));
-    const look = { face: "face:round", features: "features:soft", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:red", glasses: "glasses:none" } as const;
+    await run(importStoryVersion({ id: storyVersionId, storyId, version: 1, manifest, readAsset, publishedAt: new Date("2026-11-19T19:00:00Z"), coveredWith: [redHair] }));
+    const look = { face: "face:round", features: "features:soft", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:red", glasses: "glasses:none", facialHair: "facial-hair:none" } as const;
     const hero = await run(createCharacter(parent, family, { name: `Rosie ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
     const grown = await run(createCharacter(parent, family, { name: `Fern ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "adult" } }));
     const { id: bookId } = await run(createBook(parent, family, { slug, cast: { hero: hero.id, grownup: grown.id } }));

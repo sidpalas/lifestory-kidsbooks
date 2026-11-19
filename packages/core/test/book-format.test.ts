@@ -31,6 +31,9 @@ const redHair = JSON.parse(readFileSync(new URL("additions/1.json", fixture), "u
 /** The sample as books draw it today: its published version with its additions' palettes. */
 const sample = { ...published, palettes: { ...published.palettes, hairColour: { ...published.palettes.hairColour, ...redHair.palettes.hairColour } } };
 
+/** When the sample stories were published: before the D43 hairstyles and facial hair joined the vocabulary. */
+const publishedAt = new Date("2026-11-19T19:00:00Z");
+
 const decode = (input: unknown) => Schema.decodeUnknownResult(StoryManifest)(input);
 const errorOf = (input: unknown) => {
   const result = decode(input);
@@ -52,7 +55,7 @@ describe("StoryManifest", () => {
     // p01: 14 + a hand (2 x base, skin) = 18; p05: 28 + a cheese occluder per adult base (asset, skin) = 32.
     expect(assets).toHaveLength(4 + 10 + 18 + 28 + 28 + 28 + 32 + 28);
     expect(unapprovedParts(manifest)).toEqual([]);
-    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
     expect(assets.filter((asset) => !existsSync(new URL(asset, fixture)))).toEqual([]);
   });
 
@@ -61,7 +64,7 @@ describe("StoryManifest", () => {
     const stored = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
     const manifest = Effect.runSync(mergeAdditions(stored, [JSON.parse(readFileSync(new URL("additions/1.json", dir), "utf8"))]));
     expect(unapprovedParts(manifest)).toEqual([]);
-    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
     expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
     expect(manifestAssets(manifest).filter((asset) => !existsSync(new URL(asset, dir)))).toEqual([]);
   });
@@ -164,6 +167,7 @@ const childLook = (face: Look["face"], hair: Look["hair"], age: Look["age"] = "y
   hair,
   hairColour: "hair-colour:brown",
   glasses: "glasses:round",
+  facialHair: "facial-hair:none",
 });
 /** The sample with p04's child figure missing the long hairstyle on the oval face, for young children only. */
 const missingLongOval = () =>
@@ -198,7 +202,7 @@ const grownup = (manifest: StoryManifest, look: Look) =>
 describe("looks against a story (D26, D29)", () => {
   it("reports exactly the axis a story can't draw, and only for the age and face missing its part", () => {
     const manifest = missingLongOval();
-    expect(vocabularyGaps(manifest)).toEqual(['p04/hero: no part for "hair:long" on "young-child/face:oval"']);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual(['p04/hero: no part for "hair:long" on "young-child/face:oval"']);
     expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:long"))).toEqual(["hair"]);
     expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:long"))).toEqual([]);
     expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:curly"))).toEqual([]);
@@ -207,7 +211,7 @@ describe("looks against a story (D26, D29)", () => {
 
   it("rejects an age the role doesn't accept and a colour the story has no palette for", () => {
     const manifest = decoded(variant((m) => delete m.palettes.skin["skin:s5"]));
-    expect(vocabularyGaps(manifest)).toEqual(['no palette for "skin:s5"']);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual(['no palette for "skin:s5"']);
     expect(unsupportedOptions(manifest, "hero", { ...childLook("face:round", "hair:short"), skin: "skin:s5" })).toEqual(["skin"]);
     // A role accepting young and older children: a teen or a toddler can't play it.
     expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:short", "teen"))).toEqual(["age"]);
@@ -240,17 +244,38 @@ describe("looks against a story (D26, D29)", () => {
   it("draws softer features where a story has them, and the defined base where it doesn't (D40)", () => {
     // Only the adult round face has a softer base; the oval and older adults stay defined only.
     const manifest = withSoft();
-    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
     expect(grownup(manifest, soft("face:round"))).toEqual(["soft/base.svg", "soft/hair-long.svg", "soft/glasses-round.svg"]);
     // No softer oval base, so the defined one draws, with nothing reported unsupported.
     const definedOval = grownup(manifest, { ...soft("face:oval"), features: "features:defined" });
     expect(grownup(manifest, soft("face:oval"))).toEqual(definedOval);
     expect(unsupportedOptions(manifest, "grownup", soft("face:oval"))).toEqual([]);
     // A softer base must have its parts.
-    expect(vocabularyGaps(withSoft(true))).toEqual(['p02/grownup: no part for "hair:long" on "adult/face:round/features:soft"']);
+    expect(vocabularyGaps(withSoft(true), publishedAt)).toEqual(['p02/grownup: no part for "hair:long" on "adult/face:round/features:soft"']);
     // Looks saved before the axis existed are the defined ones.
     const { features: _, ...stored } = soft("face:round");
     expect(Schema.decodeUnknownSync(LookSchema)(stored).features).toBe("features:defined");
+  });
+
+  it("lets a story published before options joined the vocabulary lack them, and asks a book for a stand-in (D43)", () => {
+    const manifest = decoded(sample);
+    // Its partOrder predates facial hair; a story published today must draw the new options.
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
+    const today = vocabularyGaps(manifest, new Date("2026-11-20T00:00:00Z"));
+    expect(today).toContain('p01/hero: no part for "hair:afro" on "young-child/face:round"');
+    expect(today).toContain('p02/grownup: no part for "facial-hair:beard" on "adult/face:oval/features:defined"');
+    // A bearded grown-up with locs: hair and facial hair are unsupported, and a stand-in hairstyle draws.
+    const look: Look = { ...soft("face:round"), features: "features:defined", hair: "hair:locs", facialHair: "facial-hair:beard" };
+    expect(unsupportedOptions(manifest, "grownup", look)).toEqual(["hair", "facialHair"]);
+    expect(castLook(manifest, "grownup", look, { hair: "hair:short", facialHair: "facial-hair:none" })).toEqual({
+      look: { ...look, hair: "hair:short", facialHair: "facial-hair:none" },
+      wrongAge: false,
+      unsupported: [],
+    });
+    // No facial hair needs no part, and looks saved before the axis existed have none.
+    expect(unsupportedOptions(manifest, "grownup", { ...look, hair: "hair:short", facialHair: "facial-hair:none" })).toEqual([]);
+    const { facialHair: _, ...stored } = look;
+    expect(Schema.decodeUnknownSync(LookSchema)(stored).facialHair).toBe("facial-hair:none");
   });
 
   it("draws a figure pinned to an age at that age, whatever age the character is", () => {
@@ -267,7 +292,7 @@ describe("looks against a story (D26, D29)", () => {
           .map((part: any) => ({ ...part, age: "toddler" }));
       }),
     );
-    expect(vocabularyGaps(manifest)).toEqual([]);
+    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
     for (const age of ["young-child", "older-child"] as const) {
       const look = childLook("face:oval", "hair:long", age);
       expect(unsupportedOptions(manifest, "hero", look)).toEqual([]);
@@ -418,15 +443,16 @@ describe("story additions (D41)", () => {
   const hero: Look = { ...childLook("face:round", "hair:curly"), hairColour: "hair-colour:red" };
 
   it("adds red hair to the published sample without a new version, and a book's stand-in gives way to it", () => {
-    expect(uncoveredOptions(stored)).toEqual(["hair-colour:red"]);
+    // Red, and the options that joined the vocabulary after the sample was published (D43).
+    expect(uncoveredOptions(stored).filter((option) => !/^(hair|facial-hair):/.test(option))).toEqual(["hair-colour:red"]);
     // Before: red is unsupported, so the book draws the parent's stand-in (D28).
     const before = castLook(stored, "hero", hero, { hairColour: "hair-colour:brown" });
     expect(before.look.hairColour).toBe("hair-colour:brown");
     expect(before.unsupported).toEqual([]);
 
     const merged = Effect.runSync(mergeAdditions(stored, [redHair]));
-    expect(uncoveredOptions(merged)).toEqual([]);
-    expect(vocabularyGaps(merged)).toEqual([]);
+    expect(uncoveredOptions(merged)).not.toContain("hair-colour:red");
+    expect(vocabularyGaps(merged, publishedAt)).toEqual([]);
     // After: the same book, same override, now draws red, with the story's own red palette on the hair.
     const after = castLook(merged, "hero", hero, { hairColour: "hair-colour:brown" });
     expect(after.look.hairColour).toBe("hair-colour:red");
