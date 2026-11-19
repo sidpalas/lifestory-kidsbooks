@@ -136,7 +136,8 @@ row's family, not only the session's active family.
 - Edit `packages/db/src/schema/*`, then `mise run db:generate --name <change>`; commit the SQL and `meta/`.
   Never edit an applied migration. Column names are snake_case.
 - A story version (`story_version`) never changes once stored: `db:seed` fails if a fixture's manifest differs from
-  the stored one. Add a new version, or in a dev database delete the row and reseed.
+  the stored one, and `db:seed` and `story:import` refuse changed asset files under an existing version too. Add a new
+  version, or in a dev database delete the row and the version's `stories/<storyId>/v<n>/` objects and reseed.
 - Absurd's schema is a vendored custom migration (`0001_absurd_0_5_1.sql`). Upgrade it with a new custom
   migration containing Absurd's published upgrade SQL.
 

@@ -61,7 +61,9 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   fonts (D27), and object keys under `stories/<storyId>/v<n>/` (D31) as the development seed, which now imports the
   sample story through the same function. Running it again changes nothing. It stops without changing anything when
   the author has no account, the story belongs to another author, the slug belongs to another story, or a stored
-  version has a different manifest (a changed story needs a new version number in `story.json`).
+  version has a different manifest or different asset files (a changed story needs a new version number in
+  `story.json`). Files are compared before anything is written, so published art never changes under a version that
+  books, proofs, and the recolour cache were made from.
 - **Why:** of the two options in plan.md, this needs no new endpoint on an app holding children's data, and it
   publishes exactly what the seed and the e2e tests use. Shipping 0.9 MB of fixtures in the web image costs little.
 - **Rejected for now:** an authenticated upload endpoint. Author uploads (plan.md, "Community authoring") will need

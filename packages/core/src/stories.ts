@@ -145,7 +145,7 @@ export interface StoryVersionImport {
 /**
  * Validates a story version, uploads its assets, and records it. Idempotent: assets
  * are written to keys derived from the story and version, and an existing version
- * is left as it is. A version that exists with a different manifest is a defect,
+ * is left as it is. A version whose stored manifest or files differ is a defect,
  * because published versions never change; add a new version instead.
  */
 export const importStoryVersion = Effect.fn("stories.importVersion")(function* (input: StoryVersionImport) {
@@ -170,8 +170,24 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
   if (fontProblems.length > 0) {
     return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`));
   }
+  // A version's files never change once written, like its manifest: books, proofs, and the recolour cache were made
+  // from them. Every file is compared before anything is written, so a refused import changes nothing; only files
+  // still missing (an import that stopped partway) are uploaded.
   const storage = yield* ObjectStorage;
+  const storedKeys = new Set((yield* storage.list(storyAssetKey(input.storyId, input.version, ""))).map((object) => object.key));
+  const missing: typeof files = [];
+  const changed: Array<string> = [];
   for (const file of files) {
+    const key = storyAssetKey(input.storyId, input.version, file.asset);
+    if (!storedKeys.has(key)) missing.push(file);
+    else if (!Buffer.from((yield* storage.get(key)).body).equals(file.body)) changed.push(file.asset);
+  }
+  if (changed.length > 0) {
+    return yield* Effect.die(
+      new Error(`story ${input.storyId} v${input.version} already has different files; add a new version:\n${changed.join("\n")}`),
+    );
+  }
+  for (const file of missing) {
     yield* storage.put(storyAssetKey(input.storyId, input.version, file.asset), file.body, file.contentType);
   }
   const [stored] = yield* Database.query(async (db) => {
