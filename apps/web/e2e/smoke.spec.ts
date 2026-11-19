@@ -1,8 +1,22 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
-test("unauthenticated visitors are sent to sign-in", async ({ page }) => {
+test("signed-out visitors get the landing page, with public images and a way to sign in", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Picture books starring your family");
+  await expect(page.getByText("Lifestory is invite-only for now.").first()).toBeVisible();
+  // Every image is a public marketing copy that loaded, not a story asset behind sign-in.
+  const images = page.locator("main img");
+  await expect(images).toHaveCount(4);
+  for (const image of await images.all()) {
+    await image.scrollIntoViewIfNeeded();
+    expect(await image.getAttribute("src")).toMatch(/^\/marketing\//);
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+  }
+  const preview = await page.locator('meta[property="og:image"]').getAttribute("content");
+  expect((await page.request.get(new URL(preview ?? "").pathname)).headers()["content-type"]).toBe("image/png");
+
+  await page.getByRole("main").getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByText("Lifestory is invite-only.")).toBeVisible();
 });
@@ -47,7 +61,7 @@ test("the dev index signs in as a listed user and log-me-out signs out", async (
   await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Gran Viewer (grandparent@lifestory.dev)");
 
   await page.goto("/__dev/log-me-out?returnTo=/");
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Picture books starring your family");
 });
 
 test("the operator cannot impersonate users", async ({ page }) => {

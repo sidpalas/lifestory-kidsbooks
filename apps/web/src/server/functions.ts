@@ -52,6 +52,16 @@ export const SampleFileStatusResult = ResultSchema(
 
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));
 
+/** What the signed-out landing page needs from the server: absolute URLs for its link preview tags. */
+export const LandingResult = ResultSchema(Schema.Struct({ url: Schema.String, image: Schema.String }), Schema.Never);
+
+export const getLanding = createServerFn({ method: "GET" }).handler(() =>
+  runEffect(
+    LandingResult,
+    Auth.use((auth) => Effect.succeed({ url: auth.appUrl("/"), image: auth.appUrl("/marketing/social-preview.png") })),
+  ),
+);
+
 export const getHome = createServerFn({ method: "GET" }).handler(() =>
   runEffect(
     HomeResult,

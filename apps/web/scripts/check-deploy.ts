@@ -1,7 +1,8 @@
 // Post-deploy check of the live site, without signing in (.github/workflows/deploy-check.yml runs it when
 // Railway reports a deploy). Waits until the web app and a worker both report the expected commit, then checks:
 // /api/health is ok with this commit's migration count, the sign-in page and every stylesheet, font, and script
-// it links load (a missing stylesheet once shipped unstyled pages, commit fbd8a10), and the /__dev routes are 404.
+// it links load (a missing stylesheet once shipped unstyled pages, commit fbd8a10), the landing
+// page at / and its social preview image load, and the /__dev routes are 404.
 // Exits 1 listing every failure. If a newer commit is already live, this one was superseded and it exits 0.
 //
 //   node apps/web/scripts/check-deploy.ts --url https://lifestory.devopsdirective.com --sha <commit> [--wait-minutes 20]
@@ -140,6 +141,18 @@ try {
   for (const src of new Set(scripts)) await checkAsset(src, "script");
 } catch (error) {
   check(false, `/sign-in loads (${String(error)})`);
+}
+
+// Signed-out visitors get the landing page at / (not a redirect), and its link preview image loads.
+try {
+  const page = await get("/");
+  const html = await page.text();
+  check(page.status === 200 && html.includes("Picture books starring your family"), `/ shows the landing page (HTTP ${page.status})`);
+  const preview = /<meta[^>]*property="og:image"[^>]*content="([^"]*)"/.exec(html)?.[1];
+  check(preview?.startsWith(`${origin}/`) ?? false, `/ names a same-origin og:image (${preview ?? "none"})`);
+  if (preview) await checkAsset(new URL(preview).pathname, "social preview image");
+} catch (error) {
+  check(false, `/ shows the landing page (${String(error)})`);
 }
 
 // D17: production images compile the dev routes out. A redirect or 200 here would mean dev sign-in is live.
