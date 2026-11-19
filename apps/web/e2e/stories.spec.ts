@@ -58,7 +58,7 @@ test("changing a look recomposes every page that shows the character", async ({ 
 });
 
 test("story assets need a session and a story the user may read", async ({ page, request }) => {
-  const asset = "/api/files/stories/story_moon_picnic/v1/pages/p01/background.svg";
+  const asset = "/api/files/stories/story_moon_picnic/v2/pages/p01/background.svg";
   expect((await request.get(asset)).status()).toBe(401);
 
   await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
@@ -66,6 +66,6 @@ test("story assets need a session and a story the user may read", async ({ page,
   expect(ok.status()).toBe(200);
   expect(ok.headers()["content-type"]).toBe("image/svg+xml");
   expect(ok.headers()["content-security-policy"]).toBe("sandbox");
-  expect((await page.request.get("/api/files/stories/story_moon_picnic/v2/pages/p01/background.svg")).status()).toBe(404);
+  expect((await page.request.get("/api/files/stories/story_moon_picnic/v3/pages/p01/background.svg")).status()).toBe(404);
   expect((await page.request.get("/api/files/stories/no_such_story/v1/pages/p01/background.svg")).status()).toBe(404);
 });

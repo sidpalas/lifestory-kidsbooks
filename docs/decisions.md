@@ -109,6 +109,11 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   - **Fonts ship with the story**, as woff2 assets with optional `weight`, `style`, and `unicode-range` (the sample
     uses Literata, SIL OFL, latin and latin-ext subsets, so names like "Łucja" print in the same font). The app UI
     keeps Nunito (D12); a page never uses app fonts. `font-display: block`, so print never falls back.
+  - **Story fonts are static (Sid, 2026-11-19):** one file per weight, each declaring that single `weight`, and every
+    text style's weight declared for its family. Variable fonts print as Type 3 (D27). `importStoryVersion` checks
+    this on the files' bytes (`staticFontIssues`, `isVariableFont`), not the decoder, so versions stored earlier stay
+    readable. The sample's v2 replaced v1's variable Literata with static instances at 450 (body) and 700 (title),
+    made with `fonttools varLib.instancer` (the OFL declares no Reserved Font Name). Databases seeded before keep v1.
   - **Slots carry an `example`** (name, pronouns, look) that fills them in story previews before a family casts
     anyone, and an `age` (`child`, `adult`): the faces the slot draws. The plan's `pronounSet: "from-character"` and
     free-text `defaults` are dropped: pronouns and look always come from whoever fills the slot.
@@ -216,12 +221,13 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   0.125 in bleed per side); Literata embedded; recoloured layers at 300 ppi; the same line breaks as on screen, and
   1.6–3.1% of pixels differ by more than 5% (anti-aliased edges) when screen and PDF are compared at 96 dpi after a
   4× downscale. A render takes 1–1.6 s (4.3 s with a cold recolour cache).
-- **Open:** Chromium embeds the variable Literata as **Type 3** fonts, while a static instance of the same file embeds
-  as CID TrueType (proposal in the PDF thread: story fonts must be static instances, checked by the manifest
-  validator, and the sample ships a v2 with them). The PDF keeps the layers' transparency (soft masks) and has no
-  TrimBox or BleedBox (its page size is trim + bleed, which is what Lulu asks for); flattening and boxes are print-
-  order work. The placeholder SVGs' "PLACEHOLDER ART" labels use a system sans, which can differ between screen and
-  print; real illustrations won't have text.
+- **Fonts:** Chromium embeds a variable font as **Type 3** glyph procedures, which print preflight flags, and a static
+  instance of the same file as CID TrueType (tested 2026-11-19). So story fonts must be static (Sid, 2026-11-19; D24);
+  proofs of the sample's v2 embed Literata Regular and Bold as CID TrueType.
+- **Open:** the PDF keeps the layers' transparency (soft masks) and has no TrimBox or BleedBox (its page size is
+  trim + bleed, which is what Lulu asks for); flattening and boxes are print-order work. The placeholder SVGs'
+  "PLACEHOLDER ART" labels use a system sans, which can differ between screen and print; real illustrations won't
+  have text.
 - **Reopen if:** a print provider needs PDF/X, flattened transparency or page boxes; longer books make one browser
   page too slow (then render in page ranges); real screen-versus-print mismatches show up (D12).
 

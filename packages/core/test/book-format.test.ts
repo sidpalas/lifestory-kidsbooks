@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   composeIllustration,
   exampleCast,
+  isVariableFont,
   manifestAssets,
   resolvePageText,
   resolveText,
   StoryManifest,
+  staticFontIssues,
   unapprovedParts,
   unsupportedOptions,
   vocabularyGaps,
@@ -33,10 +35,10 @@ describe("StoryManifest", () => {
   it("accepts the sample story, and every asset it references is in the fixture", () => {
     const manifest = Schema.decodeUnknownSync(StoryManifest)(sample);
     const assets = manifestAssets(manifest);
-    // 2 fonts, 10 art layers, and per page the figures' bases, masks, parts and occluders (counted by hand):
+    // 4 fonts (2 weights x 2 subsets), 10 art layers, and per page the figures' bases, masks, parts and occluders (counted by hand):
     // a figure with a head has 2 bases x (base, skin, brows) + 2 faces x (3 hairstyles + glasses) = 14 files.
     // p01: 14 + a hand (2 x base, skin) = 18; p05: 28 + a cheese occluder per adult base (asset, skin) = 32.
-    expect(assets).toHaveLength(2 + 10 + 18 + 28 + 28 + 28 + 32 + 28);
+    expect(assets).toHaveLength(4 + 10 + 18 + 28 + 28 + 28 + 32 + 28);
     expect(unapprovedParts(manifest)).toEqual([]);
     expect(vocabularyGaps(manifest)).toEqual([]);
     expect(assets.filter((asset) => !existsSync(new URL(asset, fixture)))).toEqual([]);
@@ -167,5 +169,33 @@ describe("composeIllustration", () => {
       .map((layer) => layer.asset)
       .filter((asset) => asset.includes("/hero/"));
     expect(hero).toEqual(["pages/p06/hero/base-child-1.svg", "pages/p06/hero/child-1-glasses-round.svg", "pages/p06/hero/child-1-curly.svg"]);
+  });
+});
+
+describe("story fonts for print (D27)", () => {
+  const manifest = Schema.decodeUnknownSync(StoryManifest)(sample);
+
+  it("accepts the sample's static fonts, and names a weight range or a text style's undeclared weight", () => {
+    expect(staticFontIssues(manifest)).toEqual([]);
+    const ranged = Schema.decodeUnknownSync(StoryManifest)(variant((m) => (m.fonts[0].weight = "200 900")));
+    expect(staticFontIssues(ranged)).toEqual([
+      "fonts/literata-latin-450-normal.woff2: declare the one weight this static file has, not a range (200 900)",
+    ]);
+    const unmatched = Schema.decodeUnknownSync(StoryManifest)(variant((m) => (m.textStyles.body.weight = 400)));
+    expect(staticFontIssues(unmatched)).toEqual(['textStyles.body: no "Literata" file declares weight 400']);
+  });
+
+  it("finds an fvar table in a WOFF2 directory, past tables with and without transform lengths", () => {
+    for (const font of manifest.fonts) expect(isVariableFont(readFileSync(new URL(font.asset, fixture)))).toBe(false);
+    // Header (48 bytes, 3 tables), then: glyf transformed (version 0: origLength 128, transformLength 5),
+    // hmtx untransformed (version 0: origLength 16 only), fvar (origLength 16).
+    const woff2 = new Uint8Array(48 + 9);
+    const view = new DataView(woff2.buffer);
+    view.setUint32(0, 0x774f4632);
+    view.setUint16(12, 3);
+    woff2.set([10, 0x81, 0x00, 0x05, 3, 0x10, 47, 0x10], 48);
+    expect(isVariableFont(woff2)).toBe(true);
+    woff2[54] = 46; // feat instead of fvar
+    expect(isVariableFont(woff2)).toBe(false);
   });
 });

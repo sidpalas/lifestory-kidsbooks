@@ -58,17 +58,18 @@ export const seed = Effect.gen(function* () {
   // The operator joins no family here, so they get their own one-person family (D3).
   yield* ensureOwnFamily(seedUsers.operator.id);
   yield* ObjectStorage.use((storage) => storage.ensureBucket);
-  // The sample story's pages, text, character slots, and placeholder art (fixtures/stories/moon-picnic).
+  // The sample story's pages, text, character slots, and placeholder art (fixtures/stories/moon-picnic), as its
+  // newest version. v2 replaced v1's variable Literata with static instances (D27); databases seeded earlier keep v1.
   yield* importStoryVersion({
-    id: "story_moon_picnic_v1",
+    id: "story_moon_picnic_v2",
     storyId: "story_moon_picnic",
-    version: 1,
+    version: 2,
     manifest: JSON.parse(yield* Effect.promise(() => readFile(new URL("manifest.json", sampleStoryDir), "utf8"))),
     readAsset: async (asset) => ({
       body: await readFile(new URL(asset, sampleStoryDir)),
       contentType: contentTypes[extname(asset)] ?? "application/octet-stream",
     }),
-    publishedAt: new Date("2026-11-01T00:00:00Z"),
+    publishedAt: new Date("2026-11-19T00:00:00Z"),
   });
 });
 

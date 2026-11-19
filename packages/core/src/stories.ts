@@ -6,8 +6,10 @@ import {
   type CastMember,
   decodeStoryManifest,
   exampleCast,
+  isVariableFont,
   manifestAssets,
   storyAssetKey,
+  staticFontIssues,
   unapprovedParts,
   unsupportedOptions,
   vocabularyGaps,
@@ -155,10 +157,22 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
       return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
     }
   }
+  // Fonts must be static so PDFs embed them as real fonts, not Type 3 (D27). Checked here, not when decoding,
+  // so versions stored before the rule stay readable.
+  const fontAssets = new Set(manifest.fonts.map((font) => font.asset));
+  const files = yield* Effect.forEach(manifestAssets(manifest), (asset) =>
+    Effect.promise(() => input.readAsset(asset)).pipe(Effect.map((file) => ({ asset, ...file }))),
+  );
+  const fontProblems = [
+    ...staticFontIssues(manifest),
+    ...files.filter((file) => fontAssets.has(file.asset) && isVariableFont(file.body)).map((file) => `${file.asset}: variable font; use static instances`),
+  ];
+  if (fontProblems.length > 0) {
+    return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`));
+  }
   const storage = yield* ObjectStorage;
-  for (const asset of manifestAssets(manifest)) {
-    const file = yield* Effect.promise(() => input.readAsset(asset));
-    yield* storage.put(storyAssetKey(input.storyId, input.version, asset), file.body, file.contentType);
+  for (const file of files) {
+    yield* storage.put(storyAssetKey(input.storyId, input.version, file.asset), file.body, file.contentType);
   }
   const [stored] = yield* Database.query(async (db) => {
     await db
