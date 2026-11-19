@@ -61,6 +61,10 @@ step "Playwright Chromium"
 mise exec -- pnpm exec playwright install --with-deps chromium | tail -2
 done_step
 
+step "poppler (pdftoppm, pdftotext for mise run verify -- proof)"
+command -v pdftoppm >/dev/null || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils
+done_step
+
 step "Migrate and seed"
 mise run db:migrate
 mise run db:seed

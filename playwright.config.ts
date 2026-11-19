@@ -34,6 +34,8 @@ export default defineConfig({
     {
       // A second worker next to a running dev worker is harmless: Absurd hands each task to one claimant.
       command: "mise exec -- node apps/worker/src/main.ts",
+      // It prints proofs from the web app these tests use; without this it printed from :3000 whatever E2E_PORT was.
+      env: { PRINT_APP_URL: baseURL },
       wait: { stdout: /worker started/ },
       timeout: 60_000,
     },

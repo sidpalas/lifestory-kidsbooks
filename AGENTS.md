@@ -32,6 +32,7 @@ Times measured on an `a1.small` orb.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~15 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`); most of it is importing modules | ~12 s |
+| `mise run verify -- <command>` | Drive the real app and keep evidence (`docs/features`): `picker` ~20 s, `proof` ~30 s, `looks` ~25 s in dev; `--config image` first builds both images, minutes on `a1.small` (`--no-build` reuses them) | see each |
 | `mise run test:e2e` | Playwright end-to-end tests (25; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `art-import.spec.ts` imports a PSD and a flat page (D42; with `IMAGE_PROVIDER=openai` it runs on real edits, ~US$0.47), `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~2.8–3.6 min for all on `a1.small` (`CI=1`, cold Vite cache), ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~13 s warm, most of it `db:seed`; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1–2 s |
@@ -43,6 +44,17 @@ Times measured on an `a1.small` orb.
 | `mise run dev` | Web app (`dev:web`) and worker (`dev:worker`) in the foreground | ~2 s to ready |
 | `mise run stack` | Outside orbs: compose up, migrate, seed, then `dev` | ~15 s to ready |
 | `mise run install` | `pnpm install --frozen-lockfile` | ~3 s |
+
+## Verifying your work
+
+`docs/features/README.md` is the feature map: what each feature is, its routes, roles and seed data, and the
+`verify` command that proves it. `mise run verify -- <command> [--config dev|image|live]` drives the real app and
+writes evidence to `.amp/in/artifacts/verify/<run>/` with a PASS/FAIL line per check; `mise run verify -- help` lists
+commands. Pick the configuration by what the change can break: `dev` for every change, `image` (production images
+against local data) for builds, Dockerfiles, CSS, and native modules, `live` (the agent family, D38) after a deploy.
+Use it before writing a throwaway script; when a check you need is missing, add it to the CLI and the map entry.
+Change a feature, update its map file in the same commit. Run the e2e suite as `mise run verify -- e2e [--ci]`: it
+holds one port for the web app and the worker that prints proofs, and reports peak memory against the 3 GiB cap.
 
 ## Orb size
 
