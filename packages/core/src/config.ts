@@ -16,6 +16,8 @@ export class AppConfig extends Context.Service<
       /** Path-style URLs (endpoint/bucket/key) for SeaweedFS; false for providers that require virtual-hosted style. */
       readonly forcePathStyle: boolean;
     };
+    /** The web app's origin as the worker reaches it; headless Chromium opens print pages there for PDF proofs. */
+    readonly printAppUrl: string;
   }
 >()("@lifestory/core/AppConfig") {
   static readonly layer = Layer.effect(
@@ -33,6 +35,7 @@ export class AppConfig extends Context.Service<
           secretAccessKey: yield* Config.Redacted("S3_SECRET_ACCESS_KEY"),
           forcePathStyle: yield* Config.Boolean("S3_FORCE_PATH_STYLE").pipe(Config.withDefault(true)),
         },
+        printAppUrl: yield* Config.String("PRINT_APP_URL").pipe(Config.withDefault("http://localhost:3000")),
       };
     }),
   );

@@ -1,4 +1,5 @@
-# Worker image: the Absurd worker, run from TypeScript source (Node strips types).
+# Worker image: the Absurd worker, run from TypeScript source (Node strips types). It also renders PDF proofs with
+# headless Chromium (D12, D27), so it carries Playwright's headless shell and the system libraries and fonts it needs.
 # Build from the repository root:  docker build -f apps/worker/Dockerfile -t lifestory-worker .
 # It needs a migrated database; see apps/web/Dockerfile for the migration command.
 # Configuration comes from the environment; see .env.example and README "Deploying".
@@ -15,6 +16,10 @@ COPY apps/worker/package.json apps/worker/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
 RUN pnpm install --frozen-lockfile --prod --filter "@lifestory/worker..." && pnpm store prune
+# The browser matching the locked playwright-core, in a path the unprivileged user can read.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN cd packages/core && node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium \
+  && rm -rf /var/lib/apt/lists/*
 COPY packages/core/src packages/core/src
 COPY packages/db/src packages/db/src
 COPY apps/worker/src apps/worker/src

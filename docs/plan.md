@@ -10,7 +10,7 @@ What exists after Phase 1, and what milestone 1 adds (marked *new*):
 ```
 apps/
   web/                      TanStack Start app
-    src/routes/             _app/ (signed-in shell)  _app/books/$bookId/edit (ssr: false)  print/books/$bookId (print-only)
+    src/routes/             _app/ (signed-in shell)  _app/books/$bookId/edit (ssr: false)  print/proofs/$proofId (print-only)
     src/routes/api/         auth/$  files/$  webhooks/modal (new)
     src/components/book/    BookPage: the one page component for editor and print (new)
     src/server/             server functions grouped by area: families, characters, books, proofs (new)
@@ -114,7 +114,7 @@ Better Auth owns `user`, `session`, `account`, `verification`, `organization` (=
 | `book_cast` | book | `book_id`, `slot_id`, `character_id` | Which family member fills each slot. A book stores only this and text edits; pages are composed from them. |
 | `book_text_edit` | book | `book_id`, `page_id`, `block_index`, `content` | Overrides; absent row = story text. |
 | `generation` (exists) | any | `provider`, `external_id`, `request` jsonb, `status`, `event_name` | One row per provider job; the Modal callback looks it up. Used by authoring tooling only, never when a book is made. |
-| `proof` | book | `book_id`, `status`, `object_key`, `page_count`, `approved_at`, `approved_by` | An immutable print-ready PDF. |
+| `proof` (exists) | family | `family_id`, `story_version_id`, `content` jsonb, `status`, `task_id`, `object_key`, `page_count`, `bytes` | An immutable print-ready PDF and the cast and text edits it shows (D27). Books add `book_id`, `approved_at`, `approved_by`. |
 
 Access rules, enforced in `packages/core` (not in route code): every family-owned row is reached through
 `family_id`, and a `FamilyAccess` service checks the caller's membership and role (`book:edit` for writes).
@@ -252,12 +252,12 @@ publish.
   (`in`), at trim plus bleed, with fonts loaded from the story's assets. The editor route (`ssr: false`) scales it
   with a CSS transform and shows trim and safe-area guides; editing a text block saves a `book_text_edit` row.
   Viewers see the same page without editing controls.
-- `print/books/$bookId` renders every page with `@page { size: <w+2·bleed>in <h+2·bleed>in; margin: 0 }`, for the
-  worker only (a short-lived signed token, not a session).
-- `render-proof(bookId)` task: Playwright Chromium on the worker opens the print route, waits for fonts and images,
-  calls `page.pdf({ preferCSSPageSize: true, printBackground: true })`, stores `proofs/<bookId>/<proofId>.pdf`, and
-  records the page count. The parent downloads it, checks it, and approves it; an approved proof is immutable.
-- The e2e test checks the PDF's page count and page size and renders page 1 to an image for the report.
+- `print/proofs/$proofId` renders every page with `@page { size: <w+2·bleed>in <h+2·bleed>in; margin: 0 }`, for the
+  worker only (a short-lived signed token, not a session), from what the proof recorded (D27).
+- `proof.render(proofId)` task: Playwright Chromium on the worker opens the print route, waits for fonts and images,
+  calls `page.pdf({ preferCSSPageSize: true, printBackground: true })`, stores `families/<familyId>/proofs/<proofId>.pdf`,
+  and records the page count. The parent downloads it, checks it, and approves it; an approved proof is immutable.
+- The e2e test (`proofs.spec.ts`) checks the PDF's page count, page size and font, and who may download it.
 
 ## Invites and families
 

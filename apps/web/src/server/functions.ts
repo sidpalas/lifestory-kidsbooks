@@ -10,8 +10,20 @@ import {
   JobError,
   UnsupportedLook,
   TaskState,
+  Forbidden,
+  ProofSummary,
+  TextStyleName,
 } from "@lifestory/core/contracts";
-import { Auth, getStoryPreview, Jobs, listPublishedStories, writeSampleFile } from "@lifestory/core";
+import {
+  Auth,
+  getStoryPreview,
+  Jobs,
+  listPublishedStories,
+  listStoryProofs,
+  printableProof,
+  requestStoryProof,
+  writeSampleFile,
+} from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
@@ -105,3 +117,58 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
       }),
     ),
   );
+
+const StorySlugAndLooks = Schema.Struct({ slug: Schema.String, looks: Schema.optional(Schema.Record(Schema.String, Look)) });
+
+export const RequestProofResult = ResultSchema(Schema.Struct({ id: Schema.String }), Schema.Union([NotAuthenticated, NotFound, Forbidden, UnsupportedLook, JobError]));
+
+/** Starts a PDF proof of the story with the looks shown, for the user's family (D27). */
+export const requestStoryProofFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(StorySlugAndLooks))
+  .handler(async ({ data }) =>
+    runEffect(
+      RequestProofResult,
+      Effect.gen(function* () {
+        const user = yield* currentUser;
+        return yield* requestStoryProof(user, data.slug, data.looks);
+      }),
+    ),
+  );
+
+export const StoryProofsResult = ResultSchema(
+  Schema.Struct({ canRequest: Schema.Boolean, proofs: Schema.Array(ProofSummary) }),
+  Schema.Union([NotAuthenticated, NotFound, Forbidden]));
+
+export const listStoryProofsFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String })))
+  .handler(async ({ data }) =>
+    runEffect(
+      StoryProofsResult,
+      Effect.gen(function* () {
+        const user = yield* currentUser;
+        return yield* listStoryProofs(user, data.slug);
+      }),
+    ),
+  );
+
+export const PrintableProofResult = ResultSchema(
+  Schema.Struct({
+    storyId: Schema.String,
+    version: Schema.Number,
+    manifest: StoryManifest,
+    cast: Schema.Record(Schema.String, CastMember),
+    pages: Schema.Array(
+      Schema.Struct({
+        pageId: Schema.String,
+        layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })),
+        text: Schema.Array(Schema.Struct({ style: TextStyleName, text: Schema.String })),
+      }),
+    ),
+  }),
+  NotFound,
+);
+
+/** The print page's data. No session: the worker's headless Chromium holds a print token for this one proof. */
+export const getPrintableProofFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String, token: Schema.String })))
+  .handler(async ({ data }) => runEffect(PrintableProofResult, printableProof(data.proofId, data.token)));

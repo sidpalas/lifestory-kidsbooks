@@ -1,6 +1,7 @@
 // Client-safe schemas shared by the web app's server functions and its UI.
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
+import { CastMember } from "./book-format/index.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
@@ -57,3 +58,30 @@ export type SampleFileResult = typeof SampleFileResult.Type;
 
 export const TaskState = Schema.Literals(["pending", "running", "sleeping", "completed", "failed", "cancelled"]);
 export type TaskState = typeof TaskState.Type;
+
+/**
+ * What a proof shows besides the story version: who fills each slot and the family's text edits, fixed when the
+ * proof is requested (D27). A story preview has no edits; a personalized book supplies its own.
+ */
+export const ProofContent = Schema.Struct({
+  cast: Schema.Record(Schema.String, CastMember),
+  /** Replaces block `blockIndex` of page `pageId`; tokens stay unresolved, like the story's own text. */
+  textEdits: Schema.Array(Schema.Struct({ pageId: Schema.String, blockIndex: Schema.Number, content: Schema.String })),
+});
+export type ProofContent = typeof ProofContent.Type;
+
+/** A proof as the family sees it. "failed" means the render task gave up after its retries. */
+export const ProofSummary = Schema.Struct({
+  id: Schema.String,
+  status: Schema.Literals(["rendering", "ready", "failed"]),
+  /** The PDF's key under /api/files, once ready. */
+  objectKey: Schema.NullOr(Schema.String),
+  pageCount: Schema.NullOr(Schema.Number),
+  bytes: Schema.NullOr(Schema.Number),
+  /** ISO 8601. */
+  createdAt: Schema.String,
+  requestedBy: Schema.NullOr(Schema.String),
+  /** Who fills each slot, by name, in slot order, so proofs of different looks can be told apart. */
+  castNames: Schema.Array(Schema.String),
+});
+export type ProofSummary = typeof ProofSummary.Type;

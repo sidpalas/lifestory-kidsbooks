@@ -1,13 +1,14 @@
 // The Absurd worker: pulls tasks from Postgres and runs them as Effect programs
 // through the shared server runtime.
-import { Jobs, makeServerRuntime, ObjectStorage, tasks } from "@lifestory/core";
+import { Jobs, makeServerRuntime, ObjectStorage, type ServerServices, type TaskDefinition, tasks } from "@lifestory/core";
 import { Effect, Schema } from "effect";
 
 const runtime = makeServerRuntime();
 const { client } = await runtime.runPromise(Jobs.use(Effect.succeed));
 await runtime.runPromise(ObjectStorage.use((storage) => storage.ensureBucket));
 
-for (const task of tasks) {
+// Each task's params and requirements differ; the loop only needs that the runtime provides them all.
+for (const task of tasks as ReadonlyArray<TaskDefinition<any, unknown, unknown, ServerServices>>) {
   const decode = Schema.decodeUnknownEffect(task.params);
   client.registerTask({ name: task.name, queue: Jobs.queue }, (params, ctx) =>
     runtime.runPromise(decode(params).pipe(Effect.flatMap((decoded) => task.run(decoded, ctx)))),

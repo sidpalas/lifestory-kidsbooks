@@ -7,7 +7,8 @@ This is a demo codebase: an open-source, realistic product used to test backgrou
 
 **Status:** foundation only. You can sign in as a seeded user, see stories read from Postgres, open the sample
 story "The Moon Picnic" with its pages rendered at print size, its characters composed from placeholder variant
-parts, and change each character's look (face, skin, hair, hair colour, glasses) in a picker, and run a
+parts, and change each character's look (face, skin, hair, hair colour, glasses) in a picker, make a print-ready
+PDF proof of the book with those looks (rendered by the worker with headless Chromium) and download it, and run a
 worker job that writes a file to object storage. Families and invites work: the operator invites a new family,
 an owner invites a parent or a view-only member, and a user in several families switches between them
 (emails go to `/__dev/mailbox` in development). Milestone 1 is planned in [docs/plan.md](docs/plan.md);
@@ -32,7 +33,7 @@ Requirements: [mise](https://mise.jdx.dev) (pins Node and pnpm in `mise.toml`) a
 mise install                                         # Node and pnpm at the pinned versions
 cp .env.example .env
 mise run install                                     # pnpm install --frozen-lockfile
-mise exec -- pnpm exec playwright install chromium   # only for the end-to-end test
+mise exec -- pnpm exec playwright install chromium   # the worker's PDF proofs and the end-to-end test
 mise run stack                                       # Postgres + SeaweedFS, migrate, seed, web app + worker
 ```
 
@@ -59,7 +60,8 @@ bucket. They read the variables in `.env.example`; production also sets `BETTER_
 
 - `apps/web/Dockerfile`: the web app on `$PORT`. Before each release, run `node packages/db/src/migrate.ts`
   in the same image to apply migrations (idempotent).
-- `apps/worker/Dockerfile`: the Absurd worker.
+- `apps/worker/Dockerfile`: the Absurd worker, with Chromium for PDF proofs. Set `PRINT_APP_URL` to the web app's
+  origin as the worker reaches it (on Railway, its private domain).
 
 Production images never serve the `/__dev` routes (they are compiled out of `vite build`), and the development
 seed refuses to run with `NODE_ENV=production`. The operator account comes from

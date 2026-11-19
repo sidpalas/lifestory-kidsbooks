@@ -15,6 +15,7 @@ import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter } fro
 import { Schema } from "effect";
 import { useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+import { ProofPanel } from "~/components/book/ProofPanel";
 import { NativeSelect } from "~/components/ui/native-select";
 import { getStoryPreviewFn, StoryPreviewResult } from "~/server/functions";
 
@@ -130,6 +131,8 @@ function StoryPreview() {
           );
         })}
       </section>
+
+      <ProofPanel slug={slug} looks={Object.fromEntries(Object.keys(cast).map((slotId) => [slotId, lookOf(slotId)]))} hydrated={hydrated} />
 
       <ol className="grid gap-8 md:grid-cols-2">
         {manifest.pages.map((page, i) => (

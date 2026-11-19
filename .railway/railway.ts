@@ -37,7 +37,12 @@ export default defineRailway(() => {
 
   const worker = service("worker", {
     build: { builder: "DOCKERFILE", dockerfilePath: "apps/worker/Dockerfile" },
-    env: { ...appEnv, BETTER_AUTH_SECRET: web.env.BETTER_AUTH_SECRET },
+    env: {
+      ...appEnv,
+      BETTER_AUTH_SECRET: web.env.BETTER_AUTH_SECRET,
+      // Headless Chromium on the worker opens the web app's print page for PDF proofs (D27), over the private network.
+      PRINT_APP_URL: "http://${{web.RAILWAY_PRIVATE_DOMAIN}}:${{web.PORT}}",
+    },
   });
 
   return project("lifestory-kidsbooks", { resources: [db, data, web, worker] });

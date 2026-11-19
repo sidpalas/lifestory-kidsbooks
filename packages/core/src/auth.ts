@@ -5,6 +5,7 @@ import { admin, organization } from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { defaultStatements as adminDefaultStatements } from "better-auth/plugins/admin/access";
 import { defaultStatements as orgDefaultStatements } from "better-auth/plugins/organization/access";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { Config, Context, Effect, Layer, Redacted } from "effect";
 import { MIN_PASSWORD_LENGTH } from "./contracts.ts";
 import { Database } from "./database.ts";
@@ -13,6 +14,9 @@ import { Mailer } from "./mailer.ts";
 
 /** How long invitations and set-password links stay valid: a week, so a grandparent can open it later. */
 export const INVITE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/** How long the worker's print page link works: long enough to render a book, useless once leaked into a log. */
+const PRINT_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 // ---- Family (organization) roles --------------------------------------------
 // A family is a Better Auth organization. "owner" and "parent" can edit books;
@@ -104,6 +108,14 @@ export class Auth extends Context.Service<
     readonly appUrl: (path: string) => string;
     /** Resolves the signed-in user from request headers, or fails with NotAuthenticated. */
     readonly requireUser: (headers: Headers) => Effect.Effect<SessionUser, NotAuthenticated>;
+    /**
+     * A short-lived token that lets the worker's headless Chromium open one proof's print page without a session
+     * (D27). Signed with BETTER_AUTH_SECRET, which both processes have.
+     */
+    readonly printToken: {
+      readonly sign: (proofId: string) => string;
+      readonly verify: (proofId: string, token: string) => boolean;
+    };
   }
 >()("@lifestory/core/Auth") {
   static readonly layer = Layer.effect(
@@ -134,9 +146,25 @@ export class Auth extends Context.Service<
             }),
           ),
       });
+      // Domain-separated from Better Auth's own use of the secret.
+      const printSignature = (proofId: string, expires: number) =>
+        createHmac("sha256", Redacted.value(secret)).update(`lifestory.print-proof:${proofId}:${expires}`).digest("base64url");
       return {
         auth,
         appUrl,
+        printToken: {
+          sign: (proofId) => {
+            const expires = Date.now() + PRINT_TOKEN_TTL_MS;
+            return `${expires}.${printSignature(proofId, expires)}`;
+          },
+          verify: (proofId, token) => {
+            const [expires, signature] = token.split(".");
+            if (!expires || !signature || !(Number(expires) > Date.now())) return false;
+            const expected = Buffer.from(printSignature(proofId, Number(expires)));
+            const given = Buffer.from(signature);
+            return given.length === expected.length && timingSafeEqual(given, expected);
+          },
+        },
         requireUser: (headers) =>
           Effect.promise(() => auth.api.getSession({ headers })).pipe(
             Effect.flatMap((session) =>

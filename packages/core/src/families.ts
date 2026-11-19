@@ -20,7 +20,8 @@ export const listUserFamilies = Effect.fn("families.listForUser")(function* (use
   return rows satisfies ReadonlyArray<FamilyMembership>;
 });
 
-const can = (role: string, permissions: Parameters<(typeof familyRoles)["owner"]["authorize"]>[0]) =>
+/** Whether a family role grants `permissions`. */
+export const roleCan = (role: string, permissions: Parameters<(typeof familyRoles)["owner"]["authorize"]>[0]) =>
   role in familyRoles && familyRoles[role as FamilyRole].authorize(permissions).success;
 
 /**
@@ -57,8 +58,8 @@ export const activeFamily = Effect.fn("families.active")(function* (user: Sessio
   ]);
   const active: FamilyOverview = {
     ...current,
-    canInvite: can(current.role, { invitation: ["create"] }),
-    canEditBooks: can(current.role, { book: ["edit"] }),
+    canInvite: roleCan(current.role, { invitation: ["create"] }),
+    canEditBooks: roleCan(current.role, { book: ["edit"] }),
     members,
     invitations: invitations.map((invitation) => ({ ...invitation, role: invitation.role ?? "viewer" })),
   };

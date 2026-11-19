@@ -189,6 +189,42 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   images per story to review); standalone reusable parts (they ignore each page's head angle and light).
 - **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.
 
+### D27. PDF proofs: printed by the worker from a token-gated print page, recorded with what they show — Made (2026-11-19)
+- **How:** a `proof` row belongs to a family and pins a story version plus its **content**: the cast (name,
+  pronouns, look per slot) and the text edits, copied when the proof is requested, so later look or text changes never
+  alter it. Requesting one needs `book:edit`; any member of the family (a viewer too) downloads it from
+  `/api/files/families/<familyId>/proofs/<proofId>.pdf`. The `proof.render` task (spawned with the proof ID as
+  idempotency key) has two steps: `render` opens `PRINT_APP_URL/print/proofs/<id>?token=…` in playwright-core's
+  Chromium headless shell, waits for fonts and images, calls `page.pdf({ preferCSSPageSize, printBackground })` and
+  writes the PDF to a key derived from the proof ID (a rerun overwrites it with the same content); `record` marks the
+  row ready with page count and size. The render fails, and Absurd retries, if an image or story font didn't load or
+  the PDF's page count differs from the number of BookPages, so an overflowing page never reaches a printer.
+- **The print page** (`apps/web/src/routes/print/proofs.$proofId.tsx`) draws every page with BookPage as on main, one
+  per sheet, with `@page { size: <trim + 2 × bleed>; margin: 0 }`. It needs no session: it answers 404 unless the
+  query carries an HMAC token over the proof ID and a 10-minute expiry, signed with `BETTER_AUTH_SECRET` (both services
+  have it). Its images and fonts load from `/api/files/<key>` like the editor's, and Chromium answers those requests
+  straight from object storage, so the PDF uses the same objects, recoloured layers included, without the worker
+  holding a session.
+- **Books plug in** through `createProof({ familyId, storyVersionId, content: { cast, textEdits }, requestedBy })`
+  (`packages/core/src/proofs.ts`). Until personalized books land, the story page's "Make a PDF proof" calls it with
+  the example characters and the looks chosen in the picker, and no text edits. The book adds a nullable `book_id`
+  to `proof` and approval (`approved_at`, `approved_by`), which belongs to the book.
+- **Chromium only in the worker image:** `playwright-core` is a dependency of `@lifestory/core` but loads on first
+  use, so the web app never starts a browser. `apps/worker/Dockerfile` installs the matching headless shell with its
+  system libraries and fonts (image 1.96 GB). On Railway the worker reaches the web app at its private domain.
+- **Checked 2026-11-19** (orb, dev worker and the production worker image): 6 pages of 630 × 630 pt (8.5 in trim +
+  0.125 in bleed per side); Literata embedded; recoloured layers at 300 ppi; the same line breaks as on screen, and
+  1.6–3.1% of pixels differ by more than 5% (anti-aliased edges) when screen and PDF are compared at 96 dpi after a
+  4× downscale. A render takes 1–1.6 s (4.3 s with a cold recolour cache).
+- **Open:** Chromium embeds the variable Literata as **Type 3** fonts, while a static instance of the same file embeds
+  as CID TrueType (proposal in the PDF thread: story fonts must be static instances, checked by the manifest
+  validator, and the sample ships a v2 with them). The PDF keeps the layers' transparency (soft masks) and has no
+  TrimBox or BleedBox (its page size is trim + bleed, which is what Lulu asks for); flattening and boxes are print-
+  order work. The placeholder SVGs' "PLACEHOLDER ART" labels use a system sans, which can differ between screen and
+  print; real illustrations won't have text.
+- **Reopen if:** a print provider needs PDF/X, flattened transparency or page boxes; longer books make one browser
+  page too slow (then render in page ranges); real screen-versus-print mismatches show up (D12).
+
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.

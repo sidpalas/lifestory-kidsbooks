@@ -22,6 +22,7 @@ import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
 import { Route as ApiWebhooksModalRouteImport } from './routes/api/webhooks/modal'
+import { Route as PrintProofsProofIdRouteImport } from './routes/print/proofs.$proofId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const ApiWebhooksModalRoute = ApiWebhooksModalRouteImport.update({
   path: '/api/webhooks/modal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrintProofsProofIdRoute = PrintProofsProofIdRouteImport.update({
+  id: '/print/proofs/$proofId',
+  path: '/print/proofs/$proofId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
+  '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
+  '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
+  '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
+    | '/print/proofs/$proofId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
+    | '/print/proofs/$proofId'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
+    | '/print/proofs/$proofId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiFilesSplatRoute: typeof ApiFilesSplatRoute
   ApiWebhooksModalRoute: typeof ApiWebhooksModalRoute
+  PrintProofsProofIdRoute: typeof PrintProofsProofIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksModalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/print/proofs/$proofId': {
+      id: '/print/proofs/$proofId'
+      path: '/print/proofs/$proofId'
+      fullPath: '/print/proofs/$proofId'
+      preLoaderRoute: typeof PrintProofsProofIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiFilesSplatRoute: ApiFilesSplatRoute,
   ApiWebhooksModalRoute: ApiWebhooksModalRoute,
+  PrintProofsProofIdRoute: PrintProofsProofIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

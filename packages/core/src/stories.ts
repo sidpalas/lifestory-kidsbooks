@@ -47,17 +47,8 @@ const readableBy = (userId: string) =>
     and(eq(schema.story.status, "published"), isNotNull(schema.storyVersion.publishedAt)),
   );
 
-/**
- * A story with the newest version `userId` may read, for previewing its pages: each slot filled by its example,
- * or with `looks` given per slot, the example's name and pronouns with that look. Every page's illustration comes
- * back composed, as storage keys. Fails with NotFound when the story doesn't exist or isn't visible to the user,
- * and with UnsupportedLook when the story can't draw a given look.
- */
-export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
-  userId: string,
-  slug: string,
-  looks: Readonly<Record<string, Look>> = {},
-) {
+/** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
+export const readableStoryVersion = Effect.fn("stories.readableVersion")(function* (userId: string, slug: string) {
   const [row] = yield* Database.query((db) =>
     db
       .select({
@@ -66,6 +57,7 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
         title: schema.story.title,
         summary: schema.story.summary,
         authorName: schema.user.name,
+        storyVersionId: schema.storyVersion.id,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
       })
@@ -79,14 +71,37 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
   if (!row) return yield* new NotFound({ entity: "story", id: slug });
   // Every stored manifest was validated when it was imported, so a failure here is a bug.
   const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
-  const { version, manifest: _, ...story } = row;
-  const cast: Record<string, CastMember> = Object.fromEntries(
+  const { storyVersionId, version, manifest: _, ...story } = row;
+  return { story: story satisfies StorySummary, storyVersionId, version, manifest };
+});
+
+/** Fails with UnsupportedLook when the story can't draw someone in `cast` (D26). */
+export const checkCastSupported = (manifest: StoryManifest, cast: Readonly<Record<string, CastMember>>) =>
+  Effect.forEach(Object.entries(cast), ([slotId, member]) => {
+    const axes = unsupportedOptions(manifest, slotId, member.look);
+    return axes.length > 0 ? Effect.fail(new UnsupportedLook({ slotId, axes: [...axes] })) : Effect.void;
+  }, { discard: true });
+
+/** The cast of a story preview: each slot's example character, with the look from `looks` where one is given. */
+export const previewCast = (manifest: StoryManifest, looks: Readonly<Record<string, Look>>): Record<string, CastMember> =>
+  Object.fromEntries(
     Object.entries(exampleCast(manifest)).map(([slotId, example]) => [slotId, { ...example, look: looks[slotId] ?? example.look }]),
   );
-  for (const [slotId, member] of Object.entries(cast)) {
-    const axes = unsupportedOptions(manifest, slotId, member.look);
-    if (axes.length > 0) return yield* new UnsupportedLook({ slotId, axes: [...axes] });
-  }
+
+/**
+ * A story with the newest version `userId` may read, for previewing its pages: each slot filled by its example,
+ * or with `looks` given per slot, the example's name and pronouns with that look. Every page's illustration comes
+ * back composed, as storage keys. Fails with NotFound when the story doesn't exist or isn't visible to the user,
+ * and with UnsupportedLook when the story can't draw a given look.
+ */
+export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
+  userId: string,
+  slug: string,
+  looks: Readonly<Record<string, Look>> = {},
+) {
+  const { story, version, manifest } = yield* readableStoryVersion(userId, slug);
+  const cast = previewCast(manifest, looks);
+  yield* checkCastSupported(manifest, cast);
   const pages = yield* Effect.forEach(manifest.pages, (page) =>
     resolveIllustration(story.id, version, composeIllustration(manifest, page, cast)).pipe(
       Effect.map((layers) => ({ pageId: page.pageId, layers })),

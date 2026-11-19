@@ -31,6 +31,3 @@ export const writeSampleFile = defineTask({
       );
     }),
 });
-
-/** Every task the worker runs. */
-export const tasks = [writeSampleFile] as const;

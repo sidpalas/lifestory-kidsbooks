@@ -15,4 +15,5 @@ export * from "./providers/modal.ts";
 export * from "./runtime.ts";
 export * from "./storage.ts";
 export * from "./stories.ts";
-export * from "./tasks/sample-file.ts";
+export * from "./proofs.ts";
+export * from "./tasks/index.ts";
