@@ -1,3 +1,4 @@
+import { totalmem } from "node:os";
 import { defineConfig, devices } from "@playwright/test";
 
 // The end-to-end tests need Postgres and SeaweedFS running, migrated, and seeded
@@ -14,6 +15,9 @@ const baseURL = `http://localhost:${port}`;
 export default defineConfig({
   testDir: "apps/web/e2e",
   fullyParallel: true,
+  // Since 300 ppi proof flattening (D35), two test workers' proof renders run out of memory on a 4 GB orb
+  // (a1.small); there, run one. `--workers=<n>` still overrides.
+  workers: totalmem() < 6 * 1024 ** 3 ? 1 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",

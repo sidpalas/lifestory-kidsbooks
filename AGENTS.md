@@ -32,7 +32,7 @@ Times measured on an `a1.small` orb.
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~6–10 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`) | ~1–5 s |
-| `mise run test:e2e` | Playwright end-to-end tests (17); `milestone1.spec.ts` walks the whole milestone 1 slice, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run test:e2e` | Playwright end-to-end tests (18; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~1.8 min for all, ~45 s for `milestone1` alone (measured 2026-11-19 without the `web` service). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~5 s warm; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~1 s |
@@ -51,6 +51,10 @@ agent-browser session open, the orb uses ~2 GB. A `CI=1 mise run test:e2e` run o
 ~1.8 GB used with no services running and ~3 GB next to the running services. The pressure comes from running it
 at the same time as `mise run typecheck` (or `mise run check`) on top of the services and agent-browser: that peaks at
 ~3.4 GB, leaving ~0.5 GB. Run e2e and typecheck one after the other, not in parallel.
+
+Since 300 ppi proof flattening (D35), a `CI=1` e2e run with two Playwright workers was killed for memory on
+`a1.small` even alone (2026-11-19). `playwright.config.ts` therefore runs one worker on machines under 6 GB (~1.5 min
+for all tests); don't pass `--workers=2` there.
 
 - **`a1.small`**: docs, small edits, unit tests (`mise run check`), and e2e runs (including `CI=1`) run one at a
   time. Close agent-browser (`agent-browser close`) before running e2e.
