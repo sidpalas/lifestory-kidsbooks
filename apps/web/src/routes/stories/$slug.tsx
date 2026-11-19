@@ -73,7 +73,8 @@ function StoryPreview() {
     const looks = Object.fromEntries(Object.keys(cast).map((id) => [id, current(id)]));
     latest.current = { ...looks, [slotId]: { ...current(slotId), ...change } };
     setChosen(latest.current);
-    void router.navigate({ to: "/stories/$slug", params: { slug }, search: { looks: latest.current }, replace: true });
+    // Only the search changes: keep the reader where they are on the page.
+    void router.navigate({ to: "/stories/$slug", params: { slug }, search: { looks: latest.current }, replace: true, resetScroll: false });
   };
 
   const loadProofs = useCallback(async () => unwrapResult(StoryProofsResult)(await listStoryProofsFn({ data: { slug } })), [slug]);

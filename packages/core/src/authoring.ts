@@ -27,6 +27,7 @@ import type { AuthoredStory } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { DraftChanged, Forbidden, InvalidInput, NotFound, StoryNotPublishable } from "./errors.ts";
 import { composeFigure, type LayerSpec } from "./looks/compose.ts";
+import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
@@ -188,18 +189,22 @@ const draftOf = (user: SessionUser, storyId: string) => ownedDraft(user, storyId
 // Every stored draft was decoded on the way in, so a failure here is a bug.
 const decodeDraft = (manifest: unknown) => decodeStoryDraft(manifest).pipe(Effect.orDie);
 
-/** Generated parts live in story_part (D36); a draft as stored never holds them. */
-const GENERATED = /^parts\//;
-
-const withoutGeneratedParts = (draft: StoryDraft): StoryDraft => ({
-  ...draft,
-  pages: draft.pages.map((page) => ({
-    ...page,
-    illustration: {
-      layers: page.illustration.layers.map((layer) => (layer.kind === "figure" ? { ...layer, parts: layer.parts.filter((part) => !GENERATED.test(part.asset)) } : layer)),
-    },
-  })),
-});
+/**
+ * The draft without the parts generated for it, which live in story_part (D36): a draft as stored never holds them.
+ * Parts a published version carried over into this draft ("Start version n+1") are ordinary parts here and stay.
+ */
+const withoutGeneratedParts = (draft: StoryDraft, generated: ReadonlyArray<StoryPart>): StoryDraft => {
+  const assets = new Set(generated.flatMap((part) => part.layers.map((layer) => layer.asset)));
+  return {
+    ...draft,
+    pages: draft.pages.map((page) => ({
+      ...page,
+      illustration: {
+        layers: page.illustration.layers.map((layer) => (layer.kind === "figure" ? { ...layer, parts: layer.parts.filter((part) => !assets.has(part.asset)) } : layer)),
+      },
+    })),
+  };
+};
 
 /**
  * The draft with its generated parts merged in: each part waiting for review or approved replaces the figure's part
@@ -221,14 +226,14 @@ export const withGeneratedParts = (draft: StoryDraft, parts: ReadonlyArray<Story
  * may lack a base, a part, or a palette for the example's look: that figure is left out (its box guide still shows),
  * and so is a figure whose files can't be recoloured, so one bad upload doesn't stop the editor.
  */
-const draftPagePreview = (storyId: string, version: number, draft: StoryDraft, page: Page) => {
+const draftPagePreview = (storyId: string, version: number, draft: StoryDraft, page: Page, looks: Readonly<Record<string, Look>> = {}) => {
   const cast = exampleCast(draft);
   const groups = page.illustration.layers.map((layer): ReadonlyArray<LayerSpec> => {
     if (layer.kind === "art") return [{ asset: layer.asset, rect: [0, 0, 1000, 1000], recolour: [] }];
     const member = cast[layer.slotId];
     if (!member) return [];
     try {
-      return composeFigure(draft.palettes, draft.partOrder, layer, member.look);
+      return composeFigure(draft.palettes, draft.partOrder, layer, looks[layer.slotId] ?? member.look);
     } catch {
       return [];
     }
@@ -256,6 +261,23 @@ const draftView = Effect.fn("authoring.draftView")(function* (
     parts,
     pages,
   };
+});
+
+/**
+ * Every page of `manifest`, an unsaved edit of the story's draft, composed with its generated parts, for the editor's
+ * live preview; nothing is saved. Roles are drawn with `looks` where given ("preview as" a family member, never
+ * stored), else as their examples. A figure that can't draw its look is left out.
+ */
+export const previewDraft = Effect.fn("authoring.previewDraft")(function* (
+  user: SessionUser,
+  storyId: string,
+  manifest: StoryDraft,
+  looks: Readonly<Record<string, Look>> = {},
+) {
+  const { story, draft } = yield* draftOf(user, storyId);
+  const parts = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
+  const merged = withGeneratedParts(withoutGeneratedParts(manifest, parts), parts);
+  return yield* Effect.forEach(merged.pages, (page) => draftPagePreview(story.id, draft.version, merged, page, looks), { concurrency: 2 });
 });
 
 /** The draft a story's author is working on, with its generated parts and every page composed for the slots' examples. */
@@ -292,11 +314,12 @@ export const saveDraft = Effect.fn("authoring.saveDraft")(function* (
   input: { readonly revision: number; readonly draft: StoryDraft; readonly title: string; readonly summary: string },
 ) {
   const { story, draft } = yield* draftOf(user, storyId);
+  const generated = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
   const [saved] = yield* Database.query((db) =>
     db.transaction(async (tx) => {
       const rows = await tx
         .update(schema.storyVersion)
-        .set({ manifest: withoutGeneratedParts(input.draft), revision: sql`${schema.storyVersion.revision} + 1` })
+        .set({ manifest: withoutGeneratedParts(input.draft, generated), revision: sql`${schema.storyVersion.revision} + 1` })
         .where(and(eq(schema.storyVersion.id, draft.id), eq(schema.storyVersion.revision, input.revision), isNull(schema.storyVersion.publishedAt)))
         .returning({ id: schema.storyVersion.id, version: schema.storyVersion.version, revision: schema.storyVersion.revision, manifest: schema.storyVersion.manifest });
       if (rows.length > 0 && (input.title !== story.title || input.summary !== story.summary)) {

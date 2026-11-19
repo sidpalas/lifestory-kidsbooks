@@ -5,6 +5,8 @@
 import {
   type Age,
   ageOptions,
+  type CastMember,
+  type Character,
   type CharacterSlot,
   DraftChanged,
   type DraftView,
@@ -25,7 +27,7 @@ import {
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -36,6 +38,8 @@ import {
   DraftPartResult,
   DraftResult,
   getDraftFn,
+  PreviewDraftResult,
+  previewDraftFn,
   PublishDraftResult,
   publishDraftFn,
   requestDraftPartFn,
@@ -63,7 +67,7 @@ const layoutLabels: Record<PageLayout, string> = {
 
 const PRONOUN_FIELDS = ["name", "title", "they", "them", "their", "theirs", "themself"] as const;
 
-export function DraftEditor({ initial }: { initial: DraftView }) {
+export function DraftEditor({ initial, characters }: { initial: DraftView; characters: ReadonlyArray<Character> }) {
   const router = useRouter();
   const [view, setView] = useState(initial);
   const [draft, setDraft] = useState<StoryDraft>(initial.draft);
@@ -82,6 +86,35 @@ export function DraftEditor({ initial }: { initial: DraftView }) {
     setIssues(null);
   };
   const page = draft.pages.find((candidate) => candidate.pageId === selected) ?? draft.pages[0];
+
+  // "Preview as": a family member plays a role in the preview only; the role's example is what's saved.
+  const [standIns, setStandIns] = useState<Record<string, string>>({});
+  const standIn = (slotId: string) => characters.find((character) => character.id === standIns[slotId]);
+  const cast: Record<string, CastMember> = Object.fromEntries(
+    Object.entries(exampleCast(draft)).map(([slotId, example]) => {
+      const character = standIn(slotId);
+      return [slotId, character ? { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: character.look } : example];
+    }),
+  );
+  const looksKey = JSON.stringify(Object.fromEntries(Object.entries(cast).map(([slotId, member]) => [slotId, member.look])));
+
+  // The pictures follow unsaved edits: the server composes the draft as it is here, a moment after the last change.
+  // Only the newest answer is shown, so a slow one can't overwrite a later edit.
+  const [preview, setPreview] = useState(initial.pages);
+  const previewSeq = useRef(0);
+  const partsKey = view.parts.map((part) => `${part.id}:${part.status}`).join();
+  useEffect(() => {
+    const seq = ++previewSeq.current;
+    const timer = setTimeout(() => {
+      void previewDraftFn({ data: { storyId: initial.story.id, draft, looks: JSON.parse(looksKey) } })
+        .then((result) => {
+          if (seq === previewSeq.current) setPreview(unwrapResult(PreviewDraftResult)(result));
+        })
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- partsKey: the server merges generated parts in, so a review recomposes too
+  }, [initial.story.id, draft, looksKey, partsKey]);
 
   // Generated parts (D37) live in story_part, not in the saved manifest: reloading the view picks up their status and
   // recomposes the pictures with them. Unsaved edits stay as they are.
@@ -142,7 +175,7 @@ export function DraftEditor({ initial }: { initial: DraftView }) {
       setView(next);
       setDraft(next.draft);
       setDirty(false);
-      setStatus({ error: false, text: `Saved. Pictures recomposed.` });
+      setStatus({ error: false, text: "Saved." });
     } catch (cause) {
       setStatus({
         error: true,
@@ -285,20 +318,46 @@ export function DraftEditor({ initial }: { initial: DraftView }) {
               <BookPage
                 manifest={draft}
                 page={page}
-                text={resolvePageText(page, exampleCast(draft))}
-                illustration={(view.pages.find((composed) => composed.pageId === page.pageId)?.layers ?? []).map((layer) => ({
+                text={resolvePageText(page, cast)}
+                illustration={(preview.find((composed) => composed.pageId === page.pageId)?.layers ?? []).map((layer) => ({
                   url: `/api/files/${layer.key}`,
                   rect: layer.rect,
                 }))}
-                cast={exampleCast(draft)}
+                cast={cast}
                 guides
               />
             </ScaledPage>
           </div>
         )}
         <p className="text-muted-foreground max-w-md text-xs">
-          As BookPage prints it, with each role played by its example character. Text follows your typing; pictures update when you save.
+          As BookPage prints it. Text and pictures follow your edits before you save.
         </p>
+        {draft.characterSlots.length > 0 && (
+          <fieldset className="flex max-w-md flex-col gap-2 rounded-md border p-2" data-testid="preview-as">
+            <legend className="px-1 text-xs font-medium">Preview as</legend>
+            {draft.characterSlots.map((slot) => (
+              <label key={slot.slotId} className="flex items-center justify-between gap-2 text-xs">
+                {slot.label}
+                <NativeSelect
+                  aria-label={`Preview ${slot.label} as`}
+                  className="h-7"
+                  value={standIns[slot.slotId] ?? ""}
+                  onChange={(event) => setStandIns({ ...standIns, [slot.slotId]: event.target.value })}
+                >
+                  <option value="">{slot.example.name} (example)</option>
+                  {characters
+                    .filter((character) => slot.ages.includes(character.look.age))
+                    .map((character) => (
+                      <option key={character.id} value={character.id}>
+                        {character.name}
+                      </option>
+                    ))}
+                </NativeSelect>
+              </label>
+            ))}
+            <p className="text-muted-foreground text-xs">Family members of the ages a role accepts. Only the preview changes; families see the example.</p>
+          </fieldset>
+        )}
         {view.story.status === "published" && (
           <Link to="/stories/$slug" params={{ slug: view.story.slug }} className="text-sm hover:underline">
             Open the published story →

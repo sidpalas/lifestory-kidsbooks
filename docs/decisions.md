@@ -505,7 +505,8 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   that a font is static (D24). It needs an `x-lifestory-upload` header, so a cross-site form can't post to it. This
   is the authenticated upload endpoint D33 left for the author tooling.
 - **Generated parts (D36) keep their review in `story_part`**, the one approve button for them: the saved draft never
-  holds them (a save drops entries under `parts/`), every read merges approved and waiting parts in
+  holds the parts generated for it (a save drops them; parts a published version carried into the next draft stay as
+  ordinary parts), every read merges approved and waiting parts in
   (`withGeneratedParts`, built on D36's `manifestParts` and `withApprovedParts`; an approved part beats one waiting,
   and each replaces an uploaded part for the same option), and publishing writes the merged manifest, so the
   published version holds them as ordinary approved parts. Uploaded parts keep their approval in the manifest. The
@@ -518,8 +519,10 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   references, except the recolour cache and generated parts' files (their review record). "Start version n+1" copies
   the newest version's files into a new draft.
 - **The editor** (`/author/<storyId>`, no server rendering) shows the selected page with BookPage, the component the
-  book editor and the PDF use, with each role played by its example. Text updates as the author types; pictures are
-  composed by the server when the draft is saved or parts change (a figure missing a base or part is left out).
+  book editor and the PDF use, with each role played by its example, or by a family member of an age the role accepts
+  ("Preview as", Sid 2026-11-19; preview only, never saved). Text and pictures follow unsaved edits: the server
+  composes the draft as edited a quarter second after the last change (`previewDraft`), leaving out a figure that
+  can't draw its look yet.
 - **Reopen if:** studios arrive (authoring through studio membership), authors need to work on one story together,
   moderation needs a review step before a version reaches families, or uploads need to go straight to storage
   (presigned PUTs) because art outgrows the 40 MB limit.

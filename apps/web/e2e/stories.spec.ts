@@ -63,9 +63,16 @@ test("changing a look recomposes every page that shows the character", async ({ 
   const sources = () => pages.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).src));
   const before = await sources();
 
-  // Glasses for Mia: one more part on each of her 6 appearances, and nothing else changes.
+  // Glasses for Mia: one more part on each of her 6 appearances, and nothing else changes. The page stays where the
+  // reader scrolled to, though the look is kept in the URL.
+  // The controls are enabled once React hydrated, after the router restored the initial scroll.
+  await expect(page.getByLabel("The child: Glasses")).toBeEnabled();
+  await page.getByLabel("The child: Glasses").evaluate((select) => select.scrollIntoView({ block: "center" }));
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(0);
   await page.getByLabel("The child: Glasses").selectOption("glasses:round");
   await expect(page).toHaveURL(/glasses%3Around|glasses:round/);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   await expect.poll(async () => (await sources()).length, { timeout: 30_000 }).toBe(before.length + 6);
   await expect
     .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length))

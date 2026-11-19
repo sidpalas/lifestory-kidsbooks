@@ -8,6 +8,7 @@ import {
   Forbidden,
   InvalidInput,
   NotAuthenticated,
+  Look,
   NotFound,
   PartDecision,
   PartRequest,
@@ -26,6 +27,7 @@ import {
   listAuthoredStories,
   listAuthors,
   listDraftParts,
+  previewDraft,
   requestDraftPart,
   reviewDraftPart,
   publishDraft,
@@ -161,3 +163,10 @@ export const DraftPartsResult = ResultSchema(Schema.Array(StoryPart), DraftFailu
 export const listDraftPartsFn = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(StoryId))
   .handler(({ data }) => runEffect(DraftPartsResult, currentUser.pipe(Effect.flatMap((user) => listDraftParts(user, data.storyId)))));
+
+export const PreviewDraftResult = ResultSchema(DraftView.fields.pages, DraftFailures);
+
+/** The editor's live preview of unsaved changes, optionally with family members' looks in roles; saves nothing. */
+export const previewDraftFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, draft: StoryDraft, looks: Schema.Record(Schema.String, Look) })))
+  .handler(({ data }) => runEffect(PreviewDraftResult, currentUser.pipe(Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft, data.looks)))));

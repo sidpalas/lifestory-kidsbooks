@@ -6,6 +6,7 @@ import { useState } from "react";
 import { DraftEditor } from "~/components/authoring/draft-editor";
 import { message } from "~/components/authoring/fields";
 import { Button } from "~/components/ui/button";
+import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 import { DraftResult, getDraftFn, StartNextVersionResult, startNextVersionFn, StoryVersionsResult, storyVersionsFn } from "~/server/authoring";
 
 export const Route = createFileRoute("/author/$storyId")({
@@ -14,7 +15,9 @@ export const Route = createFileRoute("/author/$storyId")({
     try {
       const versions = unwrapResult(StoryVersionsResult)(await storyVersionsFn({ data: { storyId: params.storyId } }));
       const draft = versions.draftVersion === null ? null : unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: params.storyId } }));
-      return { versions, draft };
+      // Family members the author can preview roles as; an author without a family to read just has none.
+      const characters = draft ? await getFamilyLibrary().then((r) => unwrapResult(FamilyLibraryResult)(r).characters).catch(() => []) : [];
+      return { versions, draft, characters };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       if (error instanceof NotFound || error instanceof Forbidden) throw notFound();
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/author/$storyId")({
 });
 
 function AuthorStory() {
-  const { versions, draft } = Route.useLoaderData();
+  const { versions, draft, characters } = Route.useLoaderData();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const latest = versions.published[0];
@@ -53,7 +56,7 @@ function AuthorStory() {
         </p>
       </header>
       {draft ? (
-        <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} />
+        <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} characters={characters} />
       ) : (
         <section className="flex flex-col gap-3" data-testid="published-versions">
           {latest && (

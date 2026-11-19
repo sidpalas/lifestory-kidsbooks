@@ -163,6 +163,16 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.evaluate(() => window.scrollTo(0, 0));
   await evidence(author, "author-4-page", false);
 
+  // The preview follows edits before they're saved: long hair for Mia recomposes her figure, and saving changes nothing.
+  const previewSources = () => author.getByTestId("draft-preview").locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")).join());
+  const shortHair = await previewSources();
+  await author.getByRole("tab", { name: "Roles" }).click();
+  await author.getByLabel("Example hairstyle").selectOption("hair:long");
+  await expect(author.getByTestId("draft-state")).toHaveText("Unsaved changes");
+  await expect.poll(previewSources, { timeout: 10_000 }).not.toBe(shortHair);
+  await save(author);
+  await author.getByRole("tab", { name: "Pages" }).click();
+
   // 6. Checking lists what stops publishing: here, the parts nobody approved yet.
   await author.getByRole("button", { name: "Check" }).click();
   const issues = author.getByTestId("publish-issues");
@@ -215,4 +225,14 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   // Plate, base, generated curls, foreground: without the published part the figure couldn't be drawn at all.
   await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(4);
   await evidence(author, "author-7-book");
+
+  // 9. Version 2 starts from version 1, generated curls included, and the author previews it with Noor in the role.
+  await author.goto(`/author/${storyId}`);
+  await author.getByRole("button", { name: "Start version 2" }).click();
+  await author.getByLabel("Preview The child as").selectOption({ label: child });
+  const draftPreview = author.getByTestId("draft-preview");
+  await expect(draftPreview).toContainText(`${child} walked to the end of the garden. She counted the stars with her finger.`);
+  await expect(draftPreview.locator("img")).toHaveCount(4);
+  await imagesLoaded(author);
+  await evidence(author, "author-8-preview-as", false);
 });
