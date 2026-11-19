@@ -139,7 +139,7 @@ directly:
 railway ssh --service web -- node packages/core/src/story-import.ts --author <operator email> fixtures/stories/moon-picnic
 ```
 
-It prints `The Moon Picnic (/stories/the-moon-picnic) v4 is published, by <email>.`; running it again changes nothing.
+It prints `The Moon Picnic (/stories/the-moon-picnic) v5 is published, by <email>.`; running it again changes nothing.
 To publish a changed story, raise `version` in its `story.json` (stored versions never change) and run it again
 after the change deploys. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
 
@@ -154,6 +154,30 @@ railway config plan && railway config apply
 
 To use the fallback instead, change `IMAGE_PROVIDER` to `modal` and add the Modal variables from "Image generation on
 Modal" below, then apply and redeploy both services.
+
+### Agent account
+
+Agents verifying a deploy sign in as an ordinary family, "Amp agent", which the operator invites (D38, proposed). It
+sees published stories and its own made-up characters, books, and proofs, never another family's, and it is not the
+operator. Set it up once:
+
+1. Sign in as the operator at https://lifestory.devopsdirective.com and, under "Invite a new family", invite name
+   `Amp agent` with an address you receive, such as `sid+lifestory-agent@<your domain>`.
+2. Find its set-password link in the web log (there is no email provider yet, D23):
+   `railway logs --service web | grep "email to sid+lifestory-agent"`.
+3. Generate a password (`openssl rand -base64 24`), open the link, and set it.
+4. In Amp Settings → Secrets, add project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD` for this
+   project.
+
+An agent then signs in at `/sign-in` with agent-browser, or with curl:
+
+```sh
+jq -n --arg email "$LIFESTORY_AGENT_EMAIL" --arg password "$LIFESTORY_AGENT_PASSWORD" '{$email, $password}' |
+  curl -sf -c /tmp/agent.jar -H 'content-type: application/json' -d @- \
+    https://lifestory.devopsdirective.com/api/auth/sign-in/email >/dev/null
+curl -sf -b /tmp/agent.jar https://lifestory.devopsdirective.com/api/auth/get-session | jq .user.email
+```
+
 
 ## Image generation on Modal
 

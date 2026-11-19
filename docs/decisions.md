@@ -5,7 +5,7 @@ its reason and what would reopen it. A decision changes only when new evidence t
 reports the evidence and a proposal, Sid decides, and the change is recorded here with the date.
 
 Status: **Decided** (by Sid, in the brief or in a thread), **Recommended** (the brief's recommended design,
-adopted), or **Made** (chosen during implementation, Sid can veto).
+adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed** (not in effect until Sid decides).
 
 ## Product and platform
 
@@ -72,6 +72,29 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** stories are authored outside the repository (the upload endpoint then replaces this), or a story's
   assets grow too large to ship in the image.
 
+### D38. Agents sign in to production as an ordinary family the operator invites — Proposed (waiting on Sid)
+- **What:** the operator invites a new family named "Amp agent" with an address Sid receives (for example
+  `sid+lifestory-agent@…`), sets its password from the set-password link in the web log (D23), and keeps the email and
+  password as Amp project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD`. Agents sign in like anyone
+  else: the `/sign-in` page in a browser, or `POST /api/auth/sign-in/email` with curl. README "Agent account" has the
+  steps. No code changes: it is the invite path that exists.
+- **What the agent can do:** what any family owner can: read published stories, add its own (made-up) characters,
+  make books and proofs, which exercises the worker. It sees no other family's characters, books, or proofs, and it
+  is not the operator (`role` `user`; Better Auth's admin endpoints answer 403, checked 2026-11-19 in the production
+  image).
+- **Why:** no new way to authenticate on an app holding children's data, and checks run exactly the path parents use.
+  A leaked password exposes one family of test data in an invite-only app, not other families.
+- **Rejected:** an API key (Better Auth's apiKey plugin). It is more capable (scopes, expiry, no browser), but it adds a
+  second way in that every route must handle, and keys need their own scoping and revocation design. Also rejected:
+  having an agent read the link from `railway logs` and set the password itself: the password would then pass
+  through a thread transcript.
+- **Gaps:** there is no operator UI to disable an account. Until there is, a leaked password is rotated by signing in
+  as the agent and calling Better Auth's `POST /api/auth/change-password` with `revokeOtherSessions: true`, and the
+  operator can ban the user through `POST /api/auth/admin/ban-user` from a signed-in browser.
+- **Then:** D34's post-deploy check can add signed-in steps (its "reopen if").
+- **Reopen if:** agents need operator-only checks, several agents need separate identities, or checks need to run
+  where a password can't be kept.
+
 ### D23. A newly invited family sets its password from a single-use emailed link — Made (2026-11-18)
 - **How:** the operator's "Invite a new family" creates the account (no password yet) and its one-person family
   right away, through the same `createAccountWithFamily` path as `operator:create` (D21), and emails a link to
@@ -92,6 +115,34 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   account signs in and accepts. Opening the emailed link is what proves the email.
 - **Reopen if:** we add a delivery provider that offers magic links, invitees often miss the 7-day window, or we
   need invitations that don't create an account until accepted (for example to keep unaccepted invites out of user lists).
+
+### D39. Email delivery: Resend's free plan over its HTTPS API — Proposed (waiting on Sid)
+- **Need:** invitations and set-password links (D23), a few a week while invite-only. Each email holds the recipient's
+  name and address and a single-use link valid for 7 days; no children's data. The provider must work from any host
+  (D7) over HTTPS: Railway disables outbound SMTP on Free, Trial, and Hobby plans (Railway docs, "Outbound
+  Networking", checked 2026-11-19). The app needs only a `Mailer` provider entry that POSTs JSON with `fetch` (D23); no
+  SDK. Every option needs SPF and DKIM DNS records on the sending domain (for example a `mail.` subdomain of
+  `devopsdirective.com`).
+- **Compared (pricing pages, 2026-11-19):**
+
+  | | Resend | Postmark | Amazon SES |
+  | --- | --- | --- | --- |
+  | Price at our volume | Free: 3,000 a month, 100 a day, forever | Free: 100 a month; Basic $15/mo for 10,000 | No free tier for new accounts; $0.10–0.16 per 1,000 (cents a month) |
+  | Next step up | Pro $20/mo for 50,000 | $1.80 per extra 1,000 | Same rate |
+  | Message content kept | 30 days, every plan (Enterprise can change it) | 45 days by default; 7–365 days as a paid add-on | Not stored unless we publish events ourselves |
+  | Terms | DPA pre-signed at sign-up, SCCs; data stored in the US; content not used for training | Transactional mail on separate IPs from bulk; DPA not checked | AWS DPA in the service terms; region we choose |
+  | Setup | Sign up, verify a domain (DNS), one API key | Sign up, manual account approval, verify a domain | AWS account, IAM user and key, verify a domain, request production access (sandbox sends only to verified addresses) |
+
+- **Proposal:** Resend Free. It costs nothing at invite-only volume with room to spare, needs the least setup, is the
+  provider Railway's docs recommend, and keeps content 30 days (the links in it are single-use and expire in 7). The
+  `resend` entry would read `RESEND_API_KEY` and `EMAIL_FROM`, and production would stop logging links. Moving later is
+  one `Mailer` entry and DNS records.
+- **Alternatives:** Amazon SES if Sid wants no stored message content or already runs an AWS account (cheapest, most
+  setup); Postmark if deliverability matters more than price (it vets senders and separates transactional traffic;
+  $15/mo once past 100 emails a month).
+- **Needs Sid:** the sign-up (a vendor account and its terms), the sending domain, and its DNS records.
+- **Reopen if:** volume passes 100 a day (Resend Free's cap), we need content kept less than 30 days, or deliverability
+  to invitees' inboxes is poor.
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided
 - **Why:** brief. Postgres is the only moving part; workflows can suspend for days (an illustrator's review of
