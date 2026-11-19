@@ -162,7 +162,7 @@ downloads) are server routes with `server.handlers`.
   inside `packages/core`): `fakeTaskContext(taskID, checkpoints)` replaces Absurd's `TaskContext` (private constructor)
   and stores step results in `checkpoints`. Share one map across runs to test a retry that replays completed steps;
   use a fresh map to rerun a step whose result was lost. `memoryObjectStorage(objects)` is an `ObjectStorage` layer
-  over a `Map` you can inspect. Provide it with `FakeImageProvider`; example: `packages/core/test/sample-file.test.ts`.
+  over a `Map` you can inspect. Provide it with `FakeImageProvider`; example: `packages/core/test/generations.test.ts`.
 
 ### Accounts and families
 
@@ -184,9 +184,9 @@ row's family, not only the session's active family.
 ### Object storage
 
 Every key starts with its owner (D31): `families/<familyId>/` for anything holding family data, `stories/<storyId>/v<n>/`
-for story assets and caches, `samples/<taskID>` for the sample task. The `storage.sweep` task deletes samples after
-7 days and the files of families that no longer exist; a new kind of object gets an owner prefix, and an expiry rule
-in `packages/core/src/tasks/sweep-storage.ts` if it shouldn't live as long as its owner.
+for story assets and caches. The `storage.sweep` task deletes the files of families that no longer exist, unapproved
+proofs after 30 days, and whatever the removed worker check left under `samples/`; a new kind of object gets an owner
+prefix, and an expiry rule in `packages/core/src/tasks/sweep-storage.ts` if it shouldn't live as long as its owner.
 
 ### Images
 

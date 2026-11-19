@@ -240,8 +240,8 @@ S3_PUBLIC_ENDPOINT=https://<storage as Modal reaches it>                        
 ```
 
 The app needs a public URL for the callback, and Modal must reach object storage through the presigned URLs. With
-SeaweedFS on a laptop, expose both through a tunnel. Signed callbacks that arrive twice are harmless. "Write a sample
-file" on the home page runs one real generation. Logs: `modal app logs lifestory-flux-klein`; runs:
+SeaweedFS on a laptop, expose both through a tunnel. Signed callbacks that arrive twice are harmless. Generating one
+part in a draft's parts grid runs one real generation. Logs: `modal app logs lifestory-flux-klein`; runs:
 https://modal.com/apps (app `lifestory-flux-klein`).
 
 ## Generating story parts

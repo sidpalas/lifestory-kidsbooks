@@ -126,13 +126,6 @@ export const BookView = Schema.Struct({
 });
 export type BookView = typeof BookView.Type;
 
-export const SampleFileResult = Schema.Struct({
-  key: Schema.String,
-  contentType: Schema.String,
-  bytes: Schema.Number,
-});
-export type SampleFileResult = typeof SampleFileResult.Type;
-
 export const TaskState = Schema.Literals(["pending", "running", "sleeping", "completed", "failed", "cancelled"]);
 export type TaskState = typeof TaskState.Type;
 

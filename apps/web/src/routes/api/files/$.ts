@@ -15,9 +15,7 @@ export const Route = createFileRoute("/api/files/$")({
             const user = yield* Auth.use((auth) => auth.requireUser(request.headers));
             const allowed = key.startsWith("stories/")
               ? yield* canReadStoryAsset(user.id, key)
-              : key.startsWith("families/")
-                ? yield* canReadFamilyFile(user.id, key)
-                : key.startsWith("samples/");
+              : key.startsWith("families/") && (yield* canReadFamilyFile(user.id, key));
             if (!allowed) return new Response("Not found", { status: 404 });
             const object = yield* ObjectStorage.use((storage) => storage.get(key));
             return new Response(new Uint8Array(object.body), {

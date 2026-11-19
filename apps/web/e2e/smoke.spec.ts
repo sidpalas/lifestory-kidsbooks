@@ -21,20 +21,11 @@ test("signed-out visitors get the landing page, with public images and a way to 
   await expect(page.getByText("Lifestory is invite-only.")).toBeVisible();
 });
 
-test("seeded parent signs in, sees stories from Postgres, and the worker writes a file", async ({ page }) => {
+test("seeded parent signs in and sees stories from Postgres", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Pat Parent (parent@lifestory.dev)");
   await expect(page.getByTestId("families")).toHaveText("The Example Family");
   await expect(page.getByTestId("stories")).toContainText("The Moon Picnic");
-
-  await page.getByRole("button", { name: "Write a sample file" }).click();
-  const status = page.getByTestId("job-status");
-  await expect(status).toContainText(/Stored samples\/[0-9a-f-]+\.svg/, { timeout: 30_000 });
-
-  // The image is served back from object storage through the authenticated file route.
-  const image = status.getByRole("img", { name: "Generated sample" });
-  await expect(image).toBeVisible();
-  expect(await image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(600);
 });
 
 test("health reports every migration and a live worker", async ({ request }) => {

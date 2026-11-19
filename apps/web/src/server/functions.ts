@@ -4,12 +4,10 @@ import {
   Look,
   NotFound,
   ResultSchema,
-  SampleFileResult,
   StoryManifest,
   StorySummary,
   JobError,
   UnsupportedLook,
-  TaskState,
   Forbidden,
   ProofSummary,
   TextStyleName,
@@ -18,12 +16,10 @@ import {
   Auth,
   canAuthor,
   getStoryPreview,
-  Jobs,
   listPublishedStories,
   listStoryProofs,
   printableProof,
   requestStoryProof,
-  writeSampleFile,
 } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -38,16 +34,6 @@ export const HomeResult = ResultSchema(
     canAuthor: Schema.Boolean,
   }),
   NotAuthenticated,
-);
-
-export const StartSampleFileResult = ResultSchema(
-  Schema.Struct({ taskId: Schema.String }),
-  Schema.Union([NotAuthenticated, JobError]),
-);
-
-export const SampleFileStatusResult = ResultSchema(
-  Schema.Struct({ state: TaskState, result: Schema.NullOr(SampleFileResult) }),
-  Schema.Union([NotAuthenticated, JobError]),
 );
 
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));
@@ -72,35 +58,6 @@ export const getHome = createServerFn({ method: "GET" }).handler(() =>
     }),
   ),
 );
-
-export const startSampleFile = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ label: Schema.String.check(Schema.isMinLength(1)) })))
-  .handler(async ({ data }) => {
-      return runEffect(
-      StartSampleFileResult,
-      Effect.gen(function* () {
-        const user = yield* currentUser;
-        const jobs = yield* Jobs;
-        return yield* jobs.spawn(writeSampleFile, { label: data.label, requestedBy: user.id });
-      }),
-    );
-  });
-
-export const getSampleFileStatus = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ taskId: Schema.String })))
-  .handler(async ({ data }) => {
-      return runEffect(
-      SampleFileStatusResult,
-      Effect.gen(function* () {
-        yield* currentUser;
-        const jobs = yield* Jobs;
-        const status = yield* jobs.status(data.taskId);
-        const result =
-          status.state === "completed" ? yield* Schema.decodeUnknownEffect(SampleFileResult)(status.result).pipe(Effect.orDie) : null;
-        return { state: status.state, result };
-      }),
-    );
-  });
 
 const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
 

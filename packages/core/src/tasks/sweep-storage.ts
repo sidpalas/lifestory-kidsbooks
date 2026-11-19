@@ -7,9 +7,6 @@ import { type ListedObject, ObjectStorage } from "../storage.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** How long a sample file stays (D31). */
-export const SAMPLE_TTL_MS = 7 * DAY_MS;
-
 /** How long a proof nobody approved stays, row and PDF (D31). An approved proof stays as long as its family. */
 export const PROOF_TTL_MS = 30 * DAY_MS;
 
@@ -18,18 +15,17 @@ const FAMILY_KEY = /^families\/([^/]+)\//;
 const PROOF_KEY = /^families\/[^/]+\/proofs\/([^/]+)\.pdf$/;
 
 /**
- * The keys the sweep deletes (D31): samples older than `SAMPLE_TTL_MS`, everything under `families/<id>/` of a
- * family that no longer exists, and proof PDFs whose proof row is gone (`liveProofs` holds the IDs that have one).
+ * The keys the sweep deletes (D31): every `samples/` file the removed worker check left, everything under
+ * `families/<id>/` of a family that no longer exists, and proof PDFs whose proof row is gone (`liveProofs` holds the IDs that have one).
  * Anything else, including keys it doesn't recognise, stays.
  */
 export const expiredKeys = (
   objects: ReadonlyArray<ListedObject>,
   live: { readonly families: ReadonlySet<string>; readonly proofs: ReadonlySet<string> },
-  now: number,
 ) =>
   objects
-    .filter(({ key, lastModified }) => {
-      if (key.startsWith("samples/")) return now - lastModified.getTime() > SAMPLE_TTL_MS;
+    .filter(({ key }) => {
+      if (key.startsWith("samples/")) return true;
       const familyId = FAMILY_KEY.exec(key)?.[1];
       if (familyId === undefined) return false;
       if (!live.families.has(familyId)) return true;
@@ -41,7 +37,7 @@ export const expiredKeys = (
 /**
  * Deletes expired objects (D31). Object keys sit under their owner's prefix, so the bucket listing is the inventory:
  * a family's files go even when no row points at them anymore. Idempotent: a rerun lists again and finds less.
- * Rows go before their objects (expired proofs, old samples), so a crash in between leaves objects the next run still
+ * Rows go before their objects (expired proofs, leftover samples), so a crash in between leaves objects the next run still
  * finds. A proof row is written before its render task starts, so a PDF without a row is one whose proof expired.
  */
 export const sweepStorage = defineTask({
@@ -73,7 +69,6 @@ export const sweepStorage = defineTask({
         const keys = expiredKeys(
           objects,
           { families: new Set(families.map((row) => row.id)), proofs: new Set(proofs.map((row) => row.id)) },
-          now,
         );
         const samples = keys.filter((key) => key.startsWith("samples/"));
         if (samples.length > 0) {

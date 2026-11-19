@@ -572,9 +572,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
-  data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The
-  bucket listing is the inventory; no table records each object. The `storage.sweep` task deletes samples older than
-  7 days with their `generation` rows, and everything under `families/<id>/` once that family no longer exists. Each
+  data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no
+  table records each object. The `storage.sweep` task deletes everything under `families/<id>/` once that family no
+  longer exists. (Until 2026-11-19 a home-page "Worker check" wrote `samples/<taskID>`, swept after 7 days; it's
+  gone, since proofs and parts exercise the worker and the heartbeat tells the post-deploy check one runs, and the
+  sweep now deletes every leftover sample with its `generation` row.) Each
   worker spawns it at start and every 6 hours, with the 6-hour period as idempotency key (Absurd has no scheduler,
   D4). Story assets and the recolour cache stay; a live family's proofs follow D32 (approved: kept; unapproved: 30
   days, row and PDF), and a proof PDF whose row is gone is deleted. Family deletion is off

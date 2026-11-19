@@ -1,14 +1,13 @@
 import type { JsonValue } from "absurd-sdk";
 import { Effect, Exit, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import type { GenerationRow } from "../src/generations.ts";
+import { generateImage, type GenerationRow } from "../src/generations.ts";
 import { FakeImageProvider } from "../src/image-provider.ts";
 import type { StoredObject } from "../src/storage.ts";
-import { writeSampleFile } from "../src/tasks/sample-file.ts";
 import { fakeJobs, fakeTaskContext, memoryGenerations, memoryObjectStorage } from "../src/testing.ts";
 
-// sha256("sample:task-1"), first 32 hex characters: the ID generateImage derives for task-1's image.
-const task1Generation = "gen_19fff62a27b357f5634fd40b374f521a";
+// sha256("image:task-1"), first 32 hex characters: the ID generateImage derives for task-1's image.
+const task1Generation = "gen_ce1b9d91278eb3fdfe2e59ed0a4d901b";
 
 const setup = () => ({
   objects: new Map<string, StoredObject>(),
@@ -22,7 +21,13 @@ const run = (
   checkpoints = new Map<string, unknown>(),
 ) =>
   Effect.runPromiseExit(
-    writeSampleFile.run({ label: "hello", requestedBy: "user_1" }, fakeTaskContext(taskID, checkpoints, events)).pipe(
+    generateImage(fakeTaskContext(taskID, checkpoints, events), "image", {
+      key: `image:${taskID}`,
+      prompt: "hello",
+      width: 600,
+      height: 400,
+      outputKey: `test/${taskID}`,
+    }).pipe(
       Effect.provide(
         FakeImageProvider.pipe(
           Layer.provideMerge(Layer.mergeAll(memoryObjectStorage(objects), fakeJobs(events), memoryGenerations(rows))),
@@ -31,18 +36,18 @@ const run = (
     ),
   );
 
-describe("writeSampleFile", () => {
+describe("generateImage", () => {
   it("submits, resumes on the provider's event, and records the generation", async () => {
     const state = setup();
     const exit = await run("task-1", state);
 
-    const stored = state.objects.get("samples/task-1.svg")!;
-    expect(exit).toEqual(Exit.succeed({ key: "samples/task-1.svg", contentType: "image/svg+xml", bytes: stored.body.byteLength }));
+    expect(exit).toEqual(Exit.succeed({ generationId: task1Generation, key: "test/task-1.svg", contentType: "image/svg+xml" }));
+    expect(state.objects.get("test/task-1.svg")?.body.byteLength).toBeGreaterThan(0);
     expect(state.rows.get(task1Generation)).toMatchObject({
       provider: "fake",
       status: "succeeded",
       eventName: `generation.done:${task1Generation}`,
-      objectKey: "samples/task-1.svg",
+      objectKey: "test/task-1.svg",
     });
   });
 
@@ -53,7 +58,7 @@ describe("writeSampleFile", () => {
     const rerun = await run("task-1", state);
 
     expect(rerun).toEqual(first);
-    expect([...state.objects.keys()]).toEqual(["samples/task-1.svg"]);
+    expect([...state.objects.keys()]).toEqual(["test/task-1.svg"]);
     expect([...state.rows.keys()]).toEqual([task1Generation]);
   });
 
