@@ -572,6 +572,121 @@ export const crownGap = (alpha: Float32Array, skinMask: Uint8Array, width: numbe
   return Number(((1000 * sum) / tops.length / partWidth).toFixed(2));
 };
 
+/**
+ * Extends hair to the head's silhouette where it stops just short of it. The base's pencil outline is as dark as the
+ * hair at its edge, so the matte sees no change there and leaves a band 1–3 px wide that books draw as skin: a peach
+ * line around the crown on light skin (Paper Boat v6's redrawn bun, Sid 2026-11-19). A pixel of the figure
+ * (`figure`: the base's coverage 0..1) within the outline's width of its silhouette and within 2 px of its skin
+ * (`skinMask`, 0..255) takes the head's own coverage as the hair's alpha when walking inward from the silhouette
+ * reaches the hair within twice the outline's width: it lies between the hair and the paper. A forehead below a
+ * hairline, a temple or an ear has the silhouette beside it and hair above, and stays skin. Its colour is the hair's
+ * nearby. A short run of skin above the hair in its column, near the silhouette, is covered too (hair tips
+ * stopping short of the crown). Repeated until nothing changes, so a part
+ * it has covered has nothing left to cover. Returns new arrays and
+ * the number of pixels it raised.
+ */
+export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: Float32Array, skinMask: Uint8Array, width: number, height: number) => {
+  // The pencil outline is 2–3 px at 1024 px; a wider gap is the drawing's own (a temple, a hairline), not the matte's.
+  const radius = Math.max(2, Math.round((4 * Math.max(width, height)) / 1024));
+  const outAlpha = Float32Array.from(alpha);
+  const outColour = Float32Array.from(colour);
+  const bounds = alphaBounds(alpha.map((a) => (a >= 0.5 ? a : 0)), width, height, 3 * radius);
+  if (!bounds) return { alpha: outAlpha, colour: outColour, covered: 0 };
+  const [bx0, by0, bx1, by1] = bounds;
+  const cropWidth = bx1 - bx0, cropHeight = by1 - by0;
+  const cropMask = (value: (p: number) => boolean) => {
+    const out = new Uint8Array(cropWidth * cropHeight);
+    for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) out[(y - by0) * cropWidth + (x - bx0)] = value(y * width + x) ? 1 : 0;
+    return out;
+  };
+  const outside = cropMask((p) => figure[p]! < 0.02);
+  // Within the outline's width of the silhouette (inside or on it), and near the skin (its antialiased edge too).
+  const nearOutside = dilate(outside, cropWidth, cropHeight, radius);
+  const nearSkin = dilate(cropMask((p) => skinMask[p]! >= 128), cropWidth, cropHeight, 2);
+  let covered = 0;
+  const crown = dilate(outside, cropWidth, cropHeight, 3 * radius);
+  // Skin above the hair near the crown is never a hairline (crownGap's runs): in each column, a run of bare skin
+  // with hair below it and the silhouette or a stray hair tip above, all within three outline widths of the
+  // silhouette, is the matte's (hair tips stopping short of the crown), so the hair covers it. A parting or a
+  // hairline lies deeper inside; a long run is the drawing's, which crownGap fails and a redraw fixes.
+  const bare = (p: number) => figure[p]! >= 0.02 && skinMask[p]! >= 128 && outAlpha[p]! < 0.5 && outAlpha[p]! < figure[p]! - 0.01;
+  const crownPass = () => {
+    let found = false;
+    for (let x = bx0; x < bx1; x++) {
+      let start = -1;
+      for (let y = by0; y < by1; y++) {
+        const p = y * width + x;
+        if (bare(p) && crown[(y - by0) * cropWidth + (x - bx0)]) {
+          if (start < 0) {
+            const above = (y - 1) * width + x;
+            start = y === 0 || figure[above]! < 0.02 || outAlpha[above]! >= 0.5 || skinMask[above]! < 128 ? y : -2;
+          }
+          continue;
+        }
+        if (start >= 0 && outAlpha[p]! >= 0.5 && y - start <= 3 * radius) {
+          for (let k = start; k < y; k++) {
+            const q = k * width + x;
+            outAlpha[q] = figure[q]!;
+            for (let c = 0; c < 3; c++) outColour[q * 3 + c] = outColour[p * 3 + c]!;
+            covered++;
+            found = true;
+          }
+        }
+        start = -1;
+      }
+    }
+    return found;
+  };
+  for (let changed = true; changed; ) {
+    changed = crownPass();
+    const add: Array<number> = [];
+    for (let y = by0; y < by1; y++) {
+      for (let x = bx0; x < bx1; x++) {
+        const c = (y - by0) * cropWidth + (x - bx0);
+        const p = y * width + x;
+        if (!nearOutside[c] || !nearSkin[c] || outAlpha[p]! >= 0.5 || figure[p]! <= outAlpha[p]! + 0.01) continue;
+        // The nearest outside pixel, and the hair nearby for the colour.
+        let ox = 0, oy = 0, best = Infinity;
+        const sum = [0, 0, 0];
+        let count = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < bx0 || ny < by0 || nx >= bx1 || ny >= by1) continue;
+            const q = ny * width + nx;
+            if (outside[(ny - by0) * cropWidth + (nx - bx0)] && dx * dx + dy * dy < best) [best, ox, oy] = [dx * dx + dy * dy, dx, dy];
+            if (outAlpha[q]! >= 0.5) {
+              for (let k = 0; k < 3; k++) sum[k]! += outColour[q * 3 + k]!;
+              count++;
+            }
+          }
+        }
+        if (best === Infinity) continue;
+        const length = Math.sqrt(best);
+        let hair = -1;
+        for (let k = 1; k <= 2 * radius && hair < 0; k++) {
+          const nx = Math.round(x - (ox / length) * k), ny = Math.round(y - (oy / length) * k);
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height && outAlpha[ny * width + nx]! >= 0.5) hair = ny * width + nx;
+        }
+        if (hair < 0) continue;
+        if (count === 0) {
+          for (let k = 0; k < 3; k++) sum[k] = outColour[hair * 3 + k]!;
+          count = 1;
+        }
+        add.push(p, figure[p]!, ...sum.map((v) => v / count));
+      }
+    }
+    for (let i = 0; i < add.length; i += 5) {
+      const p = add[i]!;
+      outAlpha[p] = add[i + 1]!;
+      for (let k = 0; k < 3; k++) outColour[p * 3 + k] = add[i + 2 + k]!;
+      covered++;
+      changed = true;
+    }
+  }
+  return { alpha: outAlpha, colour: outColour, covered };
+};
+
 /** The bounding box of the pixels with alpha, grown by `pad` and clipped; null when there are none. */
 export const alphaBounds = (alpha: Float32Array, width: number, height: number, pad = 2): PixelRect | null => {
   let x0 = width, y0 = height, x1 = -1, y1 = -1;

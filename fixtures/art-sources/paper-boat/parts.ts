@@ -94,7 +94,7 @@ for (const job of selected) {
   const axis = axisOf(job.option);
   const zone = ZONES[`${job.role}/${job.pose}`]![axis]!;
   const skinMask = new Uint8Array(readFileSync(`${job.dir}base-${job.face}-skin.png`));
-  const { layers, metrics } = await cutOutLayer(base, new Uint8Array(readFileSync(job.edit)), skinMask, zone, { neutral: axis !== "glasses" });
+  const { layers, metrics } = await cutOutLayer(base, new Uint8Array(readFileSync(job.edit)), skinMask, zone, axis === "glasses" ? { neutral: false } : { neutral: true, figure: new Uint8Array(readFileSync(`${job.dir}base-${job.face}.png`)) });
   const placed = layers.map((layer) => {
     const asset = `${job.face}-${slug(job.option)}${layer.region === "skin" ? "-skin" : ""}.png`;
     writeFileSync(`${dir}/${asset}`, layer.png);

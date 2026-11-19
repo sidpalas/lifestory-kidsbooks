@@ -17,6 +17,13 @@ illustrator's (docs/decisions.md, D24). Replace it before the story is sold or p
   (sharing drawings between supported ages and the back view between faces). Both pose rounds together cost
   US$6.625167 over 138 calls, excluding the original v2 art. Raw inputs, edits, cut parts and per-call `usage.jsonl`
   remain in the art-source working directory, not Git.
+- **Scalp coverage, published as v6 (2026-11-19):** 3 more edits, about US$0.15: the round-face pointing child's bun
+  and buzz cut, and the round-face short hair seen from behind, which the model had drawn smaller than the bald head
+  (a crescent or band of bald scalp above the hair). Each was redrawn with a note asking the hair to cover the scalp's
+  whole outline. Every other hair and facial hair layer was carried over with `coverOutline`, which the cut-out now
+  runs on every new part: the matte had stopped hair at the head's pencil outline (1–3 px) and short of the crown
+  between hair tips, which books drew as skin. No other change; additions 1 and 2 apply to v6 as they did to v5.
+  `build-v6.ts` in the art sources does both. The bases' own pale highlights (forehead, scalp) are unchanged.
 - **Licence:** OpenAI assigns its output to the customer (Services Agreement §4.1), so the art belongs to the project
   like the rest of this repository. It is AI-generated: say so wherever the law asks for a disclosure.
 - **Fonts:** Literata, SIL Open Font License (`fonts/OFL.txt`), the same static instances as The Moon Picnic.
@@ -37,8 +44,7 @@ app's own art-import and part code, D36 and D42):
   These are manual visual approvals on light and dark skin, not an automatic quality gate; review time was not
   instrumented. The shared prompt, padded inputs and cut-out pipeline made bulk generation straightforward, but
   pose-specific zones, the scalp-coverage retakes and the occluding hand still needed human-style image review.
-  The already-published round-face pointing child's bun still exposes a strip of scalp at the crown. It is not
-  replaced here: D41 additions cannot replace an existing part; correcting it needs a new story version.
+  v5's round-face pointing child's bun exposed a strip of scalp at the crown; v6 redraws it (below).
 
 - Each base figure is matted off its white paper, cropped to a canvas shared by both face types of the role, and its
   skin turned to neutral greys inside the skin mask. The skin mask covers face, ears, neck, arms, hands and legs with

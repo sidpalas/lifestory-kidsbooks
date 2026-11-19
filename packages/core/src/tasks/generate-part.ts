@@ -12,6 +12,7 @@ import { type Age, DEFAULT_FEATURES, type FeaturesOption, sameAppearance } from 
 import {
   byLightness,
   composeReview,
+  type CutOutOptions,
   cutOutLayer,
   cutOutTile,
   headTop,
@@ -97,6 +98,9 @@ const referenceFor = Effect.fn("parts.reference")(function* (parts: ReadonlyArra
 const setPart = (partId: string, patch: Partial<typeof schema.storyPart.$inferInsert>) =>
   Database.query((db) => db.update(schema.storyPart).set(patch).where(eq(schema.storyPart.id, partId))).pipe(Effect.as(true));
 
+/** Glasses keep their colours; hair and facial hair are recoloured and reach the figure's silhouette. */
+const cutOutOptions = (part: LoadedPart, figure: Uint8Array): CutOutOptions => (part.part.axis === "glasses" ? { neutral: false } : { neutral: true, figure });
+
 /** Where a part's edit came from: its own edit, or one tile of a tiled edit (D44). */
 interface Edit {
   readonly key: string;
@@ -116,7 +120,7 @@ const finishPart = (
   suffix: string,
   geometry: { readonly width: number; readonly height: number },
   edit: Edit,
-  cutOut: (part: LoadedPart, base: Uint8Array, skinMask: Uint8Array, output: Uint8Array) => Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: object }>,
+  cutOut: (part: LoadedPart, base: Uint8Array, skinMask: Uint8Array, figure: Uint8Array, output: Uint8Array) => Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: object }>,
 ) =>
   Effect.gen(function* () {
     const cut = yield* step(
@@ -125,8 +129,8 @@ const finishPart = (
       Effect.gen(function* () {
         const part = yield* loadPart(partId);
         const storage = yield* ObjectStorage;
-        const [base, skinMask, output] = yield* Effect.all([part.read(part.assets.base), part.read(part.base.skinMask), storage.get(edit.key).pipe(Effect.orDie)]);
-        const { layers, metrics } = yield* Effect.promise(() => cutOut(part, base, skinMask, output.body));
+        const [base, skinMask, figure, output] = yield* Effect.all([part.read(part.assets.base), part.read(part.base.skinMask), part.read(part.base.asset), storage.get(edit.key).pipe(Effect.orDie)]);
+        const { layers, metrics } = yield* Effect.promise(() => cutOut(part, base, skinMask, figure, output.body));
         const stored: Array<StoredLayer> = [];
         for (const layer of layers) {
           const asset = layer.region === "skin" ? part.assets.skin : part.assets.part;
@@ -216,10 +220,8 @@ const generateOne = (ctx: TaskContext, partId: string) =>
     if (!edit) return [{ partId, status: "failed" as const }];
 
     return [
-      yield* finishPart(ctx, partId, "", prepared, { ...edit, reference: prepared.reference?.from ?? null }, (part, base, skinMask, output) =>
-        cutOutLayer({ base, width: prepared.width, height: prepared.height, padding: prepared.padding }, output, skinMask, part.part.zone as Rect, {
-          neutral: part.part.axis !== "glasses",
-        }),
+      yield* finishPart(ctx, partId, "", prepared, { ...edit, reference: prepared.reference?.from ?? null }, (part, base, skinMask, figure, output) =>
+        cutOutLayer({ base, width: prepared.width, height: prepared.height, padding: prepared.padding }, output, skinMask, part.part.zone as Rect, cutOutOptions(part, figure)),
       ),
     ];
   });
@@ -295,8 +297,8 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
       for (const [index, tile] of image.tiles.entries()) {
         const placement = { slot: tile.slot, window: tile.window, index, of: image.tiles.length };
         results.push(
-          yield* finishPart(ctx, tile.partId, `:${tile.partId}`, tile, { ...edit, tile: placement, reference: image.reference?.from ?? null }, (part, base, skinMask, output) =>
-            cutOutTile({ base, width: tile.width, height: tile.height }, output, placement, skinMask, part.part.zone as Rect, { neutral: part.part.axis !== "glasses" }),
+          yield* finishPart(ctx, tile.partId, `:${tile.partId}`, tile, { ...edit, tile: placement, reference: image.reference?.from ?? null }, (part, base, skinMask, figure, output) =>
+            cutOutTile({ base, width: tile.width, height: tile.height }, output, placement, skinMask, part.part.zone as Rect, cutOutOptions(part, figure)),
           ),
         );
       }

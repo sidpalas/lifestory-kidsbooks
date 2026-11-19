@@ -409,10 +409,10 @@
                 "option": "hair:short",
                 "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  331,
-                  12,
-                  717,
-                  180
+                  342,
+                  10,
+                  711,
+                  183
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -441,7 +441,7 @@
                 "at": [
                   245,
                   6,
-                  701,
+                  704,
                   359
                 ],
                 "palette": "hairColour",
@@ -469,10 +469,10 @@
                 "option": "hair:short",
                 "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  331,
-                  12,
-                  717,
-                  180
+                  342,
+                  10,
+                  711,
+                  183
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -501,7 +501,7 @@
                 "at": [
                   245,
                   6,
-                  701,
+                  704,
                   359
                 ],
                 "palette": "hairColour",
@@ -529,10 +529,10 @@
                 "option": "hair:short",
                 "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  331,
-                  12,
-                  717,
-                  180
+                  342,
+                  10,
+                  711,
+                  183
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -561,7 +561,7 @@
                 "at": [
                   245,
                   6,
-                  701,
+                  704,
                   359
                 ],
                 "palette": "hairColour",
@@ -589,10 +589,10 @@
                 "option": "hair:short",
                 "asset": "figures/grownup/back/round-short.png",
                 "at": [
-                  331,
-                  12,
-                  717,
-                  180
+                  342,
+                  10,
+                  711,
+                  183
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -621,7 +621,7 @@
                 "at": [
                   245,
                   6,
-                  701,
+                  704,
                   359
                 ],
                 "palette": "hairColour",
@@ -751,10 +751,10 @@
                 "option": "hair:buzz",
                 "asset": "figures/hero/point/round-buzz.png",
                 "at": [
-                  527,
-                  19,
-                  891,
-                  213
+                  515,
+                  16,
+                  896,
+                  218
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -826,27 +826,12 @@
                 "option": "hair:bun",
                 "asset": "figures/hero/point/round-bun.png",
                 "at": [
-                  511,
-                  5,
-                  897,
-                  264
+                  499,
+                  16,
+                  944,
+                  246
                 ],
                 "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "young-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:bun",
-                "asset": "figures/hero/point/round-bun-skin.png",
-                "at": [
-                  858,
-                  93,
-                  892,
-                  175
-                ],
-                "palette": "skin",
                 "approved": true
               },
               {
@@ -857,7 +842,7 @@
                 "asset": "figures/hero/point/oval-short.png",
                 "at": [
                   520,
-                  13,
+                  10,
                   884,
                   215
                 ],
@@ -887,7 +872,7 @@
                 "asset": "figures/hero/point/oval-long.png",
                 "at": [
                   406,
-                  13,
+                  10,
                   1000,
                   471
                 ],
@@ -976,10 +961,10 @@
                 "option": "hair:buzz",
                 "asset": "figures/hero/point/round-buzz.png",
                 "at": [
-                  527,
-                  19,
-                  891,
-                  213
+                  515,
+                  16,
+                  896,
+                  218
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1051,27 +1036,12 @@
                 "option": "hair:bun",
                 "asset": "figures/hero/point/round-bun.png",
                 "at": [
-                  511,
-                  5,
-                  897,
-                  264
+                  499,
+                  16,
+                  944,
+                  246
                 ],
                 "palette": "hairColour",
-                "approved": true
-              },
-              {
-                "age": "older-child",
-                "face": "face:round",
-                "axis": "hair",
-                "option": "hair:bun",
-                "asset": "figures/hero/point/round-bun-skin.png",
-                "at": [
-                  858,
-                  93,
-                  892,
-                  175
-                ],
-                "palette": "skin",
                 "approved": true
               },
               {
@@ -1082,7 +1052,7 @@
                 "asset": "figures/hero/point/oval-short.png",
                 "at": [
                   520,
-                  13,
+                  10,
                   884,
                   215
                 ],
@@ -1112,7 +1082,7 @@
                 "asset": "figures/hero/point/oval-long.png",
                 "at": [
                   406,
-                  13,
+                  10,
                   1000,
                   471
                 ],
@@ -1202,9 +1172,9 @@
                 "asset": "figures/grownup/round-short.png",
                 "at": [
                   255,
-                  30,
-                  750,
-                  260
+                  33,
+                  752,
+                  259
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1216,8 +1186,8 @@
                 "option": "hair:curly",
                 "asset": "figures/grownup/round-curly.png",
                 "at": [
-                  290,
-                  30,
+                  288,
+                  28,
                   710,
                   215
                 ],
@@ -1233,8 +1203,8 @@
                 "at": [
                   105,
                   35,
-                  895,
-                  600
+                  898,
+                  598
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1262,9 +1232,9 @@
                 "asset": "figures/grownup/oval-short.png",
                 "at": [
                   275,
-                  30,
-                  730,
-                  260
+                  32,
+                  732,
+                  262
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1276,10 +1246,10 @@
                 "option": "hair:curly",
                 "asset": "figures/grownup/oval-curly.png",
                 "at": [
-                  315,
-                  25,
-                  730,
-                  260
+                  313,
+                  26,
+                  732,
+                  262
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1291,9 +1261,9 @@
                 "option": "hair:long",
                 "asset": "figures/grownup/oval-long.png",
                 "at": [
-                  130,
-                  30,
-                  845,
+                  131,
+                  29,
+                  848,
                   595
                 ],
                 "palette": "hairColour",
@@ -1322,9 +1292,9 @@
                 "asset": "figures/grownup/round-short.png",
                 "at": [
                   255,
-                  30,
-                  750,
-                  260
+                  33,
+                  752,
+                  259
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1336,8 +1306,8 @@
                 "option": "hair:curly",
                 "asset": "figures/grownup/round-curly.png",
                 "at": [
-                  290,
-                  30,
+                  288,
+                  28,
                   710,
                   215
                 ],
@@ -1353,8 +1323,8 @@
                 "at": [
                   105,
                   35,
-                  895,
-                  600
+                  898,
+                  598
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1382,9 +1352,9 @@
                 "asset": "figures/grownup/oval-short.png",
                 "at": [
                   275,
-                  30,
-                  730,
-                  260
+                  32,
+                  732,
+                  262
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1396,10 +1366,10 @@
                 "option": "hair:curly",
                 "asset": "figures/grownup/oval-curly.png",
                 "at": [
-                  315,
-                  25,
-                  730,
-                  260
+                  313,
+                  26,
+                  732,
+                  262
                 ],
                 "palette": "hairColour",
                 "approved": true
@@ -1411,9 +1381,9 @@
                 "option": "hair:long",
                 "asset": "figures/grownup/oval-long.png",
                 "at": [
-                  130,
-                  30,
-                  845,
+                  131,
+                  29,
+                  848,
                   595
                 ],
                 "palette": "hairColour",
@@ -1865,7 +1835,7 @@
                 "at": [
                   319,
                   209,
-                  618,
+                  634,
                   315
                 ],
                 "palette": "hairColour",
@@ -1909,7 +1879,7 @@
                 "asset": "figures/grownup/sit/oval-short.png",
                 "at": [
                   232,
-                  14,
+                  11,
                   596,
                   202
                 ],
@@ -2030,7 +2000,7 @@
                 "at": [
                   319,
                   209,
-                  618,
+                  634,
                   315
                 ],
                 "palette": "hairColour",
@@ -2074,7 +2044,7 @@
                 "asset": "figures/grownup/sit/oval-short.png",
                 "at": [
                   232,
-                  14,
+                  11,
                   596,
                   202
                 ],
@@ -2177,7 +2147,7 @@
                 "at": [
                   84,
                   0,
-                  613,
+                  616,
                   303
                 ],
                 "palette": "hairColour",
@@ -2297,7 +2267,7 @@
                 "at": [
                   84,
                   0,
-                  613,
+                  616,
                   303
                 ],
                 "palette": "hairColour",

@@ -28,7 +28,8 @@ manifest, and generates four bases in one edit. Checks tile boundaries, shared g
 approved-reference metadata. Unit checks in `mise run check` cover head-only sharing versus long hair and mirrored
 layer placement. The authoring e2e checks the editor through publication and a personalized book. A hair part's
 cut-out metrics include `crownGap`, the bald scalp it leaves above it; `part-cutout.test.ts` holds every hair part
-of the sample stories under `CROWN_GAP_LIMIT` except the published ones it lists.
+of the sample stories under `CROWN_GAP_LIMIT` except the published ones it lists, and every raster one with nothing
+left for `coverOutline` to cover.
 
 ## Gotchas
 
@@ -39,6 +40,8 @@ of the sample stories under `CROWN_GAP_LIMIT` except the published ones it lists
 - An edit can copy only an already approved drawing. Approve a front part before generating its other poses.
 - Inspect both skin extremes on the review sheet. The hairline transparency fix affects future cut-outs, not
   existing published assets; passing generation metrics do not establish clean edges on every skin palette.
-- A `crownGap` above `CROWN_GAP_LIMIT` (9) means the model drew the hair smaller than the bald head: retake it with
-  a note asking the hair to cover the scalp's whole outline. The editor doesn't show the metric yet; it is stored
-  with the part. A hairline on the forehead, ears and translucent strands aren't counted.
+- Bald scalp beside hair has two causes. A `crownGap` above `CROWN_GAP_LIMIT` (9) means the model drew the hair
+  smaller than the bald head: retake it with a note asking the hair to cover the scalp's whole outline. The editor
+  doesn't show the metric yet; it is stored with the part. A hairline, ears and translucent strands aren't counted.
+  The other cause, hair stopping at the head's pencil outline (as dark as the hair, so the matte can't see it), the
+  cut-out fixes itself with `coverOutline` and records `outlineCovered`.

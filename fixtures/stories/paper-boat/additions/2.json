@@ -12,7 +12,7 @@
      "asset": "figures/grownup/back/round-buzz.png",
      "at": [
       338,
-      12,
+      10,
       694,
       177
      ],
@@ -28,7 +28,7 @@
      "at": [
       245,
       6,
-      697,
+      701,
       273
      ],
      "palette": "hairColour",
@@ -43,7 +43,7 @@
      "at": [
       261,
       9,
-      708,
+      711,
       362
      ],
      "palette": "hairColour",
@@ -87,8 +87,8 @@
      "asset": "figures/grownup/back/round-bun.png",
      "at": [
       317,
-      11,
-      699,
+      10,
+      704,
       190
      ],
      "palette": "hairColour",
@@ -117,9 +117,9 @@
      "asset": "figures/grownup/back/round-moustache.png",
      "at": [
       664,
-      109,
+      108,
       750,
-      154
+      157
      ],
      "palette": "hairColour",
      "approved": true
@@ -132,7 +132,7 @@
      "asset": "figures/grownup/back/round-beard.png",
      "at": [
       576,
-      62,
+      59,
       743,
       199
      ],
@@ -147,7 +147,7 @@
      "asset": "figures/grownup/back/round-buzz.png",
      "at": [
       338,
-      12,
+      10,
       694,
       177
      ],
@@ -163,7 +163,7 @@
      "at": [
       245,
       6,
-      697,
+      701,
       273
      ],
      "palette": "hairColour",
@@ -178,7 +178,7 @@
      "at": [
       261,
       9,
-      708,
+      711,
       362
      ],
      "palette": "hairColour",
@@ -222,8 +222,8 @@
      "asset": "figures/grownup/back/round-bun.png",
      "at": [
       317,
-      11,
-      699,
+      10,
+      704,
       190
      ],
      "palette": "hairColour",
@@ -252,9 +252,9 @@
      "asset": "figures/grownup/back/round-moustache.png",
      "at": [
       664,
-      109,
+      108,
       750,
-      154
+      157
      ],
      "palette": "hairColour",
      "approved": true
@@ -267,7 +267,7 @@
      "asset": "figures/grownup/back/round-beard.png",
      "at": [
       576,
-      62,
+      59,
       743,
       199
      ],
@@ -282,7 +282,7 @@
      "asset": "figures/grownup/back/round-buzz.png",
      "at": [
       338,
-      12,
+      10,
       694,
       177
      ],
@@ -298,7 +298,7 @@
      "at": [
       245,
       6,
-      697,
+      701,
       273
      ],
      "palette": "hairColour",
@@ -313,7 +313,7 @@
      "at": [
       261,
       9,
-      708,
+      711,
       362
      ],
      "palette": "hairColour",
@@ -357,8 +357,8 @@
      "asset": "figures/grownup/back/round-bun.png",
      "at": [
       317,
-      11,
-      699,
+      10,
+      704,
       190
      ],
      "palette": "hairColour",
@@ -387,9 +387,9 @@
      "asset": "figures/grownup/back/round-moustache.png",
      "at": [
       664,
-      109,
+      108,
       750,
-      154
+      157
      ],
      "palette": "hairColour",
      "approved": true
@@ -402,7 +402,7 @@
      "asset": "figures/grownup/back/round-beard.png",
      "at": [
       576,
-      62,
+      59,
       743,
       199
      ],
@@ -417,7 +417,7 @@
      "asset": "figures/grownup/back/round-buzz.png",
      "at": [
       338,
-      12,
+      10,
       694,
       177
      ],
@@ -433,7 +433,7 @@
      "at": [
       245,
       6,
-      697,
+      701,
       273
      ],
      "palette": "hairColour",
@@ -448,7 +448,7 @@
      "at": [
       261,
       9,
-      708,
+      711,
       362
      ],
      "palette": "hairColour",
@@ -492,8 +492,8 @@
      "asset": "figures/grownup/back/round-bun.png",
      "at": [
       317,
-      11,
-      699,
+      10,
+      704,
       190
      ],
      "palette": "hairColour",
@@ -522,9 +522,9 @@
      "asset": "figures/grownup/back/round-moustache.png",
      "at": [
       664,
-      109,
+      108,
       750,
-      154
+      157
      ],
      "palette": "hairColour",
      "approved": true
@@ -537,7 +537,7 @@
      "asset": "figures/grownup/back/round-beard.png",
      "at": [
       576,
-      62,
+      59,
       743,
       199
      ],
@@ -558,7 +558,7 @@
      "asset": "figures/hero/point/oval-buzz.png",
      "at": [
       548,
-      14,
+      10,
       861,
       199
      ],
@@ -573,7 +573,7 @@
      "asset": "figures/hero/point/oval-ponytail.png",
      "at": [
       527,
-      14,
+      10,
       982,
       262
      ],
@@ -633,7 +633,7 @@
      "asset": "figures/hero/point/oval-bun.png",
      "at": [
       532,
-      14,
+      10,
       916,
       221
      ],
@@ -648,7 +648,7 @@
      "asset": "figures/hero/point/oval-buzz.png",
      "at": [
       548,
-      14,
+      10,
       861,
       199
      ],
@@ -663,7 +663,7 @@
      "asset": "figures/hero/point/oval-ponytail.png",
      "at": [
       527,
-      14,
+      10,
       982,
       262
      ],
@@ -723,7 +723,7 @@
      "asset": "figures/hero/point/oval-bun.png",
      "at": [
       532,
-      14,
+      10,
       916,
       221
      ],
@@ -743,8 +743,8 @@
      "option": "hair:buzz",
      "asset": "figures/hero/kneel/round-buzz.png",
      "at": [
-      491,
-      17,
+      490,
+      14,
       903,
       326
      ],
@@ -760,7 +760,7 @@
      "at": [
       301,
       8,
-      907,
+      908,
       352
      ],
      "palette": "hairColour",
@@ -834,7 +834,7 @@
      "asset": "figures/hero/kneel/oval-buzz.png",
      "at": [
       513,
-      21,
+      17,
       872,
       319
      ],
@@ -923,8 +923,8 @@
      "option": "hair:buzz",
      "asset": "figures/hero/kneel/round-buzz.png",
      "at": [
-      491,
-      17,
+      490,
+      14,
       903,
       326
      ],
@@ -940,7 +940,7 @@
      "at": [
       301,
       8,
-      907,
+      908,
       352
      ],
      "palette": "hairColour",
@@ -1014,7 +1014,7 @@
      "asset": "figures/hero/kneel/oval-buzz.png",
      "at": [
       513,
-      21,
+      17,
       872,
       319
      ],
@@ -1187,7 +1187,7 @@
       159,
       11,
       613,
-      218
+      219
      ],
      "palette": "hairColour",
      "approved": true
@@ -1200,7 +1200,7 @@
      "asset": "figures/grownup/sit/oval-buzz.png",
      "at": [
       251,
-      15,
+      11,
       593,
       190
      ],
@@ -1230,7 +1230,7 @@
      "asset": "figures/grownup/sit/oval-braids.png",
      "at": [
       219,
-      15,
+      11,
       661,
       563
      ],
@@ -1275,7 +1275,7 @@
      "asset": "figures/grownup/sit/oval-bun.png",
      "at": [
       195,
-      16,
+      11,
       602,
       203
      ],
@@ -1289,9 +1289,9 @@
      "option": "facial-hair:stubble",
      "asset": "figures/grownup/sit/oval-stubble.png",
      "at": [
-      351,
+      348,
       192,
-      585,
+      590,
       308
      ],
      "palette": "hairColour",
@@ -1321,7 +1321,7 @@
      "at": [
       341,
       178,
-      622,
+      625,
       308
      ],
      "palette": "hairColour",
@@ -1412,7 +1412,7 @@
       159,
       11,
       613,
-      218
+      219
      ],
      "palette": "hairColour",
      "approved": true
@@ -1425,7 +1425,7 @@
      "asset": "figures/grownup/sit/oval-buzz.png",
      "at": [
       251,
-      15,
+      11,
       593,
       190
      ],
@@ -1455,7 +1455,7 @@
      "asset": "figures/grownup/sit/oval-braids.png",
      "at": [
       219,
-      15,
+      11,
       661,
       563
      ],
@@ -1500,7 +1500,7 @@
      "asset": "figures/grownup/sit/oval-bun.png",
      "at": [
       195,
-      16,
+      11,
       602,
       203
      ],
@@ -1514,9 +1514,9 @@
      "option": "facial-hair:stubble",
      "asset": "figures/grownup/sit/oval-stubble.png",
      "at": [
-      351,
+      348,
       192,
-      585,
+      590,
       308
      ],
      "palette": "hairColour",
@@ -1546,7 +1546,7 @@
      "at": [
       341,
       178,
-      622,
+      625,
       308
      ],
      "palette": "hairColour",
@@ -1641,7 +1641,7 @@
      "asset": "figures/hero/sit/round-bun.png",
      "at": [
       56,
-      13,
+      12,
       609,
       295
      ],
@@ -1671,7 +1671,7 @@
      "asset": "figures/hero/sit/oval-ponytail.png",
      "at": [
       0,
-      14,
+      13,
       600,
       398
      ],
@@ -1731,7 +1731,7 @@
      "asset": "figures/hero/sit/oval-bun.png",
      "at": [
       81,
-      15,
+      13,
       590,
       305
      ],
@@ -1821,7 +1821,7 @@
      "asset": "figures/hero/sit/round-bun.png",
      "at": [
       56,
-      13,
+      12,
       609,
       295
      ],
@@ -1851,7 +1851,7 @@
      "asset": "figures/hero/sit/oval-ponytail.png",
      "at": [
       0,
-      14,
+      13,
       600,
       398
      ],
@@ -1911,7 +1911,7 @@
      "asset": "figures/hero/sit/oval-bun.png",
      "at": [
       81,
-      15,
+      13,
       590,
       305
      ],
@@ -1931,10 +1931,10 @@
      "option": "hair:buzz",
      "asset": "figures/grownup/front/round-buzz.png",
      "at": [
-      360,
-      45,
-      652,
-      138
+      361,
+      46,
+      654,
+      139
      ],
      "palette": "hairColour",
      "approved": true
@@ -1946,10 +1946,10 @@
      "option": "hair:ponytail",
      "asset": "figures/grownup/front/round-ponytail.png",
      "at": [
-      347,
+      348,
       37,
-      689,
-      239
+      690,
+      240
      ],
      "palette": "hairColour",
      "approved": true
@@ -1961,9 +1961,9 @@
      "option": "hair:braids",
      "asset": "figures/grownup/front/round-braids.png",
      "at": [
-      324,
-      34,
-      680,
+      323,
+      35,
+      682,
       370
      ],
      "palette": "hairColour",
@@ -1976,10 +1976,10 @@
      "option": "hair:afro",
      "asset": "figures/grownup/front/round-afro.png",
      "at": [
-      289,
+      288,
       6,
       708,
-      183
+      184
      ],
      "palette": "hairColour",
      "approved": true
@@ -1991,10 +1991,10 @@
      "option": "hair:locs",
      "asset": "figures/grownup/front/round-locs.png",
      "at": [
-      287,
+      288,
       31,
-      726,
-      273
+      727,
+      274
      ],
      "palette": "hairColour",
      "approved": true
@@ -2006,10 +2006,10 @@
      "option": "hair:bun",
      "asset": "figures/grownup/front/round-bun.png",
      "at": [
-      354,
+      353,
       8,
-      657,
-      148
+      658,
+      149
      ],
      "palette": "hairColour",
      "approved": true
@@ -2021,9 +2021,9 @@
      "option": "facial-hair:stubble",
      "asset": "figures/grownup/front/round-stubble.png",
      "at": [
-      365,
+      358,
       126,
-      646,
+      653,
       230
      ],
      "palette": "hairColour",
@@ -2051,9 +2051,9 @@
      "option": "facial-hair:beard",
      "asset": "figures/grownup/front/round-beard.png",
      "at": [
-      363,
-      125,
-      649,
+      356,
+      121,
+      653,
       223
      ],
      "palette": "hairColour",
@@ -2066,9 +2066,9 @@
      "option": "hair:buzz",
      "asset": "figures/grownup/front/oval-buzz.png",
      "at": [
-      375,
+      363,
       33,
-      622,
+      623,
       127
      ],
      "palette": "hairColour",
@@ -2081,10 +2081,10 @@
      "option": "hair:ponytail",
      "asset": "figures/grownup/front/oval-ponytail.png",
      "at": [
-      364,
+      363,
       22,
-      622,
-      230
+      623,
+      231
      ],
      "palette": "hairColour",
      "approved": true
@@ -2096,10 +2096,10 @@
      "option": "hair:braids",
      "asset": "figures/grownup/front/oval-braids.png",
      "at": [
-      339,
+      340,
       26,
-      666,
-      348
+      668,
+      349
      ],
      "palette": "hairColour",
      "approved": true
@@ -2111,10 +2111,10 @@
      "option": "hair:afro",
      "asset": "figures/grownup/front/oval-afro.png",
      "at": [
-      320,
+      321,
       6,
       670,
-      173
+      174
      ],
      "palette": "hairColour",
      "approved": true
@@ -2128,8 +2128,8 @@
      "at": [
       312,
       20,
-      679,
-      256
+      680,
+      257
      ],
      "palette": "hairColour",
      "approved": true
@@ -2141,9 +2141,9 @@
      "option": "hair:bun",
      "asset": "figures/grownup/front/oval-bun.png",
      "at": [
-      369,
-      9,
-      622,
+      370,
+      8,
+      635,
       134
      ],
      "palette": "hairColour",
@@ -2158,8 +2158,8 @@
      "at": [
       432,
       137,
-      592,
-      201
+      593,
+      202
      ],
      "palette": "hairColour",
      "approved": true
@@ -2186,10 +2186,10 @@
      "option": "facial-hair:beard",
      "asset": "figures/grownup/front/oval-beard.png",
      "at": [
-      385,
-      113,
-      615,
-      202
+      378,
+      104,
+      625,
+      203
      ],
      "palette": "hairColour",
      "approved": true
@@ -2201,10 +2201,10 @@
      "option": "hair:buzz",
      "asset": "figures/grownup/front/round-buzz.png",
      "at": [
-      360,
-      45,
-      652,
-      138
+      361,
+      46,
+      654,
+      139
      ],
      "palette": "hairColour",
      "approved": true
@@ -2216,10 +2216,10 @@
      "option": "hair:ponytail",
      "asset": "figures/grownup/front/round-ponytail.png",
      "at": [
-      347,
+      348,
       37,
-      689,
-      239
+      690,
+      240
      ],
      "palette": "hairColour",
      "approved": true
@@ -2231,9 +2231,9 @@
      "option": "hair:braids",
      "asset": "figures/grownup/front/round-braids.png",
      "at": [
-      324,
-      34,
-      680,
+      323,
+      35,
+      682,
       370
      ],
      "palette": "hairColour",
@@ -2246,10 +2246,10 @@
      "option": "hair:afro",
      "asset": "figures/grownup/front/round-afro.png",
      "at": [
-      289,
+      288,
       6,
       708,
-      183
+      184
      ],
      "palette": "hairColour",
      "approved": true
@@ -2261,10 +2261,10 @@
      "option": "hair:locs",
      "asset": "figures/grownup/front/round-locs.png",
      "at": [
-      287,
+      288,
       31,
-      726,
-      273
+      727,
+      274
      ],
      "palette": "hairColour",
      "approved": true
@@ -2276,10 +2276,10 @@
      "option": "hair:bun",
      "asset": "figures/grownup/front/round-bun.png",
      "at": [
-      354,
+      353,
       8,
-      657,
-      148
+      658,
+      149
      ],
      "palette": "hairColour",
      "approved": true
@@ -2291,9 +2291,9 @@
      "option": "facial-hair:stubble",
      "asset": "figures/grownup/front/round-stubble.png",
      "at": [
-      365,
+      358,
       126,
-      646,
+      653,
       230
      ],
      "palette": "hairColour",
@@ -2321,9 +2321,9 @@
      "option": "facial-hair:beard",
      "asset": "figures/grownup/front/round-beard.png",
      "at": [
-      363,
-      125,
-      649,
+      356,
+      121,
+      653,
       223
      ],
      "palette": "hairColour",
@@ -2336,9 +2336,9 @@
      "option": "hair:buzz",
      "asset": "figures/grownup/front/oval-buzz.png",
      "at": [
-      375,
+      363,
       33,
-      622,
+      623,
       127
      ],
      "palette": "hairColour",
@@ -2351,10 +2351,10 @@
      "option": "hair:ponytail",
      "asset": "figures/grownup/front/oval-ponytail.png",
      "at": [
-      364,
+      363,
       22,
-      622,
-      230
+      623,
+      231
      ],
      "palette": "hairColour",
      "approved": true
@@ -2366,10 +2366,10 @@
      "option": "hair:braids",
      "asset": "figures/grownup/front/oval-braids.png",
      "at": [
-      339,
+      340,
       26,
-      666,
-      348
+      668,
+      349
      ],
      "palette": "hairColour",
      "approved": true
@@ -2381,10 +2381,10 @@
      "option": "hair:afro",
      "asset": "figures/grownup/front/oval-afro.png",
      "at": [
-      320,
+      321,
       6,
       670,
-      173
+      174
      ],
      "palette": "hairColour",
      "approved": true
@@ -2398,8 +2398,8 @@
      "at": [
       312,
       20,
-      679,
-      256
+      680,
+      257
      ],
      "palette": "hairColour",
      "approved": true
@@ -2411,9 +2411,9 @@
      "option": "hair:bun",
      "asset": "figures/grownup/front/oval-bun.png",
      "at": [
-      369,
-      9,
-      622,
+      370,
+      8,
+      635,
       134
      ],
      "palette": "hairColour",
@@ -2428,8 +2428,8 @@
      "at": [
       432,
       137,
-      592,
-      201
+      593,
+      202
      ],
      "palette": "hairColour",
      "approved": true
@@ -2456,10 +2456,10 @@
      "option": "facial-hair:beard",
      "asset": "figures/grownup/front/oval-beard.png",
      "at": [
-      385,
-      113,
-      615,
-      202
+      378,
+      104,
+      625,
+      203
      ],
      "palette": "hairColour",
      "approved": true

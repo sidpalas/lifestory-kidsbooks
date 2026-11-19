@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { rasterize } from "../src/looks/recolour.ts";
-import { CROWN_GAP_LIMIT, crownGap, cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
+import { coverOutline, CROWN_GAP_LIMIT, crownGap, cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
@@ -183,20 +183,49 @@ describe("crownGap", () => {
   });
 });
 
+const inEar = (x: number, y: number) => Math.hypot(x - 212, y - 600) < 40;
+
+describe("coverOutline", () => {
+  // A head with an ear, and a hair cap the matte cut 3 px short of the head's silhouette (its pencil outline), ending
+  // at a hairline on the forehead. At 1024 px, as the edits are.
+  const width = 1024, height = 1024, r = 300;
+  const at = (p: number) => [p % width, Math.floor(p / width)] as const;
+  const inHead = (x: number, y: number) => Math.hypot(x - 512, y - 560) < r;
+  const mask = new Uint8Array(width * height);
+  const alpha = new Float32Array(width * height);
+  const colour = new Float32Array(width * height * 3).fill(0.3);
+  for (let p = 0; p < mask.length; p++) {
+    const [x, y] = at(p);
+    const d = Math.hypot(x - 512, y - 560);
+    mask[p] = inHead(x, y) || inEar(x, y) ? 255 : 0;
+    alpha[p] = d < r - 3 && y < 470 ? 1 : 0;
+  }
+  const figure = Float32Array.from(mask, (m) => (m ? 1 : 0));
+  const result = coverOutline(alpha, colour, figure, mask, width, height);
+  const pixels = [...Array(width * height).keys()];
+
+  it("covers the band between the hair and the head's silhouette", () => {
+    const rim = pixels.filter((p) => { const [x, y] = at(p); return inHead(x, y) && Math.hypot(x - 512, y - 560) > r - 3 && y < 420; });
+    expect(rim.length).toBeGreaterThan(100);
+    expect(rim.every((p) => result.alpha[p] === 1)).toBe(true);
+    expect(result.colour[rim[0]! * 3]).toBeCloseTo(0.3, 5);
+  });
+
+  it("leaves the hairline, the face's outline below the hair and the ear as they are", () => {
+    const below = pixels.filter((p) => at(p)[1] > 480 && result.alpha[p]! > 0);
+    expect(below).toEqual([]);
+    expect(pixels.filter((p) => inEar(...at(p)) && result.alpha[p]! > 0)).toEqual([]);
+  });
+});
+
 describe("the sample stories' hair", () => {
   // Every hair part, published or added (D41), on each base it is drawn on, as composeFigure places it.
   /**
    * Published parts that leave scalp showing (2026-11-19); a published version never changes (D24, D41), so they
    * leave this list with the version that redraws them.
    */
-  const known = new Set([
-    // Drawn smaller than the bald head: a crescent over the crown, a patch at the top, a band above a buzz cut.
-    "paper-boat/figures/hero/point/round-bun.png",
-    "paper-boat/figures/grownup/back/round-short.png",
-    "paper-boat/figures/hero/point/round-buzz.png",
-    // The oval-faced grown-up's head is square at the top; the cap is round, so both corners show beside it.
-    ...["p02", "p03", "p04", "p05", "p06"].flatMap((page) => ["short", "long"].map((style) => `moon-picnic/pages/${page}/grownup/adult-1-${style}.svg`)),
-  ]);
+  // The oval-faced grown-up's head is square at the top; the cap is round, so both corners show beside it.
+  const known = new Set(["p02", "p03", "p04", "p05", "p06"].flatMap((page) => ["short", "long"].map((style) => `moon-picnic/pages/${page}/grownup/adult-1-${style}.svg`)));
   const stories = new URL("../../../fixtures/stories/", import.meta.url);
   const pairs = readdirSync(stories).flatMap((story) => {
     const dir = new URL(`${story}/`, stories);
@@ -221,20 +250,37 @@ describe("the sample stories' hair", () => {
   const unique = [...new Map(pairs.map((pair) => [`${pair.story}/${pair.base.skinMask}/${pair.part.asset}`, pair])).values()];
 
   it("covers the scalp up to the head's outline", async () => {
+    // Each base once (rasterizing one takes ~0.3 s): its skin mask, and for raster art its silhouette (alpha), which
+    // cutOutLayer extends hair to. Moon Picnic's parts are drawn vectors, not cut out, so only crownGap applies to them.
+    const bases = new Map<string, Promise<{ mask: Uint8Array; width: number; height: number; figure: Float32Array | null }>>();
+    const load = (dir: URL, base: any) => {
+      const read = (asset: string) => rasterize(new Uint8Array(readFileSync(new URL(asset, dir))));
+      const key = `${dir}${base.asset}|${base.skinMask}`;
+      if (!bases.has(key))
+        bases.set(key, (async () => {
+          const { data: mask, info } = await (await read(base.skinMask)).extractChannel(3).raw().toBuffer({ resolveWithObject: true });
+          if (base.asset.endsWith(".svg")) return { mask: new Uint8Array(mask), width: info.width, height: info.height, figure: null };
+          const figure = await (await read(base.asset)).resize(info.width, info.height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+          return { mask: new Uint8Array(mask), width: info.width, height: info.height, figure: Float32Array.from(figure, (v) => v / 255) };
+        })());
+      return bases.get(key)!;
+    };
     const gaps = await Promise.all(
       unique.map(async ({ story, dir, base, part }) => {
-        const read = (asset: string) => rasterize(new Uint8Array(readFileSync(new URL(asset, dir))));
-        const { data: mask, info } = await (await read(base.skinMask)).extractChannel(3).raw().toBuffer({ resolveWithObject: true });
-        const [x0, y0, x1, y1] = [part.at[0] * info.width, part.at[1] * info.height, part.at[2] * info.width, part.at[3] * info.height].map((v) => Math.round(v / 1000)) as [number, number, number, number];
-        const layer = await (await read(part.asset)).resize(x1 - x0, y1 - y0, { fit: "fill" }).extractChannel(3).raw().toBuffer();
-        const alpha = new Float32Array(info.width * info.height);
-        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) alpha[y * info.width + x] = layer[(y - y0) * (x1 - x0) + (x - x0)]! / 255;
-        return { part: `${story}/${part.asset}`, gap: crownGap(alpha, new Uint8Array(mask), info.width, info.height) };
+        const { mask, width, height, figure } = await load(dir, base);
+        const [x0, y0, x1, y1] = [part.at[0] * width, part.at[1] * height, part.at[2] * width, part.at[3] * height].map((v) => Math.round(v / 1000)) as [number, number, number, number];
+        const layer = await (await rasterize(new Uint8Array(readFileSync(new URL(part.asset, dir))))).resize(x1 - x0, y1 - y0, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+        const alpha = new Float32Array(width * height);
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) alpha[y * width + x] = layer[(y - y0) * (x1 - x0) + (x - x0)]! / 255;
+        const outline = figure ? coverOutline(alpha, new Float32Array(alpha.length * 3), figure, mask, width, height).covered : 0;
+        return { part: `${story}/${part.asset}`, gap: crownGap(alpha, mask, width, height), outline };
       }),
     );
     expect(gaps.length).toBeGreaterThan(100);
     expect(gaps.filter(({ part, gap }) => gap > CROWN_GAP_LIMIT && !known.has(part))).toEqual([]);
+    // Hair reaches the head's outline wherever it meets the paper (coverOutline finds nothing left to cover).
+    expect(gaps.filter(({ outline }) => outline > 0).map(({ part, outline }) => `${part}: ${outline}`)).toEqual([]);
     // The known ones still fail, so the check catches them (and a redrawn one leaves the list).
     expect(gaps.filter(({ part, gap }) => gap > CROWN_GAP_LIMIT && known.has(part)).map(({ part }) => part).toSorted()).toEqual([...known].toSorted());
-  });
+  }, 30_000);
 });
