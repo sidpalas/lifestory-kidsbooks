@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* Scan only src for classes. Without source(), Tailwind scans apps/web and skips what .gitignore lists; the Docker
+   build context has no .gitignore, so the server build scanned dist/client and linked a stylesheet that doesn't exist. */
+@import "tailwindcss" source(".");
 @import "@fontsource-variable/nunito";
 
 @custom-variant dark (&:is(.dark *));
