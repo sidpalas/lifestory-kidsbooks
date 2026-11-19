@@ -44,8 +44,9 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - [pdf-proof](pdf-proof.md): print-ready PDF proof that matches the editor. `verify proof`.
 
 ### Authoring (operator and authors)
-- Story editor, parts generation, art import: covered by `e2e -- authoring parts art-import story-additions`; no map
-  file yet.
+- [authoring-parts](authoring-parts.md): tiled part generation, head-only sharing, consistency references and
+  mirrored figures (D44). `verify e2e -- parts authoring`.
+- Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.
 
 ### Whole suite
 - `verify e2e [--ci] [-- <spec>]`: Playwright on one port with peak memory against the orb's 3 GiB cap.

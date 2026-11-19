@@ -17,6 +17,8 @@ export interface LayerSpec {
   readonly rect: PlacedRect;
   /** Empty: the asset is drawn as the illustrator made it. */
   readonly recolour: ReadonlyArray<RecolourRegion>;
+  /** Drawn mirrored left to right: a figure with `flip` (D44). */
+  readonly flip?: true;
 }
 
 const FULL: PlacedRect = [0, 0, 1000, 1000];
@@ -30,7 +32,8 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
 /**
  * One figure for `look`, bottom to top: its base face (skin and brows recoloured), its overlay as drawn, the look's parts in `partOrder`,
  * then the occluder (its skin recoloured too). Drawn at the figure's pinned age, else the look's own (D29); part
- * axes that don't exist at that age (a baby's hairstyle) are left out. Story pages and the picker's portrait both compose with this.
+ * axes that don't exist at that age (a baby's hairstyle) are left out. A figure with `flip` is all mirrored within its box (D44).
+ * Story pages and the picker's portrait both compose with this.
  * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
  */
 export const composeFigure = (
@@ -62,7 +65,7 @@ export const composeFigure = (
           }));
         });
 
-  return [
+  const specs: ReadonlyArray<LayerSpec> = [
     {
       asset: base.asset,
       rect: layer.box,
@@ -74,6 +77,9 @@ export const composeFigure = (
       ? [{ asset: base.occluder.asset, rect: layer.box, recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [] }]
       : []),
   ];
+  if (!layer.flip) return specs;
+  const [bx0, , bx1] = layer.box;
+  return specs.map(({ rect: [x0, y0, x1, y1], ...spec }) => ({ ...spec, rect: [bx0 + bx1 - x1, y0, bx0 + bx1 - x0, y1], flip: true }));
 };
 
 /** The page's illustration, bottom to top: its art and each figure (composeFigure). A slot without a cast member is left out. */

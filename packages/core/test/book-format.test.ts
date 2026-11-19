@@ -23,6 +23,7 @@ import {
   type Look,
 } from "../src/book-format/index.ts";
 import { Look as LookSchema } from "../src/looks/vocabulary.ts";
+import { withApprovedParts } from "../src/parts/parts.ts";
 
 const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
 const published = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
@@ -408,6 +409,80 @@ describe("composeIllustration", () => {
       .map((layer) => layer.asset)
       .filter((asset) => asset.includes("/hero/"));
     expect(hero).toEqual(["pages/p06/hero/base-child-1.svg", "pages/p06/hero/child-1-glasses-round.svg", "pages/p06/hero/child-1-curly.svg"]);
+  });
+
+  it("mirrors a flipped figure within its box, parts included, and leaves the page's art as it is (D44)", () => {
+    const flipped = decoded(
+      variant((m) => {
+        m.pages[0].illustration.layers[1].flip = true;
+        const curly = m.pages[0].illustration.layers[1].parts.find((part: any) => part.age === "young-child" && part.asset.endsWith("child-1-curly.svg"));
+        curly.at = [0, 0, 500, 1000];
+      }),
+    );
+    const layers = composeIllustration(flipped, flipped.pages[0]!, cast);
+    const hero = layers.filter((layer) => layer.asset.includes("/hero/"));
+    // Box [430, 250, 760, 690]: the part drawn on the left half lands on the right half.
+    expect(hero.map((layer) => [layer.asset, layer.rect, layer.flip])).toEqual([
+      ["pages/p01/hero/base-child-1.svg", [430, 250, 760, 690], true],
+      ["pages/p01/hero/child-1-curly.svg", [595, 250, 760, 690], true],
+    ]);
+    expect(layers.filter((layer) => !layer.asset.includes("/hero/")).every((layer) => layer.flip === undefined)).toBe(true);
+  });
+});
+
+/** An approved generated hair part for p05's grown-up, adult round face (D44 tests). */
+const entry = (partId: string, option: string, features?: "features:soft") => ({
+  partId,
+  pageId: "p05",
+  slotId: "grownup",
+  part: {
+    age: "adult" as const,
+    face: "face:round" as const,
+    ...(features ? { features } : {}),
+    axis: "hair" as const,
+    option,
+    asset: `parts/${partId}/part.png`,
+    at: [200, 0, 800, 400] as const,
+    palette: "hairColour" as const,
+    approved: true,
+  },
+});
+
+describe("generated head-only parts shared across features (D44)", () => {
+  // p05's grown-up gains a softer adult round base; the generator drew short and long hair on the defined one.
+  const manifest = decoded(
+    variant((m) => {
+      const figure = m.pages[4].illustration.layers[2];
+      const defined = figure.bases.find((base: any) => base.age === "adult" && base.face === "face:round");
+      figure.bases.push({ ...defined, features: "features:soft" });
+    }),
+  );
+  const partsOf = (merged: typeof manifest, option: string) => {
+    const figure = merged.pages[4]!.illustration.layers[2];
+    return figure?.kind === "figure" ? figure.parts.filter((part) => part.age === "adult" && part.face === "face:round" && part.option === option) : [];
+  };
+
+  it("lists short hair again for the softer base with the same asset, but not long hair, which touches the shoulders", () => {
+    const merged = withApprovedParts(manifest, [entry("part_short", "hair:short"), entry("part_long", "hair:long")]);
+    expect(partsOf(merged, "hair:short").map((part) => [part.features ?? null, part.asset])).toEqual([
+      [null, "parts/part_short/part.png"],
+      ["features:soft", "parts/part_short/part.png"],
+    ]);
+    expect(partsOf(merged, "hair:long").map((part) => part.features ?? null)).toEqual([null]);
+    const softGaps = vocabularyGaps(merged, publishedAt).filter((gap) => gap.includes("p05") && gap.includes("soft"));
+    expect(softGaps.filter((gap) => /hair:(short|long)/.test(gap))).toEqual([expect.stringContaining("hair:long")]);
+  });
+
+  it("doesn't cover an approved drawing of the other features, or a figure without that base", () => {
+    // Drawn on the softer base, short hair doesn't replace the defined base's approved upload.
+    const fromSoft = withApprovedParts(manifest, [entry("part_soft", "hair:short", "features:soft")]);
+    expect(partsOf(fromSoft, "hair:short").map((part) => [part.features ?? null, part.asset])).toEqual([
+      [null, "pages/p05/grownup/adult-2-short.svg"],
+      ["features:soft", "parts/part_soft/part.png"],
+    ]);
+    // Without a softer base, nothing is added.
+    const plain = withApprovedParts(decoded(sample), [entry("part_short", "hair:short")]);
+    expect(partsOf(plain, "hair:short").map((part) => part.features ?? null)).toEqual([null]);
   });
 });
 

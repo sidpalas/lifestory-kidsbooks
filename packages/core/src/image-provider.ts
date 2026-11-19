@@ -72,7 +72,8 @@ export const renderPlaceholder = (request: { key: string; prompt: string; width:
  * A deterministic stand-in for an in-place edit of `reference` (a PNG), so part generation runs its whole cut-out
  * without a model: the picture comes back shifted by a pixel and re-toned slightly, as a model returns it, with
  * glasses or a cap of hair (soft edge, a few one-pixel wisps) drawn where the sample story's hero has its head in
- * the padded 2:3 input. Strand positions come from the key, so reruns are byte-identical.
+ * the padded 2:3 input, or near the top of each tile of a tiled edit. Strand positions come from the key, so reruns
+ * are byte-identical.
  */
 export const renderFakeEdit = async (reference: Uint8Array, request: { key: string; prompt: string }) => {
   const imported = await renderFakeImportEdit(reference, request.prompt);
@@ -81,17 +82,26 @@ export const renderFakeEdit = async (reference: Uint8Array, request: { key: stri
   const w = width!;
   const h = height!;
   const seed = createHash("sha256").update(request.key).digest();
-  const part = /glasses/i.test(request.prompt)
-    ? [0.443, 0.559]
-        .map((x) => `<circle cx="${x * w}" cy="${0.226 * h}" r="${0.045 * w}" fill="none" stroke="#1d1a1c" stroke-width="${0.006 * w}"/>`)
-        .join("") + `<path d="M${0.488 * w} ${0.226 * h} H${0.514 * w}" stroke="#1d1a1c" stroke-width="${0.005 * w}"/>`
-    : `<ellipse cx="${0.5 * w}" cy="${0.135 * h}" rx="${0.185 * w}" ry="${0.055 * h}" fill="#4b3a33" filter="url(#soft)"/>` +
-      [0, 1, 2, 3, 4, 5]
-        .map((i) => {
-          const x = (0.36 + 0.28 * (seed[i]! / 255)) * w;
-          return `<path d="M${x} ${0.2 * h} q${0.01 * w} ${0.03 * h} 0 ${0.05 * h}" fill="none" stroke="#4b3a33" stroke-opacity="0.6" stroke-width="1.2"/>`;
-        })
-        .join("");
+  // A tiled edit (D44) holds several portraits: two side by side, or four in a 2 × 2 grid; each gets the part.
+  const count = ["one", "two", "three", "four"].indexOf(/holds (one|two|three|four) separate portraits/.exec(request.prompt)?.[1] ?? "one") + 1;
+  const columns = count > 1 ? 2 : 1;
+  const rows = count > 1 && h > w ? 2 : 1;
+  const tw = w / columns;
+  const th = h / rows;
+  const part = Array.from({ length: count }, (_, k) => {
+    const [ox, oy] = [(k % columns) * tw, Math.floor(k / columns) * th];
+    return /glasses/i.test(request.prompt)
+      ? [0.443, 0.559]
+          .map((x) => `<circle cx="${ox + x * tw}" cy="${oy + 0.226 * th}" r="${0.045 * tw}" fill="none" stroke="#1d1a1c" stroke-width="${0.006 * tw}"/>`)
+          .join("") + `<path d="M${ox + 0.488 * tw} ${oy + 0.226 * th} H${ox + 0.514 * tw}" stroke="#1d1a1c" stroke-width="${0.005 * tw}"/>`
+      : `<ellipse cx="${ox + 0.5 * tw}" cy="${oy + 0.135 * th}" rx="${0.185 * tw}" ry="${0.055 * th}" fill="#4b3a33" filter="url(#soft)"/>` +
+          [0, 1, 2, 3, 4, 5]
+            .map((i) => {
+              const x = ox + (0.36 + 0.28 * (seed[i]! / 255)) * tw;
+              return `<path d="M${x} ${oy + 0.2 * th} q${0.01 * tw} ${0.03 * th} 0 ${0.05 * th}" fill="none" stroke="#4b3a33" stroke-opacity="0.6" stroke-width="1.2"/>`;
+            })
+            .join("");
+  }).join("");
   const overlay = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="soft"><feGaussianBlur stdDeviation="1.5"/></filter></defs>${part}</svg>`,
   );

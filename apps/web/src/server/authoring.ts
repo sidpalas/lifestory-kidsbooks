@@ -32,7 +32,7 @@ import {
   listAuthors,
   listDraftParts,
   previewDraft,
-  requestDraftPart,
+  requestDraftParts,
   reviewDraftPart,
   publishDraft,
   revokeAuthor,
@@ -150,10 +150,17 @@ export const DraftPartResult = ResultSchema(StoryPart, PartFailures);
 
 const { storyVersionId: _, ...requestFields } = PartRequest.fields;
 
-export const requestDraftPartFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, ...requestFields })))
-  .handler(({ data: { storyId, ...request } }) =>
-    runEffect(DraftPartResult, currentUser.pipe(Effect.flatMap((user) => requestDraftPart(user, storyId, request)))),
+export const DraftPartsRequestResult = ResultSchema(Schema.Array(StoryPart), PartFailures);
+
+/** Parts of one figure, generated together: one tiled edit per option for up to four of its bases (D44). */
+export const requestDraftPartsFn = createServerFn({ method: "POST" })
+  .validator(
+    Schema.toStandardSchemaV1(
+      Schema.Struct({ storyId: Schema.String, requests: Schema.Array(Schema.Struct(requestFields)).check(Schema.isMinLength(1), Schema.isMaxLength(200)) }),
+    ),
+  )
+  .handler(({ data: { storyId, requests } }) =>
+    runEffect(DraftPartsRequestResult, currentUser.pipe(Effect.flatMap((user) => requestDraftParts(user, storyId, requests)))),
   );
 
 export const reviewDraftPartFn = createServerFn({ method: "POST" })

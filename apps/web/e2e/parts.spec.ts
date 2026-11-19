@@ -11,9 +11,11 @@ const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.ur
 const operator = "user_operator";
 
 test("an author generates a part, reviews it on light and dark skin, and approves it into the draft", async ({ page }) => {
+  // Single, four-tile and two-tile edits all run through the real worker, sequentially on this small orb.
+  test.setTimeout(120_000);
   // Imported here, not at the top: Playwright's runner imports every spec to list the tests, and @lifestory/core would
   // cost it ~0.2 GB for the whole run, which a 4 GB orb can't spare (AGENTS.md, "Orb size").
-  const { approvedParts, Database, decodeStoryManifest, getPart, importStoryVersion, makeServerRuntime, requestPart, reviewPart, withApprovedParts } =
+  const { approvedParts, Database, decodeStoryManifest, getPart, importStoryVersion, makeServerRuntime, requestParts, reviewPart, withApprovedParts } =
     await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
@@ -57,10 +59,10 @@ test("an author generates a part, reviews it on light and dark skin, and approve
       option: "hair:curly",
       zone: [250, 0, 750, 420],
     } as const;
-    let part: StoryPart = await run(requestPart(operator, request));
+    let [part] = (await run(requestParts(operator, [request]))) as [StoryPart];
     expect(part.status).toBe("generating");
     // Asking again is the same part, not a second generation.
-    expect((await run(requestPart(operator, request))).id).toBe(part.id);
+    expect((await run(requestParts(operator, [request])))[0]!.id).toBe(part.id);
     await expect.poll(async () => (part = await run(getPart(operator, part.id))).status, { timeout: 30_000 }).toBe("pending_review");
 
     // One layer, the hair, recoloured by hair colour, placed inside the zone; the fake costs nothing and comes back
@@ -74,7 +76,9 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     expect(y0).toBeGreaterThanOrEqual(0);
     expect(y1).toBeLessThanOrEqual(420);
     expect(part).toMatchObject({ provider: "fake", costUsd: 0, error: null });
-    expect(part.metrics).toMatchObject({ zoneEdgeContact: 0 });
+    // The edit copied the story's approved curls, the illustrator's own on the hero's round face, given as a second image.
+    expect(part.metrics).toMatchObject({ zoneEdgeContact: 0, reference: "p01/hero/young-child/face:round" });
+    expect(part.prompt).toContain("styled exactly like the hair in <ref_image_1>");
     expect((part.metrics as { recompositeError: number }).recompositeError).toBeLessThan(2);
 
     // The author opens the layer and the review sheet; the draft's files are theirs alone.
@@ -98,6 +102,47 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     );
     const curls = figure?.kind === "figure" ? figure.parts.filter((p) => p.age === "young-child" && p.face === "face:round" && p.option === "hair:curly") : [];
     expect(curls).toEqual([{ age: "young-child", face: "face:round", axis: "hair", option: "hair:curly", asset: layer!.asset, at: layer!.at, palette: "hairColour", approved: true }]);
+
+    // One option on the hero's four bases is one tiled edit (D44): each tile is cut out against its own base, inside
+    // the zone, and each part costs a quarter of the edit.
+    const tiled = (["young-child", "older-child"] as const).flatMap((age) =>
+      (["face:round", "face:oval"] as const).map((face) => ({ ...request, age, face, option: "hair:short" })),
+    );
+    let parts = await run(requestParts(operator, tiled));
+    expect(new Set(parts.map((p) => p.id)).size).toBe(4);
+    await expect
+      .poll(async () => (parts = await Promise.all(parts.map((p) => run(getPart(operator, p.id))))).map((p) => p.status), { timeout: 60_000 })
+      .toEqual(["pending_review", "pending_review", "pending_review", "pending_review"]);
+    expect(new Set(parts.map((p) => p.files.edit)).size).toBe(1);
+    expect(parts[0]!.prompt).toContain("four separate portraits");
+    expect(parts[0]!.prompt).toContain("<ref_image_1>");
+    expect(parts.map((p) => (p.metrics as { tile: { index: number } }).tile.index).toSorted()).toEqual([0, 1, 2, 3]);
+    // Overlapping batches, even in a different order, retain the already queued parts and their single edit.
+    expect((await run(requestParts(operator, tiled.toReversed()))).map((p) => p.id)).toEqual(parts.map((p) => p.id).toReversed());
+    for (const tiledPart of parts) {
+      expect(tiledPart).toMatchObject({
+        provider: "fake",
+        costUsd: 0,
+        error: null,
+        metrics: { zoneEdgeContact: 0, tile: { of: 4 }, reference: "p01/hero/young-child/face:round" },
+      });
+      const hair = tiledPart.layers.find((l) => l.palette === "hairColour")!;
+      expect(hair.at[0]).toBeGreaterThanOrEqual(250);
+      expect(hair.at[2]).toBeLessThanOrEqual(750);
+      expect(hair.at[3]).toBeLessThanOrEqual(420);
+    }
+
+    // A wider zone needs larger tiles: the same four bases become two edits of two, not four low-resolution heads.
+    let large = await run(requestParts(operator, tiled.map((r) => ({ ...r, option: "hair:long", zone: [0, 0, 1000, 600] as const }))));
+    await expect
+      .poll(async () => (large = await Promise.all(large.map((p) => run(getPart(operator, p.id))))).map((p) => p.status), { timeout: 60_000 })
+      .toEqual(["pending_review", "pending_review", "pending_review", "pending_review"]);
+    expect(new Set(large.map((p) => p.files.edit)).size).toBe(2);
+    for (const largePart of large) {
+      expect(largePart.prompt).toContain("two separate portraits");
+      expect(largePart.metrics).toMatchObject({ tile: { of: 2 }, reference: "p01/hero/young-child/face:round" });
+      expect(largePart.layers.some((l) => l.palette === "hairColour")).toBe(true);
+    }
   } finally {
     await runtime.dispose();
   }

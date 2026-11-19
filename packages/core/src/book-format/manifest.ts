@@ -178,6 +178,11 @@ export const FigureLayer = Schema.Struct({
    * during the story. Without it the figure draws them at their own age, one of the slot's `ages`.
    */
   age: Schema.optionalKey(Age),
+  /**
+   * Mirrors the whole figure left to right within its box (D44): its base, masks, overlay, parts, and occluder, so a
+   * pose facing the other way reuses a drawing and its parts. Parts are generated and placed on the unmirrored base.
+   */
+  flip: Schema.optionalKey(Schema.Boolean),
   /** False when only a hand or an arm is in frame: then the figure has no head parts. */
   showsHead: Schema.optionalKey(Schema.Boolean),
   /** Overrides the manifest's `partOrder` on this appearance, e.g. glasses over hair. */

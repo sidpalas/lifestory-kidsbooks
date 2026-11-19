@@ -16,6 +16,7 @@ import {
   type FigureLayer,
   type LookOption,
   lookVocabulary,
+  HEAD_ONLY_OPTIONS,
   NO_PART_OPTIONS,
   type Part,
   partAxesAt,
@@ -122,6 +123,17 @@ export function FigureEditor({
           />
           Head in frame (hair and glasses parts)
         </label>
+        <label className="flex items-center gap-2 self-end text-xs font-medium">
+          <input
+            type="checkbox"
+            checked={figure.flip === true}
+            onChange={(event) => {
+              const { flip: _, ...rest } = figure;
+              onChange(event.target.checked ? { ...rest, flip: true } : rest);
+            }}
+          />
+          Mirrored (the drawings and parts face the other way)
+        </label>
       </div>
       <RectFields label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
 
@@ -204,6 +216,9 @@ interface PartCell extends Appearance {
 const sameCell = (cell: PartCell, part: Pick<Part, "age" | "face" | "axis" | "option"> & { readonly features?: FeaturesOption | null | undefined }) =>
   draws(part, cell) && part.axis === cell.axis && part.option === cell.option.id;
 
+/** A cell's state from the generated part that fills it. */
+const generatedState = (part: StoryPart) => (part.status === "approved" ? "approved" : part.status === "generating" ? "generating" : "unapproved");
+
 const statusLabel: Record<StoryPart["status"], string> = {
   generating: "Generating…",
   pending_review: "Generated, waiting for your review",
@@ -246,6 +261,15 @@ function PartsGrid({
     return all.findLast((part) => part.status === "approved") ?? all.findLast((part) => part.status === "pending_review" || part.status === "generating");
   };
   const hasBase = (cell: PartCell) => figure.bases.some((base) => draws(base, cell));
+  /**
+   * A head-only option of a softer base with no drawing of its own uses the defined base's generated part (D44):
+   * the cell it shares, when that one is generated or about to be.
+   */
+  const sharedFrom = (cell: PartCell): PartCell | undefined => {
+    if (cell.features !== "features:soft" || !HEAD_ONLY_OPTIONS.has(cell.option.id) || uploaded(cell) || generated(cell)) return undefined;
+    const defined = cells.find((other) => other.features === DEFAULT_FEATURES && other.age === cell.age && other.face === cell.face && other.option.id === cell.option.id);
+    return defined && !uploaded(defined) && hasBase(defined) ? defined : undefined;
+  };
   const request = (cell: PartCell) => ({
     age: cell.age,
     face: cell.face,
@@ -272,8 +296,8 @@ function PartsGrid({
     };
     onChange({ ...figure, parts: [...figure.parts, part] });
   };
-  const empty = cells.filter((cell) => !uploaded(cell) && !generated(cell));
-  const generatable = empty.filter(hasBase);
+  const empty = cells.filter((cell) => !uploaded(cell) && !generated(cell) && !(sharedFrom(cell) && generated(sharedFrom(cell)!)));
+  const generatable = empty.filter((cell) => hasBase(cell) && !sharedFrom(cell));
   const waiting = cells.filter((cell) => {
     const gen = generated(cell);
     return gen ? gen.status !== "approved" : uploaded(cell)?.approved === false;
@@ -323,18 +347,10 @@ function PartsGrid({
           const part = uploaded(cell);
           const gen = generated(cell);
           const last = attempts(cell).at(-1);
+          const shared = sharedFrom(cell);
+          const sharedGen = shared && generated(shared);
           const at = `${cell.option.label}, ${appearanceLabel(cell).replace(/^[^,]+/, (age) => age.toLowerCase())}`;
-          const state = gen
-            ? gen.status === "approved"
-              ? "approved"
-              : gen.status === "generating"
-                ? "generating"
-                : "unapproved"
-            : part
-              ? part.approved
-                ? "approved"
-                : "unapproved"
-              : "missing";
+          const state = gen ? generatedState(gen) : part ? (part.approved ? "approved" : "unapproved") : sharedGen ? generatedState(sharedGen) : "missing";
           return (
             <li
               key={`${appearanceKey(cell)}/${cell.option.id}`}
@@ -342,7 +358,7 @@ function PartsGrid({
               data-testid="part-cell"
               data-option={cell.option.id}
               data-state={state}
-              data-source={gen ? "generated" : part ? "uploaded" : "none"}
+              data-source={gen ? "generated" : part ? "uploaded" : sharedGen ? "shared" : "none"}
             >
               <span className="text-xs font-semibold">{at}</span>
               {gen ? (
@@ -377,6 +393,15 @@ function PartsGrid({
                     </Button>
                   </div>
                 </>
+              ) : sharedGen ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground" data-testid="shared-part">
+                    Uses the defined features' drawing ({statusLabel[sharedGen.status].toLowerCase()}): a head-only part fits both.
+                  </span>
+                  <Button size="sm" variant="ghost" className="h-7" aria-label={`Draw ${at} on its own`} disabled={generation.blocked !== null} onClick={() => generation.generate([request(cell)])}>
+                    Draw its own
+                  </Button>
+                </div>
               ) : (
                 <>
                   {last && (

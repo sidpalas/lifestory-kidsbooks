@@ -4,7 +4,7 @@
 import sharp, { type Sharp } from "sharp";
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
-import { alphaBounds, cutOutPart, type CutOutMetrics, neutralize, type PixelRect, type Rgb, skinPixels } from "./cutout.ts";
+import { alphaBounds, cutOutPart, type CutOutMetrics, findShift, neutralize, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
 
 /** The cut-out runs at most at this size; provider outputs are 1536 px at most, so more adds nothing. */
 const WORKING_SIZE = 1536;
@@ -146,7 +146,17 @@ export const cutOutLayer = async (
   const { width, height, padding } = prepared;
   const base = await toRgb(sharp(prepared.base));
   const aligned = await unpadEdit(edit, padding, width, height);
-  const { alpha, colour, metrics } = cutOutPart(base, aligned, rectToPixels(zone, width, height));
+  return splitLayers(base, cutOutPart(base, aligned, rectToPixels(zone, width, height)), skinMask, options);
+};
+
+/** A cut-out split by region into the part and any skin drawn in it (cutOutLayer). */
+const splitLayers = async <M extends CutOutMetrics>(
+  base: Rgb,
+  { alpha, colour, metrics }: { readonly alpha: Float32Array; readonly colour: Float32Array; readonly metrics: M },
+  skinMask: Uint8Array,
+  options: { readonly neutral: boolean },
+): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: M & { readonly skinPixels: number } }> => {
+  const { width, height } = base;
   const mask = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
   // Hair can't carry skin-coloured highlights away as skin, but an accessory has no skin of its own: skin the model
   // redrew under glasses is the base's skin with its eye and nose lines moved, so the base shows there instead.
@@ -161,6 +171,195 @@ export const cutOutLayer = async (
     layers: layers.filter((layer): layer is PartLayer => layer !== null),
     metrics: { ...metrics, skinPixels: skin.reduce((sum, v) => sum + v, 0) },
   };
+};
+
+/**
+ * The reference for an edit: an approved part on its own base, both as drawn (neutral grey, not recoloured: a
+ * peach-skinned reference recoloured the edited face, 2026-11-19), flattened on paper and cropped to a square
+ * around the part with the face under it, at 1024 px. The edit copies its style from this.
+ */
+export const referenceImage = async (base: Uint8Array, layers: ReadonlyArray<{ readonly png: Uint8Array; readonly at: Rect }>) => {
+  const { base: flat, width, height } = await prepareBase(base);
+  const placed = await Promise.all(
+    layers.map(async (layer) => {
+      const [x0, y0, x1, y1] = rectToPixels(layer.at, width, height);
+      return { rect: [x0, y0, x1, y1] as const, input: await (await rasterize(layer.png)).resize(x1 - x0, y1 - y0, { fit: "fill" }).png().toBuffer(), left: x0, top: y0 };
+    }),
+  );
+  const drawn = await sharp(flat).composite(placed).png().toBuffer();
+  const [bx0, by0, bx1, by1] = placed.reduce<readonly [number, number, number, number]>(
+    ([a, b, c, d], { rect }) => [Math.min(a, rect[0]), Math.min(b, rect[1]), Math.max(c, rect[2]), Math.max(d, rect[3])],
+    [width, height, 0, 0],
+  );
+  const side = Math.round(1.5 * Math.max(bx1 - bx0, by1 - by0, 1));
+  const x0 = Math.round((bx0 + bx1) / 2 - side / 2);
+  const y0 = Math.round(by0 - 0.15 * side);
+  const square = await (await windowOf(drawn, width, height, [x0, y0, x0 + side, y0 + side])).png().toBuffer();
+  return new Uint8Array(await sharp(square).resize(1024, 1024, { kernel: "lanczos3" }).png().toBuffer());
+};
+
+// ---- Tiled edits (D44) -----------------------------------------------------------------------------------------
+// One edit draws an option on several bases: each base's head, cropped to a window around the part's zone, is a
+// tile of the image sent to the provider, and each tile of the edit is cut out against its own window.
+
+/** Room above each head in a tile, in the provider's pixels: with 30 px the model moved heads down and clipped curls. */
+export const TILE_HEADROOM = 110;
+/** Four tiles of 512 × 768 in a 1024 × 1536 edit, or two of 768 × 1024 in a 1536 × 1024 one for large figures. */
+const LAYOUTS = {
+  four: { width: 1024, height: 1536, tile: { width: 512, height: 768 }, columns: 2 },
+  two: { width: 1536, height: 1024, tile: { width: 768, height: 1024 }, columns: 2 },
+} as const;
+type TileLayout = (typeof LAYOUTS)[keyof typeof LAYOUTS];
+/** A head whose window is wider than this many base pixels loses too much in a 512 px tile, so it goes two to an edit. */
+const LARGE = 640;
+
+/** Where one base sits in a tiled edit. */
+export interface TilePlacement {
+  /** The tile in the provider's image, in its pixels. */
+  readonly slot: PixelRect;
+  /** The part of the base (working pixels) the tile shows; it may reach past the base, where paper shows. */
+  readonly window: PixelRect;
+}
+
+/** The highest row of the base's skin (a bald scalp) in the zone's columns, or the zone's top without skin there. */
+export const headTop = async (skinMask: Uint8Array, width: number, height: number, zone: PixelRect) => {
+  const alpha = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+  const [x0, y0, x1, y1] = [Math.max(0, zone[0]), Math.max(0, zone[1]), Math.min(width, zone[2]), Math.min(height, zone[3])];
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) if (alpha[y * width + x]! >= 128) return y;
+  }
+  return y0;
+};
+
+/**
+ * The window of a base a tile shows: the zone's width, and from TILE_HEADROOM above the head to the zone's bottom,
+ * widened to the tile's aspect and never smaller than the tile (no upscaling). Centred on the zone.
+ */
+const tileWindow = (zone: PixelRect, top: number, tile: { readonly width: number; readonly height: number }): PixelRect => {
+  const width = Math.ceil(Math.max(neededWidth(zone, top, tile), tile.width));
+  const height = Math.round((width * tile.height) / tile.width);
+  const x0 = Math.round((zone[0] + zone[2]) / 2 - width / 2);
+  const y0 = Math.round(top - (TILE_HEADROOM * width) / tile.width);
+  return [x0, y0, x0 + width, y0 + height];
+};
+const neededWidth = (zone: PixelRect, top: number, tile: { readonly width: number; readonly height: number }) =>
+  Math.max(zone[2] - zone[0], ((zone[3] - top) * tile.width) / (tile.height - TILE_HEADROOM));
+
+export interface TiledImage {
+  readonly png: Uint8Array;
+  readonly width: number;
+  readonly height: number;
+  /** Indexes into the bases given to tileBases, in tile order. */
+  readonly bases: ReadonlyArray<number>;
+  readonly tiles: ReadonlyArray<TilePlacement>;
+}
+
+/** The base's pixels in `window`, with paper where the window reaches past it. */
+const windowOf = async (base: Uint8Array, width: number, height: number, [x0, y0, x1, y1]: PixelRect) => {
+  const left = Math.max(0, -x0);
+  const top = Math.max(0, -y0);
+  const right = Math.max(0, x1 - width);
+  const bottom = Math.max(0, y1 - height);
+  const extended = await sharp(base).extend({ left, top, right, bottom, background: PAPER }).png().toBuffer();
+  return sharp(extended).extract({ left: x0 + left, top: y0 + top, width: x1 - x0, height: y1 - y0 });
+};
+
+/**
+ * The images for one tiled edit of `bases` (each prepareBase's flattened base, its zone, and the top of its head):
+ * four to an image, or two when any head is large, in order. Deterministic, so a rerun writes the same bytes.
+ */
+export const tileBases = async (
+  bases: ReadonlyArray<{ readonly base: Uint8Array; readonly width: number; readonly height: number; readonly zone: Rect; readonly headTop: number }>,
+): Promise<ReadonlyArray<TiledImage>> => {
+  const zones = bases.map((base) => rectToPixels(base.zone, base.width, base.height));
+  const large = bases.some((base, i) => neededWidth(zones[i]!, base.headTop, LAYOUTS.four.tile) > LARGE);
+  const layout: TileLayout = large || bases.length <= 2 ? LAYOUTS.two : LAYOUTS.four;
+  const perImage = (layout.width / layout.tile.width) * (layout.height / layout.tile.height);
+  const images: Array<TiledImage> = [];
+  for (let first = 0; first < bases.length; first += perImage) {
+    const indexes = bases.map((_, i) => i).slice(first, first + perImage);
+    const tiles = indexes.map((index, k): TilePlacement => {
+      const x = (k % layout.columns) * layout.tile.width;
+      const y = Math.floor(k / layout.columns) * layout.tile.height;
+      return { slot: [x, y, x + layout.tile.width, y + layout.tile.height], window: tileWindow(zones[index]!, bases[index]!.headTop, layout.tile) };
+    });
+    const composites = await Promise.all(
+      tiles.map(async (tile, k) => {
+        const base = bases[indexes[k]!]!;
+        const crop = await (await windowOf(base.base, base.width, base.height, tile.window)).png().toBuffer();
+        const input = await sharp(crop).resize(layout.tile.width, layout.tile.height, { fit: "fill", kernel: "lanczos3" }).png().toBuffer();
+        return { input, left: tile.slot[0], top: tile.slot[1] };
+      }),
+    );
+    const png = await sharp({ create: { width: layout.width, height: layout.height, channels: 3, background: PAPER } }).composite(composites).png().toBuffer();
+    images.push({ png: new Uint8Array(png), width: layout.width, height: layout.height, bases: indexes, tiles });
+  }
+  return images;
+};
+
+/** Every `factor`-th pixel of `image`, for a coarse search. */
+const subsample = (image: Rgb, factor: number): Rgb => {
+  const width = Math.floor(image.width / factor);
+  const height = Math.floor(image.height / factor);
+  const data = new Float32Array(width * height * 3);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const from = (y * factor * image.width + x * factor) * 3;
+      data.set(image.data.subarray(from, from + 3), (y * width + x) * 3);
+    }
+  }
+  return { width, height, data };
+};
+
+/**
+ * cutOutLayer for one tile of a tiled edit: the tile, scaled back to its window, is cut out against the base's
+ * window (cutOutPart, after a coarse alignment of up to ±48 tile pixels on the body below the head, since the model
+ * may move a head), and the result is put back on the base's canvas. The zone stays 16 tile pixels inside the
+ * tile's sides and 8 above its bottom, where the neighbouring tile begins.
+ */
+export const cutOutTile = async (
+  prepared: Pick<PreparedBase, "base" | "width" | "height">,
+  edit: Uint8Array,
+  placement: TilePlacement,
+  skinMask: Uint8Array,
+  zone: Rect,
+  options: { readonly neutral: boolean },
+) => {
+  const { width, height } = prepared;
+  const [wx0, wy0, wx1, wy1] = placement.window;
+  const [sx0, sy0, sx1, sy1] = placement.slot;
+  const windowWidth = wx1 - wx0;
+  const windowHeight = wy1 - wy0;
+  const scale = windowWidth / (sx1 - sx0);
+  const windowBase = await toRgb(await windowOf(prepared.base, width, height, placement.window));
+  const tile = await sharp(await sharp(edit).flatten({ background: PAPER }).extract({ left: sx0, top: sy0, width: sx1 - sx0, height: sy1 - sy0 }).png().toBuffer())
+    .resize(windowWidth, windowHeight, { fit: "fill", kernel: "lanczos3" });
+  const rawTile = await toRgb(tile);
+
+  const [zx0, zy0, zx1, zy1] = rectToPixels(zone, width, height);
+  const inWindow: PixelRect = [
+    Math.max(zx0 - wx0, Math.round(16 * scale)),
+    Math.max(zy0 - wy0, 0),
+    Math.min(zx1 - wx0, windowWidth - Math.round(16 * scale)),
+    Math.min(zy1 - wy0, windowHeight - Math.round(8 * scale)),
+  ];
+  const factor = Math.max(1, Math.round(4 * scale));
+  const band = Math.round((TILE_HEADROOM + 0.25 * (sy1 - sy0)) * scale);
+  const [cx, cy] = findShift(subsample(windowBase, factor), subsample(rawTile, factor), [0, 0, windowWidth, Math.round(band / factor)], 12);
+  const coarseShift = [cx * factor, cy * factor] as const;
+  const cut = cutOutPart(windowBase, shiftImage(rawTile, coarseShift[0], coarseShift[1]), inWindow);
+
+  const alpha = new Float32Array(width * height);
+  const colour = new Float32Array(width * height * 3);
+  for (let y = Math.max(0, wy0); y < Math.min(height, wy1); y++) {
+    for (let x = Math.max(0, wx0); x < Math.min(width, wx1); x++) {
+      const from = (y - wy0) * windowWidth + (x - wx0);
+      alpha[y * width + x] = cut.alpha[from]!;
+      colour.set(cut.colour.subarray(from * 3, from * 3 + 3), (y * width + x) * 3);
+    }
+  }
+  const base = await toRgb(sharp(prepared.base));
+  return splitLayers(base, { alpha, colour, metrics: { ...cut.metrics, coarseShift } }, skinMask, options);
 };
 
 const luminance = ([r, g, b]: readonly [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;

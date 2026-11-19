@@ -240,9 +240,11 @@ The variant tooling for illustrators wasn't in milestone 1 (brief, "Done means")
 the Story authoring work.
 
 ```
-requestPart(author, { storyVersionId, pageId, slotId, age, face, axis, option, zone, seed?, note? })
-  → story_part row (ID from the request, so repeating it is the same part), spawn part.generate
-part.generate(partId)
+requestParts(author, [{ storyVersionId, pageId, slotId, age, face, features?, axis, option, zone, seed?, note? }, …])
+  → a story_part row per request (ID from the request, so repeating it is the same part); the new parts of one
+    option (and note and seed) spawn part.generate in groups of up to four (D44)
+part.generate(partIds)
+  one part:
   step  prepare      → the base flattened at working size (B) and padded to the provider's 2:3 size
   step  edit:submit  → generation row, provider.submit(key = part:<partId>)   (generateImage)
   await event        generation.done:<generationId>          (OpenAI and the fake emit it themselves; Modal calls back)
@@ -250,7 +252,15 @@ part.generate(partId)
   step  cut-out      → align and colour-match to B, segment, matte against B, unmix, split by region → RGBA layers
   step  review-images→ the layers on the lightest and the darkest skin of the story's palettes, and a sheet
   step  record       → status pending_review
-reviewPart(author, partId, approve | reject); approvedParts + withApprovedParts → the draft's manifest Parts
+  several parts (tiled, D44):
+  step  prepare      → each B, and its head as a tile: four 512 × 768 tiles in a 1024 × 1536 image, or two 768 × 1024
+                       in a 1536 × 1024 one when a head needs more than 640 px across; 110 px of room above each head
+  edit-<k>           → one edit per image (key = parts:<group>:<k>), the prompt asking for the same design on each
+  both: an approved drawing of the option (a manifest part, else a generated one), on its base in neutral grey, goes
+        in as the second image, and the prompt asks for the same style (D44)
+  per part: cut-out (the tile scaled back to its window, coarse-aligned on the body, cutOutPart), review-images, record
+reviewPart(author, partId, approve | reject); approvedParts + withApprovedParts → the draft's manifest Parts, with
+  head-only parts listed again for the other features' base (D44)
 ```
 
 Turnaround sheets (one per hairstyle and base) will run the same way and be referenced by the part edits. The
@@ -258,7 +268,8 @@ illustrator reviews parts and pair sheets in the tooling; approving all of them 
 publish.
 
 - **The zone** (where the part may be, in thousandths of the base) comes with each request: D26's head zone, which
-  the format doesn't carry. Long hair needs a taller zone than glasses; a part cut off at the zone's edge shows as
+  the format doesn't carry. In a tiled edit it also sets the tile's window: the zone's width, from 110 px above the
+  top of the head (the highest skin in the zone's columns) down to the zone's bottom. Long hair needs a taller zone than glasses; a part cut off at the zone's edge shows as
   `zoneEdgeContact` and as a red outline on the review sheet.
 - **Suspending.** `generateImage(ctx, name, request)` submits in a step and `ctx.awaitEvent` suspends the run without
   holding a worker. Absurd events are first-emit-wins and cached, so each wait uses a unique name (the generation ID)

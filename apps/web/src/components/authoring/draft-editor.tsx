@@ -36,13 +36,14 @@ import {
   CheckDraftResult,
   checkDraftFn,
   DraftPartResult,
+  DraftPartsRequestResult,
   DraftResult,
   getDraftFn,
   PreviewDraftResult,
   previewDraftFn,
   PublishDraftResult,
   publishDraftFn,
-  requestDraftPartFn,
+  requestDraftPartsFn,
   reviewDraftPartFn,
   SaveDraftResult,
   saveDraftFn,
@@ -134,9 +135,9 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
           setBusy(true);
           setStatus(null);
           try {
-            for (const request of requests) {
-              unwrapResult(DraftPartResult)(await requestDraftPartFn({ data: { storyId: files.storyId, pageId, slotId, ...request } }));
-            }
+            unwrapResult(DraftPartsRequestResult)(
+              await requestDraftPartsFn({ data: { storyId: files.storyId, requests: requests.map((request) => ({ pageId, slotId, ...request })) } }),
+            );
             // Parts generate on the worker; follow them until none is still generating (up to 5 minutes).
             for (let i = 0; i < 300; i++) {
               const next = await refresh();

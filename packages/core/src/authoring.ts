@@ -32,7 +32,7 @@ import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
-import { getPart, listParts, requestPart, reviewPart, withApprovedParts } from "./parts/parts.ts";
+import { getPart, listParts, requestParts, reviewPart, withApprovedParts } from "./parts/parts.ts";
 import { ObjectStorage } from "./storage.ts";
 import { withStoredAdditions } from "./stories.ts";
 import { type ArtImportRequest, ImportResult, type ImportStatus } from "./imports/contract.ts";
@@ -353,13 +353,20 @@ export const saveDraft = Effect.fn("authoring.saveDraft")(function* (
 // ---- Generated parts (D36) --------------------------------------------------------------
 
 /**
- * Asks the part pipeline for one option of one figure appearance on the saved draft (requestPart): the figure of
+ * Asks the part pipeline for options of figure appearances on the saved draft (requestParts): each the figure of
  * `slotId` on `pageId`, from its base at `age` and `face`. The same request returns the same part; another seed is
  * another attempt.
  */
-export const requestDraftPart = Effect.fn("authoring.requestPart")(function* (user: SessionUser, storyId: string, request: Omit<PartRequest, "storyVersionId">) {
+export const requestDraftParts = Effect.fn("authoring.requestParts")(function* (
+  user: SessionUser,
+  storyId: string,
+  requests: ReadonlyArray<Omit<PartRequest, "storyVersionId">>,
+) {
   const { draft } = yield* draftOf(user, storyId);
-  return yield* requestPart(user.id, { ...request, storyVersionId: draft.id });
+  return yield* requestParts(
+    user.id,
+    requests.map((request) => ({ ...request, storyVersionId: draft.id })),
+  );
 });
 
 /** The author's review of a generated part of the draft: approve or reject (reviewPart). */

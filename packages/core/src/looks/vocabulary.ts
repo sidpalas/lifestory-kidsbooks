@@ -104,6 +104,27 @@ export const facialHairOptions = [
 /** Options with no part to draw. */
 export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["glasses:none", "facial-hair:none"]);
 
+/**
+ * Options drawn on the head alone (D44): one drawing per face type fits both features' bases, so a part generated for
+ * one features is listed again for the other. Styles that reach the shoulders keep a part per base, since the
+ * softer bases' shoulders differ (a hard cut and a halo, measured 2026-11-19).
+ */
+export const HEAD_ONLY_OPTIONS: ReadonlySet<string> = new Set([
+  "hair:short",
+  "hair:curly",
+  "hair:buzz",
+  "hair:afro",
+  "hair:bun",
+  "glasses:round",
+  "facial-hair:stubble",
+  "facial-hair:moustache",
+  "facial-hair:beard",
+]);
+
+/** The other features of a face type (D40). */
+export const otherFeatures = (features: FeaturesOption | null | undefined): FeaturesOption =>
+  (features ?? DEFAULT_FEATURES) === "features:soft" ? "features:defined" : "features:soft";
+
 /** Whether a story version published at `publishedAt` must draw `option`: options added since are optional (D43). */
 export const requiredAt = (option: LookOption, publishedAt: Date) => option.addedAt === undefined || new Date(option.addedAt) <= publishedAt;
 

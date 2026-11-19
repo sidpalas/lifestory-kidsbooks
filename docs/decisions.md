@@ -544,7 +544,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   orange-red to copper (`#8c3a1c`).
 - **Not here:** auburn (a palette, through additions like red, D41).
 
-### D44. Parts cost less per option: tiled edits, head-only parts shared across features, and a `flip` on figures — Decided (Sid, 2026-11-19); not built yet
+### D44. Parts cost less per option: tiled edits, head-only parts shared across features, and a `flip` on figures — Decided (Sid, 2026-11-19) / Made
 - **Why (assessment of 2026-11-19, artifact "Per-pose parts: cost and consistency" in thread
   T-01a1f50e-6d8e-70ce-bea8-adf2e7932795):** with D43's vocabulary a figure needs a part per option on every base
   (hero: 4 bases × 10 = 40 parts; a grown-up with softer bases: 8 × 13 = 104), so a 24-page book with 2 roles comes to
@@ -572,6 +572,33 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   change; held back). Options generated when a family first picks them: plan.md, "How Coming later fits".
 - **Reopen if:** tiled tiles show faces redrawn more than single edits on an illustrator's art, or shared parts draw
   visibly wrong on a real illustrator's softer bases.
+- **Built (2026-11-19, thread T-01a1f52f-9f17-761c-8b02-18545ddf2d8d):** `requestParts` takes a batch and spawns
+  `part.generate` per option for up to four new parts; the task tiles them (`tileBases`, `cutOutTile` in
+  `parts/images.ts`), and a single part keeps the whole-figure edit. Each tiled part shows a quarter (or half) of the
+  edit's cost. The editor's "Generate missing parts" sends one batch per figure. Checked on the real pipeline: one
+  sunburst edit of four Paper Boat bases (US$0.047) cut into four curly parts, outside change 2.5–4.7, recomposite
+  2.3–4.6, no zone-edge contact or shift; on the assessment's tiles the cut-out reproduces its numbers, and the
+  coarse alignment finds a 32 px head move. Sharing happens where approved parts merge into the manifest
+  (`withApprovedParts`): a head-only part (`HEAD_ONLY_OPTIONS`) is listed again for the other features when the
+  figure has that base and no generated part or approved upload of its own; the editor shows those cells as shared,
+  with "Draw its own". `flip` mirrors the composed figure's layers within its box, and the page cache stores the
+  mirrored PNGs next to the recoloured ones. Not built: the Batch API (support for 2.6 unconfirmed), review of one
+  sheet per option across appearances, and options drawn on first pick (plan.md).
+- **Consistency across poses (same day, the assessment's final findings):** a hairstyle drifted between poses
+  because the prompt named only the style ("curly": loose waves on one pose, tight coils on the front). Each option
+  now has one fixed, detailed description (`optionWords`), and every edit gets an approved drawing of the option as
+  a second image: the version's approved manifest part, else its earliest approved generated part, preferring the
+  same role, then face type, composed on its own base in neutral grey (a peach-skinned reference recoloured the
+  face) and cropped around the head (`referenceImage`). The part's metrics name the reference. Checked: one tiled
+  edit of four Paper Boat bases with the front long hair as reference (US$0.055) drew straight hair with a
+  straight-cut fringe on all four, where the bare prompt drew waves without a fringe on the v3 poses.
+- **Hairline edges:** the cost/consistency thread's fix (`eedf883`) samples colours deeper inside the part and
+  recovers boundary transparency instead of keeping blended strands as opaque pale hair. D44 uses that unchanged
+  `cutOutPart` interface for both single and tiled edits; no duplicate edge fix and no new image spend. It applies
+  to future cut-outs, not the immutable assets already published in Paper Boat v3.
+- **Review and retake estimates (corrected):** 15 s per part was not measured. The pose thread's expanded pass
+  estimates 20–40 s per contact-sheet part and 12.5% extra calls for retakes. The generation savings above do not
+  remove human review or include a measured whole-book turnaround.
 
 ### D45. The story page previews the family's own cast; example looks are a separate "try looks" mode; proofs belong to books — Made (2026-11-19)
 - **Why (Sid, on production):** "i selected characters from my family, but it didnt update the images and it also
