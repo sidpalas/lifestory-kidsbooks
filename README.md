@@ -70,7 +70,9 @@ Until an email provider is added, invitation and set-password links appear only 
 ### Railway
 
 The Railway project `lifestory-kidsbooks` (environment `production`) runs `web`, `worker`, and `postgres`, with the
-`lifestory-data` bucket. It's live at https://web-production-73ade4c2.up.railway.app. `.railway/railway.ts`
+`lifestory-data` bucket. It's live at https://lifestory.devopsdirective.com, the web service's custom domain; always
+use it. `BETTER_AUTH_URL` is `https://${{RAILWAY_PUBLIC_DOMAIN}}`, which resolves to the custom domain, so sign-in from
+the service's `*.up.railway.app` domain fails with `INVALID_ORIGIN`. `.railway/railway.ts`
 declares the services, their Dockerfiles, the web app's pre-deploy migration and healthcheck, and every variable
 ([Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)). The services have no GitHub
 source, so code is deployed from a checkout with the CLI (`npm install -g @railway/cli`, 5.74 or newer) and a
@@ -82,7 +84,7 @@ railway config plan                    # preview config changes in .railway/rail
 railway config apply                   # apply them
 railway up --service web --ci          # build and deploy the web app; migrations run before it starts
 railway up --service worker --ci       # then the worker
-curl https://web-production-73ade4c2.up.railway.app/api/health
+curl https://lifestory.devopsdirective.com/api/health
 ```
 
 `railway up` uploads the working tree (minus `.gitignore`d files), so deploy from a clean checkout of `main`.
