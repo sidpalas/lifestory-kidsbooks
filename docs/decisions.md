@@ -653,7 +653,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   moderation needs a review step before a version reaches families, or uploads need to go straight to storage
   (presigned PUTs) because art outgrows the 40 MB limit.
 
-### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Made (2026-11-19); model-drawn hidden pixels waiting on Sid
+### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Decided (Sid, 2026-11-19) / Made
 - **What (design: the "Story art import design" artifact in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1):** authors
   draw in their own tools and bring a layered file (PSD, which Photoshop, Procreate, Krita, Affinity and Clip Studio all
   export), several PNG layers, or one flat picture per page. The `/author` page tab's import turns it into what D24 and
@@ -674,10 +674,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   imports with no model call; a flat page took two edits (US$0.099), the other face type one (US$0.047). On the darkest
   skin the blush stays rose and the open mouth keeps its colours. `art-import.spec.ts` runs both paths with the fake
   provider, through publishing and a family's book.
-- **Waiting on Sid:** D26 keeps model output off the art. The import keeps the author's pixels everywhere visible, but a
-  flat page's plate behind the figure and the scalp under drawn hair come from the model (the author reviews both and can
-  replace either). A: allow it, author-reviewed (recommended, built); B: flat pages only propose, and the author uploads
-  their own plate and bald base.
+- **Model-drawn hidden pixels are allowed, author-reviewed (Sid, 2026-11-19; amends D26):** the import keeps the
+  author's pixels everywhere visible, but a flat page's plate behind the figure and the scalp under drawn hair come from
+  the model; the author reviews both and can replace either. Rejected: flat pages only propose, and the author uploads
+  their own plate and bald base for every page.
 - **Rejected for now:** an in-process segmentation model (BiRefNet, SAM 2: a 100–900 MB model and 1–2 GB per run in the
   worker, and it still needs inpainting), a hosted segmentation API (a vendor sign-up), reading PSDs on the server.
 - **Reopen if:** the provider's removals miss parts of figures often (then a segmentation prior), colour masks fail on
