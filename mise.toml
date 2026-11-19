@@ -85,6 +85,10 @@ run = "vitest run"
 description = "Playwright end-to-end tests, milestone1.spec.ts walks the whole slice (needs infra up, migrated, and seeded)"
 run = "playwright test"
 
+[tasks."deploy:check"]
+description = "Check the live site after a deploy (no sign-in): mise run deploy:check -- --sha <commit> [--url <origin>] [--wait-minutes <n>]"
+run = "node apps/web/scripts/check-deploy.ts"
+
 [tasks.check]
 description = "typecheck, lint, and unit tests"
 depends = ["typecheck", "lint", "test"]

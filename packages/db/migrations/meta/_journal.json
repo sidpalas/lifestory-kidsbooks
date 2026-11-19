@@ -64,6 +64,13 @@
       "when": 1795064815843,
       "tag": "0008_proof_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795067662652,
+      "tag": "0009_worker_heartbeat",
+      "breakpoints": true
     }
   ]
 }

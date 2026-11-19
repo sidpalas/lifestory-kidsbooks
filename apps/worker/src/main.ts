@@ -1,6 +1,8 @@
 // The Absurd worker: pulls tasks from Postgres and runs them as Effect programs
 // through the shared server runtime.
 import {
+  beatWorker,
+  HEARTBEAT_INTERVAL_MS,
   Jobs,
   makeServerRuntime,
   ObjectStorage,
@@ -40,9 +42,17 @@ const spawnSweep = () =>
 void spawnSweep();
 const sweepTimer = setInterval(() => void spawnSweep(), SWEEP_PERIOD_MS);
 
+// /api/health lists workers that beat recently, so the post-deploy check knows a worker runs the new commit.
+const workerID = crypto.randomUUID();
+const beat = () =>
+  runtime.runPromise(beatWorker(workerID)).catch((error) => console.error("worker heartbeat failed", error));
+await beat();
+const beatTimer = setInterval(() => void beat(), HEARTBEAT_INTERVAL_MS);
+
 const shutdown = async (signal: string) => {
   console.log(`worker stopping (${signal})`);
   clearInterval(sweepTimer);
+  clearInterval(beatTimer);
   await worker.close();
   await runtime.dispose();
   process.exit(0);

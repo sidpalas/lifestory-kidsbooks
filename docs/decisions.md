@@ -483,6 +483,24 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   service's new code starts in a way the lock doesn't give (for example a destructive change the old code can't
   survive).
 
+### D34. A post-deploy check of the live site runs after every push to main, without signing in — Made (2026-11-19)
+- **What:** `.github/workflows/deploy-check.yml` runs `apps/web/scripts/check-deploy.ts` (`mise run deploy:check`)
+  once CI passes on `main`. It waits up to 25 minutes until `/api/health` reports the pushed commit for the web app
+  and for a worker, then checks: health is ok with as many migrations as the commit's journal; `/sign-in` loads and
+  every stylesheet, font (preloaded or named in the CSS), and script it links returns 200 with a non-HTML type (the
+  failure in commit fbd8a10); every `/__dev` route is 404 (D17). It lists every failure and fails the run, which
+  emails the pusher. If a newer commit is already live, the run passes as superseded.
+- **Version and worker heartbeat:** both services read their commit from `APP_VERSION`, else Railway's
+  `RAILWAY_GIT_COMMIT_SHA`. Each worker process upserts a `worker_heartbeat` row (migration 0009) every 30 s with
+  its commit; `/api/health` adds `version` and `workers` (those that beat in the last 90 s: commit, start time,
+  seconds since the last beat). Health stays ok without a worker, so Railway's healthcheck judges the web app alone.
+  All of it is public, like the migration count: a commit SHA of a public repository and worker uptimes.
+- **Why `workflow_run` after CI, not Railway's `deployment_status`:** Railway posts its GitHub deployment statuses as
+  `railway-app[bot]`, so a workflow they trigger fails without notifying anyone, and a deploy that never starts sends
+  nothing. After CI, the run belongs to the push, and a missing deploy shows up as the wait timing out. It needs no
+  Railway token and no new service.
+- **Reopen if:** agents get a production login (then add signed-in checks), or deploys take longer than 25 minutes.
+
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once
   (AGENTS.md, "Orb size"). Milestone 1 adds server-side Chromium for PDFs.

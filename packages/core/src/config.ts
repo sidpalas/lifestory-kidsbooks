@@ -18,6 +18,8 @@ export class AppConfig extends Context.Service<
     };
     /** The web app's origin as the worker reaches it; headless Chromium opens print pages there for PDF proofs. */
     readonly printAppUrl: string;
+    /** The commit this process runs, reported by /api/health; null when the host doesn't say. */
+    readonly version: string | null;
   }
 >()("@lifestory/core/AppConfig") {
   static readonly layer = Layer.effect(
@@ -36,6 +38,11 @@ export class AppConfig extends Context.Service<
           forcePathStyle: yield* Config.Boolean("S3_FORCE_PATH_STYLE").pipe(Config.withDefault(true)),
         },
         printAppUrl: yield* Config.String("PRINT_APP_URL").pipe(Config.withDefault("http://localhost:3000")),
+        // Any host can set APP_VERSION; Railway sets RAILWAY_GIT_COMMIT_SHA itself on deploys from GitHub.
+        version: yield* Config.String("APP_VERSION").pipe(
+          Config.orElse(() => Config.String("RAILWAY_GIT_COMMIT_SHA")),
+          Config.withDefault(null),
+        ),
       };
     }),
   );

@@ -80,7 +80,13 @@ Production images never serve the `/__dev` routes (they are compiled out of `vit
 seed refuses to run with `NODE_ENV=production`. The operator account comes from
 `node packages/core/src/operator-create.ts --email <email>`, run once in the web image (D21; see "Railway" below).
 Until an email provider is added, invitation and set-password links appear only in the web service's log (D23).
-`GET /api/health` reads Postgres and returns `{"status":"ok","migrations":<n>}`.
+`GET /api/health` reads Postgres and returns `{"status":"ok","migrations":<n>,"version":"<commit>","workers":[...]}`:
+the commit the web app runs (`APP_VERSION`, else Railway's `RAILWAY_GIT_COMMIT_SHA`) and the workers that beat in the
+last 90 seconds, each with its commit.
+
+After every deploy from `main`, the "Deploy check" workflow waits for both services to run the pushed commit and checks
+the live site without signing in (D34); a failure fails the run and emails the pusher. Run it by hand with
+`mise run deploy:check -- --sha <commit> [--url <origin>] [--wait-minutes <n>]`, or "Run workflow" on GitHub.
 
 ### Railway
 

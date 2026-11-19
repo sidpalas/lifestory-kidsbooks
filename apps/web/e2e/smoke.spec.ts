@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 test("unauthenticated visitors are sent to sign-in", async ({ page }) => {
@@ -20,6 +21,18 @@ test("seeded parent signs in, sees stories from Postgres, and the worker writes 
   const image = status.getByRole("img", { name: "Generated sample" });
   await expect(image).toBeVisible();
   expect(await image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(600);
+});
+
+test("health reports every migration and a live worker", async ({ request }) => {
+  const journal = JSON.parse(readFileSync("packages/db/migrations/meta/_journal.json", "utf8")) as { entries: unknown[] };
+  // Playwright starts a worker; its first beat follows "worker started" by a moment, hence the poll.
+  await expect
+    .poll(async () => (await request.get("/api/health")).json())
+    .toMatchObject({
+      status: "ok",
+      migrations: journal.entries.length,
+      workers: expect.arrayContaining([expect.objectContaining({ lastBeatSecondsAgo: expect.any(Number) })]),
+    });
 });
 
 test("the dev sign-in route refuses off-site redirects", async ({ request }) => {
