@@ -24,7 +24,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   with an extra `book: [read, edit]` statement. The operator role (`admin`) is a custom admin-plugin role whose
   permissions omit `impersonate` and `impersonate-admins`; the smoke test asserts the impersonation endpoint
   returns 403 for the operator. `emailAndPassword.disableSignUp` is on: accounts come only from invitations, the
-  operator command (D21), or the development seed.
+  operator command (D21), or the development seed. Only an `owner` renames a family (`organization: update`); a
+  `beforeUpdateOrganization` hook lets Better Auth's update endpoint change nothing but the name, trimmed, 1–60
+  characters.
 - **Every account has a family (Sid, 2026-11-18):** an account that isn't joining an existing family gets a
   one-person family, with that user as `owner`, when the account is created. There is no separate "create a
   family" step, and the UI says little about families until someone invites a second member. Rejected: families

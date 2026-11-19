@@ -80,6 +80,7 @@ export const activeFamily = Effect.fn("families.active")(function* (user: Sessio
   ]);
   const active: FamilyOverview = {
     ...current,
+    canRename: roleCan(current.role, { organization: ["update"] }),
     canInvite: roleCan(current.role, { invitation: ["create"] }),
     canEditBooks: roleCan(current.role, { book: ["edit"] }),
     members,
@@ -97,6 +98,14 @@ export const inviteMember = Effect.fn("families.inviteMember")(function* (
     auth.api.createInvitation({ headers, body: { organizationId: input.familyId, email: input.email, role: input.role } }),
   );
   return { id: invitation.id, email: invitation.email };
+});
+
+/** Renames a family. Better Auth checks the role (owners only) and the name (auth.ts `beforeUpdateOrganization`). */
+export const renameFamily = Effect.fn("families.rename")(function* (headers: Headers, input: { familyId: string; name: string }) {
+  const family = yield* authCall((auth) =>
+    auth.api.updateOrganization({ headers, body: { organizationId: input.familyId, data: { name: input.name } } }),
+  );
+  return { id: input.familyId, name: family?.name ?? input.name };
 });
 
 /** Makes another of the user's families the active one. Returns Set-Cookie headers. */

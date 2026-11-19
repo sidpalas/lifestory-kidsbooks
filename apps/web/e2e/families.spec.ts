@@ -129,6 +129,59 @@ test("an existing user accepts an invitation into a second family and switches b
   await expect(switcher.locator("option:checked")).toHaveText(`sam-${id}'s family`);
 });
 
+test("the owner renames the family, and a viewer sees the new name but can't rename it", async ({ page }) => {
+  const id = unique();
+  const ownerEmail = `rio-${id}@example.com`;
+  const viewerEmail = `nana-${id}@example.com`;
+  const newName = `The Rivera family ${id}`;
+  // Renames the session's active family through Better Auth's endpoint, skipping the app.
+  const renameDirectly = (data: Record<string, unknown>) =>
+    page.request.post("/api/auth/organization/update", { data: { data }, headers: { origin: new URL(page.url()).origin } });
+
+  // The viewer-to-be has an account of their own, so they'll see the switcher.
+  await page.goto(`/__dev/log-me-in/${viewerEmail}?returnTo=/`);
+  await signOut(page);
+
+  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
+  await expect(page.getByTestId("families")).toHaveText(`rio-${id}'s family`);
+
+  // A blank name is refused before it's sent; the saved name is trimmed.
+  await page.getByRole("button", { name: "Rename" }).click();
+  const form = page.getByRole("form", { name: "Rename the family" });
+  await form.getByLabel("Family name").fill("   ");
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(form.getByRole("alert")).toHaveText("The family needs a name.");
+  await form.getByLabel("Family name").fill(`  ${newName}  `);
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByTestId("family-name")).toHaveText(newName);
+  await expect(page.getByTestId("families")).toHaveText(newName);
+  await page.reload();
+  await expect(page.getByTestId("families")).toHaveText(newName);
+
+  // Better Auth's own endpoint applies the same rules: no blank or overlong names, and only the name changes.
+  expect((await renameDirectly({ name: "  " })).status()).toBe(400);
+  expect((await renameDirectly({ name: "x".repeat(61) })).status()).toBe(400);
+  expect((await renameDirectly({ name: newName, slug: `taken-${id}` })).status()).toBe(400);
+
+  await inviteMember(page, viewerEmail, "Viewer (read only)");
+  await signOut(page);
+
+  // The viewer sees the new name on the invitation, in the switcher, and on the family panel, without a Rename button.
+  const invitationPath = await emailedLink(page, viewerEmail);
+  await page.goto(`/__dev/log-me-in/${viewerEmail}?returnTo=${encodeURIComponent(invitationPath)}`);
+  await expect(page.getByText(`Join ${newName}`)).toBeVisible();
+  await page.getByRole("button", { name: "Accept invitation" }).click();
+  await expect(page.getByRole("combobox", { name: "Family" }).locator("option:checked")).toHaveText(newName);
+  await expect(page.getByTestId("family-name")).toHaveText(newName);
+  await expect(page.getByTestId("family-panel")).toContainText("You're a viewer");
+  await expect(page.getByRole("button", { name: "Rename" })).toHaveCount(0);
+
+  // Nor by calling Better Auth directly: the active family is the one they just joined.
+  expect((await renameDirectly({ name: "Nana's now" })).status()).toBe(403);
+  await page.reload();
+  await expect(page.getByTestId("family-name")).toHaveText(newName);
+});
+
 test("only the operator sees the new-family invite", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("family-panel")).toBeVisible();

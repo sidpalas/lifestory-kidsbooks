@@ -7,7 +7,8 @@ import { defaultStatements as adminDefaultStatements } from "better-auth/plugins
 import { defaultStatements as orgDefaultStatements } from "better-auth/plugins/organization/access";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Config, Context, Effect, Layer, Redacted } from "effect";
-import { MIN_PASSWORD_LENGTH } from "./contracts.ts";
+import { APIError } from "better-auth/api";
+import { FAMILY_NAME_MAX_LENGTH, MIN_PASSWORD_LENGTH } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { NotAuthenticated } from "./errors.ts";
 import { Mailer } from "./mailer.ts";
@@ -77,6 +78,19 @@ const makeAuth = (options: {
         // No family deletion until account deletion is designed (D31): it would leave the owner without a family (D3).
         disableOrganizationDeletion: true,
         invitationExpiresIn: INVITE_TTL_SECONDS,
+        // Better Auth checks `organization: update` (owners only). Its update endpoint also takes a slug, logo, and
+        // metadata from any caller; families only ever change their name, trimmed and within FAMILY_NAME_MAX_LENGTH.
+        organizationHooks: {
+          beforeUpdateOrganization: async ({ organization: data }) => {
+            const name = typeof data.name === "string" ? data.name.trim() : "";
+            if (Object.keys(data).some((key) => key !== "name") || name.length === 0 || name.length > FAMILY_NAME_MAX_LENGTH) {
+              throw new APIError("BAD_REQUEST", {
+                message: `A family name needs 1 to ${FAMILY_NAME_MAX_LENGTH} characters, and only the name can change.`,
+              });
+            }
+            return { data: { name } };
+          },
+        },
         sendInvitationEmail: (data) =>
           options.sendInvitationEmail({
             id: data.id,

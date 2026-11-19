@@ -1,8 +1,9 @@
-// Families: the active family with its members, inviting members and new families,
+// Families: the active family with its members, renaming it, inviting members and new families,
 // and the family switcher. Role checks happen in @lifestory/core and Better Auth.
 import {
   AccountExists,
   AuthRejected,
+  FamilyName,
   FamilyMembership,
   FamilyOverview,
   Forbidden,
@@ -10,7 +11,7 @@ import {
   NotAuthenticated,
   ResultSchema,
 } from "@lifestory/core/contracts";
-import { activeFamily, Auth, inviteFamily, inviteMember, switchFamily } from "@lifestory/core";
+import { activeFamily, Auth, inviteFamily, inviteMember, renameFamily, switchFamily } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { appendResponseHeader, getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
@@ -68,6 +69,17 @@ export const inviteFamilyFn = createServerFn({ method: "POST" })
         return yield* inviteFamily(user, data);
       }),
     ),
+  );
+
+export const RenameFamilyResult = ResultSchema(
+  Schema.Struct({ id: Schema.String, name: Schema.String }),
+  Schema.Union([NotAuthenticated, AuthRejected]),
+);
+
+export const renameFamilyFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ familyId: Schema.String, name: FamilyName })))
+  .handler(({ data }) =>
+    runEffect(RenameFamilyResult, currentUser.pipe(Effect.andThen(renameFamily(getRequest().headers, data)))),
   );
 
 export const SwitchFamilyResult = ResultSchema(Schema.Struct({ ok: Schema.Boolean }), Schema.Union([NotAuthenticated, AuthRejected]));

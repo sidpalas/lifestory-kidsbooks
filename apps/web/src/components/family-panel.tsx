@@ -1,6 +1,6 @@
-// The active family: its members and pending invitations, and (for owners and parents)
-// a form to invite someone as a parent or a viewer.
-import { type FamilyOverview, unwrapResult } from "@lifestory/core/contracts";
+// The active family: its name (owners can rename it), its members and pending invitations,
+// and (for owners and parents) a form to invite someone as a parent or a viewer.
+import { FAMILY_NAME_MAX_LENGTH, type FamilyOverview, unwrapResult } from "@lifestory/core/contracts";
 import { useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
-import { inviteFamilyFn, InviteFamilyResult, inviteMemberFn, InviteMemberResult } from "~/server/families";
+import { inviteFamilyFn, InviteFamilyResult, inviteMemberFn, InviteMemberResult, renameFamilyFn, RenameFamilyResult } from "~/server/families";
 
 const roleLabel: Record<string, string> = { owner: "Owner", parent: "Parent", viewer: "Viewer (read only)" };
 
@@ -18,6 +18,26 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const stopRenaming = () => {
+    setRenaming(false);
+    setRenameError(null);
+  };
+
+  const rename = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = String(new FormData(event.currentTarget).get("name")).trim();
+    if (name.length === 0) return setRenameError("The family needs a name.");
+    try {
+      unwrapResult(RenameFamilyResult)(await renameFamilyFn({ data: { familyId: family.id, name } }));
+      stopRenaming();
+      await router.invalidate();
+    } catch (error) {
+      setRenameError(message(error));
+    }
+  };
 
   const invite = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +59,42 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
   return (
     <Card data-testid="family-panel">
       <CardHeader>
-        <CardTitle>{family.name}</CardTitle>
+        {renaming ? (
+          <form className="flex flex-col gap-2" onSubmit={rename} aria-label="Rename the family">
+            <Label htmlFor="family-rename">Family name</Label>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                id="family-rename"
+                name="name"
+                className="min-w-48 flex-1"
+                defaultValue={family.name}
+                maxLength={FAMILY_NAME_MAX_LENGTH}
+                required
+                autoFocus
+              />
+              <Button type="submit" disabled={!hydrated}>
+                Save
+              </Button>
+              <Button type="button" variant="outline" onClick={stopRenaming}>
+                Cancel
+              </Button>
+            </div>
+            {renameError && (
+              <p className="text-destructive text-sm" role="alert">
+                {renameError}
+              </p>
+            )}
+          </form>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle data-testid="family-name">{family.name}</CardTitle>
+            {family.canRename && (
+              <Button variant="outline" size="sm" onClick={() => setRenaming(true)} disabled={!hydrated}>
+                Rename
+              </Button>
+            )}
+          </div>
+        )}
         <CardDescription>
           You're {family.role === "viewer" ? "a viewer: you can read this family's books" : `the family's ${family.role}`}.
         </CardDescription>

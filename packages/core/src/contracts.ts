@@ -33,8 +33,15 @@ export type FamilyMembership = typeof FamilyMembership.Type;
 export const InviteRole = Schema.Literals(["parent", "viewer"]);
 export type InviteRole = typeof InviteRole.Type;
 
+/** The longest family name: room for "The Okonkwo-Fitzgerald family" and then some, short enough for the switcher. */
+export const FAMILY_NAME_MAX_LENGTH = 60;
+/** A family name as typed: trimmed, not empty. Better Auth's update hook checks the same rule (auth.ts). */
+export const FamilyName = Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(FAMILY_NAME_MAX_LENGTH));
+
 export const FamilyOverview = Schema.Struct({
   ...FamilyMembership.fields,
+  /** Only owners may rename (`organization: update`, D3). */
+  canRename: Schema.Boolean,
   canInvite: Schema.Boolean,
   canEditBooks: Schema.Boolean,
   members: Schema.Array(Schema.Struct({ userId: Schema.String, name: Schema.String, email: Schema.String, role: Schema.String })),
