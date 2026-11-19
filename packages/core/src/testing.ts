@@ -100,6 +100,12 @@ export const memoryObjectStorage = (objects: Map<string, StoredObject> = new Map
         ? Effect.succeed(object)
         : Effect.fail(new StorageError({ operation: "get", key, message: "no such key" }));
     },
+    copy: (from, to) => {
+      const object = objects.get(from);
+      return object
+        ? Effect.sync(() => void objects.set(to, object))
+        : Effect.fail(new StorageError({ operation: "copy", key: from, message: "no such key" }));
+    },
     list: (prefix) =>
       Effect.sync(() =>
         [...objects.keys()]

@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
@@ -35,6 +36,8 @@ export class ObjectStorage extends Context.Service<
   {
     readonly put: (key: string, body: Uint8Array, contentType: string) => Effect.Effect<void, StorageError>;
     readonly get: (key: string) => Effect.Effect<StoredObject, StorageError>;
+    /** Copies one object inside the bucket, content type included, without passing its bytes through this process. */
+    readonly copy: (from: string, to: string) => Effect.Effect<void, StorageError>;
     /** Every object whose key starts with `prefix`. */
     readonly list: (prefix: string) => Effect.Effect<ReadonlyArray<ListedObject>, StorageError>;
     /** Deletes one object; deleting a missing key succeeds, so a rerun is harmless. */
@@ -92,6 +95,12 @@ export class ObjectStorage extends Context.Service<
             },
             catch: fail("get", key),
           }),
+        copy: (from, to) =>
+          Effect.tryPromise({
+            // CopySource is "<bucket>/<key>", URL-encoded; the slashes between key segments stay.
+            try: () => client.send(new CopyObjectCommand({ Bucket: s3.bucket, Key: to, CopySource: `${s3.bucket}/${from.split("/").map(encodeURIComponent).join("/")}` })),
+            catch: fail("copy", from),
+          }).pipe(Effect.asVoid),
         list: (prefix) =>
           Effect.tryPromise({
             try: async () => {

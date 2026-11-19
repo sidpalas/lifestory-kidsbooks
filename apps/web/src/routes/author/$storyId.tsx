@@ -32,13 +32,19 @@ function AuthorStory() {
   const { versions, draft, characters } = Route.useLoaderData();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Disabled from the click until the editor opens, so a second click can't start another request.
+  const [starting, setStarting] = useState(false);
   const latest = versions.published[0];
+  const next = (latest?.version ?? 0) + 1;
   const startNext = async () => {
+    setStarting(true);
+    setError(null);
     try {
       unwrapResult(StartNextVersionResult)(await startNextVersionFn({ data: { storyId: versions.story.id } }));
       await router.invalidate();
     } catch (cause) {
       setError(message(cause));
+      setStarting(false);
     }
   };
   return (
@@ -67,8 +73,8 @@ function AuthorStory() {
               </Link>
             </p>
           )}
-          <Button className="self-start" variant="outline" onClick={() => void startNext()}>
-            Start version {(latest?.version ?? 0) + 1}
+          <Button className="self-start" variant="outline" disabled={starting} aria-busy={starting} onClick={() => void startNext()}>
+            {starting ? `Starting version ${next}…` : `Start version ${next}`}
           </Button>
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
         </section>

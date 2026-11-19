@@ -519,14 +519,11 @@ export const startNextVersion = Effect.fn("authoring.startNextVersion")(function
   const { manifest } = yield* withStoredAdditions(latest.id, latest.manifest);
   const version = latest.version + 1;
   const storage = yield* ObjectStorage;
-  yield* Effect.forEach(
-    manifestAssets(manifest),
-    (asset) =>
-      storage
-        .get(storyAssetKey(storyId, latest.version, asset))
-        .pipe(Effect.flatMap((object) => storage.put(storyAssetKey(storyId, version, asset), object.body, object.contentType))),
-    { concurrency: 4, discard: true },
-  );
+  // Copied inside the bucket, many at once: downloading and uploading each file made this take seconds.
+  yield* Effect.forEach(manifestAssets(manifest), (asset) => storage.copy(storyAssetKey(storyId, latest.version, asset), storyAssetKey(storyId, version, asset)), {
+    concurrency: 16,
+    discard: true,
+  });
   // The parts that were generated for the published version are in this one as ordinary approved parts.
   yield* Database.query((db) =>
     db.insert(schema.storyVersion).values({ id: versionId(storyId, version), storyId, version, manifest, publishedAt: null }).onConflictDoNothing(),
