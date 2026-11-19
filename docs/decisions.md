@@ -131,7 +131,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   combinations (3 tones × 4 hairstyles × glasses) with the face pixel-identical; hair colour by gradient map kept the
   watercolour texture. Parts grow as a sum of options per base, not a product.
 - **Open:** cut-outs at print size, hairstyle consistency across poses, glasses-over-hair layer order, a hosted API
-  with transparent output. plan.md's data model and generation workflow still describe photo likeness and need rewriting.
+  with transparent output.
 - **Rejected:** photo likeness per book (privacy, license, cost, art drift); every combination pre-drawn (thousands of
   images per story to review); standalone reusable parts (they ignore each page's head angle and light).
 - **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.

@@ -20,7 +20,8 @@ packages/
   core/src/                 Effect services (Auth, Database, ObjectStorage, ImageProvider, Jobs)
     families/ characters/ stories/ books/ proofs/   domain modules (new)
     book-format/            Schema for the book format, v1 (new)
-    tasks/                  personalize-book, render-page, render-proof (new)
+    looks/                  look vocabulary, recolour (gradient-map-v1), part stacking (new)
+    tasks/                  render-proof (new); part-generation tasks come with the variant tooling (later)
     providers/modal.ts      Modal ImageProvider (new)
   db/                       Drizzle schema and migrations
 modal/                      Python: FLUX 3 Image Klein function, `modal deploy` target (new)
@@ -76,8 +77,7 @@ and a later v2 gets a migration function from v1.
   A family's edits replace a block's content per page; the original stays in the story version.
 - **Illustrations are layered.** `art` layers are the illustrator's files. A `character` layer is filled from the
   role's approved variant parts (D26): base face, recoloured skin, hair and extras, stacked between plate and
-  foreground with no AI at book time. Parents never edit art. The generation workflow below predates D26 and will be
-  rewritten for authoring-time part generation.
+  foreground with no AI at book time. Parents never edit art. "Composing pages" below has the details.
 - **Nothing is author-specific.** Any user can own a story; slots, layouts, and fonts are declared in the manifest,
   so a community author's story uses the same format (and the same validation an upload would run later).
 
@@ -89,15 +89,12 @@ Better Auth owns `user`, `session`, `account`, `verification`, `organization` (=
 | Table | Owner | Key columns | Notes |
 | --- | --- | --- | --- |
 | `story` (exists) | author (`user`) | `author_id`, `slug`, `status` | Never owned by a family. |
-| `story_version` | story | `story_id`, `version`, `manifest` jsonb, `published_at` | Immutable after publish. Books pin one. |
-| `character` | family | `family_id`, `name`, `pronouns`, `attributes` jsonb (hair, glasses, skin tone…), `revision` int | A family member as drawn. |
-| `character_photo` | family | `character_id`, `object_key`, `is_primary` | Object keys under `families/<familyId>/photos/`. |
-| `character_preview` | family | `character_id`, `revision`, `status` (`generating`/`ready`/`approved`/`rejected`), `object_key`, `task_id` | One per character revision. |
-| `book` | family | `family_id`, `story_version_id`, `title`, `status`, `workflow_task_id` | A family's personalized copy. |
-| `book_cast` | book | `book_id`, `slot_id`, `character_id` | Which family member fills each slot. |
+| `story_version` | story | `story_id`, `version`, `manifest` jsonb, `published_at` | Immutable after publish. Books pin one. The manifest lists each role's options and parts with their review status; publishing requires every part to be approved (D26). |
+| `character` | family | `family_id`, `name`, `pronouns`, `look` jsonb | A family member as drawn. `look` holds one option ID per axis (base face, skin tone, hairstyle, hair colour, glasses…) from the shared look vocabulary. No photos. |
+| `book` | family | `family_id`, `story_version_id`, `title`, `status` | A family's personalized copy. |
+| `book_cast` | book | `book_id`, `slot_id`, `character_id` | Which family member fills each slot. A book stores only this and text edits; pages are composed from them. |
 | `book_text_edit` | book | `book_id`, `page_id`, `block_index`, `content` | Overrides; absent row = story text. |
-| `page_render` | book | `book_id`, `page_id`, `cast_key`, `status`, `object_key`, `task_id` | `cast_key` = hash of (slot → character id + revision) for the slots on that page. |
-| `generation` | any | `provider`, `external_id`, `request` jsonb, `status`, `event_name` | One row per provider job; the Modal callback looks it up. |
+| `generation` (exists) | any | `provider`, `external_id`, `request` jsonb, `status`, `event_name` | One row per provider job; the Modal callback looks it up. Used by authoring tooling only, never when a book is made. |
 | `proof` | book | `book_id`, `status`, `object_key`, `page_count`, `approved_at`, `approved_by` | An immutable print-ready PDF. |
 
 Access rules, enforced in `packages/core` (not in route code): every family-owned row is reached through
@@ -152,55 +149,81 @@ drift (Sid or the illustrator, blind), and
 cost and time per accepted part. Record the provider terms checked. The result becomes a decision naming the
 primary provider.
 
-## Generation workflow
+## Looks and the picker
 
-Everything that touches the provider runs in Absurd tasks on the worker. Each step is idempotent: object keys and
-row IDs derive from domain IDs plus revisions, writes are upserts, and provider submissions carry an idempotency
-key, so a re-run step converges on the same result.
+Characters belong to the family, not to a story, so a look can't name one story's assets. `packages/core/src/looks`
+defines a shared **look vocabulary**: the axes (base face, skin tone, hairstyle, hair colour, glasses, and later
+beard, freckles) and stable option IDs for each, such as `face:child-2`, `skin:s4`, `hair:braids-2`. A story role
+declares which options it supports, each backed by approved parts. When a character's option isn't supported by a
+role (an adult face cast as the child, a hairstyle the story lacks), the role's default for that axis is used and the
+editor says so next to the slot.
+
+- **Picker** (milestone 1, item 2): a character starts from one of a few curated looks (full option sets), then the
+  parent changes one axis at a time with a live preview: the role's portrait figure (the sample story's cover in
+  milestone 1) composed with the same parts and recolour as the pages. No photos and no matching from photos (D26).
+- **Base faces:** a handful per role, covering age, gender and facial structure, each a separate illustrator-drawn
+  base with its own parts. Skin tone and hair colour apply to every base.
+
+## Composing pages
+
+Nothing is generated when a book is made. A page is a stack the `BookPage` component draws, the same in the editor
+and in print:
 
 ```
-personalize-book(bookId)
-  for each cast slot (in parallel via child tasks on queue "previews"):
-    preview(characterId, revision)
-      step  submit       → generation row, provider.submit(key = char:<id>:r<rev>)
-      await event        generation.done:<generationId>          (Modal callback, or the fake provider)
-      step  store        → previews/<characterId>/r<rev>.png, character_preview.status = ready
-  await event            preview.decision:<bookId>:<round>        (parent approves or adjusts in the UI)
-    adjust (new photo or attributes) → character.revision += 1, round += 1, loop to preview
-  for each page (child tasks on queue "pages", up to N at a time):
-    render-page(bookId, pageId, castKey)
-      step  submit       → provider.submit(key = page:<bookId>:<pageId>:<castKey>)
-      await event        generation.done:<generationId>
-      step  store        → books/<bookId>/pages/<pageId>/<castKey>.png, page_render.status = ready
-  step  mark book ready
+plate (art) → for each figure on the page, in z-order:
+                base face (skin, lips, brows recoloured) → face overlays → beard → glasses → hair → occluders
+            → foreground (art) → text
 ```
 
-- **Suspending.** `ctx.awaitEvent` suspends the run without holding a worker. Absurd events are first-emit-wins and
-  cached, so each wait uses a unique name (generation ID, decision round) and a late or duplicate callback is harmless.
-- **Character preview approval.** The book page shows each slot's preview with Approve / Adjust. Approve and adjust are
-  server functions that write the decision and emit `preview.decision:<bookId>:<round>`. Only approved previews
-  are used as references for pages, so every page gets the same look.
-- **Progress.** The UI polls a server function that counts `page_render` rows by status (no websockets needed);
-  rows are written by the steps, so progress survives worker restarts.
-- **Regenerate one page.** Spawns `render-page` with a new seed in the idempotency key; the old render stays until
-  the new one is ready.
-- **A character change applies everywhere.** Editing a character bumps its `revision`, which changes the `cast_key`
-  of every page it appears on in every book; a task re-renders exactly the pages whose current render's key no
-  longer matches.
-- **Providers.** `ImageProvider` grows to `submit(request) → { generationId }` plus completion through the
-  `generation.done` event. Modal: the Python function (FLUX 3 Image Klein with its prompt upsampler) receives
-  references as presigned GET URLs, uploads its output to a presigned PUT URL, and POSTs
-  `/api/webhooks/modal` with an HMAC signature over the generation ID; the route verifies it and emits the event.
-  Fake: renders the deterministic placeholder (composited art + a labelled box per character), uploads it, and emits
-  the same event, so dev, CI, and tests run the real suspend/resume path. If inbound callbacks prove unreliable, the
-  fallback is polling Modal's call result with `ctx.sleepFor` (D14).
+- **Recolour** is a pure, version-pinned function (`gradient-map-v1`): a region mask from the illustrator plus a
+  palette maps the base's neutral tones to the chosen skin or hair colour, keeping the line work and texture. It runs
+  on the server in `packages/core`, and its output is cached in object storage under a key hashed from (asset bytes,
+  palette, algorithm version). The editor and the print route load the same URLs, so the PDF has exactly the pixels
+  the parent saw, and a changed algorithm is a new story version, not a silent change to approved art.
+- **Part placement:** each part is an RGBA crop with an offset inside its figure's box; the manifest's `slotOrder`
+  sets z-order, and pair overrides replace a part for combinations that failed review (D26).
+- **A change applies everywhere, right away:** pages read the character's current look and the book's cast, so
+  editing a look recomposes every page that shows them, in every book of that family. There are no render rows to
+  invalidate and no progress to track.
+- **Proofs pin what was printed:** an approved proof is an immutable PDF, so later look changes don't alter it.
+- **Milestone 1 assets:** the sample story ships placeholder bases, masks, palettes and a small set of parts, all
+  marked approved, loaded by the seed from `fixtures/stories/moon-picnic/`.
+
+## Authoring-time part generation (later milestone)
+
+The variant tooling for illustrators is not in milestone 1 (brief, "Done means"); this is the shape it will take, on
+the foundation that exists now.
+
+```
+generate-part(storyVersionDraftId, appearanceId, axis, optionId, seed)
+  step  submit       → generation row, provider.submit(key = part:<appearance>:<axis>:<option>:<seed>)
+  await event        generation.done:<generationId>          (provider callback, or the fake provider)
+  step  cut out      → compare with the base inside the head zone, split by region, store RGBA crops
+  step  record       → part status = generated, waiting for review
+```
+
+Turnaround sheets (one per hairstyle and base) run the same way and are referenced by the part edits. The
+illustrator reviews parts and pair sheets in the tooling; approving all of them is what lets the story version
+publish.
+
+- **Suspending.** `generateImage(ctx, name, request)` submits in a step and `ctx.awaitEvent` suspends the run without
+  holding a worker. Absurd events are first-emit-wins and cached, so each wait uses a unique name (the generation ID)
+  and a late or duplicate callback is harmless. Steps are idempotent: object keys derive from domain IDs and the
+  seed, and writes are upserts.
+- **Providers.** `ImageProvider.submit(request) → { generationId }`, completed through the `generation.done` event.
+  Modal (D25): the Python function (FLUX 3 Image Klein with its prompt upsampler) receives references as presigned
+  GET URLs, uploads its output to a presigned PUT URL, and POSTs `/api/webhooks/modal` with an HMAC signature over
+  the generation ID; the route verifies it and emits the event. Fake: renders a deterministic placeholder, uploads
+  it, and emits the same event, so dev, CI and tests run the real suspend and resume path. Hosted APIs are added as
+  more implementations after the assessment above. If inbound callbacks prove unreliable, the fallback is polling the
+  provider with `ctx.sleepFor` (D14).
 - **Running Modal for real:** `modal deploy modal/flux_klein.py`, then set `IMAGE_PROVIDER=modal`,
   `MODAL_ENDPOINT_URL`, `MODAL_CALLBACK_SECRET`, `PUBLIC_APP_URL` (for the callback), and `S3_PUBLIC_ENDPOINT` if
   storage isn't reachable from Modal at `S3_ENDPOINT`. The app needs no Modal token (D25). The README has the steps.
 
 ## Editor and print
 
-- `BookPage` renders one page from (manifest page, resolved text, render image) in CSS physical units
+- `BookPage` renders one page from (manifest page, resolved text, the cast's looks) in CSS physical units
   (`in`), at trim plus bleed, with fonts loaded from the story's assets. The editor route (`ssr: false`) scales it
   with a CSS transform and shows trim and safe-area guides; editing a text block saves a `book_text_edit` row.
   Viewers see the same page without editing controls.
@@ -261,11 +284,12 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
 
 1. Book format Schema, `story_version`, seeded sample story with placeholder art, `BookPage` and the print route.
 2. Families and invites (sign up by invite, roles, viewer read-only), family-scoped file access.
-3. Characters and photos (upload to storage, family-only access).
-4. Personalization workflow with the fake provider: previews, approval and adjustment, page renders, progress,
-   single-page regeneration, character-change propagation.
+3. Characters and the look picker: the look vocabulary, curated looks, one feature at a time, live preview.
+4. Personalization: cast slots, recolour and its cache, pages composed from approved parts, a look change shown on
+   every page.
 5. Editor text editing; PDF proof task, download, and approval.
-6. Modal provider and Python function, callback route, README instructions.
+6. Modal provider and Python function, callback route, README instructions (done, D25); the hosted image API
+   assessment.
 7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
    the `operator:create` command (D21), with production loading the sample story under the real operator
    instead of running the development seed.
