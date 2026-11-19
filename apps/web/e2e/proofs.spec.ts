@@ -1,3 +1,4 @@
+import { checkPrintReady } from "@lifestory/core";
 import { expect, test } from "@playwright/test";
 
 // Chromium writes page dictionaries and font names uncompressed, so the PDF's structure can be read from its bytes.
@@ -5,7 +6,6 @@ const pdfFacts = (pdf: Buffer) => {
   const text = pdf.toString("latin1");
   return {
     pages: text.match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0,
-    mediaBoxes: [...new Set(text.match(/\/MediaBox\s*\[[^\]]*\]/g))],
     fonts: [...new Set([...text.matchAll(/\/FontName\s*\/[A-Z]{6}\+([\w-]+)/g)].map((match) => match[1]))],
   };
 };
@@ -31,11 +31,16 @@ test("a parent makes a PDF proof of the story with a chosen look, and the family
   expect(download.status()).toBe(200);
   expect(download.headers()["content-type"]).toBe("application/pdf");
   expect(download.headers()["content-disposition"]).toMatch(/^attachment/);
-  // One PDF page per book page, each 8.5 in trim + 0.125 in bleed per side = 8.75 in = 630 pt, with the story's font.
-  const facts = pdfFacts(await download.body());
+  // One PDF page per book page, with the story's font, and print-ready for Lulu (D35): 8.5 in trim + 0.125 in bleed
+  // per side with TrimBox and BleedBox, nothing transparent, fonts embedded, art at 300 ppi.
+  const pdf = await download.body();
+  const facts = pdfFacts(pdf);
   expect(facts.pages).toBe(6);
-  expect(facts.mediaBoxes).toEqual(["/MediaBox [0 0 630 630]"]);
   expect(facts.fonts).toContain("Literata-Regular");
+  const printReady = await checkPrintReady(pdf, { widthIn: 8.5, heightIn: 8.5 });
+  expect(printReady.issues).toEqual([]);
+  expect(printReady.images).toHaveLength(6);
+  expect(printReady.images.every((image) => image.ppi === 300)).toBe(true);
 
   // The grandparent is a viewer in the same family: they can download proofs but not make them.
   const viewer = await browser.newPage();

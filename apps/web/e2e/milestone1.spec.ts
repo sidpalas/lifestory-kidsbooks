@@ -40,7 +40,7 @@ const pdfFacts = (pdf: Buffer) => {
   const text = pdf.toString("latin1");
   return {
     pages: text.match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0,
-    mediaBoxes: [...new Set(text.match(/\/MediaBox\s*\[[^\]]*\]/g))],
+    mediaBoxes: [...new Set([...text.matchAll(/\/MediaBox\s*\[\s*([^\]]*?)\s*\]/g)].map((match) => `/MediaBox [${match[1]}]`))],
     fonts: [...new Set([...text.matchAll(/\/FontName\s*\/[A-Z]{6}\+([\w-]+)/g)].map((match) => match[1]))],
   };
 };

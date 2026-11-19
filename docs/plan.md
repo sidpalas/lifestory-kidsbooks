@@ -278,8 +278,10 @@ publish.
 - `print/proofs/$proofId` renders every page with `@page { size: <w+2·bleed>in <h+2·bleed>in; margin: 0 }`, for the
   worker only (a short-lived signed token, not a session), from what the proof recorded (D27).
 - `proof.render(proofId)` task: Playwright Chromium on the worker opens the print route, waits for fonts and images,
-  calls `page.pdf({ preferCSSPageSize: true, printBackground: true })`, stores `families/<familyId>/proofs/<proofId>.pdf`,
-  and records the page count. The parent downloads it, checks it, and approves it (who and when, once); an approved
+  flattens each page's art to one opaque 300 ppi image under the live text, calls
+  `page.pdf({ preferCSSPageSize: true, printBackground: true })`, sets TrimBox and BleedBox, checks the file against
+  Lulu's interior requirements (D35), stores `families/<familyId>/proofs/<proofId>.pdf`, and records the page count.
+  The proof is the print-ready file an order will send. The parent downloads it, checks it, and approves it (who and when, once); an approved
   proof is kept with the family, and an unapproved one is deleted after 30 days (D32).
 - The e2e tests check the PDF's page count, page size and font, and who may download it (`proofs.spec.ts`), and
   `milestone1.spec.ts` walks the whole slice from the invitation to the downloaded, approved proof.

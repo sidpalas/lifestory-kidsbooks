@@ -17,6 +17,7 @@ export * from "./runtime.ts";
 export * from "./storage.ts";
 export * from "./stories.ts";
 export * from "./proofs.ts";
+export * from "./print-ready.ts";
 export * from "./tasks/index.ts";
 export * from "./books.ts";
 export * from "./characters.ts";

@@ -280,11 +280,11 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Fonts:** Chromium embeds a variable font as **Type 3** glyph procedures, which print preflight flags, and a static
   instance of the same file as CID TrueType (tested 2026-11-19). So story fonts must be static (Sid, 2026-11-19; D24);
   proofs of the sample's v2 embed Literata Regular and Bold as CID TrueType.
-- **Open:** the PDF keeps the layers' transparency (soft masks) and has no TrimBox or BleedBox (its page size is
-  trim + bleed, which is what Lulu asks for); flattening and boxes are print-order work. The placeholder SVGs'
+- **Print-ready since D35:** the render flattens each page's art to one opaque 300 ppi image under live text, sets
+  TrimBox and BleedBox, and checks the file against Lulu's requirements. The placeholder SVGs'
   "PLACEHOLDER ART" labels use a system sans, which can differ between screen and print; real illustrations won't
   have text.
-- **Reopen if:** a print provider needs PDF/X, flattened transparency or page boxes; longer books make one browser
+- **Reopen if:** longer books make one browser
   page too slow (then render in page ranges); real screen-versus-print mismatches show up (D12).
 
 ### D28. The picker shows a story-independent portrait; books keep per-role overrides — Decided (Sid, 2026-11-19) / Made
@@ -372,6 +372,42 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   per-proof `expires_at` column (a constant TTL from `created_at` says the same with no backfill).
 - **Reopen if:** print orders need approval to expire (for example a proof approved months before ordering), parents
   ask to withdraw an approval, or families ask for drafts to be kept longer.
+
+### D35. The proof is the print-ready file: flattened art at 300 ppi, live text, TrimBox and BleedBox, checked against Lulu's requirements — Made (2026-11-19)
+- **Lulu's requirements** (checked 2026-11-19: help.lulu.com "PDF Creation Settings", modified 2026-09-25; the Lulu
+  API getting-started guide; Lulu's Interior Job Options file; the Print API's interior validation): one PDF of single
+  pages, all one size, at least 2; page = trim + 0.125 in bleed per side; no crop or bleed marks; no security; every
+  font embedded; images at 300 ppi, 600 at most; transparency flattened (the job options export PDF 1.3 with
+  transparency off); sRGB preferred, 8 bits per channel; layers flattened. **PDF/X isn't required** (the job options
+  turn the PDF/X checks off). TrimBox and BleedBox aren't on Lulu's list, but every prepress tool reads the trim from
+  them and they cost nothing, so print-ready files carry them.
+- **How:** `proof.render` (D27) still prints the print page with Chromium, with two changes in `printPdf`
+  (`packages/core/src/print.ts`): with the words hidden, it captures each page at 300 ppi (device scale 300/96) as
+  one opaque JPEG (quality 95) of the paper, every illustration layer, and the text panel, composited by Chromium as
+  on screen; then it swaps that image in as the page's background, hides the layers and the panel's fill, and prints.
+  Each page is one opaque image plus live text in the story's embedded fonts, so nothing is left to flatten and text
+  stays vector. Then `setPrintBoxes` (pdf-lib) sets each page's TrimBox to the trim and its BleedBox to the page, and
+  `checkPrintReady` (`packages/core/src/print-ready.ts`) checks the file against `LULU_INTERIOR`; the render fails
+  (and retries) on any issue, like a page-count mismatch, so a stored proof is always print-ready. The check reads
+  the PDF with pdf-lib and walks every content stream to measure each image where it's drawn; unit tests break
+  each requirement on purpose, and `proofs.spec.ts` runs it on a downloaded proof.
+- **Why one file, not a separate print file:** the parent approves the PDF that will print, byte for byte, so
+  approval (D32) needs nothing new, retention and the object key stay as they are, and there's no second render to
+  drift from the first. Flattened proofs look the same on screen (page 4 old vs new: 1.3% of pixels differ by more
+  than 5%, all anti-aliased edges, at 80 dpi).
+- **Rejected:** Ghostscript `pdfwrite` at PDF 1.3 (another binary in the worker image, AGPL, and it rasterises the
+  text where transparency overlaps it); compositing the art in sharp (a second renderer that could disagree with
+  BookPage, against D12); rendering a separate file at approval (above).
+- **Measured 2026-11-19** (the sample story, `a1.small`): 6 pages of 630 × 630 pt with TrimBox [9 9 621 621]; one
+  2625 × 2625 JPEG per page at 300 ppi in ICC sRGB, no soft masks, no opacity below 1; Literata Regular and Bold
+  embedded as CID TrueType; 1.1 MB (0.84 MB before); a render takes 2.7–3 s (1–1.6 s before). poppler's `pdfimages`, `pdffonts` and `pdfinfo -box` agree.
+- **Left for print ordering:** proofs made before this aren't flattened, so an order runs `checkPrintReady` on the
+  proof's PDF before sending it (or re-renders it). The page count each binding needs, page 1 printing on the right,
+  and the cover file come with the product chosen at order time. Lulu wants text 0.5 in inside the trim; the
+  sample's `safeMarginIn` is 0.375 (open question for Sid in this decision's thread). Painted art gives bigger JPEGs
+  (an estimate of 1–3 MB per page); Lulu recommends under 500 MB.
+- **Reopen if:** a print provider needs PDF/X or CMYK; Lulu rejects or normalizes a proof; flattened art at 300 ppi
+  looks soft in print (then a higher resolution, up to Lulu's 600); or files of real art get too big to download.
 
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and

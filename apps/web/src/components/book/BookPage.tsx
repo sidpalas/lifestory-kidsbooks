@@ -97,6 +97,7 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
 
       <div data-testid="page-text" style={{ position: "absolute", display: "flex", flexDirection: "column", gap: "0.12in", ...textArea }}>
         <div
+          data-testid="text-panel"
           style={
             artLeft
               ? undefined
