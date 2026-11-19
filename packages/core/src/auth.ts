@@ -74,6 +74,8 @@ const makeAuth = (options: {
         ac: familyAccess,
         roles: familyRoles,
         creatorRole: "owner",
+        // No family deletion until account deletion is designed (D31): it would leave the owner without a family (D3).
+        disableOrganizationDeletion: true,
         invitationExpiresIn: INVITE_TTL_SECONDS,
         sendInvitationEmail: (data) =>
           options.sendInvitationEmail({

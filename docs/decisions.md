@@ -310,6 +310,25 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Reopen if:** an illustrator finds a bucket boundary wrong for real bodies (split or merge it), or generated bases
   fail review often enough that hand-drawing every age is cheaper.
 
+### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
+- **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
+  data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The
+  bucket listing is the inventory; no table records each object. The `storage.sweep` task deletes samples older than
+  7 days with their `generation` rows, and everything under `families/<id>/` once that family no longer exists. Each
+  worker spawns it at start and every 6 hours, with the 6-hour period as idempotency key (Absurd has no scheduler,
+  D4). Story assets, the recolour cache, and proofs of live families stay. Family deletion is off
+  (`disableOrganizationDeletion`) until account deletion is designed, since it would leave the owner without a
+  family (D3).
+- **Why:** before this, nothing ever deleted an object, and Better Auth's family delete orphaned the family's PDFs
+  (children's names and looks) in the bucket. Bucket lifecycle rules can't do this: Railway's buckets don't support
+  lifecycle configuration (their docs, checked 2026-11-19), R2 lacks it in its S3 API, and a rule can't express "when
+  the family is gone" (D7). Deleting by prefix also removes objects no row points at.
+- **Rejected:** a `stored_object` table with one row per object (owner, purpose, bytes, expiry): a migration, a
+  backfill, a wrapper on every write including Modal's presigned PUTs, and still a reconciliation sweep, because the
+  row and the object can't be written atomically.
+- **Reopen if:** we need per-family storage accounting, quotas, or deletion receipts (add the table on top of these
+  keys), a new kind of object can't live under one owner's prefix, or listing `families/` gets slow.
+
 ### D6. Postgres with Drizzle for schema and migrations — Decided
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.

@@ -1,7 +1,9 @@
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -13,6 +15,11 @@ import { StorageError } from "./errors.ts";
 export interface StoredObject {
   readonly body: Uint8Array;
   readonly contentType: string;
+}
+
+export interface ListedObject {
+  readonly key: string;
+  readonly lastModified: Date;
 }
 
 const fail = (operation: string, key: string) => (cause: unknown) =>
@@ -28,6 +35,10 @@ export class ObjectStorage extends Context.Service<
   {
     readonly put: (key: string, body: Uint8Array, contentType: string) => Effect.Effect<void, StorageError>;
     readonly get: (key: string) => Effect.Effect<StoredObject, StorageError>;
+    /** Every object whose key starts with `prefix`. */
+    readonly list: (prefix: string) => Effect.Effect<ReadonlyArray<ListedObject>, StorageError>;
+    /** Deletes one object; deleting a missing key succeeds, so a rerun is harmless. */
+    readonly delete: (key: string) => Effect.Effect<void, StorageError>;
     readonly ensureBucket: Effect.Effect<void, StorageError>;
     /**
      * A URL that lets a caller without credentials (Modal) GET or PUT one object until it expires.
@@ -81,6 +92,28 @@ export class ObjectStorage extends Context.Service<
             },
             catch: fail("get", key),
           }),
+        list: (prefix) =>
+          Effect.tryPromise({
+            try: async () => {
+              const objects: Array<ListedObject> = [];
+              let token: string | undefined;
+              do {
+                const page = await client.send(new ListObjectsV2Command({ Bucket: s3.bucket, Prefix: prefix, ContinuationToken: token }));
+                for (const object of page.Contents ?? []) {
+                  if (object.Key && object.LastModified) objects.push({ key: object.Key, lastModified: object.LastModified });
+                }
+                token = page.NextContinuationToken;
+              } while (token);
+              return objects;
+            },
+            catch: fail("list", prefix),
+          }),
+        // One DeleteObject per key, not DeleteObjects: Railway's buckets document only the single-object delete.
+        delete: (key) =>
+          Effect.tryPromise({
+            try: () => client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key })),
+            catch: fail("delete", key),
+          }).pipe(Effect.asVoid),
         ensureBucket: Effect.tryPromise({
           try: async () => {
             try {

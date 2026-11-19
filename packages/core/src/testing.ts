@@ -87,6 +87,7 @@ export const memoryGenerations = (rows: Map<string, GenerationRow> = new Map()) 
 /**
  * `ObjectStorage` backed by `objects`, so a test can inspect every key written.
  * `get` of a missing key fails with `StorageError`, like S3. `presign` returns a fake URL naming the key.
+ * `list` reports every object as modified now.
  */
 export const memoryObjectStorage = (objects: Map<string, StoredObject> = new Map()) =>
   Layer.succeed(ObjectStorage, {
@@ -97,6 +98,13 @@ export const memoryObjectStorage = (objects: Map<string, StoredObject> = new Map
         ? Effect.succeed(object)
         : Effect.fail(new StorageError({ operation: "get", key, message: "no such key" }));
     },
+    list: (prefix) =>
+      Effect.sync(() =>
+        [...objects.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => ({ key, lastModified: new Date() })),
+      ),
+    delete: (key) => Effect.sync(() => void objects.delete(key)),
     ensureBucket: Effect.void,
     presign: (key, method) => Effect.succeed(`https://storage.test/${key}?method=${method}&signed=1`),
   });

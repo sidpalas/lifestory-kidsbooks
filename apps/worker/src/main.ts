@@ -1,6 +1,14 @@
 // The Absurd worker: pulls tasks from Postgres and runs them as Effect programs
 // through the shared server runtime.
-import { Jobs, makeServerRuntime, ObjectStorage, type ServerServices, type TaskDefinition, tasks } from "@lifestory/core";
+import {
+  Jobs,
+  makeServerRuntime,
+  ObjectStorage,
+  type ServerServices,
+  sweepStorage,
+  type TaskDefinition,
+  tasks,
+} from "@lifestory/core";
 import { Effect, Schema } from "effect";
 
 const runtime = makeServerRuntime();
@@ -18,8 +26,23 @@ for (const task of tasks as ReadonlyArray<TaskDefinition<any, unknown, unknown, 
 const worker = await client.startWorker({ concurrency: 4, pollInterval: 0.5 });
 console.log(`worker started: queue=${Jobs.queue} tasks=${tasks.map((t) => t.name).join(",")}`);
 
+// Absurd has no scheduler (D4), so each worker spawns the storage sweep (D31) at start and every 6 hours. The
+// idempotency key names the 6-hour period, so several workers and restarts still make one run per period.
+const SWEEP_PERIOD_MS = 6 * 60 * 60 * 1000;
+const spawnSweep = () =>
+  runtime
+    .runPromise(
+      Jobs.use((jobs) =>
+        jobs.spawn(sweepStorage, {}, { idempotencyKey: `storage.sweep:${Math.floor(Date.now() / SWEEP_PERIOD_MS)}` }),
+      ),
+    )
+    .catch((error) => console.error("storage sweep: spawn failed", error));
+void spawnSweep();
+const sweepTimer = setInterval(() => void spawnSweep(), SWEEP_PERIOD_MS);
+
 const shutdown = async (signal: string) => {
   console.log(`worker stopping (${signal})`);
+  clearInterval(sweepTimer);
   await worker.close();
   await runtime.dispose();
   process.exit(0);

@@ -134,6 +134,13 @@ row's family, not only the session's active family.
 - Absurd's schema is a vendored custom migration (`0001_absurd_0_5_1.sql`). Upgrade it with a new custom
   migration containing Absurd's published upgrade SQL.
 
+### Object storage
+
+Every key starts with its owner (D31): `families/<familyId>/` for anything holding family data, `stories/<storyId>/v<n>/`
+for story assets and caches, `samples/<taskID>` for the sample task. The `storage.sweep` task deletes samples after
+7 days and the files of families that no longer exist; a new kind of object gets an owner prefix, and an expiry rule
+in `packages/core/src/tasks/sweep-storage.ts` if it shouldn't live as long as its owner.
+
 ### Images
 
 All generation goes through the `ImageProvider` service, called from tasks with `generateImage(ctx, name, request)`
