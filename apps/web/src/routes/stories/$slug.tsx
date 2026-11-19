@@ -104,7 +104,7 @@ function StoryPreview() {
         </label>
       </header>
 
-      {library.canEdit && <MakeBook slug={slug} slots={manifest.characterSlots} characters={library.characters} />}
+      {library.canEdit && <MakeBook slug={slug} manifest={manifest} characters={library.characters} />}
 
       <section className="grid gap-4 md:grid-cols-2" aria-label="Characters">
         {manifest.characterSlots.map((slot) => {

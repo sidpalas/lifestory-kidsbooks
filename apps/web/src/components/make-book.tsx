@@ -1,6 +1,6 @@
 // Starting a family's book of a story: choose which family member plays each role. A role accepts some character
 // ages (D29), so only family members of those ages are offered.
-import { ageLabel, type Character, type CharacterSlot, unwrapResult } from "@lifestory/core/contracts";
+import { ageLabel, type Character, type CharacterSlot, optionLabel, type StoryManifest, unsupportedOptions, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -12,7 +12,17 @@ import { createBookFn, CreateBookResult } from "~/server/books";
 /** "young child or older child". */
 export const agesLabel = (slot: CharacterSlot) => slot.ages.map((age) => ageLabel(age).toLowerCase()).join(" or ");
 
-export function MakeBook({ slug, slots, characters }: { slug: string; slots: ReadonlyArray<CharacterSlot>; characters: ReadonlyArray<Character> }) {
+/**
+ * What the story can't draw of `character` in `slotId` yet, as a parent reads it ("red hair"): an option added to
+ * the vocabulary after the story was published and not yet added to it (D41). The book asks for a stand-in.
+ */
+const notDrawable = (manifest: StoryManifest, slotId: string, character: Character) =>
+  unsupportedOptions(manifest, slotId, character.look)
+    .filter((axis) => axis !== "age")
+    .map((axis) => optionLabel(character.look[axis]));
+
+export function MakeBook({ slug, manifest, characters }: { slug: string; manifest: StoryManifest; characters: ReadonlyArray<Character> }) {
+  const slots = manifest.characterSlots;
   const router = useRouter();
   const hydrated = useHydrated();
   const fits = (slot: CharacterSlot) => characters.filter((character) => slot.ages.includes(character.look.age));
@@ -66,6 +76,17 @@ export function MakeBook({ slug, slots, characters }: { slug: string; slots: Rea
                   ))}
                 </NativeSelect>
               )}
+              {(() => {
+                const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
+                const missing = character ? notDrawable(manifest, slot.slotId, character) : [];
+                return (
+                  missing.length > 0 && (
+                    <p className="max-w-64 text-xs text-amber-700" data-testid={`cast-warning-${slot.slotId}`}>
+                      This story can't draw {character!.name}'s {missing.join(" or ")} yet. You'll pick a stand-in in the book.
+                    </p>
+                  )
+                );
+              })()}
             </div>
           ))}
           <Button type="submit" disabled={!hydrated || !ready}>

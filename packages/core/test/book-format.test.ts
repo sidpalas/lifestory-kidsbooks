@@ -2,8 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { Effect, Result, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import {
+  additionIssues,
   castLook,
   composeIllustration,
+  mergeAdditions,
+  type StoryAddition,
+  uncoveredOptions,
   decodeStoryManifest,
   exampleCast,
   isVariableFont,
@@ -21,7 +25,11 @@ import {
 import { Look as LookSchema } from "../src/looks/vocabulary.ts";
 
 const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
-const sample = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
+const published = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
+/** The palettes the sample's published version gained since (D41): `additions/1.json` adds red hair. */
+const redHair = JSON.parse(readFileSync(new URL("additions/1.json", fixture), "utf8"));
+/** The sample as books draw it today: its published version with its additions' palettes. */
+const sample = { ...published, palettes: { ...published.palettes, hairColour: { ...published.palettes.hairColour, ...redHair.palettes.hairColour } } };
 
 const decode = (input: unknown) => Schema.decodeUnknownResult(StoryManifest)(input);
 const errorOf = (input: unknown) => {
@@ -50,7 +58,8 @@ describe("StoryManifest", () => {
 
   it("accepts the watercolour sample, whose raster figures cover the vocabulary with approved parts", () => {
     const dir = new URL("../../../fixtures/stories/paper-boat/", import.meta.url);
-    const manifest = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
+    const stored = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
+    const manifest = Effect.runSync(mergeAdditions(stored, [JSON.parse(readFileSync(new URL("additions/1.json", dir), "utf8"))]));
     expect(unapprovedParts(manifest)).toEqual([]);
     expect(vocabularyGaps(manifest)).toEqual([]);
     expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
@@ -401,5 +410,60 @@ describe("story fonts for print (D27)", () => {
     expect(isVariableFont(woff2)).toBe(true);
     woff2[54] = 46; // feat instead of fvar
     expect(isVariableFont(woff2)).toBe(false);
+  });
+});
+
+describe("story additions (D41)", () => {
+  const stored = decoded(published);
+  const hero: Look = { ...childLook("face:round", "hair:curly"), hairColour: "hair-colour:red" };
+
+  it("adds red hair to the published sample without a new version, and a book's stand-in gives way to it", () => {
+    expect(uncoveredOptions(stored)).toEqual(["hair-colour:red"]);
+    // Before: red is unsupported, so the book draws the parent's stand-in (D28).
+    const before = castLook(stored, "hero", hero, { hairColour: "hair-colour:brown" });
+    expect(before.look.hairColour).toBe("hair-colour:brown");
+    expect(before.unsupported).toEqual([]);
+
+    const merged = Effect.runSync(mergeAdditions(stored, [redHair]));
+    expect(uncoveredOptions(merged)).toEqual([]);
+    expect(vocabularyGaps(merged)).toEqual([]);
+    // After: the same book, same override, now draws red, with the story's own red palette on the hair.
+    const after = castLook(merged, "hero", hero, { hairColour: "hair-colour:brown" });
+    expect(after.look.hairColour).toBe("hair-colour:red");
+    const page = merged.pages[3]!;
+    const layers = composeIllustration(merged, page, { hero: { name: "Ada", pronouns: "she/her", look: after.look } });
+    expect(layers.flatMap((layer) => layer.recolour.map((region) => region.palette))).toContainEqual(redHair.palettes.hairColour["hair-colour:red"]);
+    // Everything else is the published version, untouched.
+    expect({ ...merged, palettes: stored.palettes }).toEqual(stored);
+  });
+
+  it("refuses an addition that replaces anything published, names no figure, or adds a part nobody approved", () => {
+    const heroFigure = stored.pages[3]!.illustration.layers.find((layer) => layer.kind === "figure" && layer.slotId === "hero")!;
+    if (heroFigure.kind !== "figure") throw new Error("p04 has a hero");
+    const curly = heroFigure.parts.find((part) => part.option === "hair:curly")!;
+    const addition: StoryAddition = {
+      palettes: { hairColour: { "hair-colour:brown": redHair.palettes.hairColour["hair-colour:red"] } },
+      figures: [
+        { pageId: "p04", slotId: "hero", parts: [{ ...curly, asset: "pages/p04/hero/curly-again.svg" }], bases: [{ ...heroFigure.bases[0]!, asset: "x.svg" }] },
+        { pageId: "p04", slotId: "nobody", parts: [] },
+        { pageId: "p04", slotId: "hero", parts: [{ ...curly, option: "hair:long", face: "face:oval", age: "older-child", approved: false, asset: "y.svg" }] },
+      ],
+    };
+    expect(additionIssues(stored, addition)).toEqual([
+      'palettes.hairColour: "hair-colour:brown" is already published',
+      `p04/hero: a base for "${heroFigure.bases[0]!.age}/${heroFigure.bases[0]!.face}" is already published`,
+      `p04/hero: a part for "hair:curly" on "${curly.age}/${curly.face}" is already published`,
+      "p04/nobody: no such figure",
+      'p04/hero: "hair:long" on "older-child/face:oval" is not approved',
+      'p04/hero: a part for "hair:long" on "older-child/face:oval" is already published',
+    ]);
+    expect(additionIssues(stored, {})).toEqual(["the addition adds nothing"]);
+    // The same addition twice: the second would replace the first.
+    expect(Effect.runSync(Effect.flip(mergeAdditions(stored, [redHair, redHair]))).message).toContain('"hair-colour:red" is already published');
+  });
+
+  it("checks the merged manifest like a published one: an option outside the vocabulary fails", () => {
+    const error = Effect.runSync(Effect.flip(mergeAdditions(stored, [{ palettes: { hairColour: { "hair-colour:teal": redHair.palettes.hairColour["hair-colour:red"] } } }])));
+    expect(error.message).toContain('"hair-colour:teal" is not a hairColour option');
   });
 });

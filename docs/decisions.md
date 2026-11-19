@@ -476,6 +476,45 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Portrait art:** 6 softer bases (edits of the defined ones; a first, subtler prompt was redrawn because the recolour
   erased its pink lips, so lips and lashes are now ink line) and their 24 parts, made and reviewed like the rest (D28).
 
+### D41. New look options reach a published story as additions, not a new version — Decided (Sid, 2026-11-19) / Made
+- **Why (Sid):** "It seems important to be able to make tweaks like this to the authorship side without requiring a
+  new version of every story to be created." A new vocabulary option (red hair) meant a new version of every story,
+  which copies every file, and books stay pinned to the old version, so they never got the option anyway. One shared
+  palette can't replace per-story ones: Moon Picnic's hair stops sit at 0.35 and 0.48, The Paper Boat's at 0.15–0.85.
+- **What:** a published version keeps an append-only list of **additions** (`story_version_addition`, migration
+  `0013_story_version_additions`): revision 1, 2, … each a `StoryAddition` (`book-format/additions.ts`) of palettes,
+  figure bases, and approved parts for options the version lacks. `additionIssues` refuses anything that replaces what
+  is published (a palette, a base, or a part for the same option and appearance), names a figure that isn't on the
+  page once, or adds an unapproved part; the merged manifest then passes the format's own checks (`mergeAdditions`).
+  The `story_version` row never changes (D24 holds as written), and additions are never edited or deleted:
+  publishing a revision again with other content is refused. Their files go under the version's folder (D31).
+- **Who draws what:** books, previews, the catalogue, the author's list, and "Start version n+1" read the version
+  with every addition (`withStoredAdditions`), so a stand-in (D28) gives way to the character's own option as soon as
+  the story can draw it. A proof records the revision it was requested at (`proof.addition_revision`) and its print
+  page composes with exactly those additions: an addition can change how an existing look draws (D40's softer base
+  replacing the defined fallback, an override no longer applying), and an approved proof and its PDF never change
+  (D27, D32, D35). Proofs made before this record 0, which is what they drew.
+- **How they're published now:** a story directory may hold `additions/1.json`, `2.json`, …; `story:import` (and so
+  the seed and production, D33) publishes the version, then each addition in order, idempotently. Publishing a version
+  checks vocabulary coverage counting its additions, so a fresh database imports an older version plus its additions.
+  `publishStoryAddition` is the function an authoring panel will call (generating parts against a published version
+  with D36 and approving them into an addition); that panel isn't built yet.
+- **When an author never adds an option (Sid chose this, 2026-11-19):** the story behaves as before: it reports the
+  option unsupported, the book asks for a stand-in, and no proof prints until every role draws. To make the gap
+  visible, `/author` lists the options each published version can't draw yet (`uncoveredOptions`), and making a book
+  warns when the story can't draw someone picked for a role.
+- **New axes later:** an axis with a no-part default (as `glasses:none`) leaves every stored look and story drawing
+  nothing new; additions would also need to place it in `partOrder`, which this format doesn't hold yet. Add that
+  with the first such axis.
+- **First use:** `hair-colour:red`, with a red palette tuned to each sample story's own hair stops, as
+  `additions/1.json` of Moon Picnic v5 and The Paper Boat v2, and a portrait palette for the picker.
+- **Rejected:** growing a published manifest in place (breaks D24, and pinning proofs would need the old manifests
+  kept anyway); vocabulary-level default palettes per tone convention (palettes only, unreviewed per story against
+  D26, and the samples don't share a convention); cheap new versions with books moved forward (copies every file,
+  and moving books needs the same additive check).
+- **Reopen if:** authors need to withdraw an addition (then a withdrawal that pinned proofs ignore), or additions grow
+  so many that merging them on every read gets slow (then cache the merged manifest per revision).
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache), `samples/<taskID>` (the sample task). The

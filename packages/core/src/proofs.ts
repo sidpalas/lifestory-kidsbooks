@@ -9,7 +9,7 @@ import { schema } from "@lifestory/db";
 import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { Effect, Schema } from "effect";
-import { decodeStoryManifest, type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
+import { type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
 import { Auth, type SessionUser } from "./auth.ts";
 import { ProofContent, type ProofSummary } from "./contracts.ts";
 import { Database } from "./database.ts";
@@ -19,7 +19,7 @@ import { Jobs } from "./jobs.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import type { Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
-import { checkCastSupported, previewCast, readableStoryVersion } from "./stories.ts";
+import { checkCastSupported, previewCast, readableStoryVersion, withStoredAdditions } from "./stories.ts";
 import { renderProof } from "./tasks/render-proof.ts";
 import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
 
@@ -57,6 +57,8 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
   /** The book it shows, when made from one. */
   readonly bookId?: string;
   readonly storyVersionId: string;
+  /** The version's additions the cast was checked against (D41); the proof always draws exactly these. */
+  readonly additionRevision: number;
   readonly content: ProofContent;
   readonly requestedBy: string;
 }) {
@@ -68,6 +70,7 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
       familyId: input.familyId,
       bookId: input.bookId ?? null,
       storyVersionId: input.storyVersionId,
+      additionRevision: input.additionRevision,
       content,
       requestedBy: input.requestedBy,
     }),
@@ -90,10 +93,10 @@ export const requestStoryProof = Effect.fn("proofs.requestForStory")(function* (
   if (!roleCan(family.role, { book: ["edit"] })) {
     return yield* new Forbidden({ message: "Your role in this family can read books but not make proofs." });
   }
-  const { storyVersionId, manifest } = yield* readableStoryVersion(user.id, slug);
+  const { storyVersionId, manifest, additionRevision } = yield* readableStoryVersion(user.id, slug);
   const cast = previewCast(manifest, looks);
   yield* checkCastSupported(manifest, cast);
-  return yield* createProof({ familyId: family.familyId, storyVersionId, content: { cast, textEdits: [] }, requestedBy: user.id });
+  return yield* createProof({ familyId: family.familyId, storyVersionId, additionRevision, content: { cast, textEdits: [] }, requestedBy: user.id });
 });
 
 /** The proofs matching `where`, newest first, as the family sees them. */
@@ -205,6 +208,8 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
   const [row] = yield* Database.query((db) =>
     db
       .select({
+        storyVersionId: schema.proof.storyVersionId,
+        additionRevision: schema.proof.additionRevision,
         storyId: schema.storyVersion.storyId,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
@@ -215,7 +220,9 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
       .where(eq(schema.proof.id, proofId)),
   );
   if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
-  const manifest: StoryManifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
+  // Exactly the additions the proof was requested with (D41): a later one could change how its cast draws (a softer
+  // base, D40; a stand-in giving way, D28), and a rerendered or approved proof never changes.
+  const { manifest } = yield* withStoredAdditions(row.storyVersionId, row.manifest, row.additionRevision);
   const content = yield* Schema.decodeUnknownEffect(ProofContent)(row.content).pipe(Effect.orDie);
   const pages = yield* Effect.forEach(manifest.pages, (page) =>
     resolveIllustration(row.storyId, row.version, composeIllustration(manifest, page, content.cast)).pipe(

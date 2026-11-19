@@ -375,7 +375,10 @@ function RoleCard({
               ))}
           </div>
         ) : (
-          Object.keys(role.override).length > 0 && (
+          // The override applies only while the story can't draw the character's own option (D28); once it can, such
+          // as after an addition (D41), the pages draw the character as they are.
+          character &&
+          (Object.keys(role.override) as Array<LookAxis>).some((axis) => role.member.look[axis] !== character.look[axis]) && (
             <p className="text-muted-foreground text-xs">This book draws a stand-in for options the story can't draw yet.</p>
           )
         )}

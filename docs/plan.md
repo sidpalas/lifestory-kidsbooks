@@ -188,9 +188,12 @@ defines a shared **look vocabulary**: the axes (age, face type, skin tone, hairs
 beard, freckles) and stable option IDs for each, such as `young-child`, `face:oval`, `skin:s4`, `hair:long`. A story
 role accepts some ages (D29) and supports every other option in the vocabulary at each of them, each backed by
 approved parts (Sid, 2026-11-19): a fallback to another option would draw someone who doesn't look like the family member. Publishing
-checks this (`vocabularyGaps`). An option added to the vocabulary later is missing from versions already published;
-`unsupportedOptions` finds it, and the book then either disables that story for the character or keeps a
-story-specific override with one of the story's supported options, which the parent picks.
+checks this (`vocabularyGaps`). An option added to the vocabulary later is missing from versions already published
+until their author adds it as a **story addition** (D41): palettes, bases, and parts appended to the published version,
+never replacing what it has, so books draw it at once without a new version. Until then `unsupportedOptions` finds it,
+and the book either disables that story for the character or keeps a story-specific override with one of the story's
+supported options, which the parent picks. The author's story list shows what each published version can't draw yet,
+and making a book warns before casting someone it can't draw.
 
 - **Picker** (milestone 1, item 2): the parent picks the character's age first (D29), then starts from one of a few
   curated looks of that age (full option sets) and changes one axis at a time with a live preview: a story-independent portrait composed with the same

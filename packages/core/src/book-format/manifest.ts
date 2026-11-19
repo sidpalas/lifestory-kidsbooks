@@ -338,10 +338,20 @@ const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyAr
  * 2026-11-19: every story supports every option except faces of another age). A stored version is never
  * rechecked, so options added to the vocabulary later are simply unsupported there; see `unsupportedOptions`.
  */
-export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> => {
-  const gaps: Array<string> = [];
+export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> => coverageGaps(manifest).map((gap) => gap.text);
+
+/**
+ * The vocabulary options a story version can't draw anywhere it should, such as a hair colour added after it was
+ * published: what its author still has to add (D41). Missing bases aren't options and aren't listed.
+ */
+export const uncoveredOptions = (manifest: StoryManifest): ReadonlyArray<string> => [
+  ...new Set(coverageGaps(manifest).flatMap((gap) => (gap.option ? [gap.option] : []))),
+];
+
+const coverageGaps = (manifest: StoryManifest): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
+  const gaps: Array<{ text: string; option?: string }> = [];
   for (const axis of ["skin", "hairColour"] as const) {
-    for (const option of lookVocabulary[axis]) if (!manifest.palettes[axis][option.id]) gaps.push(`no palette for "${option.id}"`);
+    for (const option of lookVocabulary[axis]) if (!manifest.palettes[axis][option.id]) gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
   }
   for (const page of manifest.pages) {
     for (const layer of page.illustration.layers) {
@@ -353,13 +363,13 @@ export const vocabularyGaps = (manifest: StoryManifest): ReadonlyArray<string> =
           const soft = layer.bases.some((base) => sameAppearance(base, age, face, "features:soft"));
           for (const features of hasFeatures(age) ? [DEFAULT_FEATURES, ...(soft ? (["features:soft"] as const) : [])] : [undefined]) {
             const at = `${age}/${face}${features ? `/${features}` : ""}`;
-            if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) gaps.push(`${page.pageId}/${layer.slotId}: no base for "${at}"`);
+            if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) gaps.push({ text: `${page.pageId}/${layer.slotId}: no base for "${at}"` });
             if (layer.showsHead === false) continue;
             for (const axis of partAxesAt(age)) {
               for (const option of lookVocabulary[axis]) {
                 if (NO_PART_OPTIONS.has(option.id)) continue;
                 if (!layer.parts.some((part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id)) {
-                  gaps.push(`${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`);
+                  gaps.push({ text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`, option: option.id });
                 }
               }
             }

@@ -2,7 +2,7 @@
 // personalized copy of a story is a separate record (`book`, added with
 // personalization) that pins one story version (see docs/plan.md, "Data model").
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
 
 export const storyStatus = pgEnum("story_status", ["draft", "published", "archived"]);
@@ -53,6 +53,25 @@ export const storyVersion = pgTable(
     check("story_version_version_positive", sql`${t.version} > 0`),
     uniqueIndex("story_version_one_draft").on(t.storyId).where(sql`${t.publishedAt} is null`),
   ],
+);
+
+// What an author added to a published version without a new one (D41): palettes, bases, and parts for options the
+// version lacks, never a change to what it already has. Append-only and never changed, like the version: revision
+// n is the nth addition, a book draws the version with all of them, and a proof records the revision it drew
+// (proof.addition_revision). Files live under the version's folder, next to its own.
+export const storyVersionAddition = pgTable(
+  "story_version_addition",
+  {
+    storyVersionId: text("story_version_id")
+      .notNull()
+      .references(() => storyVersion.id, { onDelete: "restrict" }),
+    revision: integer("revision").notNull(),
+    /** A StoryAddition (packages/core/src/book-format/additions.ts), checked against the version when added. */
+    addition: jsonb("addition").notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.storyVersionId, t.revision] }), check("story_version_addition_revision_positive", sql`${t.revision} > 0`)],
 );
 
 // Who may author stories besides the operator (D37): a grant the operator gives an existing account. Studios

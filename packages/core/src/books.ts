@@ -8,7 +8,6 @@ import { Effect, Schema } from "effect";
 import {
   type CastMember,
   castLook,
-  decodeStoryManifest,
   LookOverride,
   type StoryManifest,
 } from "./book-format/index.ts";
@@ -22,7 +21,7 @@ import { requireFamilyAccess } from "./families.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import { resolveIllustration } from "./pages.ts";
 import { createProof, proofSummaries } from "./proofs.ts";
-import { readableStoryVersion } from "./stories.ts";
+import { readableStoryVersion, withStoredAdditions } from "./stories.ts";
 
 const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
 const decodeOverride = Schema.decodeUnknownEffect(LookOverride);
@@ -133,8 +132,9 @@ const loadBook = Effect.fn("books.load")(function* (bookId: string) {
       .where(eq(schema.book.id, bookId)),
   );
   if (!row) return yield* new NotFound({ entity: "book", id: bookId });
-  const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
-  return { ...row, manifest };
+  // A book follows its version's additions as they're published (D41): an option the version gains draws at once.
+  const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
+  return { ...row, manifest, additionRevision };
 });
 
 /** A book the user may read (`access` "read") or edit, with its manifest. Non-members get NotFound. */
@@ -302,6 +302,7 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
     familyId: book.familyId,
     bookId,
     storyVersionId: book.storyVersionId,
+    additionRevision: book.additionRevision,
     content: { cast: view.cast, textEdits: edits },
     requestedBy: userId,
   });

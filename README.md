@@ -139,9 +139,11 @@ directly:
 railway ssh --service web -- node packages/core/src/story-import.ts --author <operator email> fixtures/stories/moon-picnic
 ```
 
-It prints `The Moon Picnic (/stories/the-moon-picnic) v5 is published, by <email>.`; running it again changes nothing.
-To publish a changed story, raise `version` in its `story.json` (stored versions never change) and run it again
-after the change deploys. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
+It prints `The Moon Picnic (/stories/the-moon-picnic) v5 is published with 1 additions, by <email>.`; running it again
+changes nothing. To give a published version a new look option (a palette, base, or part it lacks), add the next
+`additions/<n>.json` to its directory and run it again after the change deploys (D41): books draw it at once, with no
+new version. To change anything the version already has, raise `version` in its `story.json` (stored versions never
+change) and run it again. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
 
 Production generates story parts with OpenAI (`IMAGE_PROVIDER=openai` in `.railway/railway.ts`; "Generating story
 parts" below). The API key is set once on the web service, never in that file, and the worker references it. Set it

@@ -29,6 +29,7 @@ describe("importStoryVersion", () => {
         manifest,
         readAsset: async (asset) => ({ body: await read(asset), contentType: "image/svg+xml" }),
         publishedAt: new Date("2026-11-19T13:00:00Z"),
+        coveredWith: [JSON.parse(await readFile(new URL("additions/1.json", dir), "utf8"))],
       }).pipe(
         // The refusal comes before any database access; a query would fail on this empty service.
         Effect.provide(Layer.mergeAll(memoryObjectStorage(objects), Layer.succeed(Database, {} as Database["Service"]))),

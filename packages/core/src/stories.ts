@@ -1,10 +1,13 @@
 import { isDeepStrictEqual } from "node:util";
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
-import { Effect } from "effect";
+import { and, asc, desc, eq, isNotNull, lte, or } from "drizzle-orm";
+import { Effect, Schema } from "effect";
 import {
+  additionAssets,
   type CastMember,
   decodeStoryManifest,
+  mergeAdditions,
+  StoryAddition,
   exampleCast,
   isVariableFont,
   manifestAssets,
@@ -50,6 +53,31 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
 const readableBy = (userId: string) =>
   and(isNotNull(schema.storyVersion.publishedAt), or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")));
 
+const decodeAddition = Schema.decodeUnknownEffect(StoryAddition);
+
+/**
+ * A published version as books draw it (D41): its stored manifest with its additions merged in, up to `upTo` (a
+ * proof's pinned revision) or all of them. Returns the revision it merged up to. Every stored manifest and addition
+ * was checked when published, so a failure here is a bug.
+ */
+export const withStoredAdditions = Effect.fn("stories.withStoredAdditions")(function* (storyVersionId: string, stored: unknown, upTo?: number) {
+  const manifest = yield* decodeStoryManifest(stored).pipe(Effect.orDie);
+  const rows = yield* Database.query((db) =>
+    db
+      .select({ revision: schema.storyVersionAddition.revision, addition: schema.storyVersionAddition.addition })
+      .from(schema.storyVersionAddition)
+      .where(
+        and(
+          eq(schema.storyVersionAddition.storyVersionId, storyVersionId),
+          upTo === undefined ? undefined : lte(schema.storyVersionAddition.revision, upTo),
+        ),
+      )
+      .orderBy(asc(schema.storyVersionAddition.revision)),
+  );
+  const additions = yield* Effect.forEach(rows, (row) => decodeAddition(row.addition).pipe(Effect.orDie));
+  return { manifest: yield* mergeAdditions(manifest, additions).pipe(Effect.orDie), additionRevision: rows.at(-1)?.revision ?? 0 };
+});
+
 /** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
 export const readableStoryVersion = Effect.fn("stories.readableVersion")(function* (userId: string, slug: string) {
   const [row] = yield* Database.query((db) =>
@@ -72,10 +100,9 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
       .limit(1),
   );
   if (!row) return yield* new NotFound({ entity: "story", id: slug });
-  // Every stored manifest was validated when it was imported, so a failure here is a bug.
-  const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
+  const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
   const { storyVersionId, version, manifest: _, ...story } = row;
-  return { story: story satisfies StorySummary, storyVersionId, version, manifest };
+  return { story: story satisfies StorySummary, storyVersionId, version, manifest, additionRevision };
 });
 
 /** Fails with UnsupportedLook when the story can't draw someone in `cast` (D26). */
@@ -146,7 +173,38 @@ export interface StoryVersionImport {
   /** Reads an asset the manifest references, by its path in the manifest. */
   readonly readAsset: (asset: string) => Promise<{ readonly body: Uint8Array; readonly contentType: string }>;
   readonly publishedAt: Date | null;
+  /**
+   * The additions the version is published with (D41), from the same story directory. Publishing checks that the
+   * version covers the vocabulary with them merged in, so a fresh import of an older version plus its additions
+   * passes the check that a stored version and its additions pass.
+   */
+  readonly coveredWith?: ReadonlyArray<unknown>;
 }
+
+/**
+ * Writes a version's files under its folder. A version's files never change once written, like its manifest: books,
+ * proofs, and the recolour cache were made from them. Every file is compared before anything is written, so a
+ * refused write changes nothing; only files still missing (an import that stopped partway) are uploaded.
+ */
+const storeVersionFiles = Effect.fn("stories.storeVersionFiles")(function* (
+  storyId: string,
+  version: number,
+  files: ReadonlyArray<{ readonly asset: string; readonly body: Uint8Array; readonly contentType: string }>,
+) {
+  const storage = yield* ObjectStorage;
+  const storedKeys = new Set((yield* storage.list(storyAssetKey(storyId, version, ""))).map((object) => object.key));
+  const missing: Array<(typeof files)[number]> = [];
+  const changed: Array<string> = [];
+  for (const file of files) {
+    const key = storyAssetKey(storyId, version, file.asset);
+    if (!storedKeys.has(key)) missing.push(file);
+    else if (!Buffer.from((yield* storage.get(key)).body).equals(file.body)) changed.push(file.asset);
+  }
+  if (changed.length > 0) {
+    return yield* Effect.die(new Error(`story ${storyId} v${version} already has different files; add a new version:\n${changed.join("\n")}`));
+  }
+  for (const file of missing) yield* storage.put(storyAssetKey(storyId, version, file.asset), file.body, file.contentType);
+});
 
 /**
  * Validates a story version, uploads its assets, and records it. Idempotent: assets
@@ -157,8 +215,10 @@ export interface StoryVersionImport {
 export const importStoryVersion = Effect.fn("stories.importVersion")(function* (input: StoryVersionImport) {
   const manifest: StoryManifest = yield* decodeStoryManifest(input.manifest).pipe(Effect.orDie);
   if (input.publishedAt) {
-    // Publishing needs every part approved and the whole look vocabulary covered (D26).
-    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(manifest)];
+    // Publishing needs every part approved and the whole look vocabulary covered (D26), counting its additions (D41).
+    const additions = yield* Effect.forEach(input.coveredWith ?? [], (addition) => decodeAddition(addition).pipe(Effect.orDie));
+    const covered = yield* mergeAdditions(manifest, additions).pipe(Effect.orDie);
+    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(covered)];
     if (problems.length > 0) {
       return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
     }
@@ -182,26 +242,7 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
   if (fontProblems.length > 0) {
     return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`));
   }
-  // A version's files never change once written, like its manifest: books, proofs, and the recolour cache were made
-  // from them. Every file is compared before anything is written, so a refused import changes nothing; only files
-  // still missing (an import that stopped partway) are uploaded.
-  const storage = yield* ObjectStorage;
-  const storedKeys = new Set((yield* storage.list(storyAssetKey(input.storyId, input.version, ""))).map((object) => object.key));
-  const missing: typeof files = [];
-  const changed: Array<string> = [];
-  for (const file of files) {
-    const key = storyAssetKey(input.storyId, input.version, file.asset);
-    if (!storedKeys.has(key)) missing.push(file);
-    else if (!Buffer.from((yield* storage.get(key)).body).equals(file.body)) changed.push(file.asset);
-  }
-  if (changed.length > 0) {
-    return yield* Effect.die(
-      new Error(`story ${input.storyId} v${input.version} already has different files; add a new version:\n${changed.join("\n")}`),
-    );
-  }
-  for (const file of missing) {
-    yield* storage.put(storyAssetKey(input.storyId, input.version, file.asset), file.body, file.contentType);
-  }
+  yield* storeVersionFiles(input.storyId, input.version, files);
   const [stored] = yield* Database.query(async (db) => {
     await db
       .insert(schema.storyVersion)
@@ -219,5 +260,61 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
     return yield* Effect.die(
       new Error(`story ${input.storyId} v${input.version} already exists with a different manifest; add a new version`),
     );
+  }
+});
+
+/**
+ * Adds addition `revision` to a published story version (D41): palettes, bases, and parts for options it lacks,
+ * never a change to what it has. Revisions count up from 1 without gaps. Idempotent like importStoryVersion: an
+ * existing revision is left as it is, and one stored with different content or files is a defect, because books
+ * and proofs were drawn from it. Its files go under the version's folder, compared before anything is written.
+ */
+export const publishStoryAddition = Effect.fn("stories.publishAddition")(function* (input: {
+  readonly storyVersionId: string;
+  readonly revision: number;
+  /** Unvalidated addition JSON, as an author would upload it. */
+  readonly addition: unknown;
+  readonly readAsset: StoryVersionImport["readAsset"];
+  readonly createdBy: string | null;
+}) {
+  const addition = yield* decodeAddition(input.addition).pipe(Effect.orDie);
+  const [version] = yield* Database.query((db) =>
+    db
+      .select({ storyId: schema.storyVersion.storyId, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest })
+      .from(schema.storyVersion)
+      .where(and(eq(schema.storyVersion.id, input.storyVersionId), isNotNull(schema.storyVersion.publishedAt))),
+  );
+  if (!version) return yield* Effect.die(new Error(`${input.storyVersionId} isn't a published story version`));
+  const label = `story ${version.storyId} v${version.version} addition ${input.revision}`;
+  const before = yield* withStoredAdditions(input.storyVersionId, version.manifest, input.revision - 1);
+  const [existing] = yield* Database.query((db) =>
+    db
+      .select({ addition: schema.storyVersionAddition.addition })
+      .from(schema.storyVersionAddition)
+      .where(and(eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId), eq(schema.storyVersionAddition.revision, input.revision))),
+  );
+  if (!existing && before.additionRevision !== input.revision - 1) {
+    return yield* Effect.die(new Error(`${label}: the version has ${before.additionRevision} additions; the next is ${before.additionRevision + 1}`));
+  }
+  // The format's checks and the additive ones (nothing replaced, parts approved) on the version as it stood.
+  yield* mergeAdditions(before.manifest, [addition]).pipe(Effect.mapError((error) => new Error(`${label} can't be added: ${error.message}`)), Effect.orDie);
+  const files = yield* Effect.forEach(additionAssets(addition), (asset) =>
+    Effect.promise(() => input.readAsset(asset)).pipe(Effect.map((file) => ({ asset, ...file }))),
+  );
+  yield* storeVersionFiles(version.storyId, version.version, files);
+  const encoded = yield* Schema.encodeEffect(StoryAddition)(addition).pipe(Effect.orDie);
+  const [stored] = yield* Database.query(async (db) => {
+    await db
+      .insert(schema.storyVersionAddition)
+      .values({ storyVersionId: input.storyVersionId, revision: input.revision, addition: encoded, createdBy: input.createdBy })
+      .onConflictDoNothing();
+    return db
+      .select({ addition: schema.storyVersionAddition.addition })
+      .from(schema.storyVersionAddition)
+      .where(and(eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId), eq(schema.storyVersionAddition.revision, input.revision)));
+  });
+  const storedAddition = yield* decodeAddition(stored?.addition).pipe(Effect.orDie);
+  if (!isDeepStrictEqual(storedAddition, addition)) {
+    return yield* Effect.die(new Error(`${label} already exists with different content; add the next revision instead`));
   }
 });

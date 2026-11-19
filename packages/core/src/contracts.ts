@@ -169,6 +169,10 @@ export const AuthoredStory = Schema.Struct({
   status: Schema.String,
   draftVersion: Schema.NullOr(Schema.Number),
   publishedVersion: Schema.NullOr(Schema.Number),
+  /** How many additions the newest published version has (D41). */
+  additions: Schema.Number,
+  /** Look options the newest published version can't draw yet, with its additions: what the author still has to add. */
+  missingOptions: Schema.Array(Schema.String),
 });
 export type AuthoredStory = typeof AuthoredStory.Type;
 

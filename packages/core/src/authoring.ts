@@ -13,6 +13,7 @@ import type { SessionUser } from "./auth.ts";
 import {
   decodeStoryDraft,
   decodeStoryManifest,
+  uncoveredOptions,
   exampleCast,
   isVariableFont,
   manifestAssets,
@@ -33,6 +34,7 @@ import { printTrimIssues } from "./print-ready.ts";
 import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
 import { getPart, listParts, requestPart, reviewPart, withApprovedParts } from "./parts/parts.ts";
 import { ObjectStorage } from "./storage.ts";
+import { withStoredAdditions } from "./stories.ts";
 
 // ---- Who may author ------------------------------------------------------------
 
@@ -91,6 +93,7 @@ const starterPalettes: StoryDraft["palettes"] = {
     "hair-colour:brown": [{ at: 0, colour: "#120d0a" }, { at: 0.35, colour: "#6b4226" }, { at: 0.48, colour: "#8f5d38" }, { at: 1, colour: "#ffffff" }],
     "hair-colour:blonde": [{ at: 0, colour: "#120d0a" }, { at: 0.35, colour: "#d9b45a" }, { at: 0.48, colour: "#ecd28a" }, { at: 1, colour: "#ffffff" }],
     "hair-colour:grey": [{ at: 0, colour: "#120d0a" }, { at: 0.35, colour: "#a8a8a8" }, { at: 0.48, colour: "#cfcfcf" }, { at: 1, colour: "#ffffff" }],
+    "hair-colour:red": [{ at: 0, colour: "#120d0a" }, { at: 0.35, colour: "#9a3c22" }, { at: 0.48, colour: "#c25a32" }, { at: 1, colour: "#ffffff" }],
   },
 };
 
@@ -138,7 +141,19 @@ export const listAuthoredStories = Effect.fn("authoring.listStories")(function* 
       .where(eq(schema.story.authorId, user.id))
       .orderBy(desc(schema.story.updatedAt)),
   );
-  return rows satisfies ReadonlyArray<AuthoredStory>;
+  return yield* Effect.forEach(rows, (row) =>
+    Effect.gen(function* () {
+      if (row.publishedVersion === null) return { ...row, additions: 0, missingOptions: [] } satisfies AuthoredStory;
+      const [published] = yield* Database.query((db) =>
+        db
+          .select({ id: schema.storyVersion.id, manifest: schema.storyVersion.manifest })
+          .from(schema.storyVersion)
+          .where(and(eq(schema.storyVersion.storyId, row.id), eq(schema.storyVersion.version, row.publishedVersion!))),
+      );
+      const { manifest, additionRevision } = yield* withStoredAdditions(published!.id, published!.manifest);
+      return { ...row, additions: additionRevision, missingOptions: uncoveredOptions(manifest) } satisfies AuthoredStory;
+    }),
+  );
 });
 
 /** A new story by `user`, in draft, with version 1 started from a one-page starter. */
@@ -490,14 +505,15 @@ export const startNextVersion = Effect.fn("authoring.startNextVersion")(function
   if (owned.draft) return { version: owned.draft.version };
   const [latest] = yield* Database.query((db) =>
     db
-      .select({ version: schema.storyVersion.version, manifest: schema.storyVersion.manifest })
+      .select({ id: schema.storyVersion.id, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest })
       .from(schema.storyVersion)
       .where(eq(schema.storyVersion.storyId, storyId))
       .orderBy(desc(schema.storyVersion.version))
       .limit(1),
   );
   if (!latest) return yield* new NotFound({ entity: "story version", id: storyId });
-  const manifest = yield* decodeStoryManifest(latest.manifest).pipe(Effect.orDie);
+  // The next version starts from what books draw now: the published one with its additions (D41) folded in.
+  const { manifest } = yield* withStoredAdditions(latest.id, latest.manifest);
   const version = latest.version + 1;
   const storage = yield* ObjectStorage;
   yield* Effect.forEach(

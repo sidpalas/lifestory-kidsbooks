@@ -70,6 +70,7 @@ export const hairColourOptions = [
   { id: "hair-colour:brown", label: "Brown", swatch: "#624028" },
   { id: "hair-colour:blonde", label: "Blonde", swatch: "#cea660" },
   { id: "hair-colour:grey", label: "Grey", swatch: "#96969c" },
+  { id: "hair-colour:red", label: "Red", swatch: "#a8482a" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
 export const glassesOptions = [
@@ -169,6 +170,17 @@ export const drawnFeatures = (
 };
 
 export const ageLabel = (age: Age) => ageOptions.find((option) => option.id === age)!.label;
+
+/** An option of any axis as a parent reads it: "red hair", "curly hair", "brown skin", "round glasses". */
+export const optionLabel = (id: string): string => {
+  for (const [axis, options] of Object.entries(lookVocabulary) as Array<[LookAxis, ReadonlyArray<LookOption>]>) {
+    const option = options.find((candidate) => candidate.id === id);
+    if (!option) continue;
+    const label = option.label.toLowerCase();
+    return axis === "hair" || axis === "hairColour" ? `${label} hair` : axis === "skin" ? `${label} skin` : label;
+  }
+  return id;
+};
 
 /** Where the picker starts: a few complete looks per age, refined one axis at a time. */
 export const curatedLooks: ReadonlyArray<{ readonly id: string; readonly label: string; readonly look: Look }> = [

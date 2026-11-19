@@ -48,6 +48,7 @@ export const portraitPalettes: StoryManifest["palettes"] = {
     "hair-colour:brown": hairPalette("#281810", "#624028", "#aa825e"),
     "hair-colour:blonde": hairPalette("#785628", "#cea660", "#f6e2aa"),
     "hair-colour:grey": hairPalette("#46464c", "#96969c", "#e4e4e8"),
+    "hair-colour:red": hairPalette("#4a180c", "#a8482a", "#eaa47c"),
   },
 };
 

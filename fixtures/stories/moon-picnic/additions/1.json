@@ -1,0 +1,12 @@
+{
+  "palettes": {
+    "hairColour": {
+      "hair-colour:red": [
+        { "at": 0, "colour": "#120d0a" },
+        { "at": 0.35, "colour": "#9a3a1c" },
+        { "at": 0.48, "colour": "#c45a2c" },
+        { "at": 1, "colour": "#ffffff" }
+      ]
+    }
+  }
+}

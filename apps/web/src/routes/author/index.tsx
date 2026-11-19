@@ -1,5 +1,5 @@
 // Authoring home (D37): the stories this author wrote, starting a new one, and for the operator, who may author.
-import { Forbidden, NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";
+import { Forbidden, NotAuthenticated, NotFound, optionLabel, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { message } from "~/components/authoring/fields";
@@ -70,7 +70,13 @@ function AuthoringHome() {
                         <p className="text-muted-foreground text-xs">
                           /{story.slug} · {story.publishedVersion ? `version ${story.publishedVersion} published` : "not published yet"}
                           {story.draftVersion && ` · drafting version ${story.draftVersion}`}
+                          {story.additions > 0 && ` · ${story.additions} ${story.additions === 1 ? "addition" : "additions"}`}
                         </p>
+                        {story.missingOptions.length > 0 && (
+                          <p className="text-xs text-amber-700" data-testid="missing-options">
+                            Can't draw yet: {story.missingOptions.map(optionLabel).join(", ")}. Families pick a stand-in until you add them.
+                          </p>
+                        )}
                       </div>
                     </li>
                   ))}
