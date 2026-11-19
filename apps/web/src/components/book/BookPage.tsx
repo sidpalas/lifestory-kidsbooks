@@ -1,7 +1,7 @@
 // The one page component: the editor shows it scaled on screen, and the print
 // route renders it at full size for the PDF proof, so both use the same layout,
 // the same physical units (inches and points), and the same font files.
-import type { CastMember, FontFile, Page, ResolvedTextBlock, StoryManifest } from "@lifestory/core/contracts";
+import type { CastMember, FontFile, Page, PlacedRect, ResolvedTextBlock, StoryManifest } from "@lifestory/core/contracts";
 import type * as React from "react";
 
 const inch = (n: number) => `${n}in`;
@@ -39,14 +39,18 @@ export interface BookPageProps {
   readonly page: Page;
   /** The page's text, tokens already resolved (and, in a book, the family's edits applied). */
   readonly text: ReadonlyArray<ResolvedTextBlock>;
-  /** Who fills each character slot; labels the slots until the page is generated. */
+  /**
+   * The composed illustration, bottom to top: art, and each figure's base face, parts, and occluder, recoloured for
+   * the cast (packages/core looks/compose.ts). Rects are thousandths of the illustration area.
+   */
+  readonly illustration: ReadonlyArray<{ readonly url: string; readonly rect: PlacedRect }>;
+  /** Who fills each character slot; labels the figure boxes in the guides. */
   readonly cast: Readonly<Record<string, CastMember>>;
-  readonly assetUrl: (asset: string) => string;
-  /** Show the trim line and the safe area, for the editor. Never printed. */
+  /** Show the trim line, the safe area, and each figure's box, for the editor. Never printed. */
   readonly guides?: boolean;
 }
 
-export function BookPage({ manifest, page, text, cast, assetUrl, guides = false }: BookPageProps) {
+export function BookPage({ manifest, page, text, illustration, cast, guides = false }: BookPageProps) {
   const { trim, textStyles } = manifest;
   const { widthIn, heightIn } = pageSizeIn(trim);
   const inset = trim.bleedIn + trim.safeMarginIn;
@@ -69,18 +73,26 @@ export function BookPage({ manifest, page, text, cast, assetUrl, guides = false 
         data-testid="illustration"
         style={{ position: "absolute", left: 0, top: 0, height: "100%", width: artLeft ? inch(trim.bleedIn + trim.widthIn / 2) : "100%" }}
       >
-        {page.illustration.layers.map((layer, i) =>
-          layer.kind === "art" ? (
-            <img
-              key={i}
-              src={assetUrl(layer.asset)}
-              alt=""
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <CharacterSlotBox key={i} box={layer.box} name={cast[layer.slotId]?.name} label={slotLabels.get(layer.slotId) ?? layer.slotId} />
-          ),
-        )}
+        {illustration.map(({ url, rect: [x0, y0, x1, y1] }, i) => (
+          <img
+            key={i}
+            src={url}
+            alt=""
+            style={{
+              position: "absolute",
+              left: `${x0 / 10}%`,
+              top: `${y0 / 10}%`,
+              width: `${(x1 - x0) / 10}%`,
+              height: `${(y1 - y0) / 10}%`,
+            }}
+          />
+        ))}
+        {guides &&
+          page.illustration.layers.map((layer, i) =>
+            layer.kind === "figure" ? (
+              <FigureBox key={i} box={layer.box} name={cast[layer.slotId]?.name} label={slotLabels.get(layer.slotId) ?? layer.slotId} />
+            ) : null,
+          )}
       </div>
 
       <div data-testid="page-text" style={{ position: "absolute", display: "flex", flexDirection: "column", gap: "0.12in", ...textArea }}>
@@ -122,29 +134,29 @@ export function BookPage({ manifest, page, text, cast, assetUrl, guides = false 
   );
 }
 
-/** A character slot not yet filled with generated art: its box, labelled with who will be drawn there. */
-function CharacterSlotBox({ box: [y0, x0, y1, x1], name, label }: { box: readonly [number, number, number, number]; name: string | undefined; label: string }) {
+/** A guide over a figure: its box, labelled with who fills it. */
+function FigureBox({ box: [x0, y0, x1, y1], name, label }: { box: PlacedRect; name: string | undefined; label: string }) {
   return (
     <div
-      data-testid="character-slot"
+      data-testid="figure-box"
       style={{
         position: "absolute",
-        top: `${y0 / 10}%`,
         left: `${x0 / 10}%`,
-        height: `${(y1 - y0) / 10}%`,
+        top: `${y0 / 10}%`,
         width: `${(x1 - x0) / 10}%`,
-        border: "0.025in dashed rgb(43 33 24 / 0.7)",
+        height: `${(y1 - y0) / 10}%`,
+        border: "0.02in dashed #7a3fd1",
         borderRadius: "0.08in",
-        background: "rgb(255 255 255 / 0.45)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        textAlign: "center",
-        font: "600 11pt/1.2 ui-sans-serif, system-ui, sans-serif",
-        padding: "0.05in",
+        font: "600 9pt/1.2 ui-sans-serif, system-ui, sans-serif",
+        color: "#7a3fd1",
+        padding: "0.04in",
+        pointerEvents: "none",
       }}
     >
-      <span>
+      <span style={{ background: "rgb(255 255 255 / 0.85)", borderRadius: "0.04in", padding: "0 0.04in", textAlign: "center" }}>
         {name ?? label}
         {name && <span style={{ display: "block", fontWeight: 400, opacity: 0.75 }}>{label}</span>}
       </span>

@@ -31,7 +31,7 @@ export const tokenIssues = (content: string, slotIds: ReadonlySet<string>): Read
 };
 
 /** Replaces every token with the cast member's name or pronoun. The manifest's validation guarantees tokens are known. */
-export const resolveText = (content: string, cast: Readonly<Record<string, CastMember>>): string =>
+export const resolveText = (content: string, cast: Readonly<Record<string, Pick<CastMember, "name" | "pronouns">>>): string =>
   content.replace(TOKEN, (token, slotId: string, field: string) => {
     const member = cast[slotId];
     if (!member) return token;
@@ -43,7 +43,7 @@ export const resolveText = (content: string, cast: Readonly<Record<string, CastM
 /** A page's text blocks with tokens resolved for `cast`: what BookPage prints. */
 export const resolvePageText = (
   page: { readonly text: ReadonlyArray<{ readonly style: TextStyleName; readonly content: string }> },
-  cast: Readonly<Record<string, CastMember>>,
+  cast: Readonly<Record<string, Pick<CastMember, "name" | "pronouns">>>,
 ): ReadonlyArray<ResolvedTextBlock> => page.text.map((block) => ({ style: block.style, text: resolveText(block.content, cast) }));
 
 export interface ResolvedTextBlock {

@@ -2,10 +2,23 @@ import { isDeepStrictEqual } from "node:util";
 import { schema } from "@lifestory/db";
 import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
 import { Effect } from "effect";
-import { decodeStoryManifest, manifestAssets, storyAssetKey, type StoryManifest } from "./book-format/index.ts";
+import {
+  type CastMember,
+  decodeStoryManifest,
+  exampleCast,
+  manifestAssets,
+  storyAssetKey,
+  unapprovedParts,
+  unsupportedOptions,
+  vocabularyGaps,
+  type StoryManifest,
+} from "./book-format/index.ts";
 import type { StorySummary } from "./contracts.ts";
 import { Database } from "./database.ts";
-import { NotFound } from "./errors.ts";
+import { NotFound, UnsupportedLook } from "./errors.ts";
+import { composeIllustration } from "./looks/compose.ts";
+import type { Look } from "./looks/vocabulary.ts";
+import { resolveIllustration } from "./pages.ts";
 import { ObjectStorage } from "./storage.ts";
 
 /** Published stories, the catalogue a family picks from. */
@@ -35,10 +48,16 @@ const readableBy = (userId: string) =>
   );
 
 /**
- * A story with the newest version `userId` may read, for previewing its pages.
- * Fails with NotFound when the story doesn't exist or isn't visible to the user.
+ * A story with the newest version `userId` may read, for previewing its pages: each slot filled by its example,
+ * or with `looks` given per slot, the example's name and pronouns with that look. Every page's illustration comes
+ * back composed, as storage keys. Fails with NotFound when the story doesn't exist or isn't visible to the user,
+ * and with UnsupportedLook when the story can't draw a given look.
  */
-export const getStoryPreview = Effect.fn("stories.getPreview")(function* (userId: string, slug: string) {
+export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
+  userId: string,
+  slug: string,
+  looks: Readonly<Record<string, Look>> = {},
+) {
   const [row] = yield* Database.query((db) =>
     db
       .select({
@@ -61,7 +80,19 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (userId
   // Every stored manifest was validated when it was imported, so a failure here is a bug.
   const manifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
   const { version, manifest: _, ...story } = row;
-  return { story, version, manifest };
+  const cast: Record<string, CastMember> = Object.fromEntries(
+    Object.entries(exampleCast(manifest)).map(([slotId, example]) => [slotId, { ...example, look: looks[slotId] ?? example.look }]),
+  );
+  for (const [slotId, member] of Object.entries(cast)) {
+    const axes = unsupportedOptions(manifest, slotId, member.look);
+    if (axes.length > 0) return yield* new UnsupportedLook({ slotId, axes: [...axes] });
+  }
+  const pages = yield* Effect.forEach(manifest.pages, (page) =>
+    resolveIllustration(story.id, version, composeIllustration(manifest, page, cast)).pipe(
+      Effect.map((layers) => ({ pageId: page.pageId, layers })),
+    ),
+  );
+  return { story, version, manifest, cast, pages };
 });
 
 // No ".." anywhere: some S3 servers normalize paths, which would let a key climb out of the story.
@@ -102,6 +133,13 @@ export interface StoryVersionImport {
  */
 export const importStoryVersion = Effect.fn("stories.importVersion")(function* (input: StoryVersionImport) {
   const manifest: StoryManifest = yield* decodeStoryManifest(input.manifest).pipe(Effect.orDie);
+  if (input.publishedAt) {
+    // Publishing needs every part approved and the whole look vocabulary covered (D26).
+    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(manifest)];
+    if (problems.length > 0) {
+      return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
+    }
+  }
   const storage = yield* ObjectStorage;
   for (const asset of manifestAssets(manifest)) {
     const file = yield* Effect.promise(() => input.readAsset(asset));

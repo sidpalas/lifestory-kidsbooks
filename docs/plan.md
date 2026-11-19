@@ -50,11 +50,17 @@ and a later v2 gets a migration function from v1.
       "slotId": "hero",
       "label": "The child",
       "description": "A child about 5 years old, the main character",
-      "pronounSet": "from-character",           // text tokens resolve from the chosen character
-      "defaults": { "hair": "short brown", "glasses": false }
-    },
-    { "slotId": "grownup", "label": "A grown-up", "description": "A parent or grandparent", "defaults": {} }
+      "age": "child",                           // the one axis a story may restrict: it draws only faces of this age
+      "example": { "name": "Mia", "pronouns": "she/her",   // fills the slot in story previews
+                   "look": { "face": "face:child-1", "skin": "skin:s4", "hair": "hair:curly",
+                             "hairColour": "hair-colour:black", "glasses": "glasses:none" } }
+    }
   ],
+  "palettes": {                                 // a gradient map per skin tone and hair colour in the vocabulary
+    "skin": { "skin:s4": [{ "at": 0, "colour": "#1e1612" }, { "at": 0.77, "colour": "#b07548" }, { "at": 1, "colour": "#fff8f2" }] },
+    "hairColour": { "hair-colour:black": [{ "at": 0, "colour": "#120d0a" }, { "at": 0.35, "colour": "#2a1d17" }] }
+  },
+  "partOrder": ["hair", "glasses"],             // bottom to top, between the base face and the occluder
   "pages": [
     {
       "pageId": "p01",
@@ -63,8 +69,18 @@ and a later v2 gets a migration function from v1.
       "illustration": {
         "layers": [
           { "kind": "art", "asset": "pages/p01/background.png" },                 // the illustrator's art, never edited
-          { "kind": "character", "slotId": "hero", "box": [420, 120, 940, 480],  // FLUX bbox grid: [y0, x0, y1, x1] of 0..1000
-            "direction": "kneeling, holding a basket, smiling, side view" },
+          { "kind": "figure", "slotId": "hero", "box": [430, 250, 760, 690],    // [x0, y0, x1, y1], thousandths of the art
+            "bases": [                                                          // one per face of the slot's age (D26)
+              { "face": "face:child-1", "asset": "pages/p01/hero/base-child-1.svg",
+                "skinMask": "pages/p01/hero/base-child-1-skin.svg",            // every visible bit of skin
+                "browMask": "pages/p01/hero/base-child-1-brows.svg",           // takes the hair colour
+                "occluder": { "asset": "...", "skinMask": "..." } }           // optional: a hand in front of the face
+            ],
+            "parts": [                                                          // every option, on every base face
+              { "face": "face:child-1", "axis": "hair", "option": "hair:curly", "asset": "pages/p01/hero/child-1-curly.svg",
+                "at": [120, 0, 880, 420],                                       // a crop, in thousandths of the box
+                "palette": "hairColour", "approved": true }
+            ] },
           { "kind": "art", "asset": "pages/p01/foreground.png" }                  // e.g. table edge drawn over the character
         ]
       }
@@ -157,9 +173,11 @@ primary provider.
 Characters belong to the family, not to a story, so a look can't name one story's assets. `packages/core/src/looks`
 defines a shared **look vocabulary**: the axes (base face, skin tone, hairstyle, hair colour, glasses, and later
 beard, freckles) and stable option IDs for each, such as `face:child-2`, `skin:s4`, `hair:braids-2`. A story role
-declares which options it supports, each backed by approved parts. When a character's option isn't supported by a
-role (an adult face cast as the child, a hairstyle the story lacks), the role's default for that axis is used and the
-editor says so next to the slot.
+supports every option in the vocabulary, each backed by approved parts, except faces of another age than the role's
+(Sid, 2026-11-19): a fallback to another option would draw someone who doesn't look like the family member. Publishing
+checks this (`vocabularyGaps`). An option added to the vocabulary later is missing from versions already published;
+`unsupportedOptions` finds it, and the book then either disables that story for the character or keeps a
+story-specific override with one of the story's supported options, which the parent picks.
 
 - **Picker** (milestone 1, item 2): a character starts from one of a few curated looks (full option sets), then the
   parent changes one axis at a time with a live preview: the role's portrait figure (the sample story's cover in

@@ -109,15 +109,33 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   - **Fonts ship with the story**, as woff2 assets with optional `weight`, `style`, and `unicode-range` (the sample
     uses Literata, SIL OFL, latin and latin-ext subsets, so names like "Łucja" print in the same font). The app UI
     keeps Nunito (D12); a page never uses app fonts. `font-display: block`, so print never falls back.
-  - **Slots carry an `example`** (name, pronouns) that fills them in story previews before a family casts anyone.
-    The plan's `pronounSet: "from-character"` is dropped: pronouns always come from whoever fills the slot.
+  - **Slots carry an `example`** (name, pronouns, look) that fills them in story previews before a family casts
+    anyone, and an `age` (`child`, `adult`): the faces the slot draws. The plan's `pronounSet: "from-character"` and
+    free-text `defaults` are dropped: pronouns and look always come from whoever fills the slot.
+  - **Characters are figures composed from parts (D26).** A `figure` layer has a `box` on the page and, for each
+    face of its slot's age, a base drawn bald in neutral greys with a `skinMask` covering every visible bit of skin,
+    an optional `browMask`, and an optional `occluder` with its own skin mask. Its `parts` are cropped drawings
+    placed `at` a rectangle inside the box, one per option and face, each naming the palette it takes and whether
+    it is approved. `showsHead: false` marks a figure with only a hand in frame (no parts, skin still recoloured).
+    The manifest's `partOrder` (bottom to top) can be overridden per figure, e.g. glasses under hair. `palettes`
+    holds the illustrator's gradient map for each skin tone and hair colour. Full-page canvases were the
+    alternative; crops keep each part small and match the plan's "Composing pages".
+  - **The look vocabulary** is `packages/core/src/looks/vocabulary.ts`: face (by age), skin, hairstyle, hair colour,
+    glasses, with curated looks for the picker. Decoding checks that the manifest names only known options and has
+    no misplaced faces; `vocabularyGaps` (run when publishing) checks that every option has a palette or a part on
+    every figure, and `unapprovedParts` that every part is approved.
+  - **Recolour** (`gradient-map-v1`, `looks/recolour.ts`, sharp): each pixel's luminance indexes the palette inside
+    a mask, mask alpha blends soft edges, everything else is untouched. Vector placeholders rasterize at 300 dpi.
+    The server caches each recoloured layer under `stories/<id>/v<n>/recoloured/<hash>.png`, keyed by the asset,
+    the palettes, masks, and the algorithm name, so the editor and print load the same pixels. Measured on
+    `a1.small`: a cold preview of the sample (24 recolours) takes about 1.8 s, then about 40 ms.
   - **Text tokens:** `{{slot.name}}` and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
     `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. Pronouns don't fix verb agreement
     ("they are" against "she is"), so authors write around it, as in past tense.
   - **Layouts** (closed set): `full-bleed-art/text-bottom`, `full-bleed-art/text-top` (text on a light panel so it
-    reads over any art), and `art-left/text-right`. Character boxes are thousandths of the illustration area.
-  - **Validation** checks references across the manifest (slots, page IDs, fonts, tokens, boxes, asset paths that
-    stay inside the version's folder) and reports every problem with its path, so it can serve as the upload validator.
+    reads over any art), and `art-left/text-right`. Figure boxes are thousandths of the illustration area.
+  - **Validation** checks references across the manifest (slots, page IDs, fonts, tokens, boxes, look options,
+    asset paths that stay inside the version's folder) and reports every problem with its path, so it can serve as the upload validator.
   - **Placeholder art is SVG**, at 1 unit = 0.01 in, so it's small, diffable, and sharp at any print resolution.
     The format also accepts PNG, JPEG, and WebP for real illustrations.
 - **Published versions don't change:** `importStoryVersion` (used by the seed) leaves an existing version alone and
@@ -154,8 +172,10 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   picker starts from a few curated looks and refines one feature at a time.
 - **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, pronouns and a look,
   and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
-  and the picker"); a story declares which options each role supports, and an unsupported option falls back to the
-  role's default with a notice in the editor.
+  and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role draws only faces of
+  its age, and covers every other option; falling back to a default would draw someone who doesn't look like the
+  family member. Publishing checks this. When an option added later is missing from an older published version, the
+  book either disables that story for the character or keeps a story-specific override with a supported option.
 - **Why:** no children's photos to store or protect, and nothing near the license's biometric and digital-replica
   limits; a human reviews every image before families see it (the §2e content-review condition); consistent, print-
   quality art. With no user data, hosted image APIs are also allowed as authoring providers.

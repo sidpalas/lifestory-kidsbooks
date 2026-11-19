@@ -1,11 +1,14 @@
 import {
   NotAuthenticated,
+  CastMember,
+  Look,
   NotFound,
   ResultSchema,
   SampleFileResult,
   StoryManifest,
   StorySummary,
   JobError,
+  UnsupportedLook,
   TaskState,
 } from "@lifestory/core/contracts";
 import { Auth, getStoryPreview, Jobs, listPublishedStories, writeSampleFile } from "@lifestory/core";
@@ -75,19 +78,30 @@ export const getSampleFileStatus = createServerFn({ method: "GET" })
     );
   });
 
+const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
+
 export const StoryPreviewResult = ResultSchema(
-  Schema.Struct({ story: StorySummary, version: Schema.Number, manifest: StoryManifest }),
-  Schema.Union([NotAuthenticated, NotFound]),
+  Schema.Struct({
+    story: StorySummary,
+    version: Schema.Number,
+    manifest: StoryManifest,
+    cast: Schema.Record(Schema.String, CastMember),
+    /** Each page's composed illustration, as storage keys placed in the illustration area. */
+    pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
+  }),
+  Schema.Union([NotAuthenticated, NotFound, UnsupportedLook]),
 );
 
 export const getStoryPreviewFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String })))
+  .validator(
+    Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String, looks: Schema.optional(Schema.Record(Schema.String, Look)) })),
+  )
   .handler(async ({ data }) =>
     runEffect(
       StoryPreviewResult,
       Effect.gen(function* () {
         const user = yield* currentUser;
-        return yield* getStoryPreview(user.id, data.slug);
+        return yield* getStoryPreview(user.id, data.slug, data.looks);
       }),
     ),
   );

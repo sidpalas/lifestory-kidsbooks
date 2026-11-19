@@ -8,6 +8,8 @@ export * from "./families.ts";
 export * from "./generations.ts";
 export * from "./image-provider.ts";
 export * from "./jobs.ts";
+export * from "./pages.ts";
+export { recolour, RECOLOUR_ALGORITHM } from "./looks/recolour.ts";
 export * from "./mailer.ts";
 export * from "./providers/modal.ts";
 export * from "./runtime.ts";

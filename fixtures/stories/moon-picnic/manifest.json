@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "trim": { "widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375 },
+  "trim": {"widthIn": 8.5, "heightIn": 8.5, "bleedIn": 0.125, "safeMarginIn": 0.375},
   "fonts": [
     {
       "family": "Literata",
@@ -18,38 +18,233 @@
     }
   ],
   "textStyles": {
-    "title": { "fontFamily": "Literata", "sizePt": 30, "lineHeight": 1.15, "weight": 700, "align": "center" },
-    "body": { "fontFamily": "Literata", "sizePt": 17, "lineHeight": 1.45, "weight": 450, "align": "left" }
+    "title": {"fontFamily": "Literata", "sizePt": 30, "lineHeight": 1.15, "weight": 700, "align": "center"},
+    "body": {"fontFamily": "Literata", "sizePt": 17, "lineHeight": 1.45, "weight": 450, "align": "left"}
   },
   "characterSlots": [
     {
       "slotId": "hero",
       "label": "The child",
       "description": "A child about 5 years old, the main character",
-      "example": { "name": "Mia", "pronouns": "she/her" },
-      "defaults": { "hair": "curly black", "glasses": false }
+      "age": "child",
+      "example": {
+        "name": "Mia",
+        "pronouns": "she/her",
+        "look": {
+          "face": "face:child-1",
+          "skin": "skin:s4",
+          "hair": "hair:curly",
+          "hairColour": "hair-colour:black",
+          "glasses": "glasses:none"
+        }
+      }
     },
     {
       "slotId": "grownup",
       "label": "A grown-up",
       "description": "A parent or grandparent who comes along",
-      "example": { "name": "Grandpa Joe", "pronouns": "he/him" },
-      "defaults": {}
+      "age": "adult",
+      "example": {
+        "name": "Grandpa Joe",
+        "pronouns": "he/him",
+        "look": {
+          "face": "face:adult-2",
+          "skin": "skin:s2",
+          "hair": "hair:short",
+          "hairColour": "hair-colour:grey",
+          "glasses": "glasses:round"
+        }
+      }
     }
   ],
+  "palettes": {
+    "skin": {
+      "skin:s1": [
+        {"at": 0, "colour": "#1e1612"},
+        {"at": 0.63, "colour": "#c9a088"},
+        {"at": 0.77, "colour": "#f6dcc8"},
+        {"at": 1, "colour": "#fff8f2"}
+      ],
+      "skin:s2": [
+        {"at": 0, "colour": "#1e1612"},
+        {"at": 0.63, "colour": "#bf8f70"},
+        {"at": 0.77, "colour": "#eec6a8"},
+        {"at": 1, "colour": "#fff8f2"}
+      ],
+      "skin:s3": [
+        {"at": 0, "colour": "#1e1612"},
+        {"at": 0.63, "colour": "#a8724f"},
+        {"at": 0.77, "colour": "#d6a07a"},
+        {"at": 1, "colour": "#fff8f2"}
+      ],
+      "skin:s4": [
+        {"at": 0, "colour": "#1e1612"},
+        {"at": 0.63, "colour": "#7f4f2c"},
+        {"at": 0.77, "colour": "#b07548"},
+        {"at": 1, "colour": "#fff8f2"}
+      ],
+      "skin:s5": [
+        {"at": 0, "colour": "#1e1612"},
+        {"at": 0.63, "colour": "#4a2b18"},
+        {"at": 0.77, "colour": "#6e4428"},
+        {"at": 1, "colour": "#fff8f2"}
+      ]
+    },
+    "hairColour": {
+      "hair-colour:black": [
+        {"at": 0, "colour": "#120d0a"},
+        {"at": 0.35, "colour": "#2a1d17"},
+        {"at": 0.48, "colour": "#4a3a30"},
+        {"at": 1, "colour": "#ffffff"}
+      ],
+      "hair-colour:brown": [
+        {"at": 0, "colour": "#120d0a"},
+        {"at": 0.35, "colour": "#6b4226"},
+        {"at": 0.48, "colour": "#8f5d38"},
+        {"at": 1, "colour": "#ffffff"}
+      ],
+      "hair-colour:blonde": [
+        {"at": 0, "colour": "#120d0a"},
+        {"at": 0.35, "colour": "#d9b45a"},
+        {"at": 0.48, "colour": "#ecd28a"},
+        {"at": 1, "colour": "#ffffff"}
+      ],
+      "hair-colour:grey": [
+        {"at": 0, "colour": "#120d0a"},
+        {"at": 0.35, "colour": "#a8a8a8"},
+        {"at": 0.48, "colour": "#cfcfcf"},
+        {"at": 1, "colour": "#ffffff"}
+      ]
+    }
+  },
+  "partOrder": ["hair", "glasses"],
   "pages": [
     {
       "pageId": "p01",
       "layout": "full-bleed-art/text-bottom",
       "text": [
-        { "style": "title", "content": "The Moon Picnic" },
-        { "style": "body", "content": "{{hero.name}} packed the picnic basket: two jam sandwiches, a flask of cocoa, and the roundest cheese in the whole house." }
+        {"style": "title", "content": "The Moon Picnic"},
+        {
+          "style": "body",
+          "content": "{{hero.name}} packed the picnic basket: two jam sandwiches, a flask of cocoa, and the roundest cheese in the whole house."
+        }
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p01/background.svg" },
-          { "kind": "character", "slotId": "hero", "box": [250, 430, 690, 760], "direction": "standing behind the table, reaching into a picnic basket, smiling, three-quarter view" },
-          { "kind": "art", "asset": "pages/p01/foreground.svg" }
+          {"kind": "art", "asset": "pages/p01/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [430, 250, 760, 690],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p01/hero/base-child-1.svg",
+                "skinMask": "pages/p01/hero/base-child-1-skin.svg",
+                "browMask": "pages/p01/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p01/hero/base-child-2.svg",
+                "skinMask": "pages/p01/hero/base-child-2-skin.svg",
+                "browMask": "pages/p01/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p01/hero/child-1-short.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p01/hero/child-1-curly.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p01/hero/child-1-long.svg",
+                "at": [260, 12, 740, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p01/hero/child-1-glasses-round.svg",
+                "at": [388, 150, 612, 234],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p01/hero/child-2-short.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p01/hero/child-2-curly.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p01/hero/child-2-long.svg",
+                "at": [294, 3, 706, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p01/hero/child-2-glasses-round.svg",
+                "at": [404, 148, 596, 236],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {"kind": "art", "asset": "pages/p01/foreground.svg"},
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [0, 440, 260, 540],
+            "showsHead": false,
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p01/grownup/base-adult-1.svg",
+                "skinMask": "pages/p01/grownup/base-adult-1-skin.svg"
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p01/grownup/base-adult-2.svg",
+                "skinMask": "pages/p01/grownup/base-adult-2-skin.svg"
+              }
+            ],
+            "parts": []
+          }
         ]
       }
     },
@@ -57,13 +252,200 @@
       "pageId": "p02",
       "layout": "full-bleed-art/text-top",
       "text": [
-        { "style": "body", "content": "“Where shall we have our picnic?” asked {{grownup.name}}. {{hero.name}} pointed straight up at the Moon. “There!”" }
+        {
+          "style": "body",
+          "content": "“Where shall we have our picnic?” asked {{grownup.name}}. {{hero.name}} pointed straight up at the Moon. “There!”"
+        }
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p02/background.svg" },
-          { "kind": "character", "slotId": "grownup", "box": [400, 110, 930, 430], "direction": "standing in the garden, holding the picnic basket, looking up, side view" },
-          { "kind": "character", "slotId": "hero", "box": [530, 470, 930, 700], "direction": "standing on tiptoe, pointing up at the Moon, seen from behind" }
+          {"kind": "art", "asset": "pages/p02/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [110, 400, 430, 930],
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p02/grownup/base-adult-1.svg",
+                "skinMask": "pages/p02/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p02/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p02/grownup/base-adult-2.svg",
+                "skinMask": "pages/p02/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p02/grownup/base-adult-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/grownup/adult-1-short.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/grownup/adult-1-curly.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/grownup/adult-1-long.svg",
+                "at": [232, 3, 768, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/grownup/adult-1-glasses-round.svg",
+                "at": [375, 148, 625, 236],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/grownup/adult-2-short.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/grownup/adult-2-curly.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/grownup/adult-2-long.svg",
+                "at": [202, 12, 798, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/grownup/adult-2-glasses-round.svg",
+                "at": [361, 150, 639, 234],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [470, 530, 700, 930],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p02/hero/base-child-1.svg",
+                "skinMask": "pages/p02/hero/base-child-1-skin.svg",
+                "browMask": "pages/p02/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p02/hero/base-child-2.svg",
+                "skinMask": "pages/p02/hero/base-child-2-skin.svg",
+                "browMask": "pages/p02/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/hero/child-1-short.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/hero/child-1-curly.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/hero/child-1-long.svg",
+                "at": [187, 12, 813, 396],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/hero/child-1-glasses-round.svg",
+                "at": [354, 150, 646, 234],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p02/hero/child-2-short.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p02/hero/child-2-curly.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p02/hero/child-2-long.svg",
+                "at": [231, 3, 769, 406],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p02/hero/child-2-glasses-round.svg",
+                "at": [374, 148, 626, 236],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          }
         ]
       }
     },
@@ -71,15 +453,202 @@
       "pageId": "p03",
       "layout": "art-left/text-right",
       "text": [
-        { "style": "body", "content": "{{grownup.name}} checked the fuel. {{hero.name}} checked the cocoa. {{hero.They}} buckled {{hero.themself}} in tight." },
-        { "style": "body", "content": "Three, two, one… WHOOSH!" }
+        {
+          "style": "body",
+          "content": "{{grownup.name}} checked the fuel. {{hero.name}} checked the cocoa. {{hero.They}} buckled {{hero.themself}} in tight."
+        },
+        {"style": "body", "content": "Three, two, one… WHOOSH!"}
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p03/background.svg" },
-          { "kind": "character", "slotId": "hero", "box": [365, 420, 555, 820], "direction": "looking out of the rocket's round window, waving, excited" },
-          { "kind": "character", "slotId": "grownup", "box": [600, 20, 960, 330], "direction": "climbing the ladder into the rocket, looking back over the shoulder" },
-          { "kind": "art", "asset": "pages/p03/foreground.svg" }
+          {"kind": "art", "asset": "pages/p03/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [420, 365, 820, 555],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p03/hero/base-child-1.svg",
+                "skinMask": "pages/p03/hero/base-child-1-skin.svg",
+                "browMask": "pages/p03/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p03/hero/base-child-2.svg",
+                "skinMask": "pages/p03/hero/base-child-2-skin.svg",
+                "browMask": "pages/p03/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/hero/child-1-short.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/hero/child-1-curly.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/hero/child-1-long.svg",
+                "at": [200, 104, 800, 778],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/hero/child-1-glasses-round.svg",
+                "at": [360, 346, 640, 494],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/hero/child-2-short.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/hero/child-2-curly.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/hero/child-2-long.svg",
+                "at": [242, 88, 758, 796],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/hero/child-2-glasses-round.svg",
+                "at": [380, 343, 620, 497],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [20, 600, 330, 960],
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p03/grownup/base-adult-1.svg",
+                "skinMask": "pages/p03/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p03/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p03/grownup/base-adult-2.svg",
+                "skinMask": "pages/p03/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p03/grownup/base-adult-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/grownup/adult-1-short.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/grownup/adult-1-curly.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/grownup/adult-1-long.svg",
+                "at": [176, 3, 824, 350],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/grownup/adult-1-glasses-round.svg",
+                "at": [349, 127, 651, 203],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p03/grownup/adult-2-short.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p03/grownup/adult-2-curly.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p03/grownup/adult-2-long.svg",
+                "at": [140, 10, 860, 341],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p03/grownup/adult-2-glasses-round.svg",
+                "at": [332, 129, 668, 201],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {"kind": "art", "asset": "pages/p03/foreground.svg"}
         ]
       }
     },
@@ -87,14 +656,201 @@
       "pageId": "p04",
       "layout": "full-bleed-art/text-bottom",
       "text": [
-        { "style": "body", "content": "The Moon was quiet and grey and very, very bumpy. {{hero.name}} spread {{hero.their}} blanket in the biggest crater of all." }
+        {
+          "style": "body",
+          "content": "The Moon was quiet and grey and very, very bumpy. {{hero.name}} spread {{hero.their}} blanket in the biggest crater of all."
+        }
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p04/background.svg" },
-          { "kind": "character", "slotId": "hero", "box": [380, 270, 720, 500], "direction": "kneeling on a picnic blanket, smoothing it flat, wearing a space helmet" },
-          { "kind": "character", "slotId": "grownup", "box": [330, 530, 720, 780], "direction": "sitting on the blanket, unscrewing the cocoa flask, wearing a space helmet" },
-          { "kind": "art", "asset": "pages/p04/foreground.svg" }
+          {"kind": "art", "asset": "pages/p04/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [270, 380, 500, 720],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p04/hero/base-child-1.svg",
+                "skinMask": "pages/p04/hero/base-child-1-skin.svg",
+                "browMask": "pages/p04/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p04/hero/base-child-2.svg",
+                "skinMask": "pages/p04/hero/base-child-2-skin.svg",
+                "browMask": "pages/p04/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/hero/child-1-short.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/hero/child-1-curly.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/hero/child-1-long.svg",
+                "at": [167, 15, 833, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/hero/child-1-glasses-round.svg",
+                "at": [345, 188, 655, 293],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/hero/child-2-short.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/hero/child-2-curly.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/hero/child-2-long.svg",
+                "at": [214, 4, 786, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/hero/child-2-glasses-round.svg",
+                "at": [367, 185, 633, 295],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [530, 330, 780, 720],
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p04/grownup/base-adult-1.svg",
+                "skinMask": "pages/p04/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p04/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p04/grownup/base-adult-2.svg",
+                "skinMask": "pages/p04/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p04/grownup/base-adult-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/grownup/adult-1-short.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/grownup/adult-1-curly.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/grownup/adult-1-long.svg",
+                "at": [184, 4, 816, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/grownup/adult-1-glasses-round.svg",
+                "at": [353, 185, 647, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p04/grownup/adult-2-short.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p04/grownup/adult-2-curly.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p04/grownup/adult-2-long.svg",
+                "at": [149, 15, 851, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p04/grownup/adult-2-glasses-round.svg",
+                "at": [336, 188, 664, 293],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {"kind": "art", "asset": "pages/p04/foreground.svg"}
         ]
       }
     },
@@ -102,13 +858,208 @@
       "pageId": "p05",
       "layout": "full-bleed-art/text-top",
       "text": [
-        { "style": "body", "content": "“Your cheese looks just like the Moon,” said {{grownup.name}}. {{hero.name}} laughed so hard that cocoa came out of {{hero.their}} nose." }
+        {
+          "style": "body",
+          "content": "“Your cheese looks just like the Moon,” said {{grownup.name}}. {{hero.name}} laughed so hard that cocoa came out of {{hero.their}} nose."
+        }
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p05/background.svg" },
-          { "kind": "character", "slotId": "hero", "box": [420, 100, 900, 460], "direction": "sitting cross-legged, laughing with eyes closed, holding a cup of cocoa" },
-          { "kind": "character", "slotId": "grownup", "box": [360, 540, 900, 900], "direction": "sitting, holding up a round cheese next to their face, grinning" }
+          {"kind": "art", "asset": "pages/p05/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [100, 420, 460, 900],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p05/hero/base-child-1.svg",
+                "skinMask": "pages/p05/hero/base-child-1-skin.svg",
+                "browMask": "pages/p05/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p05/hero/base-child-2.svg",
+                "skinMask": "pages/p05/hero/base-child-2-skin.svg",
+                "browMask": "pages/p05/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/hero/child-1-short.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/hero/child-1-curly.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/hero/child-1-long.svg",
+                "at": [200, 15, 800, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/hero/child-1-glasses-round.svg",
+                "at": [360, 188, 640, 293],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/hero/child-2-short.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/hero/child-2-curly.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/hero/child-2-long.svg",
+                "at": [242, 4, 758, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/hero/child-2-glasses-round.svg",
+                "at": [380, 185, 620, 295],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [540, 360, 900, 900],
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p05/grownup/base-adult-1.svg",
+                "skinMask": "pages/p05/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p05/grownup/base-adult-1-brows.svg",
+                "occluder": {
+                  "asset": "pages/p05/grownup/occluder-adult-1.svg",
+                  "skinMask": "pages/p05/grownup/occluder-adult-1-skin.svg"
+                }
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p05/grownup/base-adult-2.svg",
+                "skinMask": "pages/p05/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p05/grownup/base-adult-2-brows.svg",
+                "occluder": {
+                  "asset": "pages/p05/grownup/occluder-adult-2.svg",
+                  "skinMask": "pages/p05/grownup/occluder-adult-2-skin.svg"
+                }
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/grownup/adult-1-short.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/grownup/adult-1-curly.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/grownup/adult-1-long.svg",
+                "at": [196, 4, 804, 508],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/grownup/adult-1-glasses-round.svg",
+                "at": [358, 185, 642, 295],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p05/grownup/adult-2-short.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p05/grownup/adult-2-curly.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p05/grownup/adult-2-long.svg",
+                "at": [162, 15, 838, 495],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p05/grownup/adult-2-glasses-round.svg",
+                "at": [342, 187, 658, 292],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          }
         ]
       }
     },
@@ -116,15 +1067,200 @@
       "pageId": "p06",
       "layout": "art-left/text-right",
       "text": [
-        { "style": "body", "content": "Back home, {{grownup.name}} tucked {{hero.them}} into bed." },
-        { "style": "body", "content": "“Same time tomorrow?” asked {{hero.name}}. And the Moon winked." }
+        {"style": "body", "content": "Back home, {{grownup.name}} tucked {{hero.them}} into bed."},
+        {"style": "body", "content": "“Same time tomorrow?” asked {{hero.name}}. And the Moon winked."}
       ],
       "illustration": {
         "layers": [
-          { "kind": "art", "asset": "pages/p06/background.svg" },
-          { "kind": "character", "slotId": "grownup", "box": [230, 30, 900, 420], "direction": "leaning over the bed, tucking in the blanket, smiling softly" },
-          { "kind": "character", "slotId": "hero", "box": [470, 380, 680, 900], "direction": "lying in bed under the blanket, sleepy, head on the pillow" },
-          { "kind": "art", "asset": "pages/p06/foreground.svg" }
+          {"kind": "art", "asset": "pages/p06/background.svg"},
+          {
+            "kind": "figure",
+            "slotId": "grownup",
+            "box": [30, 230, 420, 900],
+            "bases": [
+              {
+                "face": "face:adult-1",
+                "asset": "pages/p06/grownup/base-adult-1.svg",
+                "skinMask": "pages/p06/grownup/base-adult-1-skin.svg",
+                "browMask": "pages/p06/grownup/base-adult-1-brows.svg"
+              },
+              {
+                "face": "face:adult-2",
+                "asset": "pages/p06/grownup/base-adult-2.svg",
+                "skinMask": "pages/p06/grownup/base-adult-2-skin.svg",
+                "browMask": "pages/p06/grownup/base-adult-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/grownup/adult-1-short.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/grownup/adult-1-curly.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/grownup/adult-1-long.svg",
+                "at": [176, 2, 824, 236],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/grownup/adult-1-glasses-round.svg",
+                "at": [349, 86, 651, 137],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/grownup/adult-2-short.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/grownup/adult-2-curly.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/grownup/adult-2-long.svg",
+                "at": [140, 7, 860, 231],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:adult-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/grownup/adult-2-glasses-round.svg",
+                "at": [332, 87, 668, 136],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {
+            "kind": "figure",
+            "slotId": "hero",
+            "box": [380, 470, 900, 680],
+            "partOrder": ["glasses", "hair"],
+            "bases": [
+              {
+                "face": "face:child-1",
+                "asset": "pages/p06/hero/base-child-1.svg",
+                "skinMask": "pages/p06/hero/base-child-1-skin.svg",
+                "browMask": "pages/p06/hero/base-child-1-brows.svg"
+              },
+              {
+                "face": "face:child-2",
+                "asset": "pages/p06/hero/base-child-2.svg",
+                "skinMask": "pages/p06/hero/base-child-2-skin.svg",
+                "browMask": "pages/p06/hero/base-child-2-brows.svg"
+              }
+            ],
+            "parts": [
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/hero/child-1-short.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/hero/child-1-curly.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/hero/child-1-long.svg",
+                "at": [485, 120, 1000, 824],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-1",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/hero/child-1-glasses-round.svg",
+                "at": [627, 373, 876, 527],
+                "palette": "none",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:short",
+                "asset": "pages/p06/hero/child-2-short.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:curly",
+                "asset": "pages/p06/hero/child-2-curly.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "hair",
+                "option": "hair:long",
+                "asset": "pages/p06/hero/child-2-long.svg",
+                "at": [522, 103, 980, 843],
+                "palette": "hairColour",
+                "approved": true
+              },
+              {
+                "face": "face:child-2",
+                "axis": "glasses",
+                "option": "glasses:round",
+                "asset": "pages/p06/hero/child-2-glasses-round.svg",
+                "at": [644, 369, 858, 531],
+                "palette": "none",
+                "approved": true
+              }
+            ]
+          },
+          {"kind": "art", "asset": "pages/p06/foreground.svg"}
         ]
       }
     }

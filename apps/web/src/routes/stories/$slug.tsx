@@ -1,15 +1,34 @@
-import { exampleCast, NotAuthenticated, NotFound, resolvePageText, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, Link, notFound, redirect, useHydrated } from "@tanstack/react-router";
-import { useState } from "react";
+import {
+  curatedLooks,
+  facesForAge,
+  type Look,
+  Look as LookSchema,
+  type LookAxis,
+  lookVocabulary,
+  NotAuthenticated,
+  NotFound,
+  resolvePageText,
+  storyAssetKey,
+  unwrapResult,
+} from "@lifestory/core/contracts";
+import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter } from "@tanstack/react-router";
+import { Schema } from "effect";
+import { useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+import { NativeSelect } from "~/components/ui/native-select";
 import { getStoryPreviewFn, StoryPreviewResult } from "~/server/functions";
 
-// A story's pages as the author made them, each character slot filled by the
-// slot's example character. Families see their own cast once they personalize it.
+// Looks for the preview, per slot, kept in the URL so a preview with a chosen look can be shared and reloaded.
+const PreviewSearch = Schema.Struct({ looks: Schema.optional(Schema.Record(Schema.String, LookSchema)) });
+
+// A story's pages as the author made them, each character slot filled by the slot's example character, or by a
+// look picked here. Families see their own cast once they personalize the book.
 export const Route = createFileRoute("/stories/$slug")({
-  loader: async ({ params }) => {
+  validateSearch: Schema.toStandardSchemaV1(PreviewSearch),
+  loaderDeps: ({ search }) => ({ looks: search.looks }),
+  loader: async ({ params, deps }) => {
     try {
-      return unwrapResult(StoryPreviewResult)(await getStoryPreviewFn({ data: { slug: params.slug } }));
+      return unwrapResult(StoryPreviewResult)(await getStoryPreviewFn({ data: { slug: params.slug, looks: deps.looks } }));
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       if (error instanceof NotFound) throw notFound();
@@ -19,14 +38,32 @@ export const Route = createFileRoute("/stories/$slug")({
   component: StoryPreview,
 });
 
+const axisLabels: Record<LookAxis, string> = { face: "Face", skin: "Skin", hair: "Hair", hairColour: "Hair colour", glasses: "Glasses" };
+
 function StoryPreview() {
-  const { story, version, manifest } = Route.useLoaderData();
+  const { story, version, manifest, cast, pages } = Route.useLoaderData();
+  const { slug } = Route.useParams();
+  const router = useRouter();
   const [guides, setGuides] = useState(false);
-  // A click before React hydrates would be lost, so the toggle waits for it.
+  // A click before React hydrates would be lost, so the controls wait for it.
   const hydrated = useHydrated();
-  const cast = exampleCast(manifest);
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const { widthIn, heightIn } = manifest.trim;
+
+  // The picker's own record of the chosen looks. The loader data and the router's resolved search both lag behind
+  // while pages recompose, so each change builds on this instead and a change made during a load isn't lost.
+  const search = Route.useSearch();
+  // The state renders the controls; the ref lets changes arriving faster than renders build on each other.
+  const [chosen, setChosen] = useState<Record<string, Look>>(search.looks ?? {});
+  const latest = useRef(chosen);
+  const lookOf = (slotId: string): Look => chosen[slotId] ?? cast[slotId]!.look;
+  const setLook = (slotId: string, change: Partial<Look>) => {
+    const current = (id: string) => latest.current[id] ?? cast[id]!.look;
+    const looks = Object.fromEntries(Object.keys(cast).map((id) => [id, current(id)]));
+    latest.current = { ...looks, [slotId]: { ...current(slotId), ...change } };
+    setChosen(latest.current);
+    void router.navigate({ to: "/stories/$slug", params: { slug }, search: { looks: latest.current }, replace: true });
+  };
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
@@ -39,21 +76,60 @@ function StoryPreview() {
         <p className="text-muted-foreground text-sm" data-testid="story-meta">
           by {story.authorName} · version {version} · {widthIn} × {heightIn} in · {manifest.pages.length} pages
         </p>
-        <p className="text-sm">
-          Previewed with{" "}
-          {manifest.characterSlots.map((slot, i) => (
-            <span key={slot.slotId}>
-              {i > 0 && (i === manifest.characterSlots.length - 1 ? " and " : ", ")}
-              <strong>{slot.example.name}</strong> as {slot.label.toLowerCase()}
-            </span>
-          ))}
-          .
-        </p>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={guides} disabled={!hydrated} onChange={(event) => setGuides(event.target.checked)} />
-          Show trim and safe area
+          Show trim, safe area, and figure boxes
         </label>
       </header>
+
+      <section className="grid gap-4 md:grid-cols-2" aria-label="Characters">
+        {manifest.characterSlots.map((slot) => {
+          const member = cast[slot.slotId]!;
+          const options = (axis: LookAxis) =>
+            axis === "face" ? lookVocabulary.face.filter((option) => facesForAge(slot.age).includes(option.id)) : lookVocabulary[axis];
+          return (
+            <fieldset key={slot.slotId} className="flex flex-col gap-2 rounded-md border p-3" data-testid={`look-${slot.slotId}`}>
+              <legend className="px-1 text-sm font-medium">
+                {member.name} as {slot.label.toLowerCase()}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {curatedLooks
+                  .filter((curated) => facesForAge(slot.age).includes(curated.look.face))
+                  .map((curated) => (
+                    <button
+                      key={curated.id}
+                      type="button"
+                      disabled={!hydrated}
+                      onClick={() => setLook(slot.slotId, curated.look)}
+                      className="rounded-full border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
+                    >
+                      {curated.label}
+                    </button>
+                  ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(axisLabels) as Array<LookAxis>).map((axis) => (
+                  <label key={axis} className="flex flex-col gap-1 text-xs">
+                    {axisLabels[axis]}
+                    <NativeSelect
+                      aria-label={`${slot.label}: ${axisLabels[axis]}`}
+                      value={lookOf(slot.slotId)[axis]}
+                      disabled={!hydrated}
+                      onChange={(event) => setLook(slot.slotId, { [axis]: event.target.value } as Partial<Look>)}
+                    >
+                      {options(axis).map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          );
+        })}
+      </section>
 
       <ol className="grid gap-8 md:grid-cols-2">
         {manifest.pages.map((page, i) => (
@@ -64,8 +140,8 @@ function StoryPreview() {
                   manifest={manifest}
                   page={page}
                   text={resolvePageText(page, cast)}
+                  illustration={pages[i]!.layers.map((layer) => ({ url: `/api/files/${layer.key}`, rect: layer.rect }))}
                   cast={cast}
-                  assetUrl={assetUrl}
                   guides={guides}
                 />
               </ScaledPage>
