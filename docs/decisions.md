@@ -124,6 +124,10 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
   option in place on the base (with a turnaround sheet per option for consistency), cuts it out by comparison with the
   base inside the head zone, and splits it by region. Skin and hair colour are a version-pinned recolour, not AI. The
   picker starts from a few curated looks and refines one feature at a time.
+- **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, pronouns and a look,
+  and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
+  and the picker"); a story declares which options each role supports, and an unsupported option falls back to the
+  role's default with a notice in the editor.
 - **Why:** no children's photos to store or protect, and nothing near the license's biometric and digital-replica
   limits; a human reviews every image before families see it (the §2e content-review condition); consistent, print-
   quality art. With no user data, hosted image APIs are also allowed as authoring providers.
