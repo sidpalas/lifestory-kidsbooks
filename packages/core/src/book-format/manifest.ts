@@ -457,6 +457,9 @@ export interface CastLook {
   readonly unsupported: ReadonlyArray<keyof Look>;
 }
 
+/** A character's saved look as one book draws it: `changes` replaces the axes a parent changed for that book (D46). */
+export const withLookChanges = (look: Look, changes: LookOverride): Look => ({ ...look, ...changes });
+
 /**
  * How a character fills `slotId` in this story version (D26). The override replaces only options the story can't
  * draw, so a look edit back to a supported option takes effect again on its own.

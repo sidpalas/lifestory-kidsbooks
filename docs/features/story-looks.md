@@ -2,16 +2,20 @@
 
 ## What it is
 
-A story draws each family member's look with its own approved parts and palettes (D26). On a story's preview the
-"Characters" section sets each role's look (curated looks and one select per axis), and every page recomposes and
-recolours its figures. Use it to review a story's art across the range of looks: new parts, palettes, additions
-(D41), or recolouring changes.
+A story draws each family member's look with its own approved parts and palettes (D26). "Who's in this book"
+chooses family members and previews their saved looks immediately. "Change look for this book" opens the character
+builder's visual picker with compatible options; these changes stay in the preview until "Make the book" saves
+them on that book, never on the family member (D46). "Use <name>'s saved look" resets the book's changes.
+Alternatively, "Try looks on <name>, the story's example" opens a separate visual picker for reviewing the story's
+art across new parts, palettes, additions (D41), or recolouring changes.
 
 ## Routes and roles
 
-- `/stories/<slug>`: the selects are labelled `<Role label>: <Axis>`, e.g. `The child: Hair colour`. Looks live in
-  the URL (`?looks=`), so nothing is saved.
-- Any signed-in member can preview a published story.
+- `/stories/<slug>`: role selects choose family members or the story's example. Visual pickers show each option as
+  a portrait or colour swatch. Cast, example looks and book-only changes live in the URL; nothing is saved yet.
+- Any signed-in member can preview a published story; only owners and parents can make a book.
+- `/books/<id>`: owners and parents can change the book-only look, reset it, or edit the separate saved family look.
+  Viewers read the book without editing.
 
 ## Seed data
 

@@ -1,9 +1,9 @@
-// verify proof: docs/features/pdf-proof.md. On a story's preview page, presses "Make a PDF proof", waits for the
+// verify proof: docs/features/pdf-proof.md. Opens or makes a family's book, presses "Make a PDF proof", waits for the
 // worker to render it, downloads it, and checks it three ways:
 //   print-ready   checkPrintReady against Lulu's requirements (D35)
 //   pixels        each editor page (full Chromium) against the same PDF page (pdftoppm), both at 96 dpi
 //   words         each word's left edge and line in the editor against pdftotext's word boxes
-// It writes one proof row in the signed-in account's family (on live, the agent family's, D38).
+// It writes one proof row, and a book if needed, in the signed-in account's family (on live, the agent family's, D38).
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import sharp from "sharp";
@@ -29,7 +29,7 @@ interface Word {
 /** Words of every page as the editor lays them out, in pt from the page's top-left, unscaled. */
 const domWords = (page: import("@playwright/test").Page) =>
   page.evaluate(() =>
-    [...document.querySelectorAll("[data-testid=book-page]")].map((sheet) => {
+    [...document.querySelectorAll('section[aria-label="All pages"] [data-testid=book-page]')].map((sheet) => {
       const box = sheet.getBoundingClientRect();
       const scale = box.width / (sheet as HTMLElement).offsetWidth;
       const words: Array<{ text: string; x: number; y: number }> = [];
@@ -71,10 +71,19 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
   await page.setViewportSize({ width: 1800, height: 1000 });
   try {
     await page.goto(`/stories/${options.story}`);
-    const sheets = page.getByTestId("book-page");
-    await sheets.first().waitFor({ timeout: 30_000 });
+    await page.getByTestId("book-page").first().waitFor({ timeout: 30_000 });
+    const trim = await page.getByTestId("story-meta").evaluate((meta) => {
+      const [, w, h] = meta.textContent!.match(/([\d.]+) × ([\d.]+) in/) ?? [];
+      return { widthIn: Number(w), heightIn: Number(h) };
+    });
+    const existing = page.getByTestId("story-books").getByRole("link").first();
+    if (await existing.count()) await existing.click();
+    else await page.getByRole("button", { name: "Make the book", exact: true }).click();
+    await page.waitForURL(/\/books\/book_/);
+    const sheets = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
+    await sheets.first().waitFor();
     const pageCount = await sheets.count();
-    report.check("route", true, `/stories/${options.story} as ${stack.who}: ${pageCount} pages`);
+    report.check("route", true, `${new URL(page.url()).pathname} of ${options.story} as ${stack.who}: ${pageCount} pages`);
 
     // Request a proof the way a parent does, then wait for the worker.
     const proofs = page.getByTestId("proof");
@@ -95,16 +104,11 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
 
     // Imported on use: @lifestory/core is big, and the other commands don't need it.
     const { checkPrintReady } = await import("@lifestory/core");
-    const trim = await page.evaluate(() => {
-      const meta = document.querySelector("[data-testid=story-meta]")?.textContent ?? "";
-      const [, w, h] = meta.match(/([\d.]+) × ([\d.]+) in/) ?? [];
-      return { widthIn: Number(w), heightIn: Number(h) };
-    });
     const ready = await checkPrintReady(pdf, trim);
     writeFileSync(report.file("print-ready.json"), `${JSON.stringify(ready, null, 2)}\n`);
     report.check("print-ready", ready.issues.length === 0 && ready.pages === pageCount, ready.issues.length ? ready.issues.join("; ") : `${ready.pages} pages, fonts ${ready.fonts.join(", ")}, art at ${[...new Set(ready.images.map((i) => i.ppi))].join("/")} ppi`);
 
-    // The editor's pages at full size: undo the preview's 0.5 scale so each page is 8.75 in = 840 CSS px.
+    // The editor's pages at full size: undo thumbnail scaling so each page is 8.75 in = 840 CSS px.
     await page.evaluate(() => {
       for (const sheet of document.querySelectorAll<HTMLElement>("[data-testid=book-page]")) {
         const inner = sheet.parentElement!;

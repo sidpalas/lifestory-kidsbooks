@@ -67,6 +67,12 @@ export const bookCast = pgTable(
      * "a story-specific override with a supported option"). Applies only while the character's option is unsupported.
      */
     lookOverride: jsonb("look_override"),
+    /**
+     * Options this book draws instead of the character's saved ones, whatever the story can draw (D46): the parent
+     * styles them for this book without changing the family member. Only the changed axes, never age; the rest
+     * follows the saved look. Stand-ins (`look_override`) apply on top, for options still undrawable.
+     */
+    lookChanges: jsonb("look_changes"),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.bookId, t.slotId] }), index("book_cast_character_idx").on(t.characterId)],

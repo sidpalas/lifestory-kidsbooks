@@ -7,6 +7,8 @@ import {
   type CastMember,
   castLook,
   decodeStoryManifest,
+  type LookOverride,
+  withLookChanges,
   mergeAdditions,
   StoryAddition,
   isVariableFont,
@@ -104,6 +106,14 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
   return { story: story satisfies StorySummary, storyVersionId, version, manifest, additionRevision };
 });
 
+/** What a story preview casts: see previewRoles. */
+export interface PreviewChoice {
+  readonly cast?: Readonly<Record<string, string>>;
+  readonly looks?: Readonly<Record<string, Look>>;
+  /** Per role, how the book would draw its family member differently from their saved look (D46); not saved. */
+  readonly changes?: Readonly<Record<string, LookOverride>>;
+}
+
 /**
  * Who a story preview casts in each role. `looks[slotId]` tries a look on the role's example character;
  * otherwise `cast[slotId]` names one of `characters`; a role with neither gets the first family member of an age it
@@ -112,7 +122,7 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
 export const previewRoles = (
   manifest: StoryManifest,
   characters: ReadonlyArray<Character>,
-  choice: { readonly cast?: Readonly<Record<string, string>>; readonly looks?: Readonly<Record<string, Look>> },
+  choice: PreviewChoice,
 ): Array<PreviewRole> =>
   manifest.characterSlots.map((slot) => {
     const tried = choice.looks?.[slot.slotId];
@@ -122,11 +132,12 @@ export const previewRoles = (
       : chosen
         ? characters.find((candidate) => candidate.id === chosen)
         : characters.find((candidate) => slot.ages.includes(candidate.look.age));
+    const changes = (character && choice.changes?.[slot.slotId]) || {};
     const member: CastMember = character
-      ? { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: character.look }
+      ? { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: withLookChanges(character.look, changes) }
       : { ...slot.example, look: tried ?? slot.example.look };
     const fill = castLook(manifest, slot.slotId, member.look);
-    return { slotId: slot.slotId, characterId: character?.id ?? null, member, wrongAge: fill.wrongAge, unsupported: [...fill.unsupported] };
+    return { slotId: slot.slotId, characterId: character?.id ?? null, member, changes, wrongAge: fill.wrongAge, unsupported: [...fill.unsupported] };
   });
 
 /**
@@ -139,7 +150,7 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
   userId: string,
   slug: string,
   characters: ReadonlyArray<Character>,
-  choice: { readonly cast?: Readonly<Record<string, string>>; readonly looks?: Readonly<Record<string, Look>> } = {},
+  choice: PreviewChoice = {},
 ) {
   const { story, version, manifest } = yield* readableStoryVersion(userId, slug);
   const roles = previewRoles(manifest, characters, choice);

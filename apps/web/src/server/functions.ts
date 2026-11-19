@@ -2,6 +2,7 @@ import {
   NotAuthenticated,
   CastMember,
   Look,
+  LookOverride,
   NotFound,
   ResultSchema,
   StoryManifest,
@@ -85,6 +86,8 @@ export const PreviewChoice = Schema.Struct({
   cast: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   /** A look tried on a role's example character; wins over `cast`. */
   looks: Schema.optional(Schema.Record(Schema.String, Look)),
+  /** How the book would draw a role's family member differently from their saved look (D46); not saved. */
+  changes: Schema.optional(Schema.Record(Schema.String, LookOverride)),
 });
 
 /** A story's pages with the family's members in its roles, or the examples with looks being tried. */
@@ -98,7 +101,7 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
         const { active } = yield* activeFamily(user);
         const { characters, canEdit } = active ? yield* listCharacters(user.id, active.id) : { characters: [], canEdit: false };
         const { books } = active ? yield* listBooks(user.id, active.id) : { books: [] };
-        const preview = yield* getStoryPreview(user.id, data.slug, characters, { cast: data.cast, looks: data.looks });
+        const preview = yield* getStoryPreview(user.id, data.slug, characters, { cast: data.cast, looks: data.looks, changes: data.changes });
         return { ...preview, characters, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
       }),
     ),

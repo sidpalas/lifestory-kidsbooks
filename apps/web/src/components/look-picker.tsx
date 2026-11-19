@@ -114,14 +114,19 @@ export function LookPicker({
   onChange,
   disabled,
   ages,
+  offers,
 }: {
   look: Look;
   pronouns: PronounSet;
   onChange: (look: Look) => void;
   disabled?: boolean;
   ages?: ReadonlyArray<Look["age"]>;
+  /** Whether to offer `option` for `axis`, such as only what a story draws (D46). Every option by default. */
+  offers?: (axis: LookAxis, option: string) => boolean;
 }) {
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
+  const offered = <T extends { id: string }>(axis: LookAxis, options: ReadonlyArray<T>) => (offers ? options.filter((option) => offers(axis, option.id)) : options);
+  const fits = (curated: { look: Look }) => !offers || (Object.keys(curated.look) as Array<LookAxis>).every((axis) => axis === "age" || offers(axis, curated.look[axis]));
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
   const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", ...(hasFeatures(look.age) ? ["features"] : []), "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
@@ -165,14 +170,14 @@ export function LookPicker({
           ))}
         </Step>
         <Step title={step("Start from a look", "Start from a look")}>
-          {orderedCuratedLooks(look.age, pronouns).map((curated) => (
+          {orderedCuratedLooks(look.age, pronouns).filter(fits).map((curated) => (
               <Choice key={curated.id} pressed={same(curated.look, look)} label={curated.label} disabled={disabled} onClick={() => onChange(curated.look)}>
                 <Thumb look={curated.look} label={curated.label} />
               </Choice>
             ))}
         </Step>
         <Step title={step("face", axisLabels.face)}>
-          {lookVocabulary.face.map((option) => (
+          {offered("face", lookVocabulary.face).map((option) => (
             <Choice key={option.id} pressed={look.face === option.id} label={option.label} disabled={disabled} onClick={() => set({ face: option.id })}>
               <Thumb look={{ ...look, face: option.id }} label={option.label} />
             </Choice>
@@ -180,7 +185,7 @@ export function LookPicker({
         </Step>
         {hasFeatures(look.age) && (
           <Step title={step("features", axisLabels.features)}>
-            {lookVocabulary.features.map((option) => (
+            {offered("features", lookVocabulary.features).map((option) => (
               <Choice key={option.id} pressed={look.features === option.id} label={option.label} disabled={disabled} onClick={() => set({ features: option.id })}>
                 <Thumb look={{ ...look, features: option.id }} label={option.label.replace(" features", "")} />
               </Choice>
@@ -188,7 +193,7 @@ export function LookPicker({
           </Step>
         )}
         <Step title={step("skin", axisLabels.skin)}>
-          {lookVocabulary.skin.map((option) => (
+          {offered("skin", lookVocabulary.skin).map((option) => (
             <Choice key={option.id} round pressed={look.skin === option.id} label={`${option.label} skin`} disabled={disabled} onClick={() => set({ skin: option.id })}>
               <span className="block size-8" style={{ background: option.swatch }} />
             </Choice>
@@ -196,7 +201,7 @@ export function LookPicker({
         </Step>
         {drawn.includes("hair") && (
           <Step title={step("hair", axisLabels.hair)}>
-            {orderedHairstyles(pronouns).map((option) => (
+            {offered("hair", orderedHairstyles(pronouns)).map((option) => (
               <Choice key={option.id} pressed={look.hair === option.id} label={`${option.label} hair`} disabled={disabled} onClick={() => set({ hair: option.id })}>
                 <Thumb look={{ ...look, hair: option.id }} label={option.label} />
               </Choice>
@@ -204,7 +209,7 @@ export function LookPicker({
           </Step>
         )}
         <Step title={step("hairColour", axisLabels.hairColour)}>
-          {lookVocabulary.hairColour.map((option) => (
+          {offered("hairColour", lookVocabulary.hairColour).map((option) => (
             <Choice key={option.id} round pressed={look.hairColour === option.id} label={`${option.label} hair colour`} disabled={disabled} onClick={() => set({ hairColour: option.id })}>
               <span className="block size-8" style={{ background: option.swatch }} />
             </Choice>
@@ -212,7 +217,7 @@ export function LookPicker({
         </Step>
         {drawn.includes("facialHair") && (
           <Step title={step("facialHair", axisLabels.facialHair)}>
-            {lookVocabulary.facialHair.map((option) => (
+            {offered("facialHair", lookVocabulary.facialHair).map((option) => (
               <Choice key={option.id} pressed={look.facialHair === option.id} label={option.label} disabled={disabled} onClick={() => set({ facialHair: option.id })}>
                 <Thumb look={{ ...look, facialHair: option.id }} label={option.id === "facial-hair:none" ? "None" : option.label} />
               </Choice>
@@ -221,7 +226,7 @@ export function LookPicker({
         )}
         {drawn.includes("glasses") && (
           <Step title={step("glasses", axisLabels.glasses)}>
-            {lookVocabulary.glasses.map((option) => (
+            {offered("glasses", lookVocabulary.glasses).map((option) => (
               <Choice key={option.id} pressed={look.glasses === option.id} label={option.label} disabled={disabled} onClick={() => set({ glasses: option.id })}>
                 <Thumb look={{ ...look, glasses: option.id }} label={option.label} />
               </Choice>

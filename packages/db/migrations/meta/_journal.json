@@ -99,6 +99,13 @@
       "when": 1795110277959,
       "tag": "0013_story_version_additions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795116889425,
+      "tag": "0014_book_look_changes",
+      "breakpoints": true
     }
   ]
 }

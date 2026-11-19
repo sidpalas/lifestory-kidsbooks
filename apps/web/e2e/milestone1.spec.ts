@@ -134,7 +134,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
 
   // 5. A look change applies on every page right away: Ada is on all six, so each page gets a recoloured layer.
   const before = await pageSources(owner);
-  await owner.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
+  await owner.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await owner.getByRole("button", { name: "Blonde hair colour" }).click();
   await owner.getByRole("button", { name: "Save changes" }).click();
   // Saving returns home; opening the book sooner can read the look from before the save.

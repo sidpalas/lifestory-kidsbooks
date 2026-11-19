@@ -1,5 +1,5 @@
 // verify looks: docs/features/story-looks.md. On a story's preview page, sets every role to the lightest and then the
-// darkest skin with each hair colour, through the page's own look selects, and draws a contact sheet: one row per
+// darkest skin with each hair colour, through the page's visual example pickers, and draws a contact sheet: one row per
 // combination, one column per page. Checks every layer loads and every combination recolours the figures. Writes
 // nothing (looks live in the URL).
 import sharp from "sharp";
@@ -16,9 +16,9 @@ export const looks = async (stack: Stack, report: Report, options: { story: stri
   try {
     await page.goto(`/stories/${options.story}`);
     await page.getByTestId("book-page").first().waitFor({ timeout: 30_000 });
-    const roles = await page.locator("[data-testid^=look-]").evaluateAll((sets) =>
-      sets.map((set) => set.querySelector("select")!.getAttribute("aria-label")!.split(":")[0]!),
-    );
+    const roles = await page.getByRole("list", { name: "Roles" }).locator("select").evaluateAll((selects) => selects.map((select) => select.id.replace("cast-", "")));
+    for (const role of roles) await page.locator(`#cast-${role}`).selectOption("example");
+    for (const role of roles) await page.getByTestId(`try-${role}`).waitFor();
     const skins = [lookVocabulary.skin[0], lookVocabulary.skin.at(-1)!];
     report.check("route", roles.length > 0, `/stories/${options.story}: roles ${roles.join(", ")}; skins ${skins.map((s) => s.label).join(" and ")} × ${lookVocabulary.hairColour.length} hair colours`, { fatal: true });
 
@@ -31,8 +31,9 @@ export const looks = async (stack: Stack, report: Report, options: { story: stri
     for (const skin of skins) {
       for (const colour of lookVocabulary.hairColour) {
         for (const role of roles) {
-          await page.getByLabel(`${role}: Skin`).selectOption(skin.id);
-          await page.getByLabel(`${role}: Hair colour`).selectOption(colour.id);
+          const picker = page.getByTestId(`try-${role}`);
+          await picker.getByRole("button", { name: `${skin.label} skin`, exact: true }).click();
+          await picker.getByRole("button", { name: `${colour.label} hair colour`, exact: true }).click();
         }
         // The pages recompose on the server (recolouring each layer the first time), then the layer URLs change.
         const layerSources = () => page.getByTestId("book-page").evaluateAll((pages) => pages.map((p) => [...p.querySelectorAll("img")].map((img) => img.getAttribute("src")).join("|")).join("\n"));

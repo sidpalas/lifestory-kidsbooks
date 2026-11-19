@@ -31,6 +31,7 @@ import {
   requestBookProof,
   saveTextEdit,
   setBookCast,
+  setBookLook,
   setLookOverride,
   updateCharacter,
 } from "@lifestory/core";
@@ -117,7 +118,11 @@ export const CreateBookResult = ResultSchema(
 );
 
 export const createBookFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String, cast: Schema.Record(Schema.String, Schema.String) })))
+  .validator(
+    Schema.toStandardSchemaV1(
+      Schema.Struct({ slug: Schema.String, cast: Schema.Record(Schema.String, Schema.String), looks: Schema.optional(Schema.Record(Schema.String, LookOverride)) }),
+    ),
+  )
   .handler(({ data }) =>
     runEffect(
       CreateBookResult,
@@ -161,6 +166,11 @@ export const setLookOverrideFn = createServerFn({ method: "POST" })
   .handler(({ data }) =>
     runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => setLookOverride(user.id, data)), done)),
   );
+
+/** How this book draws a role's character instead of their saved look (D46); `{}` goes back to the saved look. */
+export const setBookLookFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, changes: LookOverride })))
+  .handler(({ data }) => runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => setBookLook(user.id, data)), done)));
 
 export const saveTextEditFn = createServerFn({ method: "POST" })
   .validator(

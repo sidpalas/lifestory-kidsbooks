@@ -125,7 +125,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
 
   // A change to the character's look applies on every page: all 6 of Ada's appearances, and nothing else.
   const before = await pageSources(page);
-  await page.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
+  await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Blonde hair colour" }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
   // Saving returns home; opening the book sooner can read the look from before the save.
@@ -142,7 +142,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
 
   // Ada grows up: the child's role accepts young and older children, not adults, so her figures leave the pages and
   // the editor asks for someone else; the text still names her (D26, D29: no fallback to another age).
-  await page.getByTestId("role-hero").getByRole("link", { name: "Change look" }).click();
+  await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Adult", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
   // Saving returns home; opening the book sooner can read the look from before the save.
@@ -196,14 +196,71 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(page.getByTestId("story-books").getByRole("link", { name: new RegExp(child) })).toHaveAttribute("href", bookUrl);
   await page.goto("/");
   const remove = page.getByRole("button", { name: new RegExp(`^Delete The Moon Picnic with .*${child}`) });
-  page.once("dialog", (dialog) => void dialog.dismiss());
+  const cancel = page.waitForEvent("dialog").then((dialog) => dialog.dismiss());
   await remove.click();
+  await cancel;
   await expect(remove).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.accept());
+  const confirm = page.waitForEvent("dialog").then((dialog) => dialog.accept());
   await remove.click();
+  await confirm;
   await expect(remove).toHaveCount(0);
   await expect(page.getByTestId("characters")).toContainText(child);
   await page.goto(bookUrl);
   await expect(page.getByText(/not found/i)).toBeVisible();
   await expect(page.getByRole("region", { name: "All pages" })).toHaveCount(0);
+});
+
+test("a parent styles a family member for one book before making it, without changing their saved look", async ({ page }) => {
+  test.setTimeout(90_000);
+  const id = unique();
+  const child = `Wren ${id}`;
+  await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
+  await addCharacter(page, child, "she/her", "Young child", "Long blonde hair");
+  await addCharacter(page, `Ash ${id}`, "he/him", "Adult", "Short blonde hair, glasses");
+  await page.goto("/stories/the-moon-picnic");
+  const roles = page.getByRole("list", { name: "Roles" });
+  await roles.getByLabel(/The child/).selectOption({ label: child });
+  await roles.getByLabel(/A grown-up/).selectOption({ label: `Ash ${id}` });
+  const preview = page.getByRole("region", { name: "Pages" }).getByTestId("book-page");
+  await expect(page.getByTestId("pages-heading")).toHaveText(`The pages with ${child} and Ash ${id}`);
+  await expect(page.getByRole("button", { name: "Make the book" })).toBeEnabled();
+  await imagesLoaded(page);
+  const sources = () => preview.locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")!));
+  const before = await sources();
+
+  // Red hair for this book only: the preview redraws her figures, and nothing is saved yet.
+  await page.getByTestId("role-hero").getByRole("button", { name: "Change look for this book" }).click();
+  const picker = page.getByTestId("book-look-hero");
+  // Her own age only: an age change would draw someone else.
+  await expect(picker.getByRole("group", { name: /Age/ }).getByRole("button")).toHaveText([/Young child/]);
+  await picker.getByRole("button", { name: "Red hair colour" }).click();
+  await expect(page).toHaveURL(/hair-colour%3Ared|hair-colour:red/);
+  await expect(page.getByTestId("look-note-hero")).toContainText("a look for this book only");
+  await expect.poll(async () => (await sources()).filter((src) => !before.includes(src)).length, { timeout: 30_000 }).toBeGreaterThan(0);
+  await imagesLoaded(page);
+  const styled = await sources();
+  expect(styled).toHaveLength(before.length);
+
+  // Making the book keeps it; her saved look stays blonde.
+  await page.getByRole("button", { name: "Make the book" }).click();
+  await expect(page).toHaveURL(/\/books\/book_/);
+  const bookUrl = page.url();
+  await expect(page.getByTestId("look-note-hero")).toBeVisible();
+  await expect(page.getByRole("region", { name: "All pages" }).getByTestId("book-page")).toHaveCount(6);
+  await imagesLoaded(page);
+  expect((await pageSources(page)).flat().filter((src) => src!.includes("/recoloured/")).toSorted()).toEqual(
+    styled.filter((src) => src.includes("/recoloured/")).toSorted(),
+  );
+  await page.goto("/");
+  await expect(page.getByTestId("characters").getByRole("link", { name: new RegExp(child) }).locator("img")).toHaveAttribute("src", /hair-colour%3Ablonde/);
+
+  // Back to her saved look in the book.
+  await page.goto(bookUrl);
+  const bookPicker = page.getByTestId("book-look-hero");
+  await bookPicker.getByRole("button", { name: "Brown hair colour" }).click();
+  await expect(page.getByTestId("role-hero").locator("img")).toHaveAttribute("src", /hair-colour%3Abrown/);
+  await page.reload();
+  await expect(bookPicker.getByRole("button", { name: "Brown hair colour" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId(`book-look-hero`).getByRole("button", { name: `Use ${child}'s saved look` }).click();
+  await expect(page.getByTestId("look-note-hero")).toHaveCount(0);
 });

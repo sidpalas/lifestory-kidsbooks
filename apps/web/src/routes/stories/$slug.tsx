@@ -1,8 +1,9 @@
-import { type Look, NotAuthenticated, NotFound, resolvePageText, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
+import { type Look, type LookOverride, NotAuthenticated, NotFound, resolvePageText, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter, useRouterState } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+import { BookLookPicker } from "~/components/book-look";
 import { LookPicker } from "~/components/look-picker";
 import { EXAMPLE, StoryCast } from "~/components/make-book";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -13,7 +14,7 @@ import { getStoryPreviewFn, PreviewChoice, StoryPreviewResult } from "~/server/f
 // reloaded. Making the book keeps the cast; proofs belong to the book.
 export const Route = createFileRoute("/stories/$slug")({
   validateSearch: Schema.toStandardSchemaV1(PreviewChoice),
-  loaderDeps: ({ search }) => ({ cast: search.cast, looks: search.looks }),
+  loaderDeps: ({ search }) => ({ cast: search.cast, looks: search.looks, changes: search.changes }),
   loader: async ({ params, deps }) => {
     try {
       return unwrapResult(StoryPreviewResult)(await getStoryPreviewFn({ data: { slug: params.slug, ...deps } }));
@@ -26,7 +27,10 @@ export const Route = createFileRoute("/stories/$slug")({
   component: StoryPreview,
 });
 
-type Choice = { cast: Record<string, string>; looks: Record<string, Look> };
+/** An empty record stays out of the URL. */
+const orNone = <T extends object>(record: T) => (Object.keys(record).length > 0 ? record : undefined);
+
+type Choice = { cast: Record<string, string>; looks: Record<string, Look>; changes: Record<string, LookOverride> };
 
 // Half size is 420 px wide for an 8.5 in page, wider than a phone; a phone gets 0.4.
 const NARROW = "(max-width: 480px)";
@@ -53,7 +57,9 @@ function StoryPreview() {
   // pages recompose, so each change builds on this, and a change made during a load isn't lost. The state renders
   // the controls; the ref lets changes arriving faster than renders build on each other.
   const search = Route.useSearch();
-  const [choice, setChoice] = useState<Choice>({ cast: { ...search.cast }, looks: { ...search.looks } });
+  const [choice, setChoice] = useState<Choice>({ cast: { ...search.cast }, looks: { ...search.looks }, changes: { ...search.changes } });
+  // Which roles' "look in this book" pickers are open; a role with changes opens with the page.
+  const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(Object.keys(search.changes ?? {})));
   const latest = useRef(choice);
   const roleOf = (slotId: string) => roles.find((role) => role.slotId === slotId)!;
   const selected = (slotId: string) =>
@@ -62,16 +68,24 @@ function StoryPreview() {
     latest.current = change(latest.current);
     setChoice(latest.current);
     // Only the search changes: keep the reader where they are on the page.
-    const { cast: chosen, looks } = latest.current;
-    const next = { cast: Object.keys(chosen).length > 0 ? chosen : undefined, looks: Object.keys(looks).length > 0 ? looks : undefined };
+    const next = { cast: orNone(latest.current.cast), looks: orNone(latest.current.looks), changes: orNone(latest.current.changes) };
     void router.navigate({ to: "/stories/$slug", params: { slug }, search: next, replace: true, resetScroll: false });
   };
-  const onSelect = (slotId: string, value: string) =>
-    update(({ cast: chosen, looks }) => {
+  // Another member (or the example) drops the role's look changes: they were for the person picked before.
+  const onSelect = (slotId: string, value: string) => {
+    setStyling((open) => new Set([...open].filter((id) => id !== slotId)));
+    update(({ cast: chosen, looks, changes }) => {
       const { [slotId]: _, ...otherLooks } = looks;
-      if (value !== EXAMPLE) return { cast: { ...chosen, [slotId]: value }, looks: otherLooks };
+      const { [slotId]: __, ...otherChanges } = changes;
+      if (value !== EXAMPLE) return { cast: { ...chosen, [slotId]: value }, looks: otherLooks, changes: otherChanges };
       const slot = slots.find((candidate) => candidate.slotId === slotId)!;
-      return { cast: chosen, looks: { ...looks, [slotId]: slot.example.look } };
+      return { cast: chosen, looks: { ...looks, [slotId]: slot.example.look }, changes: otherChanges };
+    });
+  };
+  const setChanges = (slotId: string, changes: LookOverride) =>
+    update((current) => {
+      const { [slotId]: _, ...others } = current.changes;
+      return { ...current, changes: Object.keys(changes).length > 0 ? { ...others, [slotId]: changes } : others };
     });
   const tryLook = (slotId: string, look: Look) => update((current) => ({ ...current, looks: { ...current.looks, [slotId]: look } }));
 
@@ -101,8 +115,31 @@ function StoryPreview() {
         selected={selected}
         trying={(slotId) => choice.looks[slotId] !== undefined}
         onSelect={onSelect}
+        changes={(slotId) => choice.changes[slotId] ?? {}}
+        styling={(slotId) => styling.has(slotId)}
+        onStyle={(slotId) => setStyling((open) => new Set([...open, slotId]))}
         updating={updating}
       />
+
+      {slots.map((slot) => {
+        const character = characters.find((candidate) => candidate.id === selected(slot.slotId));
+        return (
+          character &&
+          styling.has(slot.slotId) && (
+            <BookLookPicker
+              key={slot.slotId}
+              manifest={manifest}
+              slotId={slot.slotId}
+              roleLabel={slot.label}
+              character={character}
+              changes={choice.changes[slot.slotId] ?? {}}
+              onChange={(changes) => setChanges(slot.slotId, changes)}
+              disabled={!hydrated}
+              note={canEdit ? "The pages below show it now; making the book keeps it." : "The pages below show it; nothing is saved."}
+            />
+          )
+        );
+      })}
 
       {trying.map((slot) => {
         const look = choice.looks[slot.slotId]!;

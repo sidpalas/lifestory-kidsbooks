@@ -90,6 +90,8 @@ export const BookRole = Schema.Struct({
   /** The character, with the look the pages draw. */
   member: CastMember,
   override: LookOverride,
+  /** How this book draws the character differently from their saved look (D46); already in `member.look`. */
+  changes: LookOverride,
   wrongAge: Schema.Boolean,
   unsupported: Schema.Array(Schema.String),
 });
@@ -102,7 +104,9 @@ export type BookRole = typeof BookRole.Type;
 export const PreviewRole = Schema.Struct({
   slotId: Schema.String,
   characterId: Schema.NullOr(Schema.String),
+  /** The member's look, as `member.look` draws it, with these axes changed for this book (D46). */
   member: CastMember,
+  changes: LookOverride,
   wrongAge: Schema.Boolean,
   unsupported: Schema.Array(Schema.String),
 });

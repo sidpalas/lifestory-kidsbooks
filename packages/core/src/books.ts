@@ -10,9 +10,10 @@ import {
   castLook,
   LookOverride,
   type StoryManifest,
+  withLookChanges,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
-import { ageLabel } from "./looks/vocabulary.ts";
+import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
 import { Character as CharacterSchema } from "./contracts.ts";
 import { Database } from "./database.ts";
@@ -25,6 +26,8 @@ import { readableStoryVersion, withStoredAdditions } from "./stories.ts";
 
 const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
 const decodeOverride = Schema.decodeUnknownEffect(LookOverride);
+/** No row value for no changes, so "drawn as saved" has one representation. */
+const lookChangesOrNull = (changes: LookOverride | undefined) => (changes && Object.keys(changes).length > 0 ? changes : null);
 
 const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
   ids.length === 0
@@ -43,11 +46,21 @@ const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
           .where(and(eq(schema.character.familyId, familyId), inArray(schema.character.id, [...ids]))),
       ).pipe(Effect.flatMap((rows) => Effect.forEach(rows, (row) => decodeCharacter(row).pipe(Effect.orDie))));
 
-/** Every role filled by a character of the book's family, of the role's age. */
+/**
+ * Fails with InvalidInput when `changes` asks for an option the story can't draw for the role (D46): a per-book look
+ * offers only what the story draws, so it never needs a stand-in.
+ */
+const checkLookChanges = (manifest: StoryManifest, slotId: string, look: Look, changes: LookOverride) => {
+  const missing = castLook(manifest, slotId, withLookChanges(look, changes)).unsupported.filter((axis) => axis in changes);
+  return missing.length > 0 ? Effect.fail(new InvalidInput({ message: `This story can't draw that ${missing.join(", ")} yet.` })) : Effect.void;
+};
+
+/** Every role filled by a character of the book's family, of the role's age, with look changes the story draws. */
 const checkCast = Effect.fn("books.checkCast")(function* (
   manifest: StoryManifest,
   familyId: string,
   cast: Readonly<Record<string, string>>,
+  looks: Readonly<Record<string, LookOverride>> = {},
 ) {
   const characters = yield* familyCharacters(familyId, Object.values(cast));
   for (const slot of manifest.characterSlots) {
@@ -56,6 +69,7 @@ const checkCast = Effect.fn("books.checkCast")(function* (
     if (castLook(manifest, slot.slotId, character.look).wrongAge) {
       return yield* new InvalidInput({ message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.` });
     }
+    yield* checkLookChanges(manifest, slot.slotId, character.look, looks[slot.slotId] ?? {});
   }
   for (const slotId of Object.keys(cast)) {
     if (!manifest.characterSlots.some((slot) => slot.slotId === slotId)) return yield* new InvalidInput({ message: `The story has no role "${slotId}".` });
@@ -95,16 +109,23 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
 export const createBook = Effect.fn("books.create")(function* (
   userId: string,
   familyId: string,
-  input: { readonly slug: string; readonly cast: Readonly<Record<string, string>> },
+  input: {
+    readonly slug: string;
+    readonly cast: Readonly<Record<string, string>>;
+    /** Per role, how this book draws its character differently from their saved look (D46). */
+    readonly looks?: Readonly<Record<string, LookOverride>>;
+  },
 ) {
   yield* requireFamilyAccess(userId, familyId, "edit");
   const { story, storyVersionId, manifest } = yield* readableStoryVersion(userId, input.slug);
-  yield* checkCast(manifest, familyId, input.cast);
+  yield* checkCast(manifest, familyId, input.cast, input.looks);
   const id = `book_${crypto.randomUUID()}`;
   yield* Database.query((db) =>
     db.transaction(async (tx) => {
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
-      await tx.insert(schema.bookCast).values(Object.entries(input.cast).map(([slotId, characterId]) => ({ bookId: id, slotId, characterId })));
+      await tx.insert(schema.bookCast).values(
+        Object.entries(input.cast).map(([slotId, characterId]) => ({ bookId: id, slotId, characterId, lookChanges: lookChangesOrNull(input.looks?.[slotId]) })),
+      );
     }),
   );
   return { id };
@@ -165,12 +186,14 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     const character = characters.find((candidate) => candidate.id === row?.characterId);
     if (!row || !character) continue;
     const override = row.lookOverride ? yield* decodeOverride(row.lookOverride).pipe(Effect.orDie) : {};
-    const fill = castLook(manifest, slot.slotId, character.look, override);
+    const changes = row.lookChanges ? yield* decodeOverride(row.lookChanges).pipe(Effect.orDie) : {};
+    const fill = castLook(manifest, slot.slotId, withLookChanges(character.look, changes), override);
     roles.push({
       slotId: slot.slotId,
       characterId: character.id,
       member: { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: fill.look },
       override,
+      changes,
       wrongAge: fill.wrongAge,
       unsupported: [...fill.unsupported],
     });
@@ -202,7 +225,7 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
   return { view, canEdit };
 });
 
-/** Puts another family member in a role. Any override for the previous character is dropped. */
+/** Puts another family member in a role. Any override or look change for the previous character is dropped. */
 export const setBookCast = Effect.fn("books.setCast")(function* (
   userId: string,
   input: { readonly bookId: string; readonly slotId: string; readonly characterId: string },
@@ -217,7 +240,7 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
       .values({ bookId: input.bookId, slotId: input.slotId, characterId: input.characterId })
       .onConflictDoUpdate({
         target: [schema.bookCast.bookId, schema.bookCast.slotId],
-        set: { characterId: input.characterId, lookOverride: null },
+        set: { characterId: input.characterId, lookOverride: null, lookChanges: null },
       }),
   );
 });
@@ -236,7 +259,8 @@ export const setLookOverride = Effect.fn("books.setLookOverride")(function* (
   );
   if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
   const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
-  const fill = castLook(book.manifest, input.slotId, character!.look, input.override);
+  const changes = row.lookChanges ? yield* decodeOverride(row.lookChanges).pipe(Effect.orDie) : {};
+  const fill = castLook(book.manifest, input.slotId, withLookChanges(character!.look, changes), input.override);
   if (fill.wrongAge || fill.unsupported.length > 0) {
     return yield* new InvalidInput({ message: `This story still can't draw: ${fill.unsupported.join(", ")}.` });
   }
@@ -244,6 +268,29 @@ export const setLookOverride = Effect.fn("books.setLookOverride")(function* (
     db
       .update(schema.bookCast)
       .set({ lookOverride: input.override })
+      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
+  );
+});
+
+/**
+ * Sets how this book draws a role's character instead of their saved look (D46): `changes` holds the axes it draws
+ * differently, and `{}` goes back to the saved look. The family member doesn't change, and other books don't either.
+ */
+export const setBookLook = Effect.fn("books.setLook")(function* (
+  userId: string,
+  input: { readonly bookId: string; readonly slotId: string; readonly changes: LookOverride },
+) {
+  const { book } = yield* bookFor(userId, input.bookId, "edit");
+  const [row] = yield* Database.query((db) =>
+    db.select().from(schema.bookCast).where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
+  );
+  if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
+  const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
+  yield* checkLookChanges(book.manifest, input.slotId, character!.look, input.changes);
+  yield* Database.query((db) =>
+    db
+      .update(schema.bookCast)
+      .set({ lookChanges: lookChangesOrNull(input.changes) })
       .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
   );
 });

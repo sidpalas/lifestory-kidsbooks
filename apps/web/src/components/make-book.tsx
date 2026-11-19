@@ -2,7 +2,7 @@
 // right away; then make the book. A role can instead try looks on the story's example character, which is a preview
 // only and never touches the family. A role accepts some character ages (D29), so only family members of those ages
 // are offered, and a look the story can't draw yet is left out of the pictures with a warning (D28, D41).
-import { ageLabel, type BookSummary, type Character, type CharacterSlot, type LookAxis, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
+import { ageLabel, type BookSummary, type Character, type CharacterSlot, type LookAxis, type LookOverride, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
@@ -29,6 +29,9 @@ export function StoryCast({
   selected,
   trying,
   onSelect,
+  changes,
+  styling,
+  onStyle,
   updating,
 }: {
   slug: string;
@@ -44,6 +47,11 @@ export function StoryCast({
   /** Whether the looks picker for the role's example is open. */
   trying: (slotId: string) => boolean;
   onSelect: (slotId: string, value: string) => void;
+  /** How the book will draw each role's family member differently from their saved look (D46), not saved yet. */
+  changes: (slotId: string) => LookOverride;
+  /** Whether the role's "look in this book" picker is open, and opening it. */
+  styling: (slotId: string) => boolean;
+  onStyle: (slotId: string) => void;
   updating: boolean;
 }) {
   const router = useRouter();
@@ -58,7 +66,8 @@ export function StoryCast({
     setError(null);
     try {
       const cast = Object.fromEntries(slots.map((slot) => [slot.slotId, selected(slot.slotId)]));
-      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast } }));
+      const looks = Object.fromEntries(slots.map((slot) => [slot.slotId, changes(slot.slotId)]));
+      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast, looks } }));
       await router.navigate({ to: "/books/$bookId", params: { bookId: id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -143,11 +152,15 @@ export function StoryCast({
                     </p>
                   ) : (
                     character && (
-                      <p className="text-muted-foreground text-xs">
-                        Drawn with {character.name}'s saved look.{" "}
-                        <Link to="/characters/$characterId" params={{ characterId: character.id }} className="underline">
-                          {canEdit ? "Change look" : "See look"}
-                        </Link>
+                      <p className="text-muted-foreground text-xs" data-testid={`look-note-${slot.slotId}`}>
+                        {Object.keys(changes(slot.slotId)).length > 0
+                          ? `Drawn with a look for this book only, not ${character.name}'s saved one.`
+                          : `Drawn with ${character.name}'s saved look.`}{" "}
+                        {!styling(slot.slotId) && (
+                          <button type="button" className="underline" disabled={!hydrated} onClick={() => onStyle(slot.slotId)}>
+                            Change look for this book
+                          </button>
+                        )}
                       </p>
                     )
                   )}

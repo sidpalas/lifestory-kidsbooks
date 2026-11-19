@@ -1,6 +1,6 @@
 // The active family's characters and books, on the home page.
 import { type BookSummary, type Character, unwrapResult } from "@lifestory/core/contracts";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { deleteBookFn, EditBookResult } from "~/server/books";
@@ -18,6 +18,7 @@ export const confirmDeleteBook = async (book: { id: string; title: string; cast:
 
 export function FamilyLibrary({ characters, books, canEdit }: { characters: ReadonlyArray<Character>; books: ReadonlyArray<BookSummary>; canEdit: boolean }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   return (
     <>
       <Card>
@@ -73,6 +74,7 @@ export function FamilyLibrary({ characters, books, canEdit }: { characters: Read
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={!hydrated}
                       aria-label={`Delete ${book.title} with ${book.cast}`}
                       onClick={async () => {
                         if (await confirmDeleteBook(book)) await router.invalidate();

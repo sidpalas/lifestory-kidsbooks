@@ -629,6 +629,24 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** families want a proof of a story before making a book, or want to try looks on their own family
   member without saving them (then a "try on Clara" mode that offers saving to her character).
 
+### D46. A book can draw a family member with its own look, kept on the book; the story page shows it before the book is made — Approved by Sid / Made (2026-11-19)
+- **Why (Sid):** "being able to set an override style on the page (without modifying the canonical definition for a
+  family member) would be ideal", chosen before "Make the book", shown in the preview, and "not saved to the DB until
+  you click make this book".
+- **What:** `book_cast.look_changes` (migration `0014_book_look_changes`, nullable jsonb, a `LookOverride`) holds the
+  axes one book draws differently from the character's saved look; age never, since another age draws someone else.
+  The pages draw `withLookChanges(saved, changes)`, so any other saved-look edit still shows in the book. Stand-ins
+  (D28's `look_override`) apply on top only for options still undrawable. Choosing someone else for the role drops
+  the changes; deleting the book deletes them (D45).
+- **Only what the story draws:** the picker is the character builder's (`LookPicker`) at the character's own age,
+  offering only options `castLook` says this story draws for the role, so a styled look never needs a stand-in;
+  `createBook` and `setBookLook` refuse anything else.
+- **Before the book exists:** "Change look for this book" on the story page keeps the changes in the URL
+  (`?changes=`) and the preview draws them; nothing is stored until "Make the book" saves them with the cast. In the
+  book editor the same picker saves each change to the book, and "Use <name>'s saved look" clears it.
+- **Reopen if:** families want a book look to follow later edits of the same axis in the saved look (today the book's
+  choice wins for that axis), or want to save a book's look back to the character.
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no

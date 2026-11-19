@@ -22,6 +22,7 @@ import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
+import { BookLookPicker } from "~/components/book-look";
 import { confirmDeleteBook } from "~/components/family-library";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { agesLabel } from "~/components/make-book";
@@ -39,6 +40,7 @@ import {
   requestBookProofFn,
   saveTextEditFn,
   setBookCastFn,
+  setBookLookFn,
   setLookOverrideFn,
 } from "~/server/books";
 
@@ -70,6 +72,9 @@ function BookEditor() {
   const router = useRouter();
   const navigate = Route.useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [savingLook, setSavingLook] = useState(false);
+  // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page.
+  const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(view.roles.filter((role) => Object.keys(role.changes).length > 0).map((role) => role.slotId)));
   const { manifest, story, version } = view;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const pageIndex = Math.max(0, manifest.pages.findIndex((page) => page.pageId === selected));
@@ -141,6 +146,8 @@ function BookEditor() {
               canEdit={canEdit}
               onCast={(characterId) => run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))}
               onOverride={(override) => run(() => setLookOverrideFn({ data: { bookId: view.book.id, slotId: slot.slotId, override } }))}
+              styling={styling.has(slot.slotId)}
+              onStyle={() => setStyling((open) => new Set([...open, slot.slotId]))}
             />
           ) : null;
         })}
@@ -150,6 +157,36 @@ function BookEditor() {
           {error}
         </p>
       )}
+
+      {manifest.characterSlots.map((slot) => {
+        const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
+        const character = characters.find((candidate) => candidate.id === role?.characterId);
+        return (
+          role &&
+          character &&
+          canEdit &&
+          styling.has(slot.slotId) && (
+            <BookLookPicker
+              key={`${slot.slotId}/${character.id}`}
+              manifest={manifest}
+              slotId={slot.slotId}
+              roleLabel={slot.label}
+              character={character}
+              changes={role.changes}
+              disabled={savingLook}
+              onChange={async (changes) => {
+                setSavingLook(true);
+                try {
+                  await run(() => setBookLookFn({ data: { bookId: view.book.id, slotId: slot.slotId, changes } }));
+                } finally {
+                  setSavingLook(false);
+                }
+              }}
+              note="Every page of this book redraws with it."
+            />
+          )
+        );
+      })}
 
       <section aria-label="Editor" className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
@@ -172,8 +209,6 @@ function BookEditor() {
           onSave={(blockIndex, content) => run(() => saveTextEditFn({ data: { bookId: view.book.id, pageId: page.pageId, blockIndex, content } }))}
         />
       </section>
-
-      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} hydrated />
 
       <section aria-label="All pages">
         <ol className="grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -200,6 +235,8 @@ function BookEditor() {
           ))}
         </ol>
       </section>
+
+      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} hydrated />
     </main>
   );
 }
@@ -319,6 +356,8 @@ function RoleCard({
   canEdit,
   onCast,
   onOverride,
+  styling,
+  onStyle,
 }: {
   view: BookView;
   role: BookRole;
@@ -328,6 +367,8 @@ function RoleCard({
   canEdit: boolean;
   onCast: (characterId: string) => void;
   onOverride: (override: Partial<Look>) => void;
+  styling: boolean;
+  onStyle: () => void;
 }) {
   const character = characters.find((candidate) => candidate.id === role.characterId);
   const fits = characters.filter((candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId);
@@ -352,12 +393,22 @@ function RoleCard({
           ) : (
             <span>{role.member.name}</span>
           )}
+          {character && canEdit && !styling && (
+            <button type="button" className="text-muted-foreground text-xs underline" onClick={onStyle}>
+              Change look for this book
+            </button>
+          )}
           {character && (
             <Link to="/characters/$characterId" params={{ characterId: character.id }} className="text-muted-foreground text-xs underline">
-              {canEdit ? "Change look" : "See look"}
+              {canEdit ? "Edit saved look" : "See saved look"}
             </Link>
           )}
         </div>
+        {Object.keys(role.changes).length > 0 && (
+          <p className="text-muted-foreground text-xs" data-testid={`look-note-${role.slotId}`}>
+            This book draws {role.member.name} with a look for this book only, not their saved one.
+          </p>
+        )}
         {role.wrongAge ? (
           <p className="text-destructive" role="status">
             {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()} now, and this role is for {agesLabel(slot)}, so the pages leave them out.
@@ -392,7 +443,7 @@ function RoleCard({
           // The override applies only while the story can't draw the character's own option (D28); once it can, such
           // as after an addition (D41), the pages draw the character as they are.
           character &&
-          (Object.keys(role.override) as Array<LookAxis>).some((axis) => role.member.look[axis] !== character.look[axis]) && (
+          (Object.keys(role.override) as Array<LookAxis>).some((axis) => role.member.look[axis] !== ({ ...character.look, ...role.changes } as Look)[axis]) && (
             <p className="text-muted-foreground text-xs">This book draws a stand-in for options the story can't draw yet.</p>
           )
         )}
