@@ -126,10 +126,11 @@ which just picks the default family for lists and new books.
 
 ## Image providers: assessment of hosted APIs
 
-Since D26, image generation is authoring tooling and touches no user data, so hosted image APIs are allowed, and
-they will likely replace self-hosted FLUX 3 Klein on Modal (D25) as the primary provider. Klein stays as the
-fallback and as the baseline every API is measured against. Any hosted provider is one more `ImageProvider`
-implementation next to `fake` and `modal`; the workflow doesn't change. Nothing below has been run yet.
+Since D26, image generation is authoring tooling and touches no user data, so hosted image APIs are allowed. The
+assessment below ran on 2026-11-19 and chose OpenAI `gpt-image-2.6-sunburst` as the primary provider, with
+self-hosted FLUX 3 Klein on Modal (D25) as the fallback (D30). Any hosted provider is one more `ImageProvider`
+implementation next to `fake` and `modal`; the workflow doesn't change. The criteria and test set stay here so a
+successor model (or another vendor) is measured the same way before it replaces the primary.
 
 **What we need from a provider**, in order of weight:
 
@@ -151,23 +152,34 @@ implementation next to `fake` and `modal`; the workflow doesn't change. Nothing 
 5. **Price and throughput** per accepted part. A story needs ~470 parts per base face (D26), generated once, so
    rejections cost more in illustrator time than per-image price does.
 
-**Candidates** (prices and features as published, not verified by us):
+**Test set:** bald bases drawn once and given to every provider: baby, toddler, a 5-year-old, a standing child and
+an adult (Klein-drawn), plus three children in other styles (gouache, pencil, collage; Painter-drawn). Parts: hair
+(wisps, curls, pigtails, coily, braids, bob, spiky, ponytail), glasses and a beard, edited in place; braids from a
+turnaround sheet on two poses; the same parts as masked edits and as transparent output where supported. Same prompt
+everywhere ("keep exactly the same face … change nothing else"), one seed per hosted model. Scored automatically
+(pixels changed outside the head zone; share of eye, nose and mouth pixels changed; mean colour shift) and by eye.
 
-| Provider | Why it's a candidate | Known so far |
-| --- | --- | --- |
-| BFL API: FLUX 3 Klein and the larger FLUX 3 models | Same family as our baseline; the bigger models may hold style better | Klein is served as the same distilled checkpoint |
-| OpenAI `gpt-image-2` | Strong instruction following; markup-guided edits | Transparent backgrounds; ~$0.006 / $0.053 / $0.211 per 1024² image at low / medium / high |
-| Qwen-Image-2.1 API (Turbo, Pro) | Native RGBA generation and editing, masked local edits, up to 10 references | ~$0.016 (Turbo) / $0.04 (Pro) per image; open weights are research-only |
-| Self-hosted Klein on Modal (baseline) | Already deployed | ~$0.014 per warm 1 MP image, ~45 s cold start (D25) |
+**Result (2026-11-19; full write-up, images and scripts in thread T-01a1f149-95e2-74f7-9818-59d430153d86):**
 
-**Assessment:** run the same set through each provider with the same base, references and prompts: four
-hairstyles, glasses and a beard on the bald sitting base; one hairstyle on two poses from its turnaround sheet; and
-the same parts as masked edits and as transparent output where supported. Score each output on whether it gives a
-clean part layer (automatic: pixels outside the head zone or mask unchanged, or for transparent output, no face or
-background pixels in the layer and a correct fit on the base), halo and holes at print size, style match and age
-drift (Sid or the illustrator, blind), and
-cost and time per accepted part. Record the provider terms checked. The result becomes a decision naming the
-primary provider.
+| Provider and model | Faces kept: Klein-drawn / other styles | US$ per part (measured) | Seconds | Terms on inputs |
+| --- | --- | --- | --- | --- |
+| **OpenAI `gpt-image-2.6-sunburst`** (primary) | 13/13 / 12/12 | 0.049 | ~18 | No training; 30-day abuse retention; customer owns output |
+| OpenAI `gpt-image-2.6-flare` | 12/13 / 12/12 | 0.049 | ~9 | as above |
+| OpenAI `gpt-image-2` | 9/13 / not run | 0.056 | ~27 | as above; shuts down 2027-02-10 |
+| Gemini 3 Pro Image (OpenRouter) | 13/13 / 12/12 | 0.139 | ~17 | No training; Vertex keeps flagged prompts ≤ 90 days, AI Studio 55 days |
+| Gemini Nano Banana 2.1 (OpenRouter) | 13/13 / ~11/12 | 0.038 | ~11 | as above; routed to AI Studio unless `zdr: true` |
+| Gemini 3.1 Flash Image (OpenRouter) | 12/13 / ~11/12 | 0.068 | ~10 | as above |
+| BFL FLUX 3 Klein | 12/13 / 4/12 | 0.009 | ~8 | Trains on inputs and outputs (API terms §2b) |
+| BFL FLUX 3 Image | 11/13 / 2/12 | 0.048 | ~24 | as above |
+| Klein on Modal (fallback) | 13/13 / 6/12 | ~0.014 warm | 22–37 | Own infrastructure |
+| Qwen-Image-2.1 | not run (account not cleared for paid models) | 0.016 / 0.04 published | | No training without consent |
+
+- Every FLUX model redrew faces outside FLUX's own style; the Klein-drawn set flattered them.
+- Masked edits (BFL Fill, OpenAI) redrew the whole mask or returned artefacts, and transparent parts (OpenAI) didn't
+  fit the head (0/4), so edit in place and cut out stays the route.
+- Every provider needs the output aligned to the base (Klein shifted 2–6 px at one seed) and colour-matched to it
+  outside the part zone (sunburst ~10/255 on the Klein-drawn bases; Gemini re-renders more, 16–18/255).
+- Still to confirm: one real illustrator's base, since Painter may itself use an OpenAI model.
 
 ## Looks and the picker
 
@@ -226,7 +238,8 @@ the foundation that exists now.
 generate-part(storyVersionDraftId, appearanceId, axis, optionId, seed)
   step  submit       → generation row, provider.submit(key = part:<appearance>:<axis>:<option>:<seed>)
   await event        generation.done:<generationId>          (provider callback, or the fake provider)
-  step  cut out      → compare with the base inside the head zone, split by region, store RGBA crops
+  step  cut out      → align and colour-match to the base, segment the part, matte it against the base,
+                       split by region, store RGBA crops
   step  record       → part status = generated, waiting for review
 ```
 
@@ -241,10 +254,17 @@ publish.
 - **Providers.** `ImageProvider.submit(request) → { generationId }`, completed through the `generation.done` event.
   Modal (D25): the Python function (FLUX 3 Image Klein with its prompt upsampler) receives references as presigned
   GET URLs, uploads its output to a presigned PUT URL, and POSTs `/api/webhooks/modal` with an HMAC signature over
-  the generation ID; the route verifies it and emits the event. Fake: renders a deterministic placeholder, uploads
-  it, and emits the same event, so dev, CI and tests run the real suspend and resume path. Hosted APIs are added as
-  more implementations after the assessment above. If inbound callbacks prove unreliable, the fallback is polling the
+  the generation ID; the route verifies it and emits the event. OpenAI (D30, primary): the edit API is
+  synchronous, so the submit step calls it, stores the output, and emits the event itself; the model ID is
+  configuration. Fake: renders a deterministic placeholder, uploads it, and emits the same event, so dev, CI and
+  tests run the real suspend and resume path. If inbound callbacks prove unreliable, the fallback is polling the
   provider with `ctx.sleepFor` (D14).
+- **Cutting parts out.** The edit C and the base B give C = a·F + (1 − a)·B, so the part (colour F, alpha a) is
+  found by known-background matting, not by thresholding the difference: thresholding lost thin glasses frames and
+  baby wisps and kept a band of the old skin. Steps: align C to B; colour-match it outside the part zone; segment the
+  part (the change region as a prior, later a hair or glasses segmenter); matte inside that segment against B;
+  unmix F; then composite on the lightest and darkest skin tones for the illustrator's review. Measured on CPU at
+  ~3 s per part (assessment, 2026-11-19); pencil-like texture is the hardest case.
 - **Running Modal for real:** `modal deploy modal/flux_klein.py`, then set `IMAGE_PROVIDER=modal`,
   `MODAL_ENDPOINT_URL`, `MODAL_CALLBACK_SECRET`, `PUBLIC_APP_URL` (for the callback), and `S3_PUBLIC_ENDPOINT` if
   storage isn't reachable from Modal at `S3_ENDPOINT`. The app needs no Modal token (D25). The README has the steps.
@@ -317,7 +337,7 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
    every page.
 5. Editor text editing; PDF proof task, download, and approval.
 6. Modal provider and Python function, callback route, README instructions (done, D25); the hosted image API
-   assessment.
+   assessment (done, D30).
 7. `milestone1.spec.ts` walking the whole slice in CI; Dockerfiles for web and worker (no host-specific config);
    the `operator:create` command (D21), with production loading the sample story under the real operator
    instead of running the development seed.

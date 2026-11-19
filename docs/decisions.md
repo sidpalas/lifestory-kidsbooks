@@ -98,6 +98,7 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Sid, 2026-11-18 (with D26):** image generation is now authoring tooling only, and hosted image APIs will likely
   become the primary provider, with this Modal function as the fallback. plan.md's "Image providers" section holds
   the assessment; the choice gets its own decision.
+- **Sid, 2026-11-19:** the primary provider is OpenAI `gpt-image-2.6-sunburst` (D30); this function is the fallback.
 - **Reopen if:** revenue approaches the license threshold, or quality on children's-book character consistency is poor.
 
 ### D24. Book format v1: the details the plan's example left open — Made
@@ -194,6 +195,38 @@ adopted), or **Made** (chosen during implementation, Sid can veto).
 - **Rejected:** photo likeness per book (privacy, license, cost, art drift); every combination pre-drawn (thousands of
   images per story to review); standalone reusable parts (they ignore each page's head angle and light).
 - **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.
+
+### D30. Part generation: OpenAI `gpt-image-2.6-sunburst` as the primary provider, Klein on Modal as the fallback — Decided (Sid, 2026-11-19)
+- **What:** authoring tooling generates parts by editing the base in place with OpenAI `gpt-image-2.6-sunburst`
+  (medium quality, base padded to 2:3), then cuts the part out (plan.md, "Authoring-time part generation").
+  `gpt-image-2.6-flare` is allowed for faster drafts. Klein on Modal (D25) stays as the fallback. Masked edits and
+  transparent output are not used.
+- **Why (assessment of 2026-11-19, thread T-01a1f149-95e2-74f7-9818-59d430153d86):** 13 edits on Klein-drawn bases
+  (11 of them children) and 12 on three Painter-drawn styles (gouache, pencil, collage), scored by the share of
+  eye, nose and mouth pixels changed and by eye.
+  - Sunburst kept the face intact in 13/13 and 12/12, at US$0.049 per part (measured, including image-input tokens)
+    and ~18 s, with calls in parallel.
+  - Every FLUX model redrew faces outside FLUX's own style: Klein on Modal 6/12, BFL Klein 4/12, BFL FLUX 3 Image
+    2/12, up to 57% of the face changed. Klein's 13/13 on its own drawings didn't carry over.
+  - Gemini (via OpenRouter) also held faces: 3 Pro Image 13/13 and 12/12 at US$0.139; Nano Banana 2.1 13/13 and
+    ~11/12 at US$0.038. It re-renders more of the picture (mean change outside the part 16–18/255 against ~11).
+  - Masked edits (BFL Fill, OpenAI) redrew the whole mask or returned artefacts; OpenAI's transparent parts had
+    clean alpha but didn't fit the head (0/4). This closes D26's open question on transparent output.
+- **Terms (official pages, 2026-11-19):** OpenAI doesn't train on API inputs by default (Services Agreement §4.2),
+  keeps them 30 days for abuse monitoring, and assigns output to the customer (§4.1). BFL's API terms (§2b) license
+  BFL to train on inputs and outputs, which rules it out for illustrators' art without an enterprise contract.
+  Qwen wasn't tested: the Alibaba account couldn't call paid models.
+- **How:** OpenAI's edit API is synchronous, so its `ImageProvider` calls it inside the submit step, stores the
+  output and emits `generation.done` itself, like the fake provider. Before the cut-out, outputs are aligned to the
+  base and colour-matched to it outside the part zone (sunburst re-toned Klein-drawn bases by ~10/255). The part is
+  then cut out by known-background matting rather than a threshold on the difference (refines D26's "by comparison
+  with the base"; plan.md, "Cutting parts out"), because thresholding lost glasses frames and baby wisps.
+- **Watch:** OpenAI retires models (`gpt-image-2` shuts down 2027-02-10), so the model ID is configuration and a
+  successor gets the same test set before it replaces this one. The style set was drawn by Painter, which may use an
+  OpenAI model; a real illustrator's base should confirm the result.
+- **Reopen if:** an illustrator's base shows sunburst redrawing faces or drifting in style; a seeded rerun puts
+  Nano Banana 2.1 level with it on faces (then Gemini through Vertex directly, not AI Studio); OpenAI's terms change;
+  or BFL offers zero retention and no training to us.
 
 ### D27. PDF proofs: printed by the worker from a token-gated print page, recorded with what they show — Made (2026-11-19)
 - **How:** a `proof` row belongs to a family and pins a story version plus its **content**: the cast (name,
