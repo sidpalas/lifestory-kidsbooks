@@ -71,7 +71,7 @@ export function Landing() {
               />
               <img
                 src="/marketing/paper-boat-family-2.webp"
-                alt="The same page drawn with a dark-skinned girl with black braids and her grandmother with long grey hair"
+                alt="The same page drawn with a dark-skinned girl with black braids and her mum, who has long black hair"
                 width={640}
                 height={640}
                 fetchPriority="high"
