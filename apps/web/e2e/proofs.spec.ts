@@ -83,7 +83,7 @@ test("the print page needs the worker's print token, not a session", async ({ pa
   }
 });
 
-test("a parent deletes draft proofs, rendering, failed, or ready, but not an approved one; viewers and outsiders can't", async ({ page, browser }) => {
+test("a parent deletes proofs, rendering, failed, ready, or approved after a stronger warning; viewers and outsiders can't", async ({ page, browser }) => {
   test.setTimeout(180_000);
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
   const core = await import("@lifestory/core");
@@ -129,20 +129,18 @@ test("a parent deletes draft proofs, rendering, failed, or ready, but not an app
     await page.reload();
     await expect(row(approved.id)).toHaveAttribute("data-approved", "true");
 
-    // The server decides, whatever the page shows: a viewer may not, another family's member and an unknown proof
-    // find nothing, and an approved proof is kept for print (D32).
+    // The server decides, whatever the page shows: a viewer may not, and another family's member and an unknown proof
+    // find nothing.
     expect(await outcome(core.deleteProof("user_grandparent", draft.id))).toBe("Forbidden");
     expect(await outcome(core.deleteProof("user_operator", draft.id))).toBe("NotFound");
     expect(await outcome(core.deleteProof(parent, "proof_does-not-exist"))).toBe("NotFound");
-    expect(await outcome(core.deleteProof(parent, approved.id))).toBe("InvalidInput");
 
-    // The viewer sees the proofs and no Delete; the parent sees none on the approved proof.
+    // The viewer sees the proofs and no Delete.
     const viewer = await browser.newPage();
     await viewer.goto(`/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/books/${bookId}`);
     await expect(viewer.getByTestId("proof")).toHaveCount(3, { timeout: 30_000 });
     await expect(viewer.getByRole("button", { name: /^Delete proof/ })).toHaveCount(0);
     await viewer.close();
-    await expect(row(approved.id).getByRole("button", { name: /^Delete proof/ })).toHaveCount(0);
 
     // A ready draft: the confirmation names it; cancelling keeps it, confirming deletes it and its PDF.
     const href = (await row(draft.id).getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
@@ -161,14 +159,25 @@ test("a parent deletes draft proofs, rendering, failed, or ready, but not an app
     expect(await proofRow(draft.id)).toBeUndefined();
     expect((await page.request.get(href)).status()).toBe(404);
 
-    // The failed one goes the same way; the approved proof stays, still downloadable.
+    // The failed one goes the same way.
     const confirmFailed = page.waitForEvent("dialog").then((dialog) => dialog.accept());
     await row(failed.id).getByRole("button", { name: /^Delete proof of/ }).click();
     await confirmFailed;
     await expect(page.getByTestId("proof")).toHaveCount(1);
+
+    // The approved one too (Sid), after a warning that names the approval: its PDF and approval go with it.
+    const approvedHref = (await row(approved.id).getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
+    const confirmApproved = page.waitForEvent("dialog").then(async (dialog) => {
+      expect(dialog.message()).toMatch(/^Delete the APPROVED proof of .* approved for print by Pat Parent on .*its approval are deleted/);
+      await dialog.accept();
+    });
+    await row(approved.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await confirmApproved;
+    await expect(page.getByTestId("proof")).toHaveCount(0);
+    expect(await proofRow(approved.id)).toBeUndefined();
+    expect((await page.request.get(approvedHref)).status()).toBe(404);
     await page.reload();
-    await expect(page.getByTestId("proof")).toHaveCount(1);
-    await expect(row(approved.id)).toHaveAttribute("data-approved", "true");
+    await expect(page.getByText("No proofs yet.")).toBeVisible({ timeout: 30_000 });
   } finally {
     await runtime.dispose();
   }

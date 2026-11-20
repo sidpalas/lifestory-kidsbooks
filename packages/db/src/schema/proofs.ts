@@ -34,7 +34,7 @@ export const proof = pgTable(
     requestedBy: text("requested_by").references(() => user.id, { onDelete: "set null" }),
     /**
      * When a parent approved the PDF for print, and who; null until then. Only a ready proof of a book can be approved,
-     * once, and an approved proof is kept as long as its family (D31); an unapproved one expires.
+     * once. An approved proof is kept until a parent deletes it or its book (D32, D45); an unapproved one expires.
      */
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     approvedBy: text("approved_by").references(() => user.id, { onDelete: "set null" }),

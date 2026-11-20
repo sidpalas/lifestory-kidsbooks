@@ -226,9 +226,9 @@ export const approveProofFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String })))
   .handler(({ data }) => runEffect(ApproveProofResult, currentUser.pipe(Effect.flatMap((user) => approveProof(user.id, data.proofId)), done)));
 
-export const DeleteProofResult = ResultSchema(Done, Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]));
+export const DeleteProofResult = ResultSchema(Done, Schema.Union([NotAuthenticated, NotFound, Forbidden]));
 
-/** Deletes a draft proof (rendering, failed, or unapproved) with its PDF; an approved one stays (D32). */
+/** Deletes a proof, approved or not, with its PDF (D32). */
 export const deleteProofFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String })))
   .handler(({ data }) => runEffect(DeleteProofResult, currentUser.pipe(Effect.flatMap((user) => deleteProof(user.id, data.proofId)), done)));

@@ -5,15 +5,14 @@
 "Make a PDF proof" on a family's book asks the worker (`proof.render`, D27) to print every page with
 headless Chromium from a token-gated print page; the result is the print-ready file (D35): flattened 300 ppi art, live
 text in the story's static fonts, TrimBox and BleedBox. Members download it; on a book an owner or parent approves it
-for print, or deletes a draft (rendering, failed, or unapproved) after confirming (D32). An approved proof can't be
-deleted on its own; it goes with its book (D45).
+for print, or deletes any proof after confirming, an approved one with a stronger warning (D32).
 
 ## Routes and roles
 
 - `/books/<id>` (a family's book): the "PDF proofs" section, below the wrapping page-selector grid (three columns
   on desktop, two on narrow screens). Story previews have no proof panel: make a book first.
 - Download: `/api/files/families/<familyId>/proofs/<proofId>.pdf`; any member of that family, 404 for others.
-- Owner and parent make, approve, and delete draft proofs; a viewer downloads only. A deleted proof's download is 404.
+- Owner and parent make, approve, and delete proofs; a viewer downloads only. A deleted proof's download is 404.
 - The worker opens `PRINT_APP_URL/print/proofs/<id>?token=…`; that origin must be the web app the run drives.
 
 ## Seed data

@@ -142,10 +142,10 @@ export const approveProof = Effect.fn("proofs.approve")(function* (userId: strin
 });
 
 /**
- * A parent deletes a draft proof (rendering, failed, or ready and unapproved) instead of waiting for it to expire
- * (D32): its row, its render task if it hasn't finished, and its PDF. Needs a role that edits books. An approved proof
- * stays: approval is final (D32), and it goes only with its book (D45) or family. If the render was mid-step, the PDF it
- * writes has no row, and `storage.sweep` deletes it.
+ * A parent deletes a proof, rendering, failed, ready, or approved (D32): its row with its approval, its render task if
+ * it hasn't finished, and its PDF. Needs a role that edits books. No print order references a proof yet; once one
+ * does, an ordered proof must be refused here. If the render was mid-step, the PDF it writes has no row, and
+ * `storage.sweep` deletes it.
  */
 export const deleteProof = Effect.fn("proofs.delete")(function* (userId: string, proofId: string) {
   const [row] = yield* Database.query((db) =>
@@ -153,14 +153,10 @@ export const deleteProof = Effect.fn("proofs.delete")(function* (userId: string,
   );
   if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
   yield* requireFamilyAccess(userId, row.familyId, "edit");
-  // Only while unapproved, so an approval that lands first wins.
   const [deleted] = yield* Database.query((db) =>
-    db
-      .delete(schema.proof)
-      .where(and(eq(schema.proof.id, proofId), isNull(schema.proof.approvedAt)))
-      .returning({ taskId: schema.proof.taskId }),
+    db.delete(schema.proof).where(eq(schema.proof.id, proofId)).returning({ taskId: schema.proof.taskId }),
   );
-  if (!deleted) return yield* new InvalidInput({ message: "An approved proof is kept for print and can't be deleted." });
+  if (!deleted) return; // Deleted by someone else meanwhile.
   // The row is gone, so the proof is deleted for the family; what follows only frees resources sooner, and the sweep
   // catches whatever a failure here leaves.
   if (deleted.taskId) yield* Jobs.use((jobs) => jobs.cancel(deleted.taskId!)).pipe(Effect.ignore);

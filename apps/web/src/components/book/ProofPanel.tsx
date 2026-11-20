@@ -1,6 +1,6 @@
 // A book's PDF proofs: make one from the cast and text as they are now, watch it render, download it (D27), and
-// approve one for print. A parent deletes a draft (rendering, failed, or unapproved) after confirming; an approved
-// proof stays (D32). The page passes how to list, request, approve, and delete them.
+// approve one for print. A parent deletes any of them after confirming, an approved one with a stronger warning (D32).
+// The page passes how to list, request, approve, and delete them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -25,7 +25,7 @@ export function ProofPanel({
   request: () => Promise<void>;
   /** Approves a ready proof for print. */
   approve: (proofId: string) => Promise<void>;
-  /** Deletes a proof nobody approved, with its PDF. */
+  /** Deletes a proof, approved or not, with its PDF. */
   remove: (proofId: string) => Promise<void>;
   hydrated: boolean;
 }) {
@@ -68,9 +68,11 @@ export function ProofPanel({
   const deleteProof = async (proof: ProofSummary) => {
     const made = `${proof.castNames.join(" & ")}, made ${new Date(proof.createdAt).toLocaleString()}`;
     const sure = window.confirm(
-      proof.status === "rendering"
-        ? `Delete the proof of ${made}? It stops rendering and won't be listed again.`
-        : `Delete the proof of ${made}? Its PDF is deleted too, and it can't be undone.`,
+      proof.approvedAt
+        ? `Delete the APPROVED proof of ${made}? It was approved for print by ${proof.approvedBy ?? "a former member"} on ${new Date(proof.approvedAt).toLocaleString()}. The PDF and its approval are deleted, and it can't be undone: to print, you'd make and approve a new proof.`
+        : proof.status === "rendering"
+          ? `Delete the proof of ${made}? It stops rendering and won't be listed again.`
+          : `Delete the proof of ${made}? Its PDF is deleted too, and it can't be undone.`,
     );
     if (!sure) return;
     setDeleting(proof.id);
@@ -161,7 +163,7 @@ export function ProofPanel({
                 ) : (
                   <span className="text-destructive">Failed</span>
                 )}
-                {state.canRequest && !proof.approvedAt && (
+                {state.canRequest && (
                   <Button
                     size="sm"
                     variant="ghost"
