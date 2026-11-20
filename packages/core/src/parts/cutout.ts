@@ -654,9 +654,11 @@ export const crownGap = (alpha: Float32Array, skinMask: Uint8Array, width: numbe
  * stopping short of the crown). The outline's width is the base's own (the distance from its silhouette to its skin):
  * the picker's portraits draw a thick ink line, and the matte leaves it half covered under the hair, as dark notches
  * around a light buzz cut and flecks under long hair (2026-11-20). Hair is extended only from solid pieces, so a
- * stubble's dots or a wisp don't smear into a band along the jaw. Repeated until nothing changes, so a part
- * it has covered has nothing left to cover. Returns new arrays and
- * the number of pixels it raised.
+ * stubble's dots or a wisp don't smear into a band along the jaw. On a base drawn in ink (`ink`: its line art, from
+ * figureCoverage), the band also takes ink the hair already mostly covers, which leaves a dotted trace of the head's
+ * outline under a light ponytail or short cut, and ink the hair spans anywhere is covered (below). Without `ink`
+ * (Paper Boat's pencil, 2–3 px), a pixel already mostly hair stays as it is. Repeated until nothing changes, so a part
+ * it has covered has nothing left to cover. Returns new arrays and the number of pixels it raised.
  */
 export const coverOutline = (
   alpha: Float32Array,
@@ -665,6 +667,7 @@ export const coverOutline = (
   skinMask: Uint8Array,
   width: number,
   height: number,
+  ink: Uint8Array | null = null,
 ) => {
   // A pencil outline is 2–3 px at 1024 px (Paper Boat), an ink one as thick as the base draws it (the picker's
   // portraits: ~10 px at 1024), measured below; a wider gap is the drawing's own (a temple, a hairline), not the matte's.
@@ -707,9 +710,22 @@ export const coverOutline = (
     if (edge && toSkin[c]! <= thickest * thickest) widths.push(Math.sqrt(toSkin[c]!));
   }
   const outline = widths.length === 0 ? 0 : Math.round(widths.toSorted((a, b) => a - b)[widths.length >> 1]!);
-  const radius = Math.max(scaled, outline + 1);
+  // From the paper: the silhouette's first pixel is 1 px out, and the ink's anti-aliased inner edge runs 1 px into
+  // the skin, where a dotted trace of it showed under a ponytail (2026-11-20).
+  const radius = Math.max(scaled, outline + 2);
   // Within the outline's width of the silhouette (inside or on it), and of the skin (its antialiased edge too).
   const nearOutside = dilate(outside, cropWidth, cropHeight, radius);
+  // On a base drawn in ink, the band follows the ink to its inner edge wherever the line runs wider than its median,
+  // and the skin's first pixels past it, which the matte leaves as faint as the ink.
+  if (ink) {
+    const inner = dilate(
+      cropMask((p) => ink[p] === 1).map((v, c) => v & nearOutside[c]!),
+      cropWidth,
+      cropHeight,
+      2,
+    );
+    for (let c = 0; c < inner.length; c++) nearOutside[c]! |= inner[c]!;
+  }
   const nearSkin = Uint8Array.from(toSkin, (d) => (d <= Math.max(2, outline) ** 2 ? 1 : 0));
   // Hair the band is extended from is solid: a piece at least a few outline widths across, not a stubble's dots or a
   // stray wisp, which would smear into a solid band along the jaw or the crown.
@@ -768,7 +784,8 @@ export const coverOutline = (
       for (let x = bx0; x < bx1; x++) {
         const c = (y - by0) * cropWidth + (x - bx0);
         const p = y * width + x;
-        if (!nearOutside[c] || !nearSkin[c] || outAlpha[p]! >= 0.5 || figure[p]! <= outAlpha[p]! + 0.01) continue;
+        if (!nearOutside[c] || !nearSkin[c] || (outAlpha[p]! >= 0.5 && !ink) || figure[p]! <= outAlpha[p]! + 0.01)
+          continue;
         // The nearest outside pixel, and the hair nearby for the colour.
         let ox = 0,
           oy = 0,
@@ -791,11 +808,14 @@ export const coverOutline = (
         }
         if (best === Infinity) continue;
         const length = Math.sqrt(best);
+        // Hair over the base's ink proves nothing: a cheek's outline half covered by long hair beside it is part of
+        // that hair's solid piece, and would cover itself.
         let hair = -1;
         for (let k = 1; k <= 2 * radius && hair < 0; k++) {
           const nx = Math.round(x - (ox / length) * k),
             ny = Math.round(y - (oy / length) * k);
-          if (nx >= 0 && ny >= 0 && nx < width && ny < height && solid[ny * width + nx]) hair = ny * width + nx;
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height && solid[ny * width + nx] && !ink?.[ny * width + nx])
+            hair = ny * width + nx;
         }
         if (hair < 0) continue;
         if (count === 0) {
@@ -805,8 +825,50 @@ export const coverOutline = (
         add.push(p, figure[p]!, ...sum.map((v) => v / count));
       }
     }
+    // Ink under the hair, on a base drawn in ink (`ink`): the hair is opaque paint, but where it is drawn over the
+    // base's line art the matte can't tell the two apart (both dark) and leaves the ink half covered, as dashes of
+    // outline through a light colour where a braid crosses the jaw or a collar, or long hair the head's outline
+    // (2026-11-20). Ink the hair spans, with hair over something else on both sides within the band's width (the
+    // line and its anti-aliased edges), is hair. Ink beside the hair (a face beside long hair) has hair on one side
+    // only and stays.
+    if (ink) {
+      const reach = radius;
+      const hair = (x: number, y: number) =>
+        x >= bx0 && y >= by0 && x < bx1 && y < by1 && solid[y * width + x] === 1 && !ink[y * width + x];
+      for (let y = by0; y < by1; y++) {
+        for (let x = bx0; x < bx1; x++) {
+          const p = y * width + x;
+          if (!ink[p] || figure[p]! <= outAlpha[p]! + 0.01) continue;
+          const spanned = [
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [1, -1],
+          ].some(([dx, dy]) => {
+            let ahead = false,
+              behind = false;
+            for (let k = 1; k <= reach; k++) {
+              ahead ||= hair(x + dx! * k, y + dy! * k);
+              behind ||= hair(x - dx! * k, y - dy! * k);
+            }
+            return ahead && behind;
+          });
+          if (!spanned) continue;
+          const sum = [0, 0, 0];
+          let count = 0;
+          for (let dy = -reach; dy <= reach; dy++)
+            for (let dx = -reach; dx <= reach; dx++)
+              if (dx * dx + dy * dy <= reach * reach && hair(x + dx, y + dy)) {
+                for (let k = 0; k < 3; k++) sum[k]! += outColour[((y + dy) * width + x + dx) * 3 + k]!;
+                count++;
+              }
+          add.push(p, figure[p]!, ...sum.map((v) => v / count));
+        }
+      }
+    }
     for (let i = 0; i < add.length; i += 5) {
       const p = add[i]!;
+      if (outAlpha[p] === add[i + 1]) continue;
       outAlpha[p] = add[i + 1]!;
       solid[p] = 1;
       for (let k = 0; k < 3; k++) outColour[p * 3 + k] = add[i + 2 + k]!;
@@ -819,12 +881,15 @@ export const coverOutline = (
 
 const PAPER_TEXTURE = 0.03;
 const PAPER_NEAR = 0.08;
+/** Ink is darker than this share of the paper's luminance. */
+const INK = 0.4;
 
 /**
  * The figure's coverage (0..1) in a base drawn on paper with no transparency (the picker's portrait bases, D28): the
  * paper is the border's median colour, and the pixels like it that the border reaches without crossing the figure
  * are outside it, ramping up to the figure's ink over the anti-aliased edge. Paper enclosed by the figure (between an
- * arm and the body) stays the figure's; coverOutline only looks near skin, so that costs nothing.
+ * arm and the body) stays the figure's; coverOutline only looks near skin, so that costs nothing. Also the figure's
+ * ink (its line art), which hair drawn over it covers (coverOutline).
  */
 export const paperSilhouette = (image: Rgb) => {
   const { width, height, data } = image;
@@ -850,7 +915,17 @@ export const paperSilhouette = (image: Rgb) => {
       stack.push(q);
     }
   }
-  return Float32Array.from(d, (v, p) => (reached[p] ? clamp01((v - PAPER_TEXTURE) / (PAPER_NEAR - PAPER_TEXTURE)) : 1));
+  const coverage = Float32Array.from(d, (v, p) =>
+    reached[p] ? clamp01((v - PAPER_TEXTURE) / (PAPER_NEAR - PAPER_TEXTURE)) : 1,
+  );
+  // The ink, and its anti-aliased edge: the portraits' line art sits at 0.15–0.25 of white, their skin and clothes at
+  // 0.45 and up (2026-11-20).
+  const paper = (median[0]! + median[1]! + median[2]!) / 3;
+  const dark = Uint8Array.from(coverage, (v, p) =>
+    v === 1 && (data[p * 3]! + data[p * 3 + 1]! + data[p * 3 + 2]!) / 3 < INK * paper ? 1 : 0,
+  );
+  const ink = Uint8Array.from(dilate(dark, width, height, 1), (v, p) => (v && coverage[p] === 1 ? 1 : 0));
+  return { coverage, ink };
 };
 
 /** The bounding box of the pixels with alpha, grown by `pad` and clipped; null when there are none. */

@@ -27,8 +27,9 @@ its code loads only when the button is pressed.
 
 - `parent@lifestory.dev` owns "The Example Family"; `grandparent@lifestory.dev` is its viewer.
 - Look vocabulary: `packages/core/src/looks/vocabulary.ts`; portrait art: `packages/core/src/looks/portrait/`. Its hair
-  and facial hair reach the head's ink outline (`fixtures/art-sources/portrait/build-outline.ts`, the shared
-  `coverOutline`); `part-cutout.test.ts` holds every portrait part to that and to `CROWN_GAP_LIMIT`.
+  and facial hair reach the head's ink outline and cover the ink they lie over
+  (`fixtures/art-sources/portrait/build-outline.ts`, the shared `coverOutline`); `part-cutout.test.ts` holds every
+  portrait part to that and to `CROWN_GAP_LIMIT`. Rerun `node apps/web/scripts/marketing-looks.ts` after re-cutting.
 
 ## Verify
 

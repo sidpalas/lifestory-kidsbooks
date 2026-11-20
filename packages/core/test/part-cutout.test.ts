@@ -269,10 +269,22 @@ describe("coverOutline", () => {
   });
 });
 
+// The scene below: a sweater on the paper below the head, its outline and collar drawn in ink, a braid over them on
+// the left, and long hair beside the cheek on the right.
+const body = (x: number, y: number) => x >= 60 && x < 428 && y >= 470;
+const line = (x: number, y: number) => body(x, y) && (y < 476 || x < 66 || x >= 422 || (y >= 500 && y < 506));
+const braid = (x: number, y: number) => x >= 70 && x < 110 && y >= 380;
+const cheek = (x: number, y: number) => x >= 394 && x < 440 && y >= 260 && y < 340;
+const dashes = (x: number) => (x % 4 < 2 ? 0.3 : 0.7);
+const nearLine = (x: number, y: number) =>
+  [-2, -1, 0, 1, 2].some((dy) => [-2, -1, 0, 1, 2].some((dx) => line(x + dx, y + dy)));
+
 describe("coverOutline on a base drawn on paper", () => {
-  // The picker's portraits (D28): an opaque base on textured paper, the head drawn with an ink line 6 px wide at
-  // 560 px. The matte left the ink half covered under the hair (alpha 0.3, dark notches under a light colour), and a
-  // stubble's dots sit on the chin, against the jaw's ink.
+  // The picker's portraits (D28): an opaque base on textured paper, the head and body drawn with an ink line 6 px
+  // wide at 560 px, and a collar line inside the sweater. The matte left the ink half covered wherever hair lies over
+  // it, as dashes of alpha 0.3 and 0.7 (dark notches and a dotted trace under a light colour): around the crown, and
+  // where a braid hangs over the sweater's outline and collar. Long hair falls on the paper beside the cheek, over
+  // a little of its ink (0.6), and a stubble's dots sit on the chin, against the jaw's ink.
   const width = 488,
     height = 560,
     r = 150,
@@ -286,18 +298,31 @@ describe("coverOutline on a base drawn on paper", () => {
   for (const p of pixels) {
     const [x, y] = at(p);
     const paper = [0.99, 0.91, 0.73].map((v, c) => v - 0.012 * Math.abs(Math.sin(x / 3 + y / 7 + c)));
-    image.set(d(p) < r - ink ? [0.88, 0.66, 0.45] : d(p) < r ? [0.35, 0.2, 0.08] : paper, p * 3);
+    const inked = (d(p) >= r - ink && d(p) < r) || line(x, y);
+    image.set(
+      inked ? [0.35, 0.2, 0.08] : d(p) < r - ink ? [0.88, 0.66, 0.45] : body(x, y) ? [0.55, 0.53, 0.5] : paper,
+      p * 3,
+    );
     mask[p] = d(p) < r - ink ? 255 : 0;
-    if (y < 220) alpha[p] = d(p) < r - ink ? 1 : d(p) < r ? 0.3 : 0;
+    if (y < 220) alpha[p] = d(p) < r - ink ? 1 : d(p) < r ? dashes(x) : 0;
     if (y > 400 && d(p) < r - 1 && x % 6 < 2 && y % 6 < 2) alpha[p] = 1;
+    if (braid(x, y)) alpha[p] = line(x, y) ? dashes(x) : 1;
+    if (cheek(x, y)) alpha[p] = 1;
+    if (y >= 260 && y < 340 && x > 244 && d(p) >= r - ink && d(p) < r) alpha[p] = 0.6;
   }
   const figure = paperSilhouette({ width, height, data: image });
-  const result = coverOutline(alpha, new Float32Array(width * height * 3).fill(0.4), figure, mask, width, height);
+  const colour = new Float32Array(width * height * 3).fill(0.4);
+  const result = coverOutline(alpha, colour, figure.coverage, mask, width, height, figure.ink);
   const ring = (p: number) => d(p) >= r - ink && d(p) < r - 1;
 
-  it("finds the head's silhouette on the paper", () => {
-    expect(pixels.filter((p) => d(p) > r + 1 && figure[p]! >= 0.02)).toEqual([]);
-    expect(pixels.filter((p) => d(p) < r - 1 && figure[p]! < 1)).toEqual([]);
+  it("finds the head's silhouette and its ink on the paper", () => {
+    expect(pixels.filter((p) => d(p) > r + 1 && !body(...at(p)) && figure.coverage[p]! >= 0.02)).toEqual([]);
+    expect(pixels.filter((p) => d(p) < r - 1 && figure.coverage[p]! < 1)).toEqual([]);
+    expect(pixels.filter((p) => (ring(p) || line(...at(p))) && !figure.ink[p])).toEqual([]);
+    // The ink's anti-aliased edge (1 px) is ink too; skin and sweater beyond it are not.
+    expect(
+      pixels.filter((p) => figure.ink[p] && (d(p) < r - ink - 2 || (body(...at(p)) && !nearLine(...at(p))))),
+    ).toEqual([]);
   });
 
   it("covers the ink under the hair, and not beside the face or under a stubble's dots", () => {
@@ -305,7 +330,21 @@ describe("coverOutline on a base drawn on paper", () => {
     expect(above.length).toBeGreaterThan(300);
     expect(above.filter((p) => result.alpha[p]! < 0.99)).toEqual([]);
     expect(pixels.filter((p) => ring(p) && at(p)[1] > 240 && result.alpha[p]! !== alpha[p])).toEqual([]);
-    expect(coverOutline(result.alpha, result.colour, figure, mask, width, height).covered).toBe(0);
+    expect(coverOutline(result.alpha, result.colour, figure.coverage, mask, width, height, figure.ink).covered).toBe(0);
+  });
+
+  it("covers the outline and collar a braid crosses, and not the collar beside it", () => {
+    const crossed = pixels.filter((p) => braid(...at(p)) && line(...at(p)));
+    expect(crossed.length).toBeGreaterThan(400);
+    expect(crossed.filter((p) => result.alpha[p]! < 0.99)).toEqual([]);
+    expect(result.colour[crossed[0]! * 3]).toBeCloseTo(0.4, 5);
+    expect(pixels.filter((p) => line(...at(p)) && at(p)[0] >= 120 && result.alpha[p]! > 0)).toEqual([]);
+  });
+
+  it("without the base's ink (a pencil outline, Paper Boat), leaves what the hair mostly covers as it is", () => {
+    const pencil = coverOutline(alpha, colour, figure.coverage, mask, width, height);
+    expect(pixels.filter((p) => alpha[p]! >= 0.5 && pencil.alpha[p] !== alpha[p])).toEqual([]);
+    expect(pixels.filter((p) => braid(...at(p)) && line(...at(p)) && pencil.alpha[p] !== alpha[p])).toEqual([]);
   });
 });
 
@@ -427,7 +466,8 @@ describe("the sample stories' hair", () => {
 
 describe("the picker's portrait hair", () => {
   // Every hair and facial hair part of the portrait (D28) on its own base, drawn on paper (no alpha): its silhouette
-  // is the paper the border reaches (figureCoverage), as cutOutLayer finds it for a new part.
+  // is the paper the border reaches, and its ink the line art (figureCoverage), as cutOutLayer finds them for a new
+  // part.
   const dir = new URL("../src/looks/portrait/", import.meta.url);
   const read = (asset: string) => new Uint8Array(readFileSync(new URL(asset, dir)));
 
@@ -446,7 +486,7 @@ describe("the picker's portrait hair", () => {
           .raw()
           .toBuffer({ resolveWithObject: true });
         const { width, height } = info;
-        const figure = await figureCoverage(read(`bases/${base}.png`), width, height);
+        const { coverage: figure, ink } = await figureCoverage(read(`bases/${base}.png`), width, height);
         return Promise.all(
           Object.entries(options)
             .flatMap(([option, layers]) => layers.map((part) => ({ option, ...part })))
@@ -472,6 +512,7 @@ describe("the picker's portrait hair", () => {
                 new Uint8Array(mask),
                 width,
                 height,
+                ink,
               ).covered;
               // Sparse hair shows scalp on purpose (D51), so it has no crown gap to fail.
               return {

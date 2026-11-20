@@ -451,6 +451,17 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   (`coverOutline`, Paper Boat v6) now measures each base's outline width and finds the silhouette of a base drawn on
   paper; `fixtures/art-sources/portrait/build-outline.ts` re-cut the stored parts with it (no new edits). No part
   leaves scalp above it (`crownGap` at most 8.1, under the limit of 9), so none was redrawn.
+- **Hair covers the ink it lies over (2026-11-20, Sid: "the toddler and young child ponytail has some outline
+  bleed through", then braids and short hair on the round face):** a separate defect from the crown ring above. Where
+  hair is painted over the base's line art (a braid across the jaw and collar, a ponytail or short cut over the
+  head's outline) the matte can't tell ink from dark hair and left it at alpha 0.5–0.9, which `coverOutline` skipped
+  as "already mostly hair": a dotted trace of the outline under light colours on every skin. `figureCoverage` now
+  also returns the base's ink (darker than 0.4 of the paper) for bases drawn on paper; with it, `coverOutline` covers
+  ink in its band even when mostly covered, ink the hair spans on both sides anywhere, and reaches one pixel further
+  (the ink's anti-aliased inner edge). Ink beside hair (a cheek's outline beside long hair, a crown under wisps) stays.
+  Bases with alpha (Paper Boat, Moon Picnic) get no ink, so published book parts don't change.
+  `build-outline.ts` re-cut all 197 stored portrait parts (no new edits, no spend) and the landing demo's layers
+  were regenerated.
 - **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
   its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
   character's own option is unsupported, so a later look change back to a supported option takes effect again. A role

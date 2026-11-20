@@ -194,12 +194,17 @@ export type CutOutOptions = { readonly neutral: true; readonly figure: Uint8Arra
 
 /**
  * The figure's coverage (0..1) at `width` × `height`, the silhouette coverOutline extends hair to: the base's own
- * alpha, or where the base has none (drawn on paper, like the picker's portrait bases), the paper the border reaches.
+ * alpha, or where the base has none (drawn on paper, like the picker's portrait bases), the paper the border reaches,
+ * with the figure's ink, which hair drawn over it covers.
  */
-export const figureCoverage = async (figure: Uint8Array, width: number, height: number) => {
+export const figureCoverage = async (
+  figure: Uint8Array,
+  width: number,
+  height: number,
+): Promise<{ readonly coverage: Float32Array; readonly ink: Uint8Array | null }> => {
   const rgba = await (await rasterize(figure)).resize(width, height, { fit: "fill" }).raw().toBuffer();
   const alpha = Float32Array.from({ length: width * height }, (_, p) => rgba[p * 4 + 3]! / 255);
-  if (alpha.some((a) => a < 1)) return alpha;
+  if (alpha.some((a) => a < 1)) return { coverage: alpha, ink: null };
   return paperSilhouette({
     width,
     height,
@@ -239,7 +244,9 @@ const splitLayers = async <M extends CutOutMetrics>(
   const cut = alpha.map((a, p) => (skin[p] ? 0 : a));
   // Hair reaches the head's outline, which the matte leaves out (coverOutline).
   const figure = options.neutral ? await figureCoverage(options.figure, width, height) : null;
-  const outline = figure ? coverOutline(cut, colour, figure, new Uint8Array(mask), width, height) : null;
+  const outline = figure
+    ? coverOutline(cut, colour, figure.coverage, new Uint8Array(mask), width, height, figure.ink)
+    : null;
   const partAlpha = outline?.alpha ?? cut;
   const partColour = outline?.colour ?? colour;
   const layers = await Promise.all([

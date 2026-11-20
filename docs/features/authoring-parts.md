@@ -54,7 +54,8 @@ actual-page composition and explicit bulk approval.
   cut-out fixes itself with `coverOutline` and records `outlineCovered`. It measures the outline's width on the base
   (a thick ink line, as the picker's portraits draw, shows as dark notches and flecks under a light hair colour),
   extends only solid hair (not stubble dots), and takes the silhouette from the base's alpha, or from the paper
-  around it when the base has none (`figureCoverage`).
+  around it when the base has none (`figureCoverage`). On a base drawn on paper it also covers the base's ink that
+  hair lies over (a braid across the jaw, a ponytail over the head's outline), which the matte leaves half covered.
 - Scrolling never approves artwork. Bulk approval includes only pending candidates whose two review images loaded
   and whose card entered the viewport in this sheet session; a fresh take has a fresh identity. This is a guard
   against unseen work, not evidence that a person inspected it. The illustrator still explicitly approves.
