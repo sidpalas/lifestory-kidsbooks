@@ -36,7 +36,7 @@ const orNone = <T extends object>(record: T) => (Object.keys(record).length > 0 
 type Choice = { cast: Record<string, string>; looks: Record<string, Look>; changes: Record<string, LookOverride> };
 
 function StoryPreview() {
-  const { story, version, manifest, roles, cast, pages, characters, canEdit, books } = Route.useLoaderData();
+  const { story, archived, version, manifest, roles, cast, pages, characters, canEdit, books } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const router = useRouter();
   const updating = useRouterState({ select: (state) => state.isLoading });
@@ -105,6 +105,15 @@ function StoryPreview() {
         <p className="text-muted-foreground text-sm" data-testid="story-meta">
           by {story.authorName} · version {version} · {widthIn} × {heightIn} in · {manifest.pages.length} pages
         </p>
+        {archived && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="story-archived" role="status">
+            <span className="font-medium">Archived.</span> Families can't find this story or make new books of it; the books they made stay theirs. You see it
+            because you wrote it.{" "}
+            <Link to="/author/$storyId" params={{ storyId: story.id }} className="underline">
+              Restore it in Studio
+            </Link>
+          </p>
+        )}
       </header>
 
       <StoryCast
@@ -115,6 +124,7 @@ function StoryPreview() {
         characters={characters}
         books={books}
         canEdit={canEdit}
+        archived={archived}
         selected={selected}
         trying={tryingOpen}
         onTry={onTry}

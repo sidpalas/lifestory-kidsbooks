@@ -52,6 +52,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
   plate for multiple characters. `verify e2e -- art-import`.
 - [authoring-parts](authoring-parts.md): tiled part generation, head-only sharing, consistency references and
   mirrored figures (D44). `verify e2e -- parts authoring`.
+- [story-archive](story-archive.md): an author archives or restores a published story; existing books keep
+  working. `verify e2e -- archive`.
 - Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.
 
 ### Whole suite

@@ -74,6 +74,8 @@ const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.N
 export const StoryPreviewResult = ResultSchema(
   Schema.Struct({
     story: StorySummary,
+    /** Archived by its author (D49): only the author sees it, and no book can be made of it. */
+    archived: Schema.Boolean,
     version: Schema.Number,
     manifest: StoryManifest,
     /** Who fills each role in this preview, and whether the story can draw them. */

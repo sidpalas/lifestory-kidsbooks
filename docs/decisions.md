@@ -684,6 +684,22 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** families find the sidebar heavy for a handful of stories (the bookshelf layout was the runner-up),
   or orders and a marketplace need a different top level.
 
+### D49. An author archives a story instead of deleting it; families keep their books — Made (2026-11-20)
+- **Why (Sid):** "we should be able to delete (or at least archive) a story as the author so it doesn't show up for
+  users to create new books."
+- **What:** the existing `archived` value of `story.status` (no migration). The author archives a published story from
+  its Studio page after a confirmation, and restores it with one click. Archived: not in `listPublishedStories`, not
+  readable by families (`readableStoryVersion`, so `/stories/<slug>` is not found), and `createBook` refuses it inside
+  its per-family lock. Its author still reads it, previews it (with a notice and no make-a-book button), drafts and
+  publishes versions, which keep it archived until restored.
+- **Existing books keep working:** books load by ID, not through the catalogue rule, and `canReadStoryAsset` also lets
+  members of a family with a book of a version read that version's files, so pages, proofs, and reprints draw.
+- **Not deleting:** books and proofs pin versions (`onDelete: restrict`), and a hard delete would break families'
+  books. Nothing is deleted; whether to offer deleting a never-published draft, or a story nobody made a book of, is
+  Sid's call.
+- **Reopen if:** authors need a hard delete, families should be told a story they have was archived, or archiving
+  should also stop new proofs of existing books.
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no

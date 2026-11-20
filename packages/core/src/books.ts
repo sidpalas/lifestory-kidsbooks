@@ -136,6 +136,9 @@ export const createBook = Effect.fn("books.create")(function* (
   const unseen = yield* Database.query((db) =>
     db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`book:${familyId}:${story.id}`}, 0))`);
+      // Checked here, not only when reading the story, so a story archived meanwhile gets no new book (D49).
+      const [current] = await tx.select({ status: schema.story.status }).from(schema.story).where(eq(schema.story.id, story.id));
+      if (current?.status === "archived") return "archived" as const;
       const books = await tx
         .select({ id: schema.book.id })
         .from(schema.book)
@@ -151,6 +154,7 @@ export const createBook = Effect.fn("books.create")(function* (
       return null;
     }),
   );
+  if (unseen === "archived") return yield* new InvalidInput({ message: `${story.title} is archived, so no new books are made of it.` });
   if (unseen) {
     return yield* new BookExists({
       message: `Your family already has ${unseen.length === 1 ? "a book" : `${unseen.length} books`} of ${story.title}, so no new one was made.`,

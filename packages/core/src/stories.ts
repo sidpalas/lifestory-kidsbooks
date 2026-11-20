@@ -89,6 +89,7 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
         title: schema.story.title,
         summary: schema.story.summary,
         authorName: schema.user.name,
+        status: schema.story.status,
         storyVersionId: schema.storyVersion.id,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
@@ -102,8 +103,9 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
   );
   if (!row) return yield* new NotFound({ entity: "story", id: slug });
   const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
-  const { storyVersionId, version, manifest: _, ...story } = row;
-  return { story: story satisfies StorySummary, storyVersionId, version, manifest, additionRevision };
+  const { storyVersionId, version, manifest: _, status, ...story } = row;
+  // Only its author reads an archived story (D49), to preview it; nobody makes a book of it.
+  return { story: story satisfies StorySummary, archived: status === "archived", storyVersionId, version, manifest, additionRevision };
 });
 
 /** What a story preview casts: see previewRoles. */
@@ -152,7 +154,7 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
   characters: ReadonlyArray<Character>,
   choice: PreviewChoice = {},
 ) {
-  const { story, version, manifest } = yield* readableStoryVersion(userId, slug);
+  const { story, archived, version, manifest } = yield* readableStoryVersion(userId, slug);
   const roles = previewRoles(manifest, characters, choice);
   const cast = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
   const drawable = Object.fromEntries(roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]));
@@ -161,13 +163,16 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
       Effect.map((layers) => ({ pageId: page.pageId, layers })),
     ),
   );
-  return { story, version, manifest, roles, cast, pages };
+  return { story, archived, version, manifest, roles, cast, pages };
 });
 
 // No ".." anywhere: some S3 servers normalize paths, which would let a key climb out of the story.
 const STORY_ASSET_KEY = /^(?!.*\.\.)stories\/([^/]+)\/v(\d+)\/.+$/;
 
-/** Whether `userId` may download the object at `key` under `stories/`, by the same rule as getStoryPreview. */
+/**
+ * Whether `userId` may download the object at `key` under `stories/`: by the same rule as getStoryPreview, or as a
+ * member of a family with a book of that version, so books of an archived story (D49) still draw.
+ */
 export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (userId: string, key: string) {
   const match = STORY_ASSET_KEY.exec(key);
   if (!match) return false;
@@ -185,7 +190,17 @@ export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (us
       .where(and(eq(schema.storyVersion.storyId, storyId!), eq(schema.storyVersion.version, Number(version)), readableBy(userId)))
       .limit(1),
   );
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+  const booked = yield* Database.query((db) =>
+    db
+      .select({ id: schema.book.id })
+      .from(schema.book)
+      .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
+      .innerJoin(schema.member, and(eq(schema.member.organizationId, schema.book.familyId), eq(schema.member.userId, userId)))
+      .where(and(eq(schema.storyVersion.storyId, storyId!), eq(schema.storyVersion.version, Number(version))))
+      .limit(1),
+  );
+  return booked.length > 0;
 });
 
 export interface StoryVersionImport {

@@ -32,6 +32,7 @@ export function StoryCast({
   characters,
   books,
   canEdit,
+  archived,
   selected,
   trying,
   onTry,
@@ -51,6 +52,8 @@ export function StoryCast({
   /** The family's books of this story already made, newest first. */
   books: ReadonlyArray<BookSummary>;
   canEdit: boolean;
+  /** Archived by its author (D49): the page previews it, and no book can be made of it. */
+  archived: boolean;
   /** What each role's select shows: a character ID, or EXAMPLE. Runs ahead of `roles` while pages recompose. */
   selected: (slotId: string) => string;
   /** Whether the looks picker for the role's example is open, and showing or hiding it. */
@@ -217,6 +220,7 @@ export function StoryCast({
           })}
         </ul>
         {canEdit &&
+          !archived &&
           (books.length === 0 ? (
             <div className="flex flex-wrap items-center gap-3">
               <Button type="button" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>

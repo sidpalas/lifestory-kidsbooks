@@ -43,6 +43,7 @@ import {
   publishDraft,
   revokeAuthor,
   saveDraft,
+  setStoryArchived,
   startNextVersion,
   storyVersions,
 } from "@lifestory/core";
@@ -127,6 +128,15 @@ export const StartNextVersionResult = ResultSchema(Schema.Struct({ version: Sche
 export const startNextVersionFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(StoryId))
   .handler(({ data }) => runEffect(StartNextVersionResult, currentUser.pipe(Effect.flatMap((user) => startNextVersion(user, data.storyId)))));
+
+export const ArchiveStoryResult = ResultSchema(Schema.Struct({ status: Schema.String }), Schema.Union([NotAuthenticated, Forbidden, NotFound, InvalidInput]));
+
+/** Archives a published story (`archived` true) or restores it (D49). */
+export const setStoryArchivedFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, archived: Schema.Boolean })))
+  .handler(({ data }) =>
+    runEffect(ArchiveStoryResult, currentUser.pipe(Effect.flatMap((user) => setStoryArchived(user, data.storyId, data.archived)))),
+  );
 
 export const AuthorsResult = ResultSchema(
   Schema.Array(Schema.Struct({ userId: Schema.String, name: Schema.String, email: Schema.String })),

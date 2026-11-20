@@ -574,9 +574,13 @@ export const publishDraft = Effect.fn("authoring.publishDraft")(function* (user:
         .where(and(eq(schema.storyVersion.id, draft.id), eq(schema.storyVersion.revision, revision), isNull(schema.storyVersion.publishedAt)))
         .returning({ id: schema.storyVersion.id });
       if (rows.length === 0) return false;
+      // An archived story stays archived: a new version reaches families only when the author restores it.
       await tx
         .update(schema.story)
-        .set({ status: "published", publishedAt: sql`coalesce(${schema.story.publishedAt}, ${now})` })
+        .set({
+          status: sql`case when ${schema.story.status} = 'archived' then 'archived'::story_status else 'published'::story_status end`,
+          publishedAt: sql`coalesce(${schema.story.publishedAt}, ${now})`,
+        })
         .where(eq(schema.story.id, storyId));
       return true;
     }),
@@ -590,6 +594,19 @@ export const publishDraft = Effect.fn("authoring.publishDraft")(function* (user:
     yield* storage.delete(object.key);
   }
   return { version: draft.version };
+});
+
+/**
+ * Archives a published story, or restores an archived one (D49). An archived story leaves the catalogue and its page,
+ * and nobody makes a new book of it; existing books, their proofs, and every version and file stay as they are, and
+ * the author keeps reading, drafting, and publishing it. Fails with InvalidInput for a story never published.
+ */
+export const setStoryArchived = Effect.fn("authoring.setStoryArchived")(function* (user: SessionUser, storyId: string, archived: boolean) {
+  const { story } = yield* ownedDraft(user, storyId);
+  if (story.status === "draft") return yield* new InvalidInput({ message: "Only a published story can be archived." });
+  const status = archived ? "archived" : "published";
+  yield* Database.query((db) => db.update(schema.story).set({ status }).where(eq(schema.story.id, storyId)));
+  return { status };
 });
 
 /** Opens a draft of the next version, starting from the newest published one and copying its files. */

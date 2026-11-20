@@ -68,6 +68,7 @@ function AuthoringHome() {
                         </Link>
                         <p className="text-muted-foreground text-xs">
                           /{story.slug} · {story.publishedVersion ? `version ${story.publishedVersion} published` : "not published yet"}
+                          {story.status === "archived" && " · archived: hidden from families"}
                           {story.draftVersion && ` · drafting version ${story.draftVersion}`}
                           {story.additions > 0 && ` · ${story.additions} ${story.additions === 1 ? "addition" : "additions"}`}
                         </p>

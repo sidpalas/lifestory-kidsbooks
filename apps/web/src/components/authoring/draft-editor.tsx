@@ -375,7 +375,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             <p className="text-muted-foreground text-xs">Family members of the ages a role accepts. Only the preview changes; families see the example.</p>
           </fieldset>
         )}
-        {view.story.status === "published" && (
+        {view.story.status !== "draft" && (
           <Link to="/stories/$slug" params={{ slug: view.story.slug }} className="text-sm hover:underline">
             Open the published story →
           </Link>
