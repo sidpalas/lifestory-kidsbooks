@@ -15,6 +15,9 @@ const emailedLink = async (page: Page, to: string) => {
 };
 
 const signOut = async (page: Page) => {
+  // On a phone, Sign out is in the Menu sheet.
+  const menu = page.getByRole("button", { name: "Menu" });
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 };
@@ -150,6 +153,18 @@ test("an existing user accepts an invitation into a second family and switches b
   await expect(page.getByTestId("family-panel")).toContainText("You're the family's owner");
   await page.reload();
   await expect(switcher.locator("option:checked")).toHaveText(`sam-${id}'s family`);
+
+  // On a phone the switcher and Sign out live in the Menu sheet.
+  await page.setViewportSize({ width: 375, height: 740 });
+  await page.getByRole("button", { name: "Menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu.getByRole("button", { name: `sam-${id}'s family` })).toHaveAttribute("aria-current", "true");
+  await menu.getByRole("button", { name: `alex-${id}'s family` }).click();
+  await expect(menu).toBeHidden();
+  await expect(page.getByTestId("family-panel")).toContainText("You're an editor");
+  await page.getByRole("button", { name: "Menu" }).click();
+  await menu.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
 });
 
 test("the owner renames the family, and a viewer sees the new name but can't rename it", async ({ page }) => {
@@ -271,6 +286,31 @@ test("only the operator reaches Admin; Studio no longer holds its tools", async 
   await expect(page.getByRole("heading", { name: "Write stories" })).toBeVisible();
   await expect(page.getByTestId("invite-family")).toHaveCount(0);
   await expect(page.getByTestId("authors")).toHaveCount(0);
+});
+
+test("on a phone, the Menu sheet holds Studio and Admin for the operator and neither for a parent", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 740 });
+  await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
+  const menuButton = page.getByRole("button", { name: "Menu" });
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  await menuButton.click();
+  await expect(menu).toContainText("parent@lifestory.dev");
+  await expect(menu.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(menu.getByRole("link")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  await menuButton.click();
+  await expect(menu.getByRole("link", { name: /Studio/ })).toBeVisible();
+  await menu.getByRole("link", { name: /Admin/ }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(menu).toBeHidden();
+  await expect(page.getByTestId("invite-family")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
 
 test("an author who isn't the operator can't reach Admin", async ({ browser }) => {

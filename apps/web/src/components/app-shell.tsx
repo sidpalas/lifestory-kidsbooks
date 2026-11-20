@@ -1,9 +1,11 @@
 // The app shell around every family page (D48): a sidebar on wide screens with the family's places and, for authors
-// and the operator, a separate Studio link (and Admin for the operator); on phones a top bar and bottom tabs instead. Story and book pages open
-// without it, full width, so their pages have room.
+// and the operator, a separate Studio link (and Admin for the operator); on phones a top bar with a Menu sheet for
+// those and Sign out, and bottom tabs for the family's places. Story and book pages open without it, full width,
+// so their pages have room.
 import { type FamilyMembership, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import type * as React from "react";
+import { useRef } from "react";
 
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
@@ -27,14 +29,18 @@ const places = (viewer: boolean) =>
     { to: "/family", label: viewer ? "Family" : "Family settings", short: "Family" },
   ] as const;
 
-function FamilySwitcher({ shell, id }: { shell: Shell; id?: string }) {
+function useSwitchFamily() {
   const router = useRouter();
-  // The server-rendered select does nothing until React hydrates, so keep it disabled until then.
-  const hydrated = useHydrated();
-  const switchTo = async (familyId: string) => {
+  return async (familyId: string) => {
     unwrapResult(SwitchFamilyResult)(await switchFamilyFn({ data: { familyId } }));
     await router.invalidate();
   };
+}
+
+function FamilySwitcher({ shell, id }: { shell: Shell; id?: string }) {
+  // The server-rendered select does nothing until React hydrates, so keep it disabled until then.
+  const hydrated = useHydrated();
+  const switchTo = useSwitchFamily();
   // The switcher appears once someone is in more than one family (D3: say little about families until then).
   if (shell.families.length > 1)
     return (
@@ -65,6 +71,104 @@ function useSignOut() {
     unwrapResult(SignOutResult)(await signOut());
     await router.navigate({ to: "/sign-in" });
   };
+}
+
+/**
+ * Phones: one Menu button in the top bar opens a sheet from the bottom with everything that isn't one of the
+ * family's places: who's signed in, the family switcher, Studio, Admin, and Sign out (Sid, 2026-11-20).
+ */
+function MenuSheet({ shell, studio }: { shell: Shell; studio: boolean }) {
+  const hydrated = useHydrated();
+  const leave = useSignOut();
+  const switchTo = useSwitchFamily();
+  const sheet = useRef<HTMLDialogElement>(null);
+  const close = () => sheet.current?.close();
+  const row = "flex min-h-11 w-full items-center gap-3 px-5 py-2 text-left text-sm hover:bg-accent";
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label="Menu"
+        aria-haspopup="dialog"
+        disabled={!hydrated}
+        onClick={() => sheet.current?.showModal()}
+      >
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+        </svg>
+      </Button>
+      <dialog
+        ref={sheet}
+        aria-label="Menu"
+        // A click on the backdrop lands on the dialog itself; clicks inside land on its children.
+        onClick={(event) => event.target === sheet.current && close()}
+        className="fixed inset-x-0 top-auto bottom-0 m-0 w-full max-w-none rounded-t-2xl bg-background pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground shadow-lg backdrop:bg-black/35 md:hidden"
+      >
+        <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-border" aria-hidden />
+        <div className="border-b px-5 pt-1 pb-3">
+          <p className="text-sm">{shell.user.name}</p>
+          <p className="text-xs break-all text-muted-foreground">{shell.user.email}</p>
+        </div>
+        {shell.families.length > 1 && (
+          <div className="border-b py-1" role="group" aria-labelledby="menu-families">
+            <p id="menu-families" className="px-5 pt-2 text-xs text-muted-foreground">
+              Family
+            </p>
+            {shell.families.map((family) => {
+              const current = family.id === shell.active?.id;
+              return (
+                <button
+                  key={family.id}
+                  type="button"
+                  className={`${row} ${current ? "font-semibold" : ""}`}
+                  aria-current={current || undefined}
+                  onClick={() => {
+                    close();
+                    if (!current) void switchTo(family.id);
+                  }}
+                >
+                  <span className="min-w-0 flex-1 wrap-anywhere">{family.name}</span>
+                  {current && <span className="text-primary">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {studio && (
+          <div className="border-b py-1">
+            <Link to="/author" className={row} onClick={close}>
+              <span className="flex flex-col">
+                Studio
+                <span className="text-xs text-muted-foreground">Write and publish stories</span>
+              </span>
+            </Link>
+            {shell.isOperator && (
+              <Link to="/admin" className={row} onClick={close}>
+                <span className="flex flex-col">
+                  Admin
+                  <span className="text-xs text-muted-foreground">Invite families, choose authors</span>
+                </span>
+              </Link>
+            )}
+          </div>
+        )}
+        <div className="pt-1">
+          <button
+            type="button"
+            className={`${row} text-primary`}
+            onClick={() => {
+              close();
+              void leave();
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </dialog>
+    </>
+  );
 }
 
 export function AppShell({ shell, children }: { shell: Shell; children: React.ReactNode }) {
@@ -134,30 +238,12 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-2 md:hidden">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background py-1 pr-1 pl-4 md:hidden">
           <Link to="/" className="font-semibold">
             Lifestory
           </Link>
-          <div className="min-w-0 flex-1">
-            <FamilySwitcher shell={shell} />
-          </div>
-          {studio && (
-            <Link
-              to="/author"
-              className="rounded-md border border-primary/40 px-2 py-1 text-xs font-medium text-primary"
-            >
-              Studio
-            </Link>
-          )}
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-xs"
-            onClick={() => void leave()}
-            disabled={!hydrated}
-          >
-            Sign out
-          </Button>
+          <p className="min-w-0 flex-1 truncate text-sm">{shell.active?.name ?? "Not in a family yet"}</p>
+          <MenuSheet shell={shell} studio={studio} />
         </header>
         {children}
       </div>

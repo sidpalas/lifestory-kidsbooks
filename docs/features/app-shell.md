@@ -16,7 +16,8 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 - Viewers see the same places without edit actions; "Family settings" reads "Family". Studio only for authors and
   the operator. Admin only for the operator: its loader lists authors, which the server refuses with `Forbidden` for
   anyone else, so the page is not found; inviting a family and granting or removing authors check the role again.
-  On phones Admin has no link yet (operators open `/admin` directly) until the mobile menu is decided.
+  On phones the top bar holds the logo, the family name, and a Menu button; its sheet holds who's signed in, the
+  family switcher (past one family), Studio, Admin, and Sign out, each only for whom it applies.
   Story and book pages are outside the shell.
 
 ## Seed data
@@ -28,12 +29,14 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 
 `mise run verify -- e2e -- smoke families books milestone1`: signed-in identity and family name in the sidebar,
 stories on Home, family settings at `/family`, characters at `/characters`, books at `/books`, the operator's family
-invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author.
+invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author; on a phone,
+the Menu sheet's switcher, Sign out, Studio and Admin links.
 
 ## Gotchas
 
-- Testids for who's signed in and the family name live only in the desktop sidebar; the phone top bar repeats them
-  without testids, so specs stay unambiguous.
+- Testids for who's signed in and the family name live only in the desktop sidebar; the phone top bar and Menu sheet
+  repeat them without testids, so specs stay unambiguous. The sheet is a native `<dialog>` opened with `showModal()`,
+  so Esc and focus containment come from the browser; a click on its backdrop closes it.
 - The shell's data (`getHome`) reloads with each navigation; keep it small.
 - `/family` lists members (`member` rows) and pending invitations (`invitation` rows) apart from the invite form; a
   member whose name is their email shows it once. On phones the role pill sits under the identity; `families.spec.ts`
