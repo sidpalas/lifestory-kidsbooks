@@ -49,7 +49,9 @@ export const renderProof = defineTask({
           const pageCount = countPdfPages(pdf);
           // More PDF pages than book pages means something overflowed its page: never hand that to a printer.
           if (pageCount !== bookPages) {
-            return yield* Effect.die(new Error(`proof ${proofId}: ${bookPages} book pages printed as ${pageCount} PDF pages`));
+            return yield* Effect.die(
+              new Error(`proof ${proofId}: ${bookPages} book pages printed as ${pageCount} PDF pages`),
+            );
           }
           // A PDF a printer would reject is a bug in rendering, not something a parent can fix: fail rather than store it.
           const { issues } = yield* Effect.promise(() => checkPrintReady(pdf, trim));
@@ -67,7 +69,12 @@ export const renderProof = defineTask({
         Database.query((db) =>
           db
             .update(schema.proof)
-            .set({ status: "ready", objectKey: rendered.objectKey, pageCount: rendered.pageCount, bytes: rendered.bytes })
+            .set({
+              status: "ready",
+              objectKey: rendered.objectKey,
+              pageCount: rendered.pageCount,
+              bytes: rendered.bytes,
+            })
             .where(eq(schema.proof.id, proofId)),
         ).pipe(Effect.as(null)),
       );

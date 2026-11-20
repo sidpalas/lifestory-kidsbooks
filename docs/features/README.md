@@ -34,23 +34,28 @@ Show the user the images from that directory; a PASS line with no evidence looke
 ## Features
 
 ### Accounts and families
+
 - [app-shell](app-shell.md): sidebar, Home's next step, Stories, Our books, Characters, Family settings, Studio.
   `verify e2e -- smoke families books`.
 - Sign in, invitations, set password, viewer role: covered by `e2e -- families milestone1`; no map file yet.
 
 ### Characters
+
 - [character-picker](character-picker.md): age, then one feature at a time in order, live portrait. `verify picker`.
 
 ### Stories and books
+
 - [story-looks](story-looks.md): a story's figures on every skin and hair colour. `verify looks`.
 - [page-previews](page-previews.md): pages fit phones and desktop in the book editor, story page, and draft
   preview, keeping their shape. `verify layout`.
 - Personalized book, look change on every page, text editor: covered by `e2e -- milestone1 books`; no map file yet.
 
 ### Print
+
 - [pdf-proof](pdf-proof.md): print-ready PDF proof that matches the editor. `verify proof`.
 
 ### Authoring (operator and authors)
+
 - [authoring-casting](authoring-casting.md): source page upload, editable casting, approved extraction and a shared
   plate for multiple characters. `verify e2e -- art-import`.
 - [authoring-parts](authoring-parts.md): tiled part generation, head-only sharing, consistency references and
@@ -60,4 +65,5 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.
 
 ### Whole suite
+
 - `verify e2e [--ci] [-- <spec>]`: Playwright on one port with peak memory against the orb's cap (3 GiB on a1.small); fails first when another worker shares the database.

@@ -1,7 +1,15 @@
 // Client-safe schemas shared by the web app's server functions and its UI.
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
-import { CastMember, Look, LookOverride, PronounSet, StoryDraft, StoryManifest, TextStyleName } from "./book-format/index.ts";
+import {
+  CastMember,
+  Look,
+  LookOverride,
+  PronounSet,
+  StoryDraft,
+  StoryManifest,
+  TextStyleName,
+} from "./book-format/index.ts";
 import { StoryPart } from "./parts/contract.ts";
 import { Casting } from "./imports/casting-contract.ts";
 
@@ -46,7 +54,9 @@ export const FamilyOverview = Schema.Struct({
   canRename: Schema.Boolean,
   canInvite: Schema.Boolean,
   canEditBooks: Schema.Boolean,
-  members: Schema.Array(Schema.Struct({ userId: Schema.String, name: Schema.String, email: Schema.String, role: Schema.String })),
+  members: Schema.Array(
+    Schema.Struct({ userId: Schema.String, name: Schema.String, email: Schema.String, role: Schema.String }),
+  ),
   invitations: Schema.Array(Schema.Struct({ id: Schema.String, email: Schema.String, role: Schema.String })),
 });
 export type FamilyOverview = typeof FamilyOverview.Type;
@@ -206,7 +216,13 @@ export type AuthoredStory = typeof AuthoredStory.Type;
 
 /** A story draft in the authoring editor (D37): its manifest as saved, its generated parts, and every page composed for the slots' examples. */
 export const DraftView = Schema.Struct({
-  story: Schema.Struct({ id: Schema.String, slug: Schema.String, title: Schema.String, summary: Schema.String, status: Schema.String }),
+  story: Schema.Struct({
+    id: Schema.String,
+    slug: Schema.String,
+    title: Schema.String,
+    summary: Schema.String,
+    status: Schema.String,
+  }),
   storyVersionId: Schema.String,
   version: Schema.Number,
   revision: Schema.Number,
@@ -214,6 +230,8 @@ export const DraftView = Schema.Struct({
   draft: StoryDraft,
   casting: Casting,
   parts: Schema.Array(StoryPart),
-  pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
+  pages: Schema.Array(
+    Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) }),
+  ),
 });
 export type DraftView = typeof DraftView.Type;

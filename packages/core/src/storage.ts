@@ -80,7 +80,8 @@ export class ObjectStorage extends Context.Service<
       return {
         put: (key, body, contentType) =>
           Effect.tryPromise({
-            try: () => client.send(new PutObjectCommand({ Bucket: s3.bucket, Key: key, Body: body, ContentType: contentType })),
+            try: () =>
+              client.send(new PutObjectCommand({ Bucket: s3.bucket, Key: key, Body: body, ContentType: contentType })),
             catch: fail("put", key),
           }).pipe(Effect.asVoid),
         get: (key) =>
@@ -98,7 +99,14 @@ export class ObjectStorage extends Context.Service<
         copy: (from, to) =>
           Effect.tryPromise({
             // CopySource is "<bucket>/<key>", URL-encoded; the slashes between key segments stay.
-            try: () => client.send(new CopyObjectCommand({ Bucket: s3.bucket, Key: to, CopySource: `${s3.bucket}/${from.split("/").map(encodeURIComponent).join("/")}` })),
+            try: () =>
+              client.send(
+                new CopyObjectCommand({
+                  Bucket: s3.bucket,
+                  Key: to,
+                  CopySource: `${s3.bucket}/${from.split("/").map(encodeURIComponent).join("/")}`,
+                }),
+              ),
             catch: fail("copy", from),
           }).pipe(Effect.asVoid),
         list: (prefix) =>
@@ -107,9 +115,12 @@ export class ObjectStorage extends Context.Service<
               const objects: Array<ListedObject> = [];
               let token: string | undefined;
               do {
-                const page = await client.send(new ListObjectsV2Command({ Bucket: s3.bucket, Prefix: prefix, ContinuationToken: token }));
+                const page = await client.send(
+                  new ListObjectsV2Command({ Bucket: s3.bucket, Prefix: prefix, ContinuationToken: token }),
+                );
                 for (const object of page.Contents ?? []) {
-                  if (object.Key && object.LastModified) objects.push({ key: object.Key, lastModified: object.LastModified });
+                  if (object.Key && object.LastModified)
+                    objects.push({ key: object.Key, lastModified: object.LastModified });
                 }
                 token = page.NextContinuationToken;
               } while (token);

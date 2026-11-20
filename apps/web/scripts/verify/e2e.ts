@@ -30,10 +30,22 @@ export const e2e = async (report: Report, options: { port: number; ci: boolean; 
   const { port } = options;
   const origin = `http://localhost:${port}`;
   if (process.env.E2E_PORT && Number(process.env.E2E_PORT) !== port)
-    report.check("port", false, `E2E_PORT=${process.env.E2E_PORT} but --port ${port}; pass one of them`, { fatal: true });
+    report.check("port", false, `E2E_PORT=${process.env.E2E_PORT} but --port ${port}; pass one of them`, {
+      fatal: true,
+    });
   const webUp = (await readHealth(origin)) !== null;
-  if (options.ci && webUp) report.check("port", false, `CI=1 starts a fresh web app, but :${port} is taken (the web service?): add --port 3100`, { fatal: true });
-  report.check("port", true, `${webUp ? "reusing the web app on" : "Playwright starts a web app on"} ${origin}; its worker prints from there (PRINT_APP_URL)`);
+  if (options.ci && webUp)
+    report.check(
+      "port",
+      false,
+      `CI=1 starts a fresh web app, but :${port} is taken (the web service?): add --port 3100`,
+      { fatal: true },
+    );
+  report.check(
+    "port",
+    true,
+    `${webUp ? "reusing the web app on" : "Playwright starts a web app on"} ${origin}; its worker prints from there (PRINT_APP_URL)`,
+  );
   // Our own worker doesn't exist yet: every live worker is someone else's, and would take the tests' tasks with its
   // own IMAGE_PROVIDER and print origin (Playwright's global setup refuses too; this says so before anything starts).
   // A worker that just stopped may not have deleted its heartbeat (`node --watch` under systemd dies mid-shutdown):
@@ -48,10 +60,19 @@ export const e2e = async (report: Report, options: { port: number; ci: boolean; 
   report.check(
     "other workers",
     others.length === 0,
-    others.length === 0 ? "none share the database" : `${others.length} (${others.map((worker) => worker.version).join(", ")}) share the database and would take the tests' tasks: amp orb service stop worker`,
+    others.length === 0
+      ? "none share the database"
+      : `${others.length} (${others.map((worker) => worker.version).join(", ")}) share the database and would take the tests' tasks: amp orb service stop worker`,
     { fatal: others.length > 0 },
   );
-  report.check("agent-browser", !running("agent-browser"), running("agent-browser") ? "agent-browser is running; agent-browser close first (AGENTS.md, \"Orb size\": not measured alongside)" : "closed", { fatal: running("agent-browser") });
+  report.check(
+    "agent-browser",
+    !running("agent-browser"),
+    running("agent-browser")
+      ? 'agent-browser is running; agent-browser close first (AGENTS.md, "Orb size": not measured alongside)'
+      : "closed",
+    { fatal: running("agent-browser") },
+  );
 
   const measure = existsSync(`${CGROUP}/memory.stat`);
   const capBytes = measure ? Number(readFileSync(`${CGROUP}/memory.max`, "utf8").trim()) || 3 * GiB : 3 * GiB;
@@ -66,7 +87,11 @@ export const e2e = async (report: Report, options: { port: number; ci: boolean; 
     log.push(chunk.toString());
   };
   const code = await new Promise<number>((resolve) => {
-    const child = spawn("playwright", ["test", ...options.args], { cwd: repoRoot, env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("playwright", ["test", ...options.args], {
+      cwd: repoRoot,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
     child.on("exit", (exit, signal) => resolve(exit ?? (signal ? 137 : 1)));
@@ -79,6 +104,10 @@ export const e2e = async (report: Report, options: { port: number; ci: boolean; 
   if (measure) {
     report.facts.peakGiB = Number((peak / GiB).toFixed(2));
     report.facts.capGiB = Number((capBytes / GiB).toFixed(2));
-    report.check("memory", peak < capBytes * 0.95 && code !== 137, `peak ${(peak / GiB).toFixed(2)} GiB of the ${(capBytes / GiB).toFixed(2)} GiB cap (anon+shmem+kernel; ${(baseline / GiB).toFixed(2)} GiB before the run)${code === 137 ? "; killed, likely by the OOM killer" : ""}`);
+    report.check(
+      "memory",
+      peak < capBytes * 0.95 && code !== 137,
+      `peak ${(peak / GiB).toFixed(2)} GiB of the ${(capBytes / GiB).toFixed(2)} GiB cap (anon+shmem+kernel; ${(baseline / GiB).toFixed(2)} GiB before the run)${code === 137 ? "; killed, likely by the OOM killer" : ""}`,
+    );
   } else report.check("memory", true, `${CGROUP} not found (not an orb): not measured`);
 };

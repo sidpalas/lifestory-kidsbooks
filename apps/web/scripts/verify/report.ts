@@ -49,7 +49,10 @@ export class Report {
       config: this.config,
       origin,
       ok: this.ok && !error,
-      error: error && !(error instanceof FatalCheck) ? String(error instanceof Error ? (error.stack ?? error.message) : error) : undefined,
+      error:
+        error && !(error instanceof FatalCheck)
+          ? String(error instanceof Error ? (error.stack ?? error.message) : error)
+          : undefined,
       checks: this.checks,
       facts: this.facts,
     };

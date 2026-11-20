@@ -90,6 +90,7 @@ above; the per-process rows are PSS at the peak, approximate:
 | `tsc -p apps/web` | 1.24 GB | 0.66 GB |
 
 What took the memory, and what keeps it down now (don't undo these without measuring):
+
 - **glibc heap fragmentation from sharp** (worker and web server: recolouring, part cut-outs, imports): Node's V8 heap
   stayed at 50–200 MB through a 40-part round while RSS reached 0.9 GB, and it didn't come back. `mise.toml` sets
   `MALLOC_MMAP_THRESHOLD_=131072` for every task, so large buffers are mmapped and returned when freed. Not it: the

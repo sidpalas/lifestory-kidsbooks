@@ -46,8 +46,12 @@ export const additionIssues = (manifest: StoryManifest, addition: StoryAddition)
       if (manifest.palettes[axis][option]) issues.push(`palettes.${axis}: "${option}" is already published`);
     }
   }
-  const empty = Object.keys(addition.palettes?.skin ?? {}).length + Object.keys(addition.palettes?.hairColour ?? {}).length === 0;
-  if (empty && (addition.figures ?? []).every((figure) => (figure.bases?.length ?? 0) + (figure.parts?.length ?? 0) === 0)) {
+  const empty =
+    Object.keys(addition.palettes?.skin ?? {}).length + Object.keys(addition.palettes?.hairColour ?? {}).length === 0;
+  if (
+    empty &&
+    (addition.figures ?? []).every((figure) => (figure.bases?.length ?? 0) + (figure.parts?.length ?? 0) === 0)
+  ) {
     issues.push("the addition adds nothing");
   }
   for (const figure of addition.figures ?? []) {
@@ -59,14 +63,25 @@ export const additionIssues = (manifest: StoryManifest, addition: StoryAddition)
     }
     const [layer] = matches as [FigureLayer];
     for (const base of figure.bases ?? []) {
-      if (layer.bases.some((existing) => sameAppearance(existing, base.age, base.face, base.features ?? "features:defined"))) {
+      if (
+        layer.bases.some((existing) =>
+          sameAppearance(existing, base.age, base.face, base.features ?? "features:defined"),
+        )
+      ) {
         issues.push(`${at}: a base for "${base.age}/${base.face}" is already published`);
       }
     }
     for (const part of figure.parts ?? []) {
       const key = `"${part.option}" on "${part.age}/${part.face}"`;
       if (!part.approved) issues.push(`${at}: ${key} is not approved`);
-      if (layer.parts.some((existing) => sameAppearance(existing, part.age, part.face, part.features ?? "features:defined") && existing.axis === part.axis && existing.option === part.option)) {
+      if (
+        layer.parts.some(
+          (existing) =>
+            sameAppearance(existing, part.age, part.face, part.features ?? "features:defined") &&
+            existing.axis === part.axis &&
+            existing.option === part.option,
+        )
+      ) {
         issues.push(`${at}: a part for ${key} is already published`);
       }
     }
@@ -86,7 +101,9 @@ const merge = (manifest: StoryManifest, addition: StoryAddition): unknown => ({
     illustration: {
       layers: page.illustration.layers.map((layer) => {
         if (layer.kind !== "figure") return layer;
-        const added = (addition.figures ?? []).filter((figure) => figure.pageId === page.pageId && figure.slotId === layer.slotId);
+        const added = (addition.figures ?? []).filter(
+          (figure) => figure.pageId === page.pageId && figure.slotId === layer.slotId,
+        );
         if (added.length === 0) return layer;
         return {
           ...layer,

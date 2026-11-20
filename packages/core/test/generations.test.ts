@@ -41,7 +41,9 @@ describe("generateImage", () => {
     const state = setup();
     const exit = await run("task-1", state);
 
-    expect(exit).toEqual(Exit.succeed({ generationId: task1Generation, key: "test/task-1.svg", contentType: "image/svg+xml" }));
+    expect(exit).toEqual(
+      Exit.succeed({ generationId: task1Generation, key: "test/task-1.svg", contentType: "image/svg+xml" }),
+    );
     expect(state.objects.get("test/task-1.svg")?.body.byteLength).toBeGreaterThan(0);
     expect(state.rows.get(task1Generation)).toMatchObject({
       provider: "fake",
@@ -83,6 +85,9 @@ describe("generateImage", () => {
     const exit = await run("task-1", state);
 
     expect(Exit.isFailure(exit) && JSON.stringify(exit.cause)).toContain("GenerationFailed");
-    expect(state.rows.get(task1Generation)).toMatchObject({ status: "failed", error: "output blocked by the content filter" });
+    expect(state.rows.get(task1Generation)).toMatchObject({
+      status: "failed",
+      error: "output blocked by the content filter",
+    });
   });
 });

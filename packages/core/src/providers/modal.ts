@@ -57,7 +57,10 @@ export const ModalImageProvider = Layer.effect(
             try: () =>
               fetch(endpoint, {
                 method: "POST",
-                headers: { "content-type": "application/json", [signatureHeader]: signBody(Redacted.value(secret), body) },
+                headers: {
+                  "content-type": "application/json",
+                  [signatureHeader]: signBody(Redacted.value(secret), body),
+                },
                 body,
                 signal: AbortSignal.timeout(60_000),
               }),

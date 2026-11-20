@@ -8,7 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
-import { inviteFamilyFn, InviteFamilyResult, inviteMemberFn, InviteMemberResult, renameFamilyFn, RenameFamilyResult } from "~/server/families";
+import {
+  inviteFamilyFn,
+  InviteFamilyResult,
+  inviteMemberFn,
+  InviteMemberResult,
+  renameFamilyFn,
+  RenameFamilyResult,
+} from "~/server/families";
 
 const roleLabel: Record<string, string> = { owner: "Owner", parent: "Parent", viewer: "Viewer (read only)" };
 
@@ -93,14 +100,21 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               {family.name}
             </CardTitle>
             {family.canRename && (
-              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setRenaming(true)} disabled={!hydrated}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setRenaming(true)}
+                disabled={!hydrated}
+              >
                 Rename
               </Button>
             )}
           </div>
         )}
         <CardDescription>
-          You're {family.role === "viewer" ? "a viewer: you can read this family's books" : `the family's ${family.role}`}.
+          You're{" "}
+          {family.role === "viewer" ? "a viewer: you can read this family's books" : `the family's ${family.role}`}.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
@@ -111,7 +125,8 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
           <ul className="divide-y rounded-lg border" data-testid="members">
             {family.members.map((member) => {
               // Accounts created from an email alone have the email as their name: show it once.
-              const named = member.name.trim() !== "" && member.name.trim().toLowerCase() !== member.email.toLowerCase();
+              const named =
+                member.name.trim() !== "" && member.name.trim().toLowerCase() !== member.email.toLowerCase();
               return (
                 <MemberRow
                   key={member.userId}
@@ -127,7 +142,8 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
         {family.invitations.length > 0 && (
           <section className="flex flex-col gap-2" aria-labelledby="family-invitations">
             <h2 id="family-invitations" className="text-sm font-semibold">
-              Pending invitations <span className="text-muted-foreground font-normal">· {family.invitations.length}</span>
+              Pending invitations{" "}
+              <span className="text-muted-foreground font-normal">· {family.invitations.length}</span>
             </h2>
             <ul className="divide-y rounded-lg border border-dashed" data-testid="invitations">
               {family.invitations.map((invitation) => (
@@ -149,12 +165,25 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               <h2 id="family-invite" className="text-sm font-semibold">
                 Invite someone
               </h2>
-              <p className="text-muted-foreground text-sm">Parents can make and edit books. Viewers can only read them.</p>
+              <p className="text-muted-foreground text-sm">
+                Parents can make and edit books. Viewers can only read them.
+              </p>
             </div>
-            <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={invite} aria-label="Invite a family member">
+            <form
+              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              onSubmit={invite}
+              aria-label="Invite a family member"
+            >
               <div className="flex min-w-0 flex-col gap-2 sm:flex-1">
                 <Label htmlFor="invite-email">Email</Label>
-                <Input id="invite-email" name="email" type="email" autoComplete="off" placeholder="name@example.com" required />
+                <Input
+                  id="invite-email"
+                  name="email"
+                  type="email"
+                  autoComplete="off"
+                  placeholder="name@example.com"
+                  required
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="invite-role">Role</Label>
@@ -181,9 +210,24 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
 
 /** One member or invitation: who (name over email, or the email alone) and their role. The role wraps under the
  * identity when the row is too narrow for both, instead of squeezing either. */
-function MemberRow({ testId, primary, secondary, role, pending = false }: { testId: string; primary: string; secondary: string | null; role: string; pending?: boolean }) {
+function MemberRow({
+  testId,
+  primary,
+  secondary,
+  role,
+  pending = false,
+}: {
+  testId: string;
+  primary: string;
+  secondary: string | null;
+  role: string;
+  pending?: boolean;
+}) {
   return (
-    <li data-testid={testId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-3 py-3 sm:px-4">
+    <li
+      data-testid={testId}
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-3 py-3 sm:px-4"
+    >
       <div className="flex min-w-0 flex-[1_1_16rem] flex-col">
         <span className="text-sm font-medium wrap-anywhere">{primary}</span>
         {secondary && <span className="text-muted-foreground text-sm wrap-anywhere">{secondary}</span>}
@@ -225,7 +269,9 @@ export function InviteFamilyCard() {
     <Card data-testid="invite-family">
       <CardHeader>
         <CardTitle>Invite a new family</CardTitle>
-        <CardDescription>Operator only. Creates the account and its family; the invitee sets a password from the email.</CardDescription>
+        <CardDescription>
+          Operator only. Creates the account and its family; the invitee sets a password from the email.
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <form className="flex flex-wrap items-end gap-2" onSubmit={submit} aria-label="Invite a new family">

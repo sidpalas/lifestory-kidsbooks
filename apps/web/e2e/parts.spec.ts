@@ -10,13 +10,24 @@ import { Effect } from "effect";
 const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
 const operator = "user_operator";
 
-test("an author generates a part, reviews it on light and dark skin, and approves it into the draft", async ({ page }) => {
+test("an author generates a part, reviews it on light and dark skin, and approves it into the draft", async ({
+  page,
+}) => {
   // Single, four-tile and two-tile edits all run through the real worker, sequentially on this small orb.
   test.setTimeout(120_000);
   // Imported here, not at the top: Playwright's runner imports every spec to list the tests, and @lifestory/core would
   // cost it ~0.2 GB for the whole run, which a 4 GB orb can't spare (AGENTS.md, "Orb size").
-  const { approvedParts, Database, decodeStoryManifest, getPart, importStoryVersion, makeServerRuntime, requestParts, reviewPart, withApprovedParts } =
-    await import("@lifestory/core");
+  const {
+    approvedParts,
+    Database,
+    decodeStoryManifest,
+    getPart,
+    importStoryVersion,
+    makeServerRuntime,
+    requestParts,
+    reviewPart,
+    withApprovedParts,
+  } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   try {
@@ -27,11 +38,10 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     await run(
       Database.use(({ pool }) =>
         Effect.promise(() =>
-          pool.query("insert into story (id, author_id, slug, title, summary, status) values ($1, $2, $3, 'Parts', 'e2e', 'draft')", [
-            storyId,
-            operator,
-            `e2e-parts-${suffix}`,
-          ]),
+          pool.query(
+            "insert into story (id, author_id, slug, title, summary, status) values ($1, $2, $3, 'Parts', 'e2e', 'draft')",
+            [storyId, operator, `e2e-parts-${suffix}`],
+          ),
         ),
       ),
     );
@@ -44,7 +54,8 @@ test("an author generates a part, reviews it on light and dark skin, and approve
         publishedAt: null,
         readAsset: async (asset) => ({
           body: new Uint8Array(await readFile(new URL(asset, fixture))),
-          contentType: { ".svg": "image/svg+xml", ".woff2": "font/woff2" }[extname(asset)] ?? "application/octet-stream",
+          contentType:
+            { ".svg": "image/svg+xml", ".woff2": "font/woff2" }[extname(asset)] ?? "application/octet-stream",
         }),
       }),
     );
@@ -63,7 +74,9 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     expect(part.status).toBe("generating");
     // Asking again is the same part, not a second generation.
     expect((await run(requestParts(operator, [request])))[0]!.id).toBe(part.id);
-    await expect.poll(async () => (part = await run(getPart(operator, part.id))).status, { timeout: 30_000 }).toBe("pending_review");
+    await expect
+      .poll(async () => (part = await run(getPart(operator, part.id))).status, { timeout: 30_000 })
+      .toBe("pending_review");
 
     // One layer, the hair, recoloured by hair colour, placed inside the zone; the fake costs nothing and comes back
     // shifted by a pixel and re-toned, which the cut-out undid.
@@ -94,14 +107,33 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     // Approving puts the layer into the draft's figure in place of the placeholder curls, and the manifest still validates.
     expect((await run(reviewPart(operator, part.id, "approve"))).status).toBe("approved");
     const draft = await run(
-      Database.use(({ pool }) => Effect.promise(() => pool.query("select manifest from story_version where id = $1", [storyVersionId]))),
+      Database.use(({ pool }) =>
+        Effect.promise(() => pool.query("select manifest from story_version where id = $1", [storyVersionId])),
+      ),
     );
-    const merged = withApprovedParts(await run(decodeStoryManifest(draft.rows[0].manifest)), await run(approvedParts(operator, storyVersionId)));
+    const merged = withApprovedParts(
+      await run(decodeStoryManifest(draft.rows[0].manifest)),
+      await run(approvedParts(operator, storyVersionId)),
+    );
     const figure = (await run(decodeStoryManifest(merged))).pages[0]!.illustration.layers.find(
       (candidate) => candidate.kind === "figure" && candidate.slotId === "hero",
     );
-    const curls = figure?.kind === "figure" ? figure.parts.filter((p) => p.age === "young-child" && p.face === "face:round" && p.option === "hair:curly") : [];
-    expect(curls).toEqual([{ age: "young-child", face: "face:round", axis: "hair", option: "hair:curly", asset: layer!.asset, at: layer!.at, palette: "hairColour", approved: true }]);
+    const curls =
+      figure?.kind === "figure"
+        ? figure.parts.filter((p) => p.age === "young-child" && p.face === "face:round" && p.option === "hair:curly")
+        : [];
+    expect(curls).toEqual([
+      {
+        age: "young-child",
+        face: "face:round",
+        axis: "hair",
+        option: "hair:curly",
+        asset: layer!.asset,
+        at: layer!.at,
+        palette: "hairColour",
+        approved: true,
+      },
+    ]);
 
     // One option on the hero's four bases is one tiled edit (D44): each tile is cut out against its own base, inside
     // the zone, and each part costs a quarter of the edit.
@@ -111,14 +143,19 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     let parts = await run(requestParts(operator, tiled));
     expect(new Set(parts.map((p) => p.id)).size).toBe(4);
     await expect
-      .poll(async () => (parts = await Promise.all(parts.map((p) => run(getPart(operator, p.id))))).map((p) => p.status), { timeout: 60_000 })
+      .poll(
+        async () => (parts = await Promise.all(parts.map((p) => run(getPart(operator, p.id))))).map((p) => p.status),
+        { timeout: 60_000 },
+      )
       .toEqual(["pending_review", "pending_review", "pending_review", "pending_review"]);
     expect(new Set(parts.map((p) => p.files.edit)).size).toBe(1);
     expect(parts[0]!.prompt).toContain("four separate portraits");
     expect(parts[0]!.prompt).toContain("<ref_image_1>");
     expect(parts.map((p) => (p.metrics as { tile: { index: number } }).tile.index).toSorted()).toEqual([0, 1, 2, 3]);
     // Overlapping batches, even in a different order, retain the already queued parts and their single edit.
-    expect((await run(requestParts(operator, tiled.toReversed()))).map((p) => p.id)).toEqual(parts.map((p) => p.id).toReversed());
+    expect((await run(requestParts(operator, tiled.toReversed()))).map((p) => p.id)).toEqual(
+      parts.map((p) => p.id).toReversed(),
+    );
     for (const tiledPart of parts) {
       expect(tiledPart).toMatchObject({
         provider: "fake",
@@ -133,9 +170,17 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     }
 
     // A wider zone needs larger tiles: the same four bases become two edits of two, not four low-resolution heads.
-    let large = await run(requestParts(operator, tiled.map((r) => ({ ...r, option: "hair:long", zone: [0, 0, 1000, 600] as const }))));
+    let large = await run(
+      requestParts(
+        operator,
+        tiled.map((r) => ({ ...r, option: "hair:long", zone: [0, 0, 1000, 600] as const })),
+      ),
+    );
     await expect
-      .poll(async () => (large = await Promise.all(large.map((p) => run(getPart(operator, p.id))))).map((p) => p.status), { timeout: 60_000 })
+      .poll(
+        async () => (large = await Promise.all(large.map((p) => run(getPart(operator, p.id))))).map((p) => p.status),
+        { timeout: 60_000 },
+      )
       .toEqual(["pending_review", "pending_review", "pending_review", "pending_review"]);
     expect(new Set(large.map((p) => p.files.edit)).size).toBe(2);
     for (const largePart of large) {

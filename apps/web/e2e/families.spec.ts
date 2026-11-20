@@ -35,7 +35,9 @@ const inviteMember = async (page: Page, email: string, role: "Viewer (read only)
   await expect(page.getByRole("status")).toHaveText(`Invitation sent to ${email}.`);
 };
 
-test("the operator invites a new family, whose owner sets a password and invites a view-only grandparent", async ({ page }) => {
+test("the operator invites a new family, whose owner sets a password and invites a view-only grandparent", async ({
+  page,
+}) => {
   const id = unique();
   const ownerEmail = `robin-${id}@example.com`;
   const granEmail = `gran-${id}@example.com`;
@@ -101,7 +103,9 @@ test("the operator invites a new family, whose owner sets a password and invites
   await signInWithPassword(page, ownerEmail);
   await page.goto("/family");
   // Accepted: Gran is a member with her name over her email, and the invitation is gone.
-  await expect(page.getByTestId("member").filter({ hasText: granEmail })).toHaveText(`Gran${granEmail}Viewer (read only)`);
+  await expect(page.getByTestId("member").filter({ hasText: granEmail })).toHaveText(
+    `Gran${granEmail}Viewer (read only)`,
+  );
   await expect(page.getByTestId("invitations")).toHaveCount(0);
 });
 
@@ -145,7 +149,10 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   const newName = `The Rivera family ${id}`;
   // Renames the session's active family through Better Auth's endpoint, skipping the app.
   const renameDirectly = (data: Record<string, unknown>) =>
-    page.request.post("/api/auth/organization/update", { data: { data }, headers: { origin: new URL(page.url()).origin } });
+    page.request.post("/api/auth/organization/update", {
+      data: { data },
+      headers: { origin: new URL(page.url()).origin },
+    });
 
   // The viewer-to-be has an account of their own, so they'll see the switcher.
   await page.goto(`/__dev/log-me-in/${viewerEmail}?returnTo=/`);
@@ -192,7 +199,9 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await expect(page.getByTestId("family-name")).toHaveText(newName);
 });
 
-test("on a phone, members show each identity once and long emails and pending invitations fit the screen", async ({ page }) => {
+test("on a phone, members show each identity once and long emails and pending invitations fit the screen", async ({
+  page,
+}) => {
   const id = unique();
   const ownerEmail = `kit-${id}@example.com`;
   const cousinEmail = `cousin-${id}@example.com`;

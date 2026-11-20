@@ -40,8 +40,11 @@ type Candidate = {
   uploaded: ReadonlyArray<Part>;
   previous?: StoryPart;
 };
-const appearanceKey = (pageId: string, slotId: string, part: Pick<Part, "age" | "face" | "features" | "axis" | "option">) =>
-  JSON.stringify([pageId, slotId, part.age, part.face, part.features ?? "features:defined", part.axis, part.option]);
+const appearanceKey = (
+  pageId: string,
+  slotId: string,
+  part: Pick<Part, "age" | "face" | "features" | "axis" | "option">,
+) => JSON.stringify([pageId, slotId, part.age, part.face, part.features ?? "features:defined", part.axis, part.option]);
 const optionLabel = (option: string) =>
   Object.values(lookVocabulary)
     .flat()
@@ -66,7 +69,11 @@ export function ReviewTab({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set());
-  const [plan, setPlan] = useState<{ requests: ReadonlyArray<Request>; blocked: ReadonlyArray<string>; estimateUsd: number } | null>(null);
+  const [plan, setPlan] = useState<{
+    requests: ReadonlyArray<Request>;
+    blocked: ReadonlyArray<string>;
+    estimateUsd: number;
+  } | null>(null);
   const [context, setContext] = useState<string | null>(null);
   // Parts queued from this tab since the last dismiss: the progress total, so it does not shrink as parts finish.
   const [round, setRound] = useState(0);
@@ -133,7 +140,8 @@ export function ReviewTab({
   const sheets = [...new Set(candidates.map((c) => c.part.option))];
   const option = sheets.includes(sheet) ? sheet : sheets[0];
   const visible = candidates.filter((c) => c.part.option === option);
-  const reviewable = (c: Candidate) => (c.generated ? c.generated.status === "pending_review" : c.uploaded.some((p) => !p.approved));
+  const reviewable = (c: Candidate) =>
+    c.generated ? c.generated.status === "pending_review" : c.uploaded.some((p) => !p.approved);
   const approvable = visible.filter((c) => seen.has(c.id) && reviewable(c));
   const flagged = visible.filter((c) => c.generated?.status === "rejected");
   const markSeen = useCallback((id: string) => setSeen((old) => (old.has(id) ? old : new Set([...old, id]))), []);
@@ -159,7 +167,10 @@ export function ReviewTab({
           illustration: {
             layers: p.illustration.layers.map((f) =>
               f.kind === "figure"
-                ? { ...f, parts: f.parts.map((part) => (uploaded.has(part.asset) ? { ...part, approved: true } : part)) }
+                ? {
+                    ...f,
+                    parts: f.parts.map((part) => (uploaded.has(part.asset) ? { ...part, approved: true } : part)),
+                  }
                 : f,
             ),
           },
@@ -169,12 +180,16 @@ export function ReviewTab({
       return;
     for (const c of selected)
       if (c.generated)
-        unwrapResult(DraftPartResult)(await reviewDraftPartFn({ data: { storyId: files.storyId, partId: c.id, decision: "approve" } }));
+        unwrapResult(DraftPartResult)(
+          await reviewDraftPartFn({ data: { storyId: files.storyId, partId: c.id, decision: "approve" } }),
+        );
     await refresh();
   };
   const generate = async (requests: ReadonlyArray<Request>) => {
     // Small, explicit rounds: never queue a whole book's spend from one click.
-    unwrapResult(DraftPartsRequestResult)(await requestDraftPartsFn({ data: { storyId: files.storyId, requests: requests.slice(0, 40) } }));
+    unwrapResult(DraftPartsRequestResult)(
+      await requestDraftPartsFn({ data: { storyId: files.storyId, requests: requests.slice(0, 40) } }),
+    );
     setPlan(null);
     await refresh();
     setRound((old) => old + Math.min(40, requests.length));
@@ -213,8 +228,8 @@ export function ReviewTab({
       <div>
         <h2 className="text-xl font-semibold">Review one option across the book</h2>
         <p className="text-sm text-muted-foreground">
-          Compare pages and bases on both skin extremes. Flag a bad take, then redo it with your reason. Only an explicit approval accepts
-          artwork.
+          Compare pages and bases on both skin extremes. Flag a bad take, then redo it with your reason. Only an
+          explicit approval accepts artwork.
         </p>
       </div>
       {dirty && <p className="text-sm">Save your changes before generating or reviewing.</p>}
@@ -229,7 +244,9 @@ export function ReviewTab({
           variant="outline"
           disabled={busy || dirty}
           onClick={() =>
-            void action(async () => setPlan(unwrapResult(DraftPartPlanResult)(await draftPartPlanFn({ data: { storyId: files.storyId } }))))
+            void action(async () =>
+              setPlan(unwrapResult(DraftPartPlanResult)(await draftPartPlanFn({ data: { storyId: files.storyId } }))),
+            )
           }
         >
           Plan missing parts
@@ -254,7 +271,11 @@ export function ReviewTab({
         const total = Math.max(round, working);
         const done = total - working;
         return (
-          <div className="flex flex-col gap-2 rounded border p-3 text-sm" role="status" data-testid="generation-progress">
+          <div
+            className="flex flex-col gap-2 rounded border p-3 text-sm"
+            role="status"
+            data-testid="generation-progress"
+          >
             <p>
               {working
                 ? `Drawing parts in the background: ${done} of ${total} done. New takes appear on their option's sheet as they finish.`
@@ -278,13 +299,21 @@ export function ReviewTab({
           {plan.blocked.map((b) => (
             <p key={b}>{b}</p>
           ))}
-          <Button size="sm" disabled={busy || dirty || !plan.requests.length} onClick={() => void action(() => generate(plan.requests))}>
+          <Button
+            size="sm"
+            disabled={busy || dirty || !plan.requests.length}
+            onClick={() => void action(() => generate(plan.requests))}
+          >
             Generate next round
           </Button>
         </div>
       )}
       <div className="sticky top-14 z-10 flex flex-wrap gap-2 border bg-background p-2">
-        <Button size="sm" disabled={busy || dirty || !approvable.length} onClick={() => void action(() => approve(approvable))}>
+        <Button
+          size="sm"
+          disabled={busy || dirty || !approvable.length}
+          onClick={() => void action(() => approve(approvable))}
+        >
           Approve {approvable.length} reviewed, unflagged candidates
         </Button>
         <Button
@@ -343,17 +372,27 @@ export function ReviewTab({
             </div>
             <label className="text-sm">
               Cycle alternatives
-              <NativeSelect aria-label="Page review candidate" value={selected.id} onChange={(e) => setContext(e.target.value)}>
+              <NativeSelect
+                aria-label="Page review candidate"
+                value={selected.id}
+                onChange={(e) => setContext(e.target.value)}
+              >
                 {candidates
                   .filter(
                     (c) =>
                       c.pageId === selected.pageId &&
                       c.slotId === selected.slotId &&
-                      sameAppearance(c.part, selected.part.age, selected.part.face, selected.part.features ?? "features:defined"),
+                      sameAppearance(
+                        c.part,
+                        selected.part.age,
+                        selected.part.face,
+                        selected.part.features ?? "features:defined",
+                      ),
                   )
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {optionLabel(c.part.option)} · {c.generated?.status ?? (c.part.approved ? "approved" : "uploaded")}
+                      {optionLabel(c.part.option)} ·{" "}
+                      {c.generated?.status ?? (c.part.approved ? "approved" : "uploaded")}
                     </option>
                   ))}
               </NativeSelect>
@@ -379,13 +418,21 @@ export function ReviewTab({
                 <Button
                   type="submit"
                   variant="outline"
-                  disabled={busy || dirty || !["pending_review", "approved", "rejected"].includes(selected.generated.status)}
+                  disabled={
+                    busy || dirty || !["pending_review", "approved", "rejected"].includes(selected.generated.status)
+                  }
                 >
                   Flag this candidate
                 </Button>
               </form>
             )}
-            <PageContext key={selected.id} files={files} draft={draft} candidate={selected} onReady={() => setContextReady(selected.id)} />
+            <PageContext
+              key={selected.id}
+              files={files}
+              draft={draft}
+              candidate={selected}
+              onReady={() => setContextReady(selected.id)}
+            />
           </div>
         </dialog>
       )}
@@ -412,7 +459,10 @@ function ReviewTile({
   onApprove: () => void;
   onFlag: (reason: string) => void;
 }) {
-  const [uploadedImages, setUploadedImages] = useState<{ light: string | null; dark: string | null }>({ light: null, dark: null });
+  const [uploadedImages, setUploadedImages] = useState<{ light: string | null; dark: string | null }>({
+    light: null,
+    dark: null,
+  });
   const images = c.generated?.files ?? uploadedImages;
   const generatedId = c.generated?.id;
   const [error, setError] = useState<string | null>(null);
@@ -428,7 +478,9 @@ function ReviewTile({
       ([entry]) => {
         if (!entry?.isIntersecting || started) return;
         started = true;
-        void draftUploadReviewFn({ data: { storyId: files.storyId, pageId: c.pageId, slotId: c.slotId, asset: c.part.asset } })
+        void draftUploadReviewFn({
+          data: { storyId: files.storyId, pageId: c.pageId, slotId: c.slotId, asset: c.part.asset },
+        })
           .then((r) => {
             if (active) setUploadedImages(unwrapResult(UploadReviewResult)(r));
           })
@@ -503,7 +555,11 @@ function ReviewTile({
         <Button variant="outline" size="sm" disabled={!images.light || !images.dark || !!error} onClick={onContext}>
           On the page
         </Button>
-        <Button size="sm" disabled={disabled || loaded.size < 2 || !!error || status !== "pending_review"} onClick={onApprove}>
+        <Button
+          size="sm"
+          disabled={disabled || loaded.size < 2 || !!error || status !== "pending_review"}
+          onClick={onApprove}
+        >
           Approve candidate
         </Button>
       </div>
@@ -526,11 +582,17 @@ function ReviewTile({
           </Button>
         </div>
       )}
-      {!c.generated && <p className="text-xs text-muted-foreground">To replace an uploaded drawing, use its controls in Pages.</p>}
+      {!c.generated && (
+        <p className="text-xs text-muted-foreground">To replace an uploaded drawing, use its controls in Pages.</p>
+      )}
       {c.previous?.files.light && (
         <details>
           <summary className="text-xs">Previous take</summary>
-          <img src={`/api/files/${c.previous.files.light}`} alt="Previous take on light skin" className="h-44 object-contain" />
+          <img
+            src={`/api/files/${c.previous.files.light}`}
+            alt="Previous take on light skin"
+            className="h-44 object-contain"
+          />
         </details>
       )}
     </article>
@@ -577,7 +639,12 @@ function PageContext({
   useEffect(() => {
     let active = true;
     void previewDraftFn({
-      data: { storyId: files.storyId, draft, looks: { [c.slotId]: JSON.parse(lookKey) }, ...(candidateId ? { candidateId } : {}) },
+      data: {
+        storyId: files.storyId,
+        draft,
+        looks: { [c.slotId]: JSON.parse(lookKey) },
+        ...(candidateId ? { candidateId } : {}),
+      },
     })
       .then((r) => {
         if (active) setLayers(unwrapResult(PreviewDraftResult)(r).find((p) => p.pageId === c.pageId)?.layers ?? []);

@@ -22,7 +22,11 @@ export const Route = createFileRoute("/__dev/log-me-in/$email")({
             const { auth } = yield* Auth;
             yield* ensureDevAccount(email);
             return yield* Effect.promise(() =>
-              auth.api.signInEmail({ body: { email, password: DEV_PASSWORD }, headers: request.headers, asResponse: true }),
+              auth.api.signInEmail({
+                body: { email, password: DEV_PASSWORD },
+                headers: request.headers,
+                asResponse: true,
+              }),
             );
           }),
         );

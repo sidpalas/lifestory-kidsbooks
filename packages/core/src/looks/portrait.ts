@@ -57,7 +57,9 @@ export const portraitPartOrder: StoryManifest["partOrder"] = ["facialHair", "gla
 
 const atEveryAge = ageOptions.flatMap((age) =>
   faceOptions.flatMap((face) =>
-    hasFeatures(age.id) ? featuresOptions.map((features) => ({ age: age.id, face: face.id, features: features.id })) : [{ age: age.id, face: face.id }],
+    hasFeatures(age.id)
+      ? featuresOptions.map((features) => ({ age: age.id, face: face.id, features: features.id }))
+      : [{ age: age.id, face: face.id }],
   ),
 );
 
@@ -68,10 +70,24 @@ export const portraitFigure: FigureLayer = {
   kind: "figure",
   slotId: "portrait",
   box: FULL,
-  bases: atEveryAge.map((at) => ({ ...at, asset: `bases/${baseName(at)}.png`, skinMask: `bases/${baseName(at)}-skin.png` })),
+  bases: atEveryAge.map((at) => ({
+    ...at,
+    asset: `bases/${baseName(at)}.png`,
+    skinMask: `bases/${baseName(at)}-skin.png`,
+  })),
   parts: atEveryAge.flatMap((at): ReadonlyArray<Part> =>
-    Object.entries((partsByBase as unknown as Record<string, Record<string, ReadonlyArray<Pick<Part, "asset" | "at" | "palette">>>>)[baseName(at)] ?? {}).flatMap(
-      ([option, layers]) => layers.map((layer) => ({ ...at, axis: option.startsWith("hair:") ? "hair" : option.startsWith("facial-hair:") ? "facialHair" : "glasses", option, ...layer, approved: true })),
+    Object.entries(
+      (partsByBase as unknown as Record<string, Record<string, ReadonlyArray<Pick<Part, "asset" | "at" | "palette">>>>)[
+        baseName(at)
+      ] ?? {},
+    ).flatMap(([option, layers]) =>
+      layers.map((layer) => ({
+        ...at,
+        axis: option.startsWith("hair:") ? "hair" : option.startsWith("facial-hair:") ? "facialHair" : "glasses",
+        option,
+        ...layer,
+        approved: true,
+      })),
     ),
   ),
 };
@@ -89,7 +105,12 @@ const render = async (look: Look): Promise<Uint8Array> => {
         ? read(layer.asset)
         : recolour(
             await read(layer.asset),
-            await Promise.all(layer.recolour.map(async (region) => ({ palette: region.palette, mask: region.mask ? await read(region.mask) : undefined }))),
+            await Promise.all(
+              layer.recolour.map(async (region) => ({
+                palette: region.palette,
+                mask: region.mask ? await read(region.mask) : undefined,
+              })),
+            ),
           ),
     ),
   );
@@ -98,8 +119,17 @@ const render = async (look: Look): Promise<Uint8Array> => {
   const { width, height } = await sharp(base!).metadata();
   const placed = await Promise.all(
     rest.map(async (input, i) => {
-      const [x0, y0, x1, y1] = specs[i + 1]!.rect.map((v, k) => Math.round((v * (k % 2 === 0 ? width! : height!)) / 1000));
-      return { input: await sharp(input).resize(x1! - x0!, y1! - y0!, { fit: "fill" }).png().toBuffer(), left: x0!, top: y0! };
+      const [x0, y0, x1, y1] = specs[i + 1]!.rect.map((v, k) =>
+        Math.round((v * (k % 2 === 0 ? width! : height!)) / 1000),
+      );
+      return {
+        input: await sharp(input)
+          .resize(x1! - x0!, y1! - y0!, { fit: "fill" })
+          .png()
+          .toBuffer(),
+        left: x0!,
+        top: y0!,
+      };
     }),
   );
   return new Uint8Array(await sharp(base!).composite(placed).png().toBuffer());
@@ -112,7 +142,16 @@ const cache = new Map<string, Promise<Uint8Array>>();
 
 /** The portrait of `look` as a PNG. Deterministic, so a recent look is served from memory. */
 export const lookPortrait = Effect.fn("looks.portrait")(function* (look: Look) {
-  const key = JSON.stringify([look.age, look.face, look.features, look.skin, look.hair, look.hairColour, look.glasses, look.facialHair]);
+  const key = JSON.stringify([
+    look.age,
+    look.face,
+    look.features,
+    look.skin,
+    look.hair,
+    look.hairColour,
+    look.glasses,
+    look.facialHair,
+  ]);
   let png = cache.get(key);
   if (!png) {
     png = render(look);

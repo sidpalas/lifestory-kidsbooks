@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 // A new account has a family with nobody in it yet, so the story's pages show its example characters.
-const newReader = () => `/__dev/log-me-in/reader-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}@lifestory.dev`;
+const newReader = () =>
+  `/__dev/log-me-in/reader-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}@lifestory.dev`;
 
-test("a family member previews the sample story's pages at print size, with the story's font and art", async ({ page }) => {
+test("a family member previews the sample story's pages at print size, with the story's font and art", async ({
+  page,
+}) => {
   // A new account, not the author: a published story is readable by anyone signed in.
   await page.goto(`${newReader()}?returnTo=/`);
   await page.getByTestId("stories").getByRole("link", { name: "The Moon Picnic" }).click();
@@ -13,26 +16,38 @@ test("a family member previews the sample story's pages at print size, with the 
   const pages = page.getByTestId("book-page");
   await expect(pages).toHaveCount(6);
   await expect(pages.first()).toContainText("Mia packed the picnic basket");
-  await expect(pages.nth(2)).toContainText("Grandpa checked the fuel. Mia checked the cocoa. She buckled herself in tight.");
+  await expect(pages.nth(2)).toContainText(
+    "Grandpa checked the fuel. Mia checked the cocoa. She buckled herself in tight.",
+  );
   // Figures are composed from the example looks: no boxes unless the guides are on.
   await expect(page.getByTestId("figure-box")).toHaveCount(0);
 
   // 8.5 in trim + 0.125 in bleed on each side = 8.75 in = 840 CSS px, whatever the on-screen scale.
-  for (const size of await pages.evaluateAll((els) => els.map((el) => [(el as HTMLElement).offsetWidth, (el as HTMLElement).offsetHeight]))) {
+  for (const size of await pages.evaluateAll((els) =>
+    els.map((el) => [(el as HTMLElement).offsetWidth, (el as HTMLElement).offsetHeight]),
+  )) {
     expect(size).toEqual([840, 840]);
   }
 
   // Every layer loads: art, and each figure's recoloured base, parts and occluder. Counted by hand for the example
   // looks (Mia: curly hair; Grandpa Joe: short hair and glasses): pages 1 to 6 stack 5, 6, 7, 7, 7, 7 images.
   await expect
-    .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length))
+    .poll(() =>
+      page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+    )
     .toBe(0);
   expect(await pages.locator("img").count()).toBe(39);
   await expect
-    .poll(() => page.evaluate(() => [...document.fonts].some((font) => font.family === "Literata" && font.status === "loaded")))
+    .poll(() =>
+      page.evaluate(() => [...document.fonts].some((font) => font.family === "Literata" && font.status === "loaded")),
+    )
     .toBe(true);
   // Body text is set in points: 17 pt = 17/72 in = 22.67 CSS px.
-  const fontSize = await pages.first().locator("p").last().evaluate((p) => parseFloat(getComputedStyle(p).fontSize));
+  const fontSize = await pages
+    .first()
+    .locator("p")
+    .last()
+    .evaluate((p) => parseFloat(getComputedStyle(p).fontSize));
   expect(fontSize).toBeCloseTo((17 * 96) / 72, 2);
 
   // Trim and figure guides are for authors and the book editor, not the story page.
@@ -49,7 +64,10 @@ test("the watercolour sample's raster art loads and recolours on every page", as
   // Example looks (Leo: short hair and glasses; Mum: curly hair), each page in other poses (v3): pages 1 to 3 stack 8,
   // 9 (the reeds in front), and 9 images (Mum's hand in front of her face, the occluder, recoloured too).
   await expect
-    .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 })
+    .poll(
+      () => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+      { timeout: 30_000 },
+    )
     .toBe(0);
   const sources = await pages.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).src));
   expect(sources).toHaveLength(26);
@@ -66,13 +84,18 @@ test("trying a look on the story's example recomposes every page that shows the 
 
   // Nobody in the family fits, so the roles show the examples, and their look pickers open on request. Trying looks
   // is a preview: nothing to make a book from yet.
-  await expect(page.getByTestId("role-hero")).toContainText("Nobody in your family is a young child or older child yet.");
+  await expect(page.getByTestId("role-hero")).toContainText(
+    "Nobody in your family is a young child or older child yet.",
+  );
   await expect(page.getByRole("button", { name: "Make the book" })).toBeDisabled();
   await page.getByRole("button", { name: "Try looks on Mia" }).click();
   const picker = page.getByTestId("try-hero");
   await expect(picker).toContainText("Mia is the story's example character, not someone in your family.");
   // The child's role takes young and older children only.
-  await expect(picker.getByRole("group", { name: /Age/ }).getByRole("button")).toHaveText([/Young child/, /Older child/]);
+  await expect(picker.getByRole("group", { name: /Age/ }).getByRole("button")).toHaveText([
+    /Young child/,
+    /Older child/,
+  ]);
 
   // Glasses for Mia: one more part on each of her 6 appearances, and nothing else changes. The page stays where the
   // reader scrolled to, though the look is kept in the URL.
@@ -86,13 +109,18 @@ test("trying a look on the story's example recomposes every page that shows the 
   expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   await expect.poll(async () => (await sources()).length, { timeout: 30_000 }).toBe(before.length + 6);
   await expect
-    .poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length))
+    .poll(() =>
+      page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+    )
     .toBe(0);
   const after = await sources();
   expect(after.filter((src) => !before.includes(src))).toHaveLength(6);
   // The preview survives a reload.
   await page.reload();
-  await expect(page.getByTestId("try-hero").getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("try-hero").getByRole("button", { name: "Round glasses" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("on a phone, the example's look options hide with a tap and come back as they were", async ({ browser }) => {
@@ -137,6 +165,8 @@ test("story assets need a session and a story the user may read", async ({ page,
   expect(ok.status()).toBe(200);
   expect(ok.headers()["content-type"]).toBe("image/svg+xml");
   expect(ok.headers()["content-security-policy"]).toBe("sandbox");
-  expect((await page.request.get("/api/files/stories/story_moon_picnic/v99/pages/p01/background.svg")).status()).toBe(404);
+  expect((await page.request.get("/api/files/stories/story_moon_picnic/v99/pages/p01/background.svg")).status()).toBe(
+    404,
+  );
   expect((await page.request.get("/api/files/stories/no_such_story/v1/pages/p01/background.svg")).status()).toBe(404);
 });

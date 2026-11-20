@@ -12,23 +12,39 @@ import { coverOutline } from "../../../packages/core/src/parts/cutout.ts";
 import { encodeLayer, figureCoverage, rectToPixels } from "../../../packages/core/src/parts/images.ts";
 
 const DIR = new URL("../../../packages/core/src/looks/portrait/", import.meta.url).pathname;
-const parts: Record<string, Record<string, Array<{ asset: string; at: number[]; palette: string }>>> = JSON.parse(readFileSync(`${DIR}parts.json`, "utf8"));
+const parts: Record<string, Record<string, Array<{ asset: string; at: number[]; palette: string }>>> = JSON.parse(
+  readFileSync(`${DIR}parts.json`, "utf8"),
+);
 
 for (const [base, options] of Object.entries(parts)) {
   const baseFile = new Uint8Array(readFileSync(`${DIR}bases/${base}.png`));
   const { width, height } = (await (await rasterize(baseFile)).metadata()) as { width: number; height: number };
   const figure = await figureCoverage(baseFile, width, height);
-  const mask = new Uint8Array(await (await rasterize(new Uint8Array(readFileSync(`${DIR}bases/${base}-skin.png`)))).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer());
+  const mask = new Uint8Array(
+    await (
+      await rasterize(new Uint8Array(readFileSync(`${DIR}bases/${base}-skin.png`)))
+    )
+      .resize(width, height, { fit: "fill" })
+      .extractChannel(3)
+      .raw()
+      .toBuffer(),
+  );
   for (const [option, layers] of Object.entries(options)) {
     for (const layer of layers) {
       if (layer.palette !== "hairColour") continue;
       const [x0, y0, x1, y1] = rectToPixels(layer.at as never, width, height);
-      const data = await (await rasterize(new Uint8Array(readFileSync(DIR + layer.asset)))).resize(x1 - x0, y1 - y0, { fit: "fill" }).raw().toBuffer();
+      const data = await (
+        await rasterize(new Uint8Array(readFileSync(DIR + layer.asset)))
+      )
+        .resize(x1 - x0, y1 - y0, { fit: "fill" })
+        .raw()
+        .toBuffer();
       const alpha = new Float32Array(width * height);
       const colour = new Float32Array(width * height * 3);
       for (let y = y0; y < y1; y++)
         for (let x = x0; x < x1; x++) {
-          const o = ((y - y0) * (x1 - x0) + (x - x0)) * 4, p = y * width + x;
+          const o = ((y - y0) * (x1 - x0) + (x - x0)) * 4,
+            p = y * width + x;
           alpha[p] = data[o + 3]! / 255;
           for (let c = 0; c < 3; c++) colour[p * 3 + c] = data[o + c]! / 255;
         }

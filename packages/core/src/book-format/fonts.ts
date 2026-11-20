@@ -10,7 +10,9 @@ import type { StoryManifest } from "./manifest.ts";
 export const staticFontIssues = (manifest: StoryManifest): ReadonlyArray<string> => [
   ...manifest.fonts.flatMap((font) =>
     font.weight === undefined || font.weight.includes(" ")
-      ? [`${font.asset}: declare the one weight this static file has, not ${font.weight ? `a range (${font.weight})` : "none"}`]
+      ? [
+          `${font.asset}: declare the one weight this static file has, not ${font.weight ? `a range (${font.weight})` : "none"}`,
+        ]
       : [],
   ),
   ...(["title", "body"] as const).flatMap((name) => {

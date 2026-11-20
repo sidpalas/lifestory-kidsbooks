@@ -5,7 +5,7 @@ as D*n* are in [decisions.md](decisions.md). This plan changes like decisions do
 
 ## Repository layout
 
-What exists after Phase 1, and what milestone 1 adds (marked *new*):
+What exists after Phase 1, and what milestone 1 adds (marked _new_):
 
 ```
 apps/
@@ -145,6 +145,7 @@ successor model (or another vendor) is measured the same way before it replaces 
 
    A provider that also redraws the face, hands or props on every edit fails this: the difference from the base
    then includes them, and there is no clean way to separate the part.
+
 2. **Style fidelity** to the illustrator's references across many parts, with no drift in age or proportions.
 3. **Consistency:** the same hairstyle from its turnaround sheet across poses and pages.
 4. **Terms on inputs:** the illustrator's art is their IP, so we need no training on inputs, short retention, and

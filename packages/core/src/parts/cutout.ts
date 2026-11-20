@@ -82,7 +82,10 @@ export const findShift = (base: Rgb, edit: Rgb, zone: PixelRect, range = 6): rea
         if (inRect(zone, x, y)) continue;
         const i = (y * width + x) * 3;
         const j = ((y - dy) * width + (x - dx)) * 3;
-        sum += Math.abs(base.data[i]! - edit.data[j]!) + Math.abs(base.data[i + 1]! - edit.data[j + 1]!) + Math.abs(base.data[i + 2]! - edit.data[j + 2]!);
+        sum +=
+          Math.abs(base.data[i]! - edit.data[j]!) +
+          Math.abs(base.data[i + 1]! - edit.data[j + 1]!) +
+          Math.abs(base.data[i + 2]! - edit.data[j + 2]!);
         n++;
       }
     }
@@ -111,7 +114,11 @@ export const colourMatch = (base: Rgb, edit: Rgb, zone: PixelRect) => {
     let gain = 1;
     let offset = 0;
     for (let pass = 0; pass < 2; pass++) {
-      let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+      let n = 0,
+        sx = 0,
+        sy = 0,
+        sxx = 0,
+        sxy = 0;
       for (let y = 0; y < height; y += 2) {
         for (let x = 0; x < width; x += 2) {
           if (inRect(zone, x, y)) continue;
@@ -119,7 +126,11 @@ export const colourMatch = (base: Rgb, edit: Rgb, zone: PixelRect) => {
           const e = edit.data[i]!;
           const b = base.data[i]!;
           if (pass === 1 && Math.abs(gain * e + offset - b) > 0.1) continue;
-          n++; sx += e; sy += b; sxx += e * e; sxy += e * b;
+          n++;
+          sx += e;
+          sy += b;
+          sxx += e * e;
+          sxy += e * b;
         }
       }
       const denominator = n * sxx - sx * sx;
@@ -164,7 +175,9 @@ export const distanceSquared = (mask: Uint8Array, width: number, height: number)
   const out = new Float64Array(width * height);
   for (let p = 0; p < out.length; p++) out[p] = mask[p] ? 0 : INF;
   const n = Math.max(width, height);
-  const f = new Float64Array(n), d = new Float64Array(n), z = new Float64Array(n + 1);
+  const f = new Float64Array(n),
+    d = new Float64Array(n),
+    z = new Float64Array(n + 1);
   const v = new Int32Array(n);
   for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) f[y] = out[y * width + x]!;
@@ -185,7 +198,15 @@ export const dilate = (mask: Uint8Array, width: number, height: number, radius: 
 };
 
 export const erode = (mask: Uint8Array, width: number, height: number, radius: number) =>
-  Uint8Array.from(dilate(Uint8Array.from(mask, (m) => 1 - m), width, height, radius), (m) => 1 - m);
+  Uint8Array.from(
+    dilate(
+      Uint8Array.from(mask, (m) => 1 - m),
+      width,
+      height,
+      radius,
+    ),
+    (m) => 1 - m,
+  );
 
 /** The 8-connected components of `mask`, as lists of pixel indices. */
 export const components = (mask: Uint8Array, width: number, height: number) => {
@@ -204,7 +225,8 @@ export const components = (mask: Uint8Array, width: number, height: number) => {
       const y = (p - x) / width;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-          const nx = x + dx, ny = y + dy;
+          const nx = x + dx,
+            ny = y + dy;
           if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
           const q = ny * width + nx;
           if (mask[q] && !seen[q]) {
@@ -225,7 +247,12 @@ export const components = (mask: Uint8Array, width: number, height: number) => {
  * largest piece, or reaches within `reach` pixels of such a piece (a wisp off the hairline, a glasses arm by the
  * frame). Pieces under `minPixels` are speckle.
  */
-export const partPieces = (mask: Uint8Array, width: number, height: number, options: { minPixels: number; share: number; reach: number }) => {
+export const partPieces = (
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  options: { minPixels: number; share: number; reach: number },
+) => {
   const pieces = components(mask, width, height).filter((piece) => piece.length >= options.minPixels);
   const largest = Math.max(0, ...pieces.map((piece) => piece.length));
   const major = new Uint8Array(mask.length);
@@ -284,12 +311,17 @@ export const boxSum = (values: Float64Array, channels: number, width: number, he
   }
   const out = new Float64Array(width * height * channels);
   for (let y = 0; y < height; y++) {
-    const y0 = Math.max(0, y - r), y1 = Math.min(height, y + r + 1);
+    const y0 = Math.max(0, y - r),
+      y1 = Math.min(height, y + r + 1);
     for (let x = 0; x < width; x++) {
-      const x0 = Math.max(0, x - r), x1 = Math.min(width, x + r + 1);
+      const x0 = Math.max(0, x - r),
+        x1 = Math.min(width, x + r + 1);
       for (let c = 0; c < channels; c++) {
         out[(y * width + x) * channels + c] =
-          integral[(y1 * W + x1) * channels + c]! - integral[(y0 * W + x1) * channels + c]! - integral[(y1 * W + x0) * channels + c]! + integral[(y0 * W + x0) * channels + c]!;
+          integral[(y1 * W + x1) * channels + c]! -
+          integral[(y0 * W + x1) * channels + c]! -
+          integral[(y1 * W + x0) * channels + c]! +
+          integral[(y0 * W + x0) * channels + c]!;
       }
     }
   }
@@ -334,14 +366,19 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
       for (let dx = -reachBack; dx <= reachBack; dx++) {
         const qx = x + dx;
         if (qx < 0 || qx >= width) continue;
-        const i = p * 3, j = (qy * width + qx) * 3;
+        const i = p * 3,
+          j = (qy * width + qx) * 3;
         const d = Math.max(Math.abs(C[i]! - B[j]!), Math.abs(C[i + 1]! - B[j + 1]!), Math.abs(C[i + 2]! - B[j + 2]!));
         if (d < nearest) nearest = d;
       }
     }
     changed[p] = nearest > CHANGED ? 1 : 0;
   }
-  const pieces = partPieces(changed, width, height, { minPixels: Math.max(8, Math.round(40 * scale * scale)), share: 0.03, reach: Math.max(4, r(8)) });
+  const pieces = partPieces(changed, width, height, {
+    minPixels: Math.max(8, Math.round(40 * scale * scale)),
+    share: 0.03,
+    reach: Math.max(4, r(8)),
+  });
   // Two pixels at least: an anti-aliased edge is that wide at any resolution, and its pixels are not opaque.
   const sure = erode(above(SURE), width, height, Math.max(2, r(2)));
   const near = dilate(above(NEAR), width, height, r(3));
@@ -353,7 +390,12 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
   // inside a hole only right at its rim.
   const solid = Uint8Array.from(pieces, (c, p) => (c || mass[p] ? 1 : 0));
   const holes = enclosed(solid, width, height);
-  const outside = dilate(Uint8Array.from(solid, (s, p) => (s || holes[p] ? 0 : 1)), width, height, 1);
+  const outside = dilate(
+    Uint8Array.from(solid, (s, p) => (s || holes[p] ? 0 : 1)),
+    width,
+    height,
+    1,
+  );
   const core = new Uint8Array(n);
   for (const island of components(solid, width, height)) {
     const open = island.some((p) => outside[p]);
@@ -406,7 +448,11 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
     }
     const i = p * 3;
     if (mass[p] && estimated[p]) {
-      const likePart = Math.max(Math.abs(C[i]! - estimate[i]!), Math.abs(C[i + 1]! - estimate[i + 1]!), Math.abs(C[i + 2]! - estimate[i + 2]!));
+      const likePart = Math.max(
+        Math.abs(C[i]! - estimate[i]!),
+        Math.abs(C[i + 1]! - estimate[i + 1]!),
+        Math.abs(C[i + 2]! - estimate[i + 2]!),
+      );
       if (likePart < 0.2) {
         alpha[p] = 1;
         continue;
@@ -432,7 +478,15 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
   // Near the part's edge, outside its body, alpha is the projection alone. The rules above call a strand opaque
   // when it changed clearly or looks like the part nearby, but a hairline strand blended with the skin behind it is
   // only partly the part: kept opaque, its light tone becomes a grey line under a dark hair colour on dark skin.
-  const edge = Uint8Array.from(dilate(Uint8Array.from(alpha, (a) => (a === 0 ? 1 : 0)), width, height, Math.max(3, r(12))), (e, p) => (e && !body[p] ? 1 : 0));
+  const edge = Uint8Array.from(
+    dilate(
+      Uint8Array.from(alpha, (a) => (a === 0 ? 1 : 0)),
+      width,
+      height,
+      Math.max(3, r(12)),
+    ),
+    (e, p) => (e && !body[p] ? 1 : 0),
+  );
   for (let p = 0; p < n; p++) {
     if (!edge[p] || alpha[p] === 0 || !estimated[p]) continue;
     const i = p * 3;
@@ -460,7 +514,8 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
       alphaPixels++;
       if (a >= 0.95) opaquePixels++;
       for (let c = 0; c < 3; c++) {
-        colour[i + c] = a > 0.05 ? clamp01((C[i + c]! - (1 - a) * B[i + c]!) / a) : estimated[p] ? estimate[i + c]! : C[i + c]!;
+        colour[i + c] =
+          a > 0.05 ? clamp01((C[i + c]! - (1 - a) * B[i + c]!) / a) : estimated[p] ? estimate[i + c]! : C[i + c]!;
       }
     }
     for (let c = 0; c < 3; c++) recompositeSum += Math.abs(a * colour[i + c]! + (1 - a) * B[i + c]! - C[i + c]!);
@@ -472,7 +527,8 @@ const matteZone = (base: Rgb, edit: Rgb, scale: number) => {
 const crop = (image: Rgb, [x0, y0, x1, y1]: PixelRect): Rgb => {
   const width = x1 - x0;
   const data = new Float32Array(width * (y1 - y0) * 3);
-  for (let y = y0; y < y1; y++) data.set(image.data.subarray((y * image.width + x0) * 3, (y * image.width + x1) * 3), (y - y0) * width * 3);
+  for (let y = y0; y < y1; y++)
+    data.set(image.data.subarray((y * image.width + x0) * 3, (y * image.width + x1) * 3), (y - y0) * width * 3);
   return { width, height: y1 - y0, data };
 };
 
@@ -483,7 +539,8 @@ const crop = (image: Rgb, [x0, y0, x1, y1]: PixelRect): Rgb => {
  */
 export const cutOutPart = (base: Rgb, rawEdit: Rgb, zone: PixelRect): CutOut => {
   const { width, height } = base;
-  if (rawEdit.width !== width || rawEdit.height !== height) throw new Error("cutOutPart: the edit must be the base's size");
+  if (rawEdit.width !== width || rawEdit.height !== height)
+    throw new Error("cutOutPart: the edit must be the base's size");
   const scale = Math.max(width, height) / 1024;
 
   // Match colours first so a global re-tone doesn't hide the shift, then refit on the aligned edit.
@@ -496,12 +553,21 @@ export const cutOutPart = (base: Rgb, rawEdit: Rgb, zone: PixelRect): CutOut => 
     for (let x = 0; x < width; x++) {
       if (inRect(zone, x, y)) continue;
       const i = (y * width + x) * 3;
-      outsideSum += (Math.abs(edit.data[i]! - base.data[i]!) + Math.abs(edit.data[i + 1]! - base.data[i + 1]!) + Math.abs(edit.data[i + 2]! - base.data[i + 2]!)) / 3;
+      outsideSum +=
+        (Math.abs(edit.data[i]! - base.data[i]!) +
+          Math.abs(edit.data[i + 1]! - base.data[i + 1]!) +
+          Math.abs(edit.data[i + 2]! - base.data[i + 2]!)) /
+        3;
       outsideCount++;
     }
   }
 
-  const [zx0, zy0, zx1, zy1] = [Math.max(0, zone[0]), Math.max(0, zone[1]), Math.min(width, zone[2]), Math.min(height, zone[3])];
+  const [zx0, zy0, zx1, zy1] = [
+    Math.max(0, zone[0]),
+    Math.max(0, zone[1]),
+    Math.min(width, zone[2]),
+    Math.min(height, zone[3]),
+  ];
   const inside = matteZone(crop(base, [zx0, zy0, zx1, zy1]), crop(edit, [zx0, zy0, zx1, zy1]), scale);
   const alpha = new Float32Array(width * height);
   const colour = new Float32Array(width * height * 3);
@@ -516,7 +582,11 @@ export const cutOutPart = (base: Rgb, rawEdit: Rgb, zone: PixelRect): CutOut => 
   for (let y = zy0; y < zy1; y++) {
     for (let x = zx0; x < zx1; x++) {
       // Edges of the zone that are also edges of the picture can't cut a part off.
-      const onBorder = (x === zx0 && zx0 > 0) || (x === zx1 - 1 && zx1 < width) || (y === zy0 && zy0 > 0) || (y === zy1 - 1 && zy1 < height);
+      const onBorder =
+        (x === zx0 && zx0 > 0) ||
+        (x === zx1 - 1 && zx1 < width) ||
+        (y === zy0 && zy0 > 0) ||
+        (y === zy1 - 1 && zy1 < height);
       if (!onBorder) continue;
       border++;
       if (alpha[y * width + x]! >= 0.5) touching++;
@@ -588,29 +658,52 @@ export const crownGap = (alpha: Float32Array, skinMask: Uint8Array, width: numbe
  * it has covered has nothing left to cover. Returns new arrays and
  * the number of pixels it raised.
  */
-export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: Float32Array, skinMask: Uint8Array, width: number, height: number) => {
+export const coverOutline = (
+  alpha: Float32Array,
+  colour: Float32Array,
+  figure: Float32Array,
+  skinMask: Uint8Array,
+  width: number,
+  height: number,
+) => {
   // A pencil outline is 2–3 px at 1024 px (Paper Boat), an ink one as thick as the base draws it (the picker's
   // portraits: ~10 px at 1024), measured below; a wider gap is the drawing's own (a temple, a hairline), not the matte's.
   const scaled = Math.max(2, Math.round((4 * Math.max(width, height)) / 1024));
   const thickest = Math.round(Math.max(width, height) / 50);
   const outAlpha = Float32Array.from(alpha);
   const outColour = Float32Array.from(colour);
-  const bounds = alphaBounds(alpha.map((a) => (a >= 0.5 ? a : 0)), width, height, 3 * Math.max(scaled, thickest));
+  const bounds = alphaBounds(
+    alpha.map((a) => (a >= 0.5 ? a : 0)),
+    width,
+    height,
+    3 * Math.max(scaled, thickest),
+  );
   if (!bounds) return { alpha: outAlpha, colour: outColour, covered: 0 };
   const [bx0, by0, bx1, by1] = bounds;
-  const cropWidth = bx1 - bx0, cropHeight = by1 - by0;
+  const cropWidth = bx1 - bx0,
+    cropHeight = by1 - by0;
   const cropMask = (value: (p: number) => boolean) => {
     const out = new Uint8Array(cropWidth * cropHeight);
-    for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) out[(y - by0) * cropWidth + (x - bx0)] = value(y * width + x) ? 1 : 0;
+    for (let y = by0; y < by1; y++)
+      for (let x = bx0; x < bx1; x++) out[(y - by0) * cropWidth + (x - bx0)] = value(y * width + x) ? 1 : 0;
     return out;
   };
   const outside = cropMask((p) => figure[p]! < 0.02);
   // The outline's width: the median distance from the silhouette to the skin, where the skin is that close.
-  const toSkin = distanceSquared(cropMask((p) => skinMask[p]! >= 128), cropWidth, cropHeight);
+  const toSkin = distanceSquared(
+    cropMask((p) => skinMask[p]! >= 128),
+    cropWidth,
+    cropHeight,
+  );
   const widths: Array<number> = [];
   for (let c = 0; c < outside.length; c++) {
     const x = c % cropWidth;
-    const edge = !outside[c] && ((x > 0 && outside[c - 1]) || (x < cropWidth - 1 && outside[c + 1]) || outside[c - cropWidth] || outside[c + cropWidth]);
+    const edge =
+      !outside[c] &&
+      ((x > 0 && outside[c - 1]) ||
+        (x < cropWidth - 1 && outside[c + 1]) ||
+        outside[c - cropWidth] ||
+        outside[c + cropWidth]);
     if (edge && toSkin[c]! <= thickest * thickest) widths.push(Math.sqrt(toSkin[c]!));
   }
   const outline = widths.length === 0 ? 0 : Math.round(widths.toSorted((a, b) => a - b)[widths.length >> 1]!);
@@ -623,8 +716,13 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
   let solid = new Uint8Array(width * height);
   const findSolid = () => {
     solid = new Uint8Array(width * height);
-    for (const piece of components(cropMask((p) => outAlpha[p]! >= 0.5), cropWidth, cropHeight))
-      if (piece.length >= 36 * radius * radius) for (const c of piece) solid[(by0 + Math.floor(c / cropWidth)) * width + bx0 + (c % cropWidth)] = 1;
+    for (const piece of components(
+      cropMask((p) => outAlpha[p]! >= 0.5),
+      cropWidth,
+      cropHeight,
+    ))
+      if (piece.length >= 36 * radius * radius)
+        for (const c of piece) solid[(by0 + Math.floor(c / cropWidth)) * width + bx0 + (c % cropWidth)] = 1;
   };
   let covered = 0;
   const crown = dilate(outside, cropWidth, cropHeight, 3 * radius);
@@ -632,7 +730,8 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
   // with hair below it and the silhouette or a stray hair tip above, all within three outline widths of the
   // silhouette, is the matte's (hair tips stopping short of the crown), so the hair covers it. A parting or a
   // hairline lies deeper inside; a long run is the drawing's, which crownGap fails and a redraw fixes.
-  const bare = (p: number) => figure[p]! >= 0.02 && skinMask[p]! >= 128 && outAlpha[p]! < 0.5 && outAlpha[p]! < figure[p]! - 0.01;
+  const bare = (p: number) =>
+    figure[p]! >= 0.02 && skinMask[p]! >= 128 && outAlpha[p]! < 0.5 && outAlpha[p]! < figure[p]! - 0.01;
   const crownPass = () => {
     let found = false;
     for (let x = bx0; x < bx1; x++) {
@@ -661,7 +760,7 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
     }
     return found;
   };
-  for (let changed = true; changed; ) {
+  for (let changed = true; changed;) {
     findSolid();
     changed = crownPass();
     const add: Array<number> = [];
@@ -671,15 +770,19 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
         const p = y * width + x;
         if (!nearOutside[c] || !nearSkin[c] || outAlpha[p]! >= 0.5 || figure[p]! <= outAlpha[p]! + 0.01) continue;
         // The nearest outside pixel, and the hair nearby for the colour.
-        let ox = 0, oy = 0, best = Infinity;
+        let ox = 0,
+          oy = 0,
+          best = Infinity;
         const sum = [0, 0, 0];
         let count = 0;
         for (let dy = -radius; dy <= radius; dy++) {
           for (let dx = -radius; dx <= radius; dx++) {
-            const nx = x + dx, ny = y + dy;
+            const nx = x + dx,
+              ny = y + dy;
             if (nx < bx0 || ny < by0 || nx >= bx1 || ny >= by1) continue;
             const q = ny * width + nx;
-            if (outside[(ny - by0) * cropWidth + (nx - bx0)] && dx * dx + dy * dy < best) [best, ox, oy] = [dx * dx + dy * dy, dx, dy];
+            if (outside[(ny - by0) * cropWidth + (nx - bx0)] && dx * dx + dy * dy < best)
+              [best, ox, oy] = [dx * dx + dy * dy, dx, dy];
             if (outAlpha[q]! >= 0.5) {
               for (let k = 0; k < 3; k++) sum[k]! += outColour[q * 3 + k]!;
               count++;
@@ -690,7 +793,8 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
         const length = Math.sqrt(best);
         let hair = -1;
         for (let k = 1; k <= 2 * radius && hair < 0; k++) {
-          const nx = Math.round(x - (ox / length) * k), ny = Math.round(y - (oy / length) * k);
+          const nx = Math.round(x - (ox / length) * k),
+            ny = Math.round(y - (oy / length) * k);
           if (nx >= 0 && ny >= 0 && nx < width && ny < height && solid[ny * width + nx]) hair = ny * width + nx;
         }
         if (hair < 0) continue;
@@ -728,7 +832,9 @@ export const paperSilhouette = (image: Rgb) => {
   const border: Array<number> = [];
   for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
   for (let y = 1; y < height - 1; y++) border.push(y * width, y * width + width - 1);
-  const median = [0, 1, 2].map((c) => border.map((p) => data[p * 3 + c]!).toSorted((a, b) => a - b)[border.length >> 1]!);
+  const median = [0, 1, 2].map(
+    (c) => border.map((p) => data[p * 3 + c]!).toSorted((a, b) => a - b)[border.length >> 1]!,
+  );
   const d = new Float32Array(n);
   for (let p = 0; p < n; p++) d[p] = Math.max(...[0, 1, 2].map((c) => Math.abs(data[p * 3 + c]! - median[c]!)));
   // Paper's own texture stays within ~0.03 of its median; the figure's ink and skin are far from it.
@@ -749,7 +855,10 @@ export const paperSilhouette = (image: Rgb) => {
 
 /** The bounding box of the pixels with alpha, grown by `pad` and clipped; null when there are none. */
 export const alphaBounds = (alpha: Float32Array, width: number, height: number, pad = 2): PixelRect | null => {
-  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  let x0 = width,
+    y0 = height,
+    x1 = -1,
+    y1 = -1;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (alpha[y * width + x]! <= 0) continue;
@@ -805,7 +914,12 @@ export const skinPixels = (
 ): Uint8Array => {
   const { width, height } = base;
   const n = alpha.length;
-  const interior = erode(Uint8Array.from(skinMask, (m) => (m >= 128 ? 1 : 0)), width, height, Math.max(3, Math.round((3 * Math.max(width, height)) / 1024)));
+  const interior = erode(
+    Uint8Array.from(skinMask, (m) => (m >= 128 ? 1 : 0)),
+    width,
+    height,
+    Math.max(3, Math.round((3 * Math.max(width, height)) / 1024)),
+  );
   const mean = [0, 0, 0];
   let count = 0;
   for (let p = 0; p < n; p++) {
@@ -818,13 +932,25 @@ export const skinPixels = (
   const cov = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   for (let p = 0; p < n; p++) {
     if (!interior[p]) continue;
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) cov[i * 3 + j]! += (base.data[p * 3 + i]! - mean[i]!) * (base.data[p * 3 + j]! - mean[j]!);
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++)
+        cov[i * 3 + j]! += (base.data[p * 3 + i]! - mean[i]!) * (base.data[p * 3 + j]! - mean[j]!);
   }
   // A floor on the variance: flat colour would otherwise make every re-rendered skin pixel an outlier.
   for (let k = 0; k < 9; k++) cov[k] = cov[k]! / count + (k % 4 === 0 ? 0.03 * 0.03 : 0);
   const [a, b, c, d, e, f, g, h, i] = cov as [number, number, number, number, number, number, number, number, number];
   const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-  const inv = [e * i - f * h, c * h - b * i, b * f - c * e, f * g - d * i, a * i - c * g, c * d - a * f, d * h - e * g, b * g - a * h, a * e - b * d].map((v) => v / det);
+  const inv = [
+    e * i - f * h,
+    c * h - b * i,
+    b * f - c * e,
+    f * g - d * i,
+    a * i - c * g,
+    c * d - a * f,
+    d * h - e * g,
+    b * g - a * h,
+    a * e - b * d,
+  ].map((v) => v / det);
   const found = new Uint8Array(n);
   for (let p = 0; p < n; p++) {
     // Skin the model redraws is skin the base had: highlights in hair above the scalp are hair, whatever their colour.

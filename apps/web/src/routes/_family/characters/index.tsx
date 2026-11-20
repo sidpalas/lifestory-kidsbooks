@@ -16,7 +16,10 @@ export const Route = createFileRoute("/_family/characters/")({
   component: function Characters() {
     const { characters, canEdit } = Route.useLoaderData();
     return (
-      <ShellPage title="Characters" description="Your family as drawn in books. Each story draws these looks with its own illustrations.">
+      <ShellPage
+        title="Characters"
+        description="Your family as drawn in books. Each story draws these looks with its own illustrations."
+      >
         <FamilyCharacters characters={characters} canEdit={canEdit} />
       </ShellPage>
     );

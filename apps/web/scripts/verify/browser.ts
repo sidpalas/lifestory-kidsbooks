@@ -14,7 +14,11 @@ export interface Session {
 /** A signed-in page as the stack's account, through Better Auth's sign-in endpoint (the path /sign-in posts to). */
 export const signedIn = async (stack: Stack, options: { deviceScaleFactor?: number } = {}): Promise<Session> => {
   const browser = await chromium.launch({ channel: "chromium" });
-  const context = await browser.newContext({ baseURL: stack.origin, viewport: { width: 1280, height: 1000 }, deviceScaleFactor: options.deviceScaleFactor ?? 1 });
+  const context = await browser.newContext({
+    baseURL: stack.origin,
+    viewport: { width: 1280, height: 1000 },
+    deviceScaleFactor: options.deviceScaleFactor ?? 1,
+  });
   const close = async () => {
     await context.close();
     await browser.close();
@@ -24,7 +28,10 @@ export const signedIn = async (stack: Stack, options: { deviceScaleFactor?: numb
       data: stack.account,
       headers: { origin: stack.origin },
     });
-    if (!response.ok()) throw new Error(`sign-in as ${stack.who} failed: HTTP ${response.status()} ${(await response.text()).slice(0, 200)}`);
+    if (!response.ok())
+      throw new Error(
+        `sign-in as ${stack.who} failed: HTTP ${response.status()} ${(await response.text()).slice(0, 200)}`,
+      );
     return { browser, context, page: await context.newPage(), close };
   } catch (error) {
     await close();

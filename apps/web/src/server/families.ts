@@ -48,10 +48,7 @@ export const InviteMemberResult = ResultSchema(
 export const inviteMemberFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ familyId: Schema.String, email: Email, role: InviteRole })))
   .handler(({ data }) =>
-    runEffect(
-      InviteMemberResult,
-      currentUser.pipe(Effect.andThen(inviteMember(getRequest().headers, data))),
-    ),
+    runEffect(InviteMemberResult, currentUser.pipe(Effect.andThen(inviteMember(getRequest().headers, data)))),
   );
 
 export const InviteFamilyResult = ResultSchema(
@@ -60,7 +57,9 @@ export const InviteFamilyResult = ResultSchema(
 );
 
 export const inviteFamilyFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ name: Schema.String.check(Schema.isMinLength(1)), email: Email })))
+  .validator(
+    Schema.toStandardSchemaV1(Schema.Struct({ name: Schema.String.check(Schema.isMinLength(1)), email: Email })),
+  )
   .handler(({ data }) =>
     runEffect(
       InviteFamilyResult,
@@ -82,7 +81,10 @@ export const renameFamilyFn = createServerFn({ method: "POST" })
     runEffect(RenameFamilyResult, currentUser.pipe(Effect.andThen(renameFamily(getRequest().headers, data)))),
   );
 
-export const SwitchFamilyResult = ResultSchema(Schema.Struct({ ok: Schema.Boolean }), Schema.Union([NotAuthenticated, AuthRejected]));
+export const SwitchFamilyResult = ResultSchema(
+  Schema.Struct({ ok: Schema.Boolean }),
+  Schema.Union([NotAuthenticated, AuthRejected]),
+);
 
 export const switchFamilyFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ familyId: Schema.String })))

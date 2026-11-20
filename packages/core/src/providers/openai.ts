@@ -14,7 +14,9 @@ import { ObjectStorage } from "../storage.ts";
  * T-01a1f149-95e2-74f7-9818-59d430153d86): a medium 1024×1536 sunburst edit came to ~US$0.049. A model missing
  * here records its usage with an unknown cost.
  */
-export const openAIPrices: Readonly<Record<string, { readonly imageInput: number; readonly textInput: number; readonly output: number }>> = {
+export const openAIPrices: Readonly<
+  Record<string, { readonly imageInput: number; readonly textInput: number; readonly output: number }>
+> = {
   "gpt-image-2.6-sunburst": { imageInput: 8, textInput: 5, output: 30 },
   "gpt-image-2.6-flare": { imageInput: 8, textInput: 5, output: 30 },
 };
@@ -30,7 +32,8 @@ export const openAICost = (model: string, usage: OpenAIUsage | undefined): numbe
   if (!prices || !usage) return undefined;
   const image = usage.input_tokens_details?.image_tokens ?? 0;
   const text = usage.input_tokens_details?.text_tokens ?? (usage.input_tokens ?? 0) - image;
-  const dollars = (image * prices.imageInput + text * prices.textInput + (usage.output_tokens ?? 0) * prices.output) / 1e6;
+  const dollars =
+    (image * prices.imageInput + text * prices.textInput + (usage.output_tokens ?? 0) * prices.output) / 1e6;
   return Math.round(dollars * 1e6) / 1e6;
 };
 
@@ -51,7 +54,9 @@ export const OpenAIImageProvider = Layer.effect(
   Effect.gen(function* () {
     const apiKey = yield* Config.Redacted("OPENAI_API_KEY");
     const model = yield* Config.String("OPENAI_IMAGE_MODEL").pipe(Config.withDefault("gpt-image-2.6-sunburst"));
-    const quality = yield* Config.Literals(["low", "medium", "high"], "OPENAI_IMAGE_QUALITY").pipe(Config.withDefault("medium" as const));
+    const quality = yield* Config.Literals(["low", "medium", "high"], "OPENAI_IMAGE_QUALITY").pipe(
+      Config.withDefault("medium" as const),
+    );
     const endpoint = yield* Config.String("OPENAI_BASE_URL").pipe(Config.withDefault("https://api.openai.com/v1"));
     const storage = yield* ObjectStorage;
     const jobs = yield* Jobs;
@@ -80,7 +85,11 @@ export const OpenAIImageProvider = Layer.effect(
           form.set("n", "1");
           for (const [i, key] of job.references.entries()) {
             const reference = yield* storage.get(key).pipe(Effect.mapError((error) => fail(error.message)));
-            form.append("image[]", new Blob([new Uint8Array(reference.body)], { type: reference.contentType }), `ref-${i}.png`);
+            form.append(
+              "image[]",
+              new Blob([new Uint8Array(reference.body)], { type: reference.contentType }),
+              `ref-${i}.png`,
+            );
           }
           const response = yield* Effect.tryPromise({
             try: () =>
@@ -99,13 +108,19 @@ export const OpenAIImageProvider = Layer.effect(
           }
           if (!response.ok) {
             // A rejected request (content policy, bad input) fails the same way every time: end the generation.
-            yield* finish({ generationId: job.generationId, status: "failed", message: `OpenAI returned ${response.status}: ${text.slice(0, 500)}` });
+            yield* finish({
+              generationId: job.generationId,
+              status: "failed",
+              message: `OpenAI returned ${response.status}: ${text.slice(0, 500)}`,
+            });
             return { externalId: null };
           }
           const body = JSON.parse(text) as { data?: ReadonlyArray<{ b64_json?: string }>; usage?: OpenAIUsage };
           const image = body.data?.[0]?.b64_json;
           if (!image) return yield* fail(`OpenAI returned no image: ${text.slice(0, 300)}`);
-          yield* storage.put(job.outputKey, new Uint8Array(Buffer.from(image, "base64")), "image/png").pipe(Effect.mapError((error) => fail(error.message)));
+          yield* storage
+            .put(job.outputKey, new Uint8Array(Buffer.from(image, "base64")), "image/png")
+            .pipe(Effect.mapError((error) => fail(error.message)));
           yield* finish({ generationId: job.generationId, status: "succeeded", contentType: "image/png" });
           const costUsd = openAICost(model, body.usage);
           return {

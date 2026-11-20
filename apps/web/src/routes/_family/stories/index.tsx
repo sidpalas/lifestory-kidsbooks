@@ -16,7 +16,10 @@ export const Route = createFileRoute("/_family/stories/")({
   component: function Stories() {
     const { stories, books, canEdit } = Route.useLoaderData();
     return (
-      <ShellPage title="Stories" description="Written and illustrated by people. Open one to see its pages with your family.">
+      <ShellPage
+        title="Stories"
+        description="Written and illustrated by people. Open one to see its pages with your family."
+      >
         <StoryList stories={stories} books={books} canEdit={canEdit} />
       </ShellPage>
     );

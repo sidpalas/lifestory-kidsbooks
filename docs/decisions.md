@@ -10,14 +10,17 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 ## Product and platform
 
 ### D1. TypeScript throughout, except the image model — Decided
+
 - **Why:** one language for web, server, worker, and shared domain code; the image model runs Python on Modal.
 - **Reopen if:** never expected.
 
 ### D2. React, Tailwind, shadcn/ui — Decided
+
 - **Why:** brief. shadcn components are copied into `apps/web/src/components/ui` (style `new-york`, `components.json`).
 - **Reopen if:** never expected.
 
 ### D3. Better Auth; a family is an organization; operator via the admin plugin without impersonation — Decided
+
 - **Why:** brief. Accounts hold details about children (names, ages, looks; no photos since D26), so nobody, the
   operator included, may sign in as someone else.
 - **How:** family roles `owner`, `parent` (edit books), `viewer` (read only), defined in `packages/core/src/auth.ts`
@@ -39,6 +42,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** Better Auth drops organization roles or custom admin access control.
 
 ### D21. The production operator account comes from a one-off CLI command — Decided (Sid, 2026-11-18)
+
 - **Why:** the operator is the one account no invitation can create. A first-sign-in-becomes-admin rule would
   open sign-up on an empty database, so anyone reaching a fresh (or wiped) deploy first would own an app holding
   children's photos. Seeding from environment variables would keep a password in the host's variables and
@@ -54,6 +58,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** a second operator or an automated environment needs operators without shell access.
 
 ### D33. Stories reach production through a one-off import command, run like the operator command — Made (2026-11-19)
+
 - **How:** `node packages/core/src/story-import.ts --author <email> <story directory>...`, run inside the deployed web
   container (for example over `railway ssh`), like `operator-create.ts` (D21); `mise run story:import -- ...` wraps it
   locally. A story directory is `story.json` (ID, slug, title, summary, version number, publish date), `manifest.json`,
@@ -75,6 +80,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   assets grow too large to ship in the image.
 
 ### D38. Agents sign in to production as an ordinary family the operator invites — Decided (Sid, 2026-11-19)
+
 - **What:** the operator invites a new family named "Amp agent" with an address Sid receives (for example
   `sid+lifestory-agent@…`), sets its password from the set-password link in the web log (D23), and keeps the email and
   password as Amp project secrets `LIFESTORY_AGENT_EMAIL` and `LIFESTORY_AGENT_PASSWORD`. Agents sign in like anyone
@@ -100,6 +106,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   where a password can't be kept.
 
 ### D23. A newly invited family sets its password from a single-use emailed link — Made (2026-11-18)
+
 - **How:** the operator's "Invite a new family" creates the account (no password yet) and its one-person family
   right away, through the same `createAccountWithFamily` path as `operator:create` (D21), and emails a link to
   `/set-password/<token>`. The token is a Better Auth `reset-password:` verification value valid for 7 days, so
@@ -121,6 +128,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   need invitations that don't create an account until accepted (for example to keep unaccepted invites out of user lists).
 
 ### D39. Email delivery: Resend's free plan over its HTTPS API — Decided (Sid, 2026-11-19)
+
 - **Need:** invitations and set-password links (D23), a few a week while invite-only. Each email holds the recipient's
   name and address and a single-use link valid for 7 days; no children's data. The provider must work from any host
   (D7) over HTTPS: Railway disables outbound SMTP on Free, Trial, and Hobby plans (Railway docs, "Outbound
@@ -153,6 +161,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   to invitees' inboxes is poor.
 
 ### D4. Absurd for jobs and durable workflows on Postgres; every step idempotent — Decided
+
 - **Why:** brief. Postgres is the only moving part; workflows can suspend for days (an illustrator's review of
   generated parts).
 - **How:** Absurd 0.5.1's SQL is vendored verbatim as a Drizzle custom migration, so `mise run db:migrate` is the only
@@ -168,6 +177,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** a correctness bug in claiming, retries, or events shows up in our usage, or the project is abandoned.
 
 ### D5. Image generation: FLUX 3 Image Klein on Modal — Decided
+
 - **Why:** brief. Checked 2026-11-18: released 2026-10-15, 5.6B parameters, open weights, image editing and
   multi-reference generation with up to 10 references, bounding boxes for placement (useful for character slots).
 - **License:** FLUX Kommunity License. Non-commercial use, plus commercial output for organizations under
@@ -185,6 +195,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** revenue approaches the license threshold, or quality on children's-book character consistency is poor.
 
 ### D24. Book format v1: the details the plan's example left open — Made
+
 - **Where:** `packages/core/src/book-format` (Effect Schema, browser-safe through `@lifestory/core/contracts`) is the
   format; `story_version.manifest` stores it; `fixtures/stories/moon-picnic` is the sample. The plan's example is
   refined in these ways:
@@ -257,6 +268,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   limiting for real stories (then per-pronoun text variants).
 
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
+
 - **How:** `modal/flux_klein.py` runs the distilled checkpoint through Diffusers' `ModularPipeline` with the prompt
   upsampler on (BFL: "do not use the model without it"), all in bf16 (~39 GB), on one A100-80GB. Weights live on
   the Modal Volume `lifestory-flux-klein-weights`, filled once on a CPU. Containers scale down 60 s after the last job
@@ -270,6 +282,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   pages need more than one container.
 
 ### D26. Characters are illustrator-approved variants composed from parts; no AI when a book is made — Decided (Sid, 2026-11-18)
+
 - **What changed:** parents no longer upload photos and no model draws family members into books. For each role
   a parent picks a base face (a handful per role, covering age, gender and facial structure, drawn by the illustrator),
   a skin tone, a hairstyle, a hair colour and extras such as glasses. Every option is approved by the illustrator before
@@ -301,6 +314,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** families need closer likeness than variants give, or illustrators can't supply bases and masks.
 
 ### D30. Part generation: OpenAI `gpt-image-2.6-sunburst` as the primary provider, Klein on Modal as the fallback — Decided (Sid, 2026-11-19)
+
 - **What:** authoring tooling generates parts by editing the base in place with OpenAI `gpt-image-2.6-sunburst`
   (medium quality, base padded to 2:3), then cuts the part out (plan.md, "Authoring-time part generation").
   `gpt-image-2.6-flare` is allowed for faster drafts. Klein on Modal (D25) stays as the fallback. Masked edits and
@@ -333,6 +347,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   or BFL offers zero retention and no training to us.
 
 ### D36. Part generation runs as `part.generate`; the cut-out is known-background matting in TypeScript; parts live in `story_part` until approved — Made (2026-11-19)
+
 - **What:** `requestPart` records a `story_part` row for an appearance (page, role, age, face) and an option and
   spawns `part.generate` (plan.md, "Authoring-time part generation"). The OpenAI provider (`IMAGE_PROVIDER=openai`,
   D30) edits the base padded to the provider's 2:3 size; the cut-out (`packages/core/src/parts/cutout.ts`) stores
@@ -377,6 +392,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   cut-out (~630 MB peak for the process at 1024×1536).
 
 ### D27. PDF proofs: printed by the worker from a token-gated print page, recorded with what they show — Made (2026-11-19)
+
 - **How:** a `proof` row belongs to a family and pins a story version plus its **content**: the cast (name,
   pronouns, look per slot) and the text edits, copied when the proof is requested, so later look or text changes never
   alter it. Requesting one needs `book:edit`; any member of the family (a viewer too) downloads it from
@@ -414,6 +430,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   page too slow (then render in page ranges); real screen-versus-print mismatches show up (D12).
 
 ### D28. The picker shows a story-independent portrait; books keep per-role overrides — Decided (Sid, 2026-11-19) / Made
+
 - **Portrait (Sid's request):** while a parent picks a look, the picker shows one character illustration that belongs
   to no story (`packages/core/src/looks/portrait.ts`), served as `/api/portrait?<look>`. Each story then draws the same
   option IDs with its own parts. The portrait is composed like a story figure (`composeFigure`, then `gradient-map-v1`),
@@ -443,6 +460,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   are confused that the portrait and a story's drawings differ.
 
 ### D29. Character ages: seven buckets first in the picker; roles accept some, figures can pin one — Decided (Sid, 2026-11-19) / Made
+
 - **What:** a look's first axis is the character's `age`, one of `baby` (0–1), `toddler` (1–3), `young-child` (3–7),
   `older-child` (8–12), `teen` (13–17), `adult` (18–64), `older-adult` (65+). The buckets are character ages, not
   Wonderbly-style reader ages: they split where the body changes enough that one drawn base can't cover both, or where
@@ -469,6 +487,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   fail review often enough that hand-drawing every age is cheaper.
 
 ### D40. Features: softer or defined, from teen up; pronouns pick the default — Decided (Sid, 2026-11-19) / Made
+
 - **Why (Sid):** the gouache portrait's teen and adult bases read male even with long hair (D28), and a face type
   in two versions gives better likeness. Sid chose a new axis over replacing round and oval, and more hairstyles plus
   facial hair over a gender or ethnicity axis (those are still to come).
@@ -489,6 +508,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   erased its pink lips, so lips and lashes are now ink line) and their 24 parts, made and reviewed like the rest (D28).
 
 ### D41. New look options reach a published story as additions, not a new version — Decided (Sid, 2026-11-19) / Made
+
 - **Why (Sid):** "It seems important to be able to make tweaks like this to the authorship side without requiring a
   new version of every story to be created." A new vocabulary option (red hair) meant a new version of every story,
   which copies every file, and books stay pinned to the old version, so they never got the option anyway. One shared
@@ -528,6 +548,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   so many that merging them on every read gets slow (then cache the merged manifest per revision).
 
 ### D43. Six more hairstyles and facial hair; options added later are optional for stories published before them — Decided (Sid, 2026-11-19)
+
 - **What (Sid):** hairstyles buzz cut, ponytail, braids, coily afro, locs and bun join short, curly and long, and a
   facial hair axis (none, stubble, moustache, full beard) is offered from adult up. Pronouns order the hairstyles
   (she/her starts with long, ponytail and braids; he/him with short and buzz cut) and never hide one. Facial hair is
@@ -552,6 +573,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Not here:** auburn (a palette, through additions like red, D41).
 
 ### D44. Parts cost less per option: tiled edits, head-only parts shared across features, and a `flip` on figures — Decided (Sid, 2026-11-19) / Made
+
 - **Why (assessment of 2026-11-19, artifact "Per-pose parts: cost and consistency" in thread
   T-01a1f50e-6d8e-70ce-bea8-adf2e7932795):** with D43's vocabulary a figure needs a part per option on every base
   (hero: 4 bases × 10 = 40 parts; a grown-up with softer bases: 8 × 13 = 104), so a 24-page book with 2 roles comes to
@@ -608,6 +630,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   remove human review or include a measured whole-book turnaround.
 
 ### D45. The story page previews the family's own cast; example looks are a separate "try looks" mode; proofs belong to books — Made (2026-11-19)
+
 - **Why (Sid, on production):** "i selected characters from my family, but it didnt update the images and it also
   still shows the placeholder pickers with default names?" The story page had a "Make our book" cast form that changed
   nothing on the page, below it look pickers for each role's example character ("Leo as the child") as text
@@ -637,6 +660,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   member without saving them (then a "try on Clara" mode that offers saving to her character).
 
 ### D46. A book can draw a family member with its own look, kept on the book; the story page shows it before the book is made — Approved by Sid / Made (2026-11-19)
+
 - **Why (Sid):** "being able to set an override style on the page (without modifying the canonical definition for a
   family member) would be ideal", chosen before "Make the book", shown in the preview, and "not saved to the DB until
   you click make this book".
@@ -655,6 +679,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   choice wins for that axis), or want to save a book's look back to the character.
 
 ### D47. A family with a book of a story is sent to it; another copy is made only on purpose — Made (2026-11-20)
+
 - **Why (Sid):** "if someone clicks 'Make the book' they would not want to create a new copy of it. Perhaps if an
   instance of a book already exists in the family, we should warn the user about that and take them to the existing
   one rather than creating a new one with no mention of the existing one."
@@ -673,6 +698,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** families want to move a book to a newer version, or Sid wants one book per story enforced.
 
 ### D48. The app is a sidebar shell; Home opens on the next step, then the last book, then stories; Studio is apart — Decided (Sid, 2026-11-20) / Made
+
 - **Why (Sid):** "an app dashboard with a left sidebar that would have things like family settings, family characters,
   our books". The old home was one page of cards: the family panel and invite form first, stories last, and the
   operator's cards styled like family content. Five layouts were compared (sidebar, bookshelf, three tabs, next
@@ -692,6 +718,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   or orders and a marketplace need a different top level.
 
 ### D49. An author archives a story instead of deleting it; families keep their books — Made (2026-11-20)
+
 - **Why (Sid):** "we should be able to delete (or at least archive) a story as the author so it doesn't show up for
   users to create new books."
 - **What:** the existing `archived` value of `story.status` (no migration). The author archives a published story from
@@ -708,6 +735,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   should also stop new proofs of existing books.
 
 ### D50. The picker is one ordered sequence of single choices; no whole-look presets — Decided (Sid, 2026-11-20) / Made
+
 - **Why (Sid):** "Start from a look" was confusing: picking one replaced every axis, so a parent working down the
   steps lost what they'd already chosen below it, and after one tweak no preset showed as chosen. This replaces D26's
   "starts from a few curated looks".
@@ -725,6 +753,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** parents testing it want a quick start again (then offer it before step 2, not mid-sequence).
 
 ### D51. Young hair: bald at every age; wispy, soft curls, top knot and puffs for babies to young children — Decided (Sid, 2026-11-20)
+
 - **Why (Sid):** "0–7 are the most likely hero characters … we don't have anything kind of between infant with no hair
   and toddler with a full head of hair." Every baby was drawn bald (`partAxesAt("baby")` was empty) while the picker
   still asked for a hair colour; toddlers had only full-head styles. Research (thread
@@ -756,6 +785,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   or the sparse styles don't survive an illustrator's story art.
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
+
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no
   table records each object. The `storage.sweep` task deletes everything under `families/<id>/` once that family no
@@ -778,6 +808,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   keys), a new kind of object can't live under one owner's prefix, or listing `families/` gets slow.
 
 ### D32. A parent approves a book's proof once, with who and when; unapproved proofs expire after 30 days — Made (2026-11-19)
+
 - **Approval:** `proof.approved_at` and `proof.approved_by` (migration 0008, two nullable columns). The book page's
   proof list has "Approve for print" next to each ready proof's download link, for roles that edit books (owner,
   parent); a viewer sees who approved it and when, and downloads it, but can't approve. Only a ready proof of a book
@@ -809,6 +840,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   ask to withdraw an approval, or families ask for drafts to be kept longer.
 
 ### D35. The proof is the print-ready file: flattened art at 300 ppi, live text, TrimBox and BleedBox, checked against Lulu's requirements — Made (2026-11-19)
+
 - **Lulu's requirements** (checked 2026-11-19: help.lulu.com "PDF Creation Settings", modified 2026-09-25; the Lulu
   API getting-started guide; Lulu's Interior Job Options file; the Print API's interior validation): one PDF of single
   pages, all one size, at least 2; page = trim + 0.125 in bleed per side; no crop or bleed marks; no security; every
@@ -849,23 +881,24 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   looks soft in print (then a higher resolution, up to Lulu's 600); or files of real art get too big to download.
 
 ### D37. Story authoring: the operator and accounts the operator grants write stories in the app — Decided (Sid, 2026-11-19) / Made
+
 - **Who may author (Sid, 2026-11-19: a table, not a column on `user`, because it sets up studios):** the operator (admin role) always, and any account the operator lets author on
   `/author` ("Authors"), recorded in `story_author` (user, granted by, when; migration 0011). Revoking stops new work;
   the author's stories stay theirs and published versions stay published. Options weighed:
-  - *Operator only:* simplest, but the brief says nothing may assume Sid is the only author, and illustrators need
+  - _Operator only:_ simplest, but the brief says nothing may assume Sid is the only author, and illustrators need
     to upload their own art.
-  - *Any signed-in account:* every invited parent could publish into every family's catalogue, which is public
+  - _Any signed-in account:_ every invited parent could publish into every family's catalogue, which is public
     authoring before moderation exists (brief, "Coming later").
-  - *Studios now* (an organization `kind`, plan.md "How Coming later fits"): the right shape for groups of authors and
+  - _Studios now_ (an organization `kind`, plan.md "How Coming later fits"): the right shape for groups of authors and
     illustrators later, but it changes how every family query filters organizations today, for a feature with one or
     two authors.
-  - *A Better Auth admin-plugin role "author":* a user has one admin-plugin role, shared with the operator's, and the
+  - _A Better Auth admin-plugin role "author":_ a user has one admin-plugin role, shared with the operator's, and the
     plugin's role is about managing users, not content.
-  A column on `user` was also weighed: one less table, but it records only when (not who granted it) and puts our
-  domain data in Better Auth's table. Chosen: the grant table. Studios (organizations of authors and illustrators)
-  later grant authoring through their membership next to it, with nothing to
-  migrate. A published story is in every family's catalogue at once; Sid, 2026-11-19: fine as long as moderation
-  stays in the plan (plan.md, "How Coming later fits": a review state on `story_version` that gates publishing).
+    A column on `user` was also weighed: one less table, but it records only when (not who granted it) and puts our
+    domain data in Better Auth's table. Chosen: the grant table. Studios (organizations of authors and illustrators)
+    later grant authoring through their membership next to it, with nothing to
+    migrate. A published story is in every family's catalogue at once; Sid, 2026-11-19: fine as long as moderation
+    stays in the plan (plan.md, "How Coming later fits": a review state on `story_version` that gates publishing).
 - **Drafts are unpublished `story_version` rows:** a story has at most one (a partial unique index on `story_id`
   where `published_at` is null) with a `revision` counter each save bumps, so a save from a stale tab fails with
   `DraftChanged` instead of overwriting. Publishing sets `published_at`; from then on the row never changes (D24).
@@ -906,6 +939,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   (presigned PUTs) because art outgrows the 40 MB limit.
 
 ### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Decided (Sid, 2026-11-19) / Made
+
 - **What (design: the "Story art import design" artifact in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1):** authors
   draw in their own tools and bring a layered file (PSD, which Photoshop, Procreate, Krita, Affinity and Clip Studio all
   export), several PNG layers, or one flat picture per page. The `/author` page tab's import turns it into what D24 and
@@ -936,14 +970,17 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   real illustrators' palettes (then a mask brush), or plates need full resolution behind removed figures.
 
 ### D6. Postgres with Drizzle for schema and migrations — Decided
+
 - **How:** schema in `packages/db/src/schema`, `casing: snake_case`, migrations generated with drizzle-kit and
   committed; one `pg` pool per process is shared by Drizzle, Better Auth's Drizzle adapter, and the Absurd client.
 - **Reopen if:** never expected.
 
 ### D7. Only containers, Postgres, and S3-compatible storage; nothing host-specific — Decided
+
 - **Reopen if:** never expected.
 
 ### D8. SeaweedFS for local object storage, not MinIO — Decided (Sid, 2026-11-18)
+
 - **Why:** Sid's call. Supporting evidence: on 2026-11-18 `docker pull minio/minio` failed with "pull access denied"
   and `quay.io/minio/minio` returned 401, so MinIO images are no longer anonymously pullable. Phase 1's
   "MinIO in Docker" step is replaced by SeaweedFS (`chrislusf/seaweedfs:4.54`, S3 API on :8333), configured like
@@ -953,16 +990,19 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 ## Recommended design (adopted)
 
 ### D9. TanStack Start; server functions for app calls, server routes for outside callers; no separate API — Recommended
+
 - **How:** Better Auth at `/api/auth/$`, file downloads at `/api/files/$`, dev sign-in at `/__dev/log-me-in/$email`.
   The Modal callback is a server route. The book editor (`/books/$bookId`) sets `ssr: false`.
 - **Reopen if:** server rendering or routing blocks the print path or the editor.
 
 ### D10. Effect v4 as the server programming model, one shared runtime, Effect Schema for validation — Recommended
+
 - **How:** see "Conventions" in [AGENTS.md](../AGENTS.md). Server function inputs use
   `Schema.toStandardSchemaV1`; there is no Zod in our code.
 - **Reopen if:** an Effect v4 release breaks the service or Schema APIs without a migration path.
 
 ### D11. Typed errors cross the server function boundary as an encoded Exit — Made
+
 - **Why:** the brief asks to keep Effect's typed errors across the boundary. A server function returns
   `Schema.toCodecJson(Schema.Exit(success, failures, Schema.Defect()))`; `unwrapResult` on the client returns the
   value or rethrows the same tagged error class. Unit-tested in `packages/core/test/rpc.test.ts`.
@@ -971,6 +1011,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** TanStack Start adds first-class custom serializers that preserve error classes with less code.
 
 ### D12. One React page component, physical units, embedded fonts; PDF from headless Chromium — Recommended
+
 - **How (milestone 1):** the PDF proof is an Absurd task on the worker that opens a print-only route of the app in
   Playwright Chromium and calls `page.pdf` at the trim size plus bleed. Chromium lives in the worker container,
   not the web container. Fonts are self-hosted with fontsource (Nunito today), so screen and print use the same files.
@@ -986,11 +1027,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** real screen-versus-print mismatches show up (then precomputed layout, per the brief).
 
 ### D13. One image provider interface; a deterministic fake provider by default — Recommended
+
 - **How:** `ImageProvider` service in `packages/core/src/image-provider.ts`. The fake renders an SVG whose colours
   derive from a hash of the request key, so retried steps write byte-identical objects.
 - **Reopen if:** never expected.
 
 ### D14. Generation as an Absurd workflow that suspends for Modal's callback and for the illustrator's approval — Recommended
+
 - See [plan.md](plan.md#authoring-time-part-generation-later-milestone). Since D26 it runs at authoring time only. The fake provider goes through the same suspend-and-callback path
   (it emits the completion event itself), so tests exercise the real workflow.
 - **Sid, 2026-11-18:** confirmed the callback design.
@@ -1000,11 +1043,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 ## Implementation choices (Made)
 
 ### D15. Toolchain: Node 26.13.1 (LTS), pnpm 12, TypeScript 7, Vite 8, Vitest 5, oxlint, Playwright — Made
+
 - **Why:** current stable releases; TypeScript 7's native compiler typechecks the repo in seconds, and oxlint is fast
   enough to run on every change.
 - **Reopen if:** a tool blocks something we need (for example a lint rule only ESLint has).
 
 ### D19. mise pins the toolchain and holds the task commands — Decided (Sid, 2026-11-18)
+
 - **How:** `mise.toml` pins Node, pnpm, and mise itself (`min_version`), loads `.env`, and defines every command as a
   task (`check`, `dev`, `test:e2e`, ...). `.agents/setup`, `.amp/services.yaml`, CI (`jdx/mise-action`), and
   AGENTS.md all call the tasks; the root `package.json` has no scripts. This replaced `.node-version` and the
@@ -1014,11 +1059,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** never expected.
 
 ### D16. Dependency versions: latest stable release at least 3 days old, pinned exactly — Decided (Sid, 2026-11-18)
+
 - **How:** `minimumReleaseAge: 4320` in `pnpm-workspace.yaml` enforces it for transitive dependencies too.
   No `minimumReleaseAgeExclude` entries. CI installs with `--frozen-lockfile`.
 - **Reopen if:** a security fix is needed sooner than 3 days; then add a dated, commented exclusion.
 
 ### D53. oxfmt formats the repository; `mise run check` enforces it — Decided (Sid, 2026-11-20)
+
 - **How:** `oxfmt` 0.79.0, pinned in the root `package.json`, configured in `.oxfmtrc.json`: 120 columns, the width
   the comments and docs are wrapped to (a formatter doesn't rewrap comments, so narrower code would sit next to wider
   comments); Markdown prose left unwrapped and its code blocks left as written (their examples are hand-aligned and
@@ -1047,6 +1094,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** an oxfmt upgrade breaks formatting we rely on and the fix stalls, or Oxc stops maintaining it.
 
 ### D17. Development sign-in route — Made
+
 - `GET /__dev/log-me-in/<email>?returnTo=<path>` finds or creates the user, signs in through Better Auth's real
   email-and-password endpoint (so the cookie is the normal session cookie), and redirects only to same-origin
   relative paths. Returns 404 unless `DEV_LOGIN_ENABLED=true` and `NODE_ENV !== "production"`.
@@ -1059,9 +1107,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** never expected.
 
 ### D18. Postgres tuned for speed in development (`fsync=off`, `synchronous_commit=off`) — Made
+
 - Local and CI data is disposable. Production uses the host's managed Postgres defaults.
 
 ### D22. Deployment: two images, migrations as a release step, Railway configured by its IaC file — Made
+
 - **Images:** `apps/web/Dockerfile` and `apps/worker/Dockerfile` (Node 26 slim, pnpm prod install, workspace packages
   run from TypeScript source). Configuration is only environment variables, so any container host works.
 - **Web server:** `vite build` emits a fetch handler, not a listener, so `apps/web/server.ts` serves it with srvx
@@ -1082,6 +1132,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   survive).
 
 ### D34. A post-deploy check of the live site runs after every production deploy, without signing in — Made (2026-11-19)
+
 - **What:** `.github/workflows/deploy-check.yml` runs `apps/web/scripts/check-deploy.ts` (`mise run deploy:check`)
   when Railway reports a production deploy on GitHub. It waits up to 25 minutes until `/api/health` reports the
   deployed commit for the web app
@@ -1111,6 +1162,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   email and password as GitHub secrets, and `proof` writes a proof row in the agent family each run.
 
 ### D20. Orb sizes: `a1.small` for light work, `a1.medium` for full-stack verification — Made
+
 - **Why:** measured peak of ~3.4 GB of 4 GB on `a1.small` with services, browsers, e2e, and typecheck running at once
   (AGENTS.md, "Orb size"). Milestone 1 adds server-side Chromium for PDFs.
 - **Reopen if:** memory use changes enough that the numbers in AGENTS.md no longer hold.

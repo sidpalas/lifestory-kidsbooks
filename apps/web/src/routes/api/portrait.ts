@@ -18,7 +18,11 @@ export const Route = createFileRoute("/api/portrait")({
             const look = yield* decodeLook(Object.fromEntries(new URL(request.url).searchParams));
             const png = yield* lookPortrait(look);
             return new Response(new Uint8Array(png), {
-              headers: { "content-type": "image/png", "cache-control": "private, max-age=86400", "x-content-type-options": "nosniff" },
+              headers: {
+                "content-type": "image/png",
+                "cache-control": "private, max-age=86400",
+                "x-content-type-options": "nosniff",
+              },
             });
           }).pipe(
             Effect.catchTag("NotAuthenticated", () => Effect.succeed(new Response("Unauthorized", { status: 401 }))),

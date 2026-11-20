@@ -23,8 +23,17 @@ const stored = new Set<string>();
  * the story's read rule.
  */
 export const recolouredKey = (storyId: string, version: number, layer: LayerSpec) => {
-  const inputs = JSON.stringify({ algorithm: RECOLOUR_ALGORITHM, asset: layer.asset, recolour: layer.recolour, ...(layer.flip ? { flip: true } : {}) });
-  return storyAssetKey(storyId, version, `recoloured/${createHash("sha256").update(inputs).digest("hex").slice(0, 32)}.png`);
+  const inputs = JSON.stringify({
+    algorithm: RECOLOUR_ALGORITHM,
+    asset: layer.asset,
+    recolour: layer.recolour,
+    ...(layer.flip ? { flip: true } : {}),
+  });
+  return storyAssetKey(
+    storyId,
+    version,
+    `recoloured/${createHash("sha256").update(inputs).digest("hex").slice(0, 32)}.png`,
+  );
 };
 
 export const resolveIllustration = Effect.fn("pages.resolveIllustration")(function* (
@@ -33,12 +42,14 @@ export const resolveIllustration = Effect.fn("pages.resolveIllustration")(functi
   layers: ReadonlyArray<LayerSpec>,
 ) {
   const storage = yield* ObjectStorage;
-  const read = (asset: string) => storage.get(storyAssetKey(storyId, version, asset)).pipe(Effect.map((object) => object.body));
+  const read = (asset: string) =>
+    storage.get(storyAssetKey(storyId, version, asset)).pipe(Effect.map((object) => object.body));
   return yield* Effect.forEach(
     layers,
     (layer) =>
       Effect.gen(function* () {
-        if (layer.recolour.length === 0 && !layer.flip) return { key: storyAssetKey(storyId, version, layer.asset), rect: layer.rect };
+        if (layer.recolour.length === 0 && !layer.flip)
+          return { key: storyAssetKey(storyId, version, layer.asset), rect: layer.rect };
         const key = recolouredKey(storyId, version, layer);
         if (!stored.has(key)) {
           const exists = yield* storage.get(key).pipe(
@@ -54,7 +65,9 @@ export const resolveIllustration = Effect.fn("pages.resolveIllustration")(functi
             );
             // Same inputs, same bytes: two requests racing here write the same object.
             const png = yield* Effect.promise(() => recolour(asset, regions));
-            const body = layer.flip ? new Uint8Array(yield* Effect.promise(() => sharp(png).flop().png({ compressionLevel: 6 }).toBuffer())) : png;
+            const body = layer.flip
+              ? new Uint8Array(yield* Effect.promise(() => sharp(png).flop().png({ compressionLevel: 6 }).toBuffer()))
+              : png;
             yield* storage.put(key, body, "image/png");
           }
           stored.add(key);

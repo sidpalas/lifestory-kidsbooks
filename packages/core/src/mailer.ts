@@ -34,7 +34,12 @@ const providers = {
         const response = await fetch(`${endpoint}/emails`, {
           method: "POST",
           headers: { authorization: `Bearer ${Redacted.value(apiKey)}`, "content-type": "application/json" },
-          body: JSON.stringify({ from, to: [email.to], subject: email.subject, text: `${email.text}\n\n${email.link}\n` }),
+          body: JSON.stringify({
+            from,
+            to: [email.to],
+            subject: email.subject,
+            text: `${email.text}\n\n${email.link}\n`,
+          }),
           signal: AbortSignal.timeout(15_000),
         });
         return { status: response.status, body: (await response.text()).slice(0, 300) };
@@ -44,9 +49,9 @@ const providers = {
         Effect.flatMap(({ status, body }) =>
           status >= 200 && status < 300
             ? Effect.logInfo(`email to ${email.to}: ${email.subject} (sent with Resend)`)
-            : Effect.logError(`email to ${email.to} not sent: Resend returned ${status}: ${body}; link: ${email.link}`).pipe(
-                Effect.andThen(Effect.die(new Error(`Resend refused the email to ${email.to} (${status})`))),
-              ),
+            : Effect.logError(
+                `email to ${email.to} not sent: Resend returned ${status}: ${body}; link: ${email.link}`,
+              ).pipe(Effect.andThen(Effect.die(new Error(`Resend refused the email to ${email.to} (${status})`)))),
         ),
       );
   }),
@@ -83,7 +88,9 @@ export class Mailer extends Context.Service<
 
   static readonly layer = Layer.unwrap(
     Effect.gen(function* () {
-      const provider = yield* Config.Literals(["log", "resend"], "EMAIL_PROVIDER").pipe(Config.withDefault("log" as const));
+      const provider = yield* Config.Literals(["log", "resend"], "EMAIL_PROVIDER").pipe(
+        Config.withDefault("log" as const),
+      );
       return Mailer.make(yield* providers[provider]);
     }),
   );

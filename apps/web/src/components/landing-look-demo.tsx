@@ -11,9 +11,23 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 const StaticPortrait: Portrait = ({ look, alt, width, height, className, testId }) => (
-  <span role={alt ? "img" : undefined} aria-label={alt || undefined} data-testid={testId} className={cn("relative block overflow-hidden", className)} style={{ width, height, aspectRatio: "488 / 560" }}>
+  <span
+    role={alt ? "img" : undefined}
+    aria-label={alt || undefined}
+    data-testid={testId}
+    className={cn("relative block overflow-hidden", className)}
+    style={{ width, height, aspectRatio: "488 / 560" }}
+  >
     {demoLayers(look).map((layer) => (
-      <img key={layer} src={`/marketing/looks/${layer}`} alt="" width={width} height={height} decoding="async" className="absolute inset-0 size-full object-cover" />
+      <img
+        key={layer}
+        src={`/marketing/looks/${layer}`}
+        alt=""
+        width={width}
+        height={height}
+        decoding="async"
+        className="absolute inset-0 size-full object-cover"
+      />
     ))}
   </span>
 );

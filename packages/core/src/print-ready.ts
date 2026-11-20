@@ -42,11 +42,18 @@ export interface TrimSize {
  * What keeps a story's trim from printing at Lulu: a bleed other than Lulu's, or a safe margin narrower than Lulu's.
  * Checked when a story version is imported, so versions stored before the rule stay readable.
  */
-export const printTrimIssues = (trim: { readonly bleedIn: number; readonly safeMarginIn: number }): ReadonlyArray<string> => [
-  ...(trim.bleedIn === LULU_INTERIOR.bleedIn ? [] : [`trim.bleedIn: ${trim.bleedIn} in; Lulu prints a ${LULU_INTERIOR.bleedIn} in bleed`]),
+export const printTrimIssues = (trim: {
+  readonly bleedIn: number;
+  readonly safeMarginIn: number;
+}): ReadonlyArray<string> => [
+  ...(trim.bleedIn === LULU_INTERIOR.bleedIn
+    ? []
+    : [`trim.bleedIn: ${trim.bleedIn} in; Lulu prints a ${LULU_INTERIOR.bleedIn} in bleed`]),
   ...(trim.safeMarginIn >= LULU_INTERIOR.safeMarginIn
     ? []
-    : [`trim.safeMarginIn: ${trim.safeMarginIn} in; Lulu needs text at least ${LULU_INTERIOR.safeMarginIn} in inside the trim`]),
+    : [
+        `trim.safeMarginIn: ${trim.safeMarginIn} in; Lulu needs text at least ${LULU_INTERIOR.safeMarginIn} in inside the trim`,
+      ]),
 ];
 
 export interface PrintReadyReport {
@@ -56,7 +63,13 @@ export interface PrintReadyReport {
   /** Base font names with how each is embedded, such as `Literata-Regular (TrueType)`. */
   readonly fonts: ReadonlyArray<string>;
   /** Each image drawn, with its effective resolution where it's drawn. */
-  readonly images: ReadonlyArray<{ readonly page: number; readonly pixels: string; readonly ppi: number; readonly colourSpace: string; readonly filter: string }>;
+  readonly images: ReadonlyArray<{
+    readonly page: number;
+    readonly pixels: string;
+    readonly ppi: number;
+    readonly colourSpace: string;
+    readonly filter: string;
+  }>;
 }
 
 const pt = (inches: number) => inches * 72;
@@ -108,14 +121,19 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
   };
   type Box = NonNullable<ReturnType<typeof box>>;
   const sameBox = (a: Box, b: Box) =>
-    Math.abs(a.x0 - b.x0) <= TOLERANCE_PT && Math.abs(a.y0 - b.y0) <= TOLERANCE_PT && Math.abs(a.x1 - b.x1) <= TOLERANCE_PT && Math.abs(a.y1 - b.y1) <= TOLERANCE_PT;
+    Math.abs(a.x0 - b.x0) <= TOLERANCE_PT &&
+    Math.abs(a.y0 - b.y0) <= TOLERANCE_PT &&
+    Math.abs(a.x1 - b.x1) <= TOLERANCE_PT &&
+    Math.abs(a.y1 - b.y1) <= TOLERANCE_PT;
   const inches = (b: Box) => `${+((b.x1 - b.x0) / 72).toFixed(3)} × ${+((b.y1 - b.y0) / 72).toFixed(3)} in`;
 
   if (doc.isEncrypted) issues.push("the PDF is encrypted; Lulu takes no security or password protection");
-  if (doc.catalog.has(PDFName.of("OCProperties"))) issues.push("the PDF has layers (optional content); Lulu needs them flattened");
+  if (doc.catalog.has(PDFName.of("OCProperties")))
+    issues.push("the PDF has layers (optional content); Lulu needs them flattened");
 
   const pages = doc.getPages();
-  if (pages.length < LULU_INTERIOR.minPages) issues.push(`${pages.length} pages; Lulu needs at least ${LULU_INTERIOR.minPages}`);
+  if (pages.length < LULU_INTERIOR.minPages)
+    issues.push(`${pages.length} pages; Lulu needs at least ${LULU_INTERIOR.minPages}`);
 
   const bleed = pt(LULU_INTERIOR.bleedIn);
   const expectedMedia: Box = { x0: 0, y0: 0, x1: pt(trim.widthIn) + 2 * bleed, y1: pt(trim.heightIn) + 2 * bleed };
@@ -149,7 +167,9 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
 
   const matrixOf = (object: PDFObject | undefined): Matrix6 => {
     const value = lookup(object);
-    return value instanceof PDFArray && value.size() === 6 ? (value.asArray().map((item) => num(item) ?? 0) as Matrix6) : [1, 0, 0, 1, 0, 0];
+    return value instanceof PDFArray && value.size() === 6
+      ? (value.asArray().map((item) => num(item) ?? 0) as Matrix6)
+      : [1, 0, 0, 1, 0, 0];
   };
 
   const checkFont = (where: string, fontObject: PDFObject | undefined) => {
@@ -160,14 +180,19 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
     const label = baseFont.replace(/^[A-Z]{6}\+/, "");
     if (subtype === "Type3") {
       fonts.add(`${label} (Type 3)`);
-      issues.push(`${where}: font ${label} is Type 3 (glyphs drawn as procedures), which prepress rejects; embed a static font`);
+      issues.push(
+        `${where}: font ${label} is Type 3 (glyphs drawn as procedures), which prepress rejects; embed a static font`,
+      );
       return;
     }
     const descendants = lookup(font.get(PDFName.of("DescendantFonts")));
-    const descendant = subtype === "Type0" ? dictOf(descendants instanceof PDFArray ? descendants.get(0) : undefined) : font;
+    const descendant =
+      subtype === "Type0" ? dictOf(descendants instanceof PDFArray ? descendants.get(0) : undefined) : font;
     const descriptor = dictOf(descendant?.get(PDFName.of("FontDescriptor")));
     const program = ["FontFile2", "FontFile3", "FontFile"].find((key) => descriptor?.has(PDFName.of(key)));
-    fonts.add(`${label} (${program === "FontFile2" ? "TrueType" : program === "FontFile3" ? "CFF/OpenType" : program === "FontFile" ? "Type 1" : "not embedded"})`);
+    fonts.add(
+      `${label} (${program === "FontFile2" ? "TrueType" : program === "FontFile3" ? "CFF/OpenType" : program === "FontFile" ? "Type 1" : "not embedded"})`,
+    );
     if (!program) issues.push(`${where}: font ${label} isn't embedded`);
   };
 
@@ -182,30 +207,43 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
     }
     const blend = lookup(state.get(PDFName.of("BM")));
     const blendName = name(blend) ?? (blend instanceof PDFArray ? name(blend.get(0)) : undefined);
-    if (blendName && blendName !== "Normal" && blendName !== "Compatible") issues.push(`${where}: blend mode ${blendName} (transparency) isn't flattened`);
+    if (blendName && blendName !== "Normal" && blendName !== "Compatible")
+      issues.push(`${where}: blend mode ${blendName} (transparency) isn't flattened`);
   };
 
   const checkGroup = (where: string, owner: PDFDict) => {
     const group = dictOf(owner.get(PDFName.of("Group")));
-    if (group && name(group.get(PDFName.of("S"))) === "Transparency") issues.push(`${where}: a transparency group isn't flattened`);
+    if (group && name(group.get(PDFName.of("S"))) === "Transparency")
+      issues.push(`${where}: a transparency group isn't flattened`);
   };
 
   const checkImage = (where: string, image: PDFDict) => {
     const isMask = image.get(PDFName.of("ImageMask"))?.toString() === "true";
-    if (image.has(PDFName.of("SMask")) || image.has(PDFName.of("SMaskInData"))) issues.push(`${where}: an image has a soft mask (transparency) that isn't flattened`);
+    if (image.has(PDFName.of("SMask")) || image.has(PDFName.of("SMaskInData")))
+      issues.push(`${where}: an image has a soft mask (transparency) that isn't flattened`);
     const bits = num(image.get(PDFName.of("BitsPerComponent")));
-    if (!isMask && bits !== undefined && bits !== 8) issues.push(`${where}: an image has ${bits} bits per channel; Lulu wants 8`);
+    if (!isMask && bits !== undefined && bits !== 8)
+      issues.push(`${where}: an image has ${bits} bits per channel; Lulu wants 8`);
     if (!isMask) {
       const space = colourSpaceName(image.get(PDFName.of("ColorSpace")));
-      if (!space.ok && name(image.get(PDFName.of("Filter"))) !== "JPXDecode") issues.push(`${where}: an image is in ${space.label}; print-ready files use sRGB or grey`);
+      if (!space.ok && name(image.get(PDFName.of("Filter"))) !== "JPXDecode")
+        issues.push(`${where}: an image is in ${space.label}; print-ready files use sRGB or grey`);
     }
   };
 
   /** Walks one content stream with its resources, tracking the transformation to measure each image drawn. */
-  const walk = (where: string, page: number, content: Uint8Array, resources: PDFDict | undefined, ctm: Matrix, depth: number) => {
+  const walk = (
+    where: string,
+    page: number,
+    content: Uint8Array,
+    resources: PDFDict | undefined,
+    ctm: Matrix,
+    depth: number,
+  ) => {
     const xobjects = dictOf(resources?.get(PDFName.of("XObject")));
     for (const [, value] of dictOf(resources?.get(PDFName.of("Font")))?.entries() ?? []) checkFont(where, value);
-    for (const [, value] of dictOf(resources?.get(PDFName.of("ExtGState")))?.entries() ?? []) checkExtGState(where, value);
+    for (const [, value] of dictOf(resources?.get(PDFName.of("ExtGState")))?.entries() ?? [])
+      checkExtGState(where, value);
     for (const [, value] of dictOf(resources?.get(PDFName.of("Pattern")))?.entries() ?? []) {
       const pattern = dictOf(value);
       if (pattern && once(pattern)) {
@@ -242,12 +280,26 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
             colourSpace: colourSpaceName(object.dict.get(PDFName.of("ColorSpace"))).label,
             filter: name(object.dict.get(PDFName.of("Filter"))) ?? "none",
           });
-          if (ppi < LULU_INTERIOR.minPpi - 1) issues.push(`${where}: an image (${w}×${h}) prints at ${ppi} ppi; Lulu needs ${LULU_INTERIOR.minPpi}`);
-          if (ppi > LULU_INTERIOR.maxPpi + 1) issues.push(`${where}: an image (${w}×${h}) prints at ${ppi} ppi; Lulu takes at most ${LULU_INTERIOR.maxPpi}`);
+          if (ppi < LULU_INTERIOR.minPpi - 1)
+            issues.push(`${where}: an image (${w}×${h}) prints at ${ppi} ppi; Lulu needs ${LULU_INTERIOR.minPpi}`);
+          if (ppi > LULU_INTERIOR.maxPpi + 1)
+            issues.push(
+              `${where}: an image (${w}×${h}) prints at ${ppi} ppi; Lulu takes at most ${LULU_INTERIOR.maxPpi}`,
+            );
         } else if (subtype === "Form" && depth < 8) {
           checkGroup(`${where}, a form`, object.dict);
-          const inner: Matrix = { current: multiply(matrixOf(object.dict.get(PDFName.of("Matrix"))), ctm.current), stack: [] };
-          walk(`${where}, a form`, page, streamBytes(object), dictOf(object.dict.get(PDFName.of("Resources"))), inner, depth + 1);
+          const inner: Matrix = {
+            current: multiply(matrixOf(object.dict.get(PDFName.of("Matrix"))), ctm.current),
+            stack: [],
+          };
+          walk(
+            `${where}, a form`,
+            page,
+            streamBytes(object),
+            dictOf(object.dict.get(PDFName.of("Resources"))),
+            inner,
+            depth + 1,
+          );
         }
       }
     }
@@ -264,22 +316,36 @@ export const checkPrintReady = async (pdf: Uint8Array, trim: TrimSize): Promise<
     }
     sizes.add(inches(media));
     if (!sameBox(media, expectedMedia)) {
-      issues.push(`${where}: page is ${inches(media)}; a ${trim.widthIn} × ${trim.heightIn} in book with Lulu's ${LULU_INTERIOR.bleedIn} in bleed needs ${inches(expectedMedia)}`);
+      issues.push(
+        `${where}: page is ${inches(media)}; a ${trim.widthIn} × ${trim.heightIn} in book with Lulu's ${LULU_INTERIOR.bleedIn} in bleed needs ${inches(expectedMedia)}`,
+      );
     }
     const trimBox = box(node.get(PDFName.of("TrimBox")));
-    const expectedTrim: Box = { x0: media.x0 + bleed, y0: media.y0 + bleed, x1: media.x1 - bleed, y1: media.y1 - bleed };
+    const expectedTrim: Box = {
+      x0: media.x0 + bleed,
+      y0: media.y0 + bleed,
+      x1: media.x1 - bleed,
+      y1: media.y1 - bleed,
+    };
     if (!trimBox) issues.push(`${where}: no TrimBox`);
-    else if (!sameBox(trimBox, expectedTrim)) issues.push(`${where}: TrimBox is ${inches(trimBox)}, not the ${trim.widthIn} × ${trim.heightIn} in trim inset by the bleed`);
+    else if (!sameBox(trimBox, expectedTrim))
+      issues.push(
+        `${where}: TrimBox is ${inches(trimBox)}, not the ${trim.widthIn} × ${trim.heightIn} in trim inset by the bleed`,
+      );
     const bleedBox = box(node.get(PDFName.of("BleedBox")));
     if (!bleedBox) issues.push(`${where}: no BleedBox`);
     else if (!sameBox(bleedBox, media)) issues.push(`${where}: BleedBox ${inches(bleedBox)} isn't the whole page`);
     const cropBox = box(node.get(PDFName.of("CropBox")));
     if (cropBox && !sameBox(cropBox, media)) issues.push(`${where}: CropBox ${inches(cropBox)} hides part of the page`);
-    if ((page.getRotation().angle % 360) !== 0) issues.push(`${where}: rotated ${page.getRotation().angle}°`);
+    if (page.getRotation().angle % 360 !== 0) issues.push(`${where}: rotated ${page.getRotation().angle}°`);
     checkGroup(where, node);
     const contents = lookup(node.get(PDFName.of("Contents")));
     const streams = contents instanceof PDFArray ? contents.asArray().map(lookup) : [contents];
-    const bytes = Buffer.concat(streams.filter((s): s is PDFRawStream => s instanceof PDFRawStream).map((s) => Buffer.concat([streamBytes(s), Buffer.from("\n")])));
+    const bytes = Buffer.concat(
+      streams
+        .filter((s): s is PDFRawStream => s instanceof PDFRawStream)
+        .map((s) => Buffer.concat([streamBytes(s), Buffer.from("\n")])),
+    );
     walk(where, i + 1, bytes, node.Resources(), { current: [1, 0, 0, 1, 0, 0], stack: [] }, 0);
   });
   if (sizes.size > 1) issues.push(`pages differ in size (${[...sizes].join(", ")}); Lulu needs one size`);
@@ -344,7 +410,11 @@ function* operations(bytes: Uint8Array): Generator<{ operator: string; operands:
     } else if (c === 0x2f /* / */) {
       let j = i + 1;
       while (j < n && !isSpace(bytes[j]!) && !isDelimiter(bytes[j]!)) j++;
-      operands.push(Buffer.from(bytes.subarray(i + 1, j)).toString("latin1").replace(/#([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))));
+      operands.push(
+        Buffer.from(bytes.subarray(i + 1, j))
+          .toString("latin1")
+          .replace(/#([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16))),
+      );
       i = j;
     } else {
       let j = i;
@@ -359,7 +429,16 @@ function* operations(bytes: Uint8Array): Generator<{ operator: string; operands:
         operands = [];
         if (token === "BI") {
           // Skip the inline image's data up to `EI` between whitespace.
-          while (i < n && !(isSpace(bytes[i - 1] ?? 0x20) && bytes[i] === 0x45 && bytes[i + 1] === 0x49 && (i + 2 >= n || isSpace(bytes[i + 2]!)))) i++;
+          while (
+            i < n &&
+            !(
+              isSpace(bytes[i - 1] ?? 0x20) &&
+              bytes[i] === 0x45 &&
+              bytes[i + 1] === 0x49 &&
+              (i + 2 >= n || isSpace(bytes[i + 2]!))
+            )
+          )
+            i++;
           i += 2;
         }
       }

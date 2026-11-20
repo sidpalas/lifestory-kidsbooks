@@ -37,7 +37,13 @@ function FamilySwitcher({ shell, id }: { shell: Shell; id?: string }) {
   // The switcher appears once someone is in more than one family (D3: say little about families until then).
   if (shell.families.length > 1)
     return (
-      <NativeSelect aria-label="Family" className="w-full min-w-0" value={shell.active?.id} disabled={!hydrated} onChange={(event) => void switchTo(event.target.value)}>
+      <NativeSelect
+        aria-label="Family"
+        className="w-full min-w-0"
+        value={shell.active?.id}
+        disabled={!hydrated}
+        onChange={(event) => void switchTo(event.target.value)}
+      >
         {shell.families.map((family) => (
           <option key={family.id} value={family.id}>
             {family.name}
@@ -68,7 +74,10 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
   const navItem = "rounded-md px-3 py-1.5 text-sm hover:bg-accent";
   return (
     <div className="flex min-h-screen">
-      <aside className="bg-secondary/40 sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-1 border-r p-4 md:flex" aria-label="Lifestory">
+      <aside
+        className="bg-secondary/40 sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-1 border-r p-4 md:flex"
+        aria-label="Lifestory"
+      >
         <Link to="/" className="px-3 pb-3 text-lg font-semibold">
           Lifestory
         </Link>
@@ -78,7 +87,13 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         </div>
         <nav aria-label="Family" className="flex flex-col gap-0.5">
           {places(viewer).map((place) => (
-            <Link key={place.to} to={place.to} className={navItem} activeOptions={{ exact: place.to === "/" }} activeProps={{ className: "bg-accent font-semibold" }}>
+            <Link
+              key={place.to}
+              to={place.to}
+              className={navItem}
+              activeOptions={{ exact: place.to === "/" }}
+              activeProps={{ className: "bg-accent font-semibold" }}
+            >
               {place.label}
             </Link>
           ))}
@@ -86,7 +101,10 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         {studio && (
           <div className="mt-3 flex flex-col gap-1 border-t pt-3">
             <p className="text-muted-foreground px-3 text-xs">For authors</p>
-            <Link to="/author" className="text-primary border-primary/40 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent">
+            <Link
+              to="/author"
+              className="text-primary border-primary/40 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
               Studio
             </Link>
           </div>
@@ -95,7 +113,13 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
           <p className="text-muted-foreground break-all" data-testid="signed-in-as">
             Signed in as {shell.user.name} ({shell.user.email})
           </p>
-          <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => void leave()} disabled={!hydrated}>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs"
+            onClick={() => void leave()}
+            disabled={!hydrated}
+          >
             Sign out
           </Button>
         </div>
@@ -110,18 +134,30 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
             <FamilySwitcher shell={shell} />
           </div>
           {studio && (
-            <Link to="/author" className="text-primary border-primary/40 rounded-md border px-2 py-1 text-xs font-medium">
+            <Link
+              to="/author"
+              className="text-primary border-primary/40 rounded-md border px-2 py-1 text-xs font-medium"
+            >
               Studio
             </Link>
           )}
-          <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => void leave()} disabled={!hydrated}>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs"
+            onClick={() => void leave()}
+            disabled={!hydrated}
+          >
             Sign out
           </Button>
         </header>
         {children}
       </div>
 
-      <nav aria-label="Sections" className="bg-background fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t md:hidden">
+      <nav
+        aria-label="Sections"
+        className="bg-background fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t md:hidden"
+      >
         {places(viewer).map((place) => (
           <Link
             key={place.to}
@@ -139,7 +175,17 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
 }
 
 /** A page inside the shell: its heading and content, at a readable width. */
-export function ShellPage({ title, description, actions, children }: { title: string; description?: string; actions?: React.ReactNode; children: React.ReactNode }) {
+export function ShellPage({
+  title,
+  description,
+  actions,
+  children,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <main className="flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -167,7 +213,13 @@ export function StudioBar() {
       <Link to="/" className="rounded-md border border-[oklch(0.72_0.02_60)] px-3 py-1 text-sm hover:bg-white/10">
         Back to family
       </Link>
-      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-[oklch(0.93_0.01_85)]" onClick={() => void leave()} disabled={!hydrated}>
+      <Button
+        variant="link"
+        size="sm"
+        className="h-auto p-0 text-xs text-[oklch(0.93_0.01_85)]"
+        onClick={() => void leave()}
+        disabled={!hydrated}
+      >
         Sign out
       </Button>
     </header>

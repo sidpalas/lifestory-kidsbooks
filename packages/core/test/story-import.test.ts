@@ -32,12 +32,16 @@ describe("importStoryVersion", () => {
         coveredWith: [JSON.parse(await readFile(new URL("additions/1.json", dir), "utf8"))],
       }).pipe(
         // The refusal comes before any database access; a query would fail on this empty service.
-        Effect.provide(Layer.mergeAll(memoryObjectStorage(objects), Layer.succeed(Database, {} as Database["Service"]))),
+        Effect.provide(
+          Layer.mergeAll(memoryObjectStorage(objects), Layer.succeed(Database, {} as Database["Service"])),
+        ),
       ),
     );
 
     expect(Exit.isFailure(exit)).toBe(true);
-    expect(String(Exit.isFailure(exit) && exit.cause)).toContain(`already has different files; add a new version:\n${changedAsset}`);
+    expect(String(Exit.isFailure(exit) && exit.cause)).toContain(
+      `already has different files; add a new version:\n${changedAsset}`,
+    );
     expect(objects.get(key(changedAsset!))?.body).toBe(oldBytes);
     expect(objects.has(key(missingAsset!))).toBe(false);
   });

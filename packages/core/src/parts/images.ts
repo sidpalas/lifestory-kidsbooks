@@ -4,7 +4,20 @@
 import sharp, { type Sharp } from "sharp";
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
-import { alphaBounds, coverOutline, crownGap, cutOutPart, type CutOutMetrics, findShift, neutralize, paperSilhouette, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
+import {
+  alphaBounds,
+  coverOutline,
+  crownGap,
+  cutOutPart,
+  type CutOutMetrics,
+  findShift,
+  neutralize,
+  paperSilhouette,
+  type PixelRect,
+  type Rgb,
+  shiftImage,
+  skinPixels,
+} from "./cutout.ts";
 
 /** The cut-out runs at most at this size; provider outputs are 1536 px at most, so more adds nothing. */
 const WORKING_SIZE = 1536;
@@ -46,7 +59,11 @@ export const prepareBase = async (asset: Uint8Array): Promise<PreparedBase> => {
   const fit = Math.min(1, WORKING_SIZE / Math.max(meta.width!, meta.height!));
   const width = Math.round(meta.width! * fit);
   const height = Math.round(meta.height! * fit);
-  const base = await sharp(raster).resize(width, height, { fit: "fill" }).flatten({ background: PAPER }).png().toBuffer();
+  const base = await sharp(raster)
+    .resize(width, height, { fit: "fill" })
+    .flatten({ background: PAPER })
+    .png()
+    .toBuffer();
 
   const target = providerSize(width, height);
   const targetAspect = target.width / target.height;
@@ -58,7 +75,10 @@ export const prepareBase = async (asset: Uint8Array): Promise<PreparedBase> => {
     .extend({ left, right: paddedWidth - width - left, top, bottom: paddedHeight - height - top, extendWith: "copy" })
     .png()
     .toBuffer();
-  const input = await sharp(padded).resize(target.width, target.height, { fit: "fill", kernel: "lanczos3" }).png().toBuffer();
+  const input = await sharp(padded)
+    .resize(target.width, target.height, { fit: "fill", kernel: "lanczos3" })
+    .png()
+    .toBuffer();
   return {
     base: new Uint8Array(base),
     width,
@@ -105,7 +125,13 @@ export interface PartLayer {
 }
 
 /** One region of a cut-out as a cropped RGBA PNG and its place in the base; null when the region is empty. */
-export const encodeLayer = async (region: LayerRegion, alpha: Float32Array, colour: Float32Array, width: number, height: number): Promise<PartLayer | null> => {
+export const encodeLayer = async (
+  region: LayerRegion,
+  alpha: Float32Array,
+  colour: Float32Array,
+  width: number,
+  height: number,
+): Promise<PartLayer | null> => {
   const bounds = alphaBounds(alpha, width, height);
   if (!bounds) return null;
   // Snap the crop to the thousandths grid `at` is stored in, so the layer lands where it was cut from.
@@ -125,7 +151,9 @@ export const encodeLayer = async (region: LayerRegion, alpha: Float32Array, colo
       rgba[o + 3] = Math.round(alpha[p]! * 255);
     }
   }
-  const png = await sharp(rgba, { raw: { width: x1 - x0, height: y1 - y0, channels: 4 } }).png({ compressionLevel: 9 }).toBuffer();
+  const png = await sharp(rgba, { raw: { width: x1 - x0, height: y1 - y0, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
   return { region, png: new Uint8Array(png), at };
 };
 
@@ -142,7 +170,14 @@ export const cutOutLayer = async (
   skinMask: Uint8Array,
   zone: Rect,
   options: CutOutOptions,
-): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: CutOutMetrics & { readonly skinPixels: number; readonly crownGap?: number; readonly outlineCovered?: number } }> => {
+): Promise<{
+  readonly layers: ReadonlyArray<PartLayer>;
+  readonly metrics: CutOutMetrics & {
+    readonly skinPixels: number;
+    readonly crownGap?: number;
+    readonly outlineCovered?: number;
+  };
+}> => {
   const { width, height, padding } = prepared;
   const base = await toRgb(sharp(prepared.base));
   const aligned = await unpadEdit(edit, padding, width, height);
@@ -164,7 +199,11 @@ export const figureCoverage = async (figure: Uint8Array, width: number, height: 
   const rgba = await (await rasterize(figure)).resize(width, height, { fit: "fill" }).raw().toBuffer();
   const alpha = Float32Array.from({ length: width * height }, (_, p) => rgba[p * 4 + 3]! / 255);
   if (alpha.some((a) => a < 1)) return alpha;
-  return paperSilhouette({ width, height, data: Float32Array.from({ length: width * height * 3 }, (_, i) => rgba[Math.floor(i / 3) * 4 + (i % 3)]! / 255) });
+  return paperSilhouette({
+    width,
+    height,
+    data: Float32Array.from({ length: width * height * 3 }, (_, i) => rgba[Math.floor(i / 3) * 4 + (i % 3)]! / 255),
+  });
 };
 
 /** A cut-out split by region into the part and any skin drawn in it (cutOutLayer). */
@@ -173,12 +212,28 @@ const splitLayers = async <M extends CutOutMetrics>(
   { alpha, colour, metrics }: { readonly alpha: Float32Array; readonly colour: Float32Array; readonly metrics: M },
   skinMask: Uint8Array,
   options: CutOutOptions,
-): Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: M & { readonly skinPixels: number; readonly crownGap?: number; readonly outlineCovered?: number } }> => {
+): Promise<{
+  readonly layers: ReadonlyArray<PartLayer>;
+  readonly metrics: M & { readonly skinPixels: number; readonly crownGap?: number; readonly outlineCovered?: number };
+}> => {
   const { width, height } = base;
-  const mask = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+  const mask = await (
+    await rasterize(skinMask)
+  )
+    .resize(width, height, { fit: "fill" })
+    .extractChannel(3)
+    .raw()
+    .toBuffer();
   // Hair can't carry skin-coloured highlights away as skin, but an accessory has no skin of its own: skin the model
   // redrew under glasses is the base's skin with its eye and nose lines moved, so the base shows there instead.
-  const skin = skinPixels(colour, alpha, base, new Uint8Array(mask), Math.max(12, Math.round((40 * Math.max(width, height)) / 1024)), !options.neutral);
+  const skin = skinPixels(
+    colour,
+    alpha,
+    base,
+    new Uint8Array(mask),
+    Math.max(12, Math.round((40 * Math.max(width, height)) / 1024)),
+    !options.neutral,
+  );
   const skinAlpha = options.neutral ? alpha.map((a, p) => (skin[p] ? a : 0)) : new Float32Array(alpha.length);
   const cut = alpha.map((a, p) => (skin[p] ? 0 : a));
   // Hair reaches the head's outline, which the matte leaves out (coverOutline).
@@ -193,7 +248,12 @@ const splitLayers = async <M extends CutOutMetrics>(
   return {
     layers: layers.filter((layer): layer is PartLayer => layer !== null),
     // Hair only: bald scalp left above it (CROWN_GAP_LIMIT).
-    metrics: { ...metrics, skinPixels: skin.reduce((sum, v) => sum + v, 0), ...(outline ? { outlineCovered: outline.covered } : {}), ...(options.neutral ? { crownGap: crownGap(partAlpha, new Uint8Array(mask), width, height) } : {}) },
+    metrics: {
+      ...metrics,
+      skinPixels: skin.reduce((sum, v) => sum + v, 0),
+      ...(outline ? { outlineCovered: outline.covered } : {}),
+      ...(options.neutral ? { crownGap: crownGap(partAlpha, new Uint8Array(mask), width, height) } : {}),
+    },
   };
 };
 
@@ -202,17 +262,35 @@ const splitLayers = async <M extends CutOutMetrics>(
  * peach-skinned reference recoloured the edited face, 2026-11-19), flattened on paper and cropped to a square
  * around the part with the face under it, at 1024 px. The edit copies its style from this.
  */
-export const referenceImage = async (base: Uint8Array, layers: ReadonlyArray<{ readonly png: Uint8Array; readonly at: Rect }>) => {
+export const referenceImage = async (
+  base: Uint8Array,
+  layers: ReadonlyArray<{ readonly png: Uint8Array; readonly at: Rect }>,
+) => {
   const { base: flat, width, height } = await prepareBase(base);
   const placed = await Promise.all(
     layers.map(async (layer) => {
       const [x0, y0, x1, y1] = rectToPixels(layer.at, width, height);
-      return { rect: [x0, y0, x1, y1] as const, input: await (await rasterize(layer.png)).resize(x1 - x0, y1 - y0, { fit: "fill" }).png().toBuffer(), left: x0, top: y0 };
+      return {
+        rect: [x0, y0, x1, y1] as const,
+        input: await (
+          await rasterize(layer.png)
+        )
+          .resize(x1 - x0, y1 - y0, { fit: "fill" })
+          .png()
+          .toBuffer(),
+        left: x0,
+        top: y0,
+      };
     }),
   );
   const drawn = await sharp(flat).composite(placed).png().toBuffer();
   const [bx0, by0, bx1, by1] = placed.reduce<readonly [number, number, number, number]>(
-    ([a, b, c, d], { rect }) => [Math.min(a, rect[0]), Math.min(b, rect[1]), Math.max(c, rect[2]), Math.max(d, rect[3])],
+    ([a, b, c, d], { rect }) => [
+      Math.min(a, rect[0]),
+      Math.min(b, rect[1]),
+      Math.max(c, rect[2]),
+      Math.max(d, rect[3]),
+    ],
     [width, height, 0, 0],
   );
   const side = Math.round(1.5 * Math.max(bx1 - bx0, by1 - by0, 1));
@@ -247,8 +325,19 @@ export interface TilePlacement {
 
 /** The highest row of the base's skin (a bald scalp) in the zone's columns, or the zone's top without skin there. */
 export const headTop = async (skinMask: Uint8Array, width: number, height: number, zone: PixelRect) => {
-  const alpha = await (await rasterize(skinMask)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer();
-  const [x0, y0, x1, y1] = [Math.max(0, zone[0]), Math.max(0, zone[1]), Math.min(width, zone[2]), Math.min(height, zone[3])];
+  const alpha = await (
+    await rasterize(skinMask)
+  )
+    .resize(width, height, { fit: "fill" })
+    .extractChannel(3)
+    .raw()
+    .toBuffer();
+  const [x0, y0, x1, y1] = [
+    Math.max(0, zone[0]),
+    Math.max(0, zone[1]),
+    Math.min(width, zone[2]),
+    Math.min(height, zone[3]),
+  ];
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) if (alpha[y * width + x]! >= 128) return y;
   }
@@ -259,7 +348,11 @@ export const headTop = async (skinMask: Uint8Array, width: number, height: numbe
  * The window of a base a tile shows: the zone's width, and from TILE_HEADROOM above the head to the zone's bottom,
  * widened to the tile's aspect and never smaller than the tile (no upscaling). Centred on the zone.
  */
-const tileWindow = (zone: PixelRect, top: number, tile: { readonly width: number; readonly height: number }): PixelRect => {
+const tileWindow = (
+  zone: PixelRect,
+  top: number,
+  tile: { readonly width: number; readonly height: number },
+): PixelRect => {
   const width = Math.ceil(Math.max(neededWidth(zone, top, tile), tile.width));
   const height = Math.round((width * tile.height) / tile.width);
   const x0 = Math.round((zone[0] + zone[2]) / 2 - width / 2);
@@ -293,7 +386,13 @@ const windowOf = async (base: Uint8Array, width: number, height: number, [x0, y0
  * four to an image, or two when any head is large, in order. Deterministic, so a rerun writes the same bytes.
  */
 export const tileBases = async (
-  bases: ReadonlyArray<{ readonly base: Uint8Array; readonly width: number; readonly height: number; readonly zone: Rect; readonly headTop: number }>,
+  bases: ReadonlyArray<{
+    readonly base: Uint8Array;
+    readonly width: number;
+    readonly height: number;
+    readonly zone: Rect;
+    readonly headTop: number;
+  }>,
 ): Promise<ReadonlyArray<TiledImage>> => {
   const zones = bases.map((base) => rectToPixels(base.zone, base.width, base.height));
   const large = bases.some((base, i) => neededWidth(zones[i]!, base.headTop, LAYOUTS.four.tile) > LARGE);
@@ -305,17 +404,26 @@ export const tileBases = async (
     const tiles = indexes.map((index, k): TilePlacement => {
       const x = (k % layout.columns) * layout.tile.width;
       const y = Math.floor(k / layout.columns) * layout.tile.height;
-      return { slot: [x, y, x + layout.tile.width, y + layout.tile.height], window: tileWindow(zones[index]!, bases[index]!.headTop, layout.tile) };
+      return {
+        slot: [x, y, x + layout.tile.width, y + layout.tile.height],
+        window: tileWindow(zones[index]!, bases[index]!.headTop, layout.tile),
+      };
     });
     const composites = await Promise.all(
       tiles.map(async (tile, k) => {
         const base = bases[indexes[k]!]!;
         const crop = await (await windowOf(base.base, base.width, base.height, tile.window)).png().toBuffer();
-        const input = await sharp(crop).resize(layout.tile.width, layout.tile.height, { fit: "fill", kernel: "lanczos3" }).png().toBuffer();
+        const input = await sharp(crop)
+          .resize(layout.tile.width, layout.tile.height, { fit: "fill", kernel: "lanczos3" })
+          .png()
+          .toBuffer();
         return { input, left: tile.slot[0], top: tile.slot[1] };
       }),
     );
-    const png = await sharp({ create: { width: layout.width, height: layout.height, channels: 3, background: PAPER } }).composite(composites).png().toBuffer();
+    const png = await sharp({ create: { width: layout.width, height: layout.height, channels: 3, background: PAPER } })
+      .composite(composites)
+      .png()
+      .toBuffer();
     images.push({ png: new Uint8Array(png), width: layout.width, height: layout.height, bases: indexes, tiles });
   }
   return images;
@@ -356,8 +464,13 @@ export const cutOutTile = async (
   const windowHeight = wy1 - wy0;
   const scale = windowWidth / (sx1 - sx0);
   const windowBase = await toRgb(await windowOf(prepared.base, width, height, placement.window));
-  const tile = await sharp(await sharp(edit).flatten({ background: PAPER }).extract({ left: sx0, top: sy0, width: sx1 - sx0, height: sy1 - sy0 }).png().toBuffer())
-    .resize(windowWidth, windowHeight, { fit: "fill", kernel: "lanczos3" });
+  const tile = await sharp(
+    await sharp(edit)
+      .flatten({ background: PAPER })
+      .extract({ left: sx0, top: sy0, width: sx1 - sx0, height: sy1 - sy0 })
+      .png()
+      .toBuffer(),
+  ).resize(windowWidth, windowHeight, { fit: "fill", kernel: "lanczos3" });
   const rawTile = await toRgb(tile);
 
   const [zx0, zy0, zx1, zy1] = rectToPixels(zone, width, height);
@@ -369,7 +482,12 @@ export const cutOutTile = async (
   ];
   const factor = Math.max(1, Math.round(4 * scale));
   const band = Math.round((TILE_HEADROOM + 0.25 * (sy1 - sy0)) * scale);
-  const [cx, cy] = findShift(subsample(windowBase, factor), subsample(rawTile, factor), [0, 0, windowWidth, Math.round(band / factor)], 12);
+  const [cx, cy] = findShift(
+    subsample(windowBase, factor),
+    subsample(rawTile, factor),
+    [0, 0, windowWidth, Math.round(band / factor)],
+    12,
+  );
   const coarseShift = [cx * factor, cy * factor] as const;
   const cut = cutOutPart(windowBase, shiftImage(rawTile, coarseShift[0], coarseShift[1]), inWindow);
 
@@ -391,7 +509,10 @@ const luminance = ([r, g, b]: readonly [number, number, number]) => 0.2126 * r +
 /** Palette IDs ordered from the lightest to the darkest, by their colour across the mid and light tones. */
 export const byLightness = (palettes: Readonly<Record<string, Palette>>) =>
   Object.entries(palettes)
-    .map(([id, palette]) => ({ id, lightness: [0.4, 0.5, 0.6, 0.7, 0.8].reduce((sum, t) => sum + luminance(paletteAt(palette, t)), 0) }))
+    .map(([id, palette]) => ({
+      id,
+      lightness: [0.4, 0.5, 0.6, 0.7, 0.8].reduce((sum, t) => sum + luminance(paletteAt(palette, t)), 0),
+    }))
     .toSorted((a, b) => b.lightness - a.lightness)
     .map((entry) => entry.id);
 
@@ -401,7 +522,11 @@ export interface ReviewInputs {
   readonly skinMask: Uint8Array;
   readonly browMask?: Uint8Array;
   /** The part's layers, bottom to top, with the palette that recolours each. */
-  readonly layers: ReadonlyArray<{ readonly png: Uint8Array; readonly at: Rect; readonly palette: "skin" | "hairColour" | "none" }>;
+  readonly layers: ReadonlyArray<{
+    readonly png: Uint8Array;
+    readonly at: Rect;
+    readonly palette: "skin" | "hairColour" | "none";
+  }>;
 }
 
 /** One look for a review image: a skin palette, and the hair colour for brows and a hair part. */
@@ -424,7 +549,14 @@ export const composeReview = async (inputs: ReviewInputs, look: ReviewLook, widt
       const palette = layer.palette === "skin" ? look.skin : layer.palette === "hairColour" ? look.hair : null;
       const png = palette ? await recolour(layer.png, [{ palette }]) : layer.png;
       const [x0, y0, x1, y1] = rectToPixels(layer.at, width, height);
-      return { input: await sharp(png).resize(x1 - x0, y1 - y0, { fit: "fill" }).png().toBuffer(), left: x0, top: y0 };
+      return {
+        input: await sharp(png)
+          .resize(x1 - x0, y1 - y0, { fit: "fill" })
+          .png()
+          .toBuffer(),
+        left: x0,
+        top: y0,
+      };
     }),
   );
   const png = await sharp(await sharp(base).resize(width, height, { fit: "fill" }).png().toBuffer())
@@ -453,7 +585,14 @@ export const reviewSheet = async (
       await Promise.all(
         layers.map(async (layer) => {
           const [x0, y0, x1, y1] = rectToPixels(layer.at, width, height);
-          return { input: await sharp(layer.png).resize(x1 - x0, y1 - y0, { fit: "fill" }).png().toBuffer(), left: x0, top: y0 };
+          return {
+            input: await sharp(layer.png)
+              .resize(x1 - x0, y1 - y0, { fit: "fill" })
+              .png()
+              .toBuffer(),
+            left: x0,
+            top: y0,
+          };
         }),
       ),
     )
@@ -474,7 +613,9 @@ export const reviewSheet = async (
     .png()
     .toBuffer();
   const gap = 12;
-  const png = await sharp({ create: { width: width * 3 + gap * 4, height: height + gap * 2, channels: 3, background: "#ffffff" } })
+  const png = await sharp({
+    create: { width: width * 3 + gap * 4, height: height + gap * 2, channels: 3, background: "#ffffff" },
+  })
     .composite([
       { input: Buffer.from(light), left: gap, top: gap },
       { input: Buffer.from(dark), left: width + gap * 2, top: gap },

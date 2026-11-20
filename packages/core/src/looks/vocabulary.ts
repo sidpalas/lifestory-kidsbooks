@@ -151,9 +151,11 @@ export const otherFeatures = (features: FeaturesOption | null | undefined): Feat
   (features ?? DEFAULT_FEATURES) === "features:soft" ? "features:defined" : "features:soft";
 
 /** Whether a story version published at `publishedAt` must draw `option`: options added since are optional (D43). */
-export const requiredAt = (option: LookOption, publishedAt: Date) => option.addedAt === undefined || new Date(option.addedAt) <= publishedAt;
+export const requiredAt = (option: LookOption, publishedAt: Date) =>
+  option.addedAt === undefined || new Date(option.addedAt) <= publishedAt;
 
-const ids = <T extends ReadonlyArray<LookOption>>(options: T) => options.map((option) => option.id) as { [K in keyof T]: T[K]["id"] };
+const ids = <T extends ReadonlyArray<LookOption>>(options: T) =>
+  options.map((option) => option.id) as { [K in keyof T]: T[K]["id"] };
 
 export const Age = Schema.Literals(ids(ageOptions));
 export type Age = typeof Age.Type;
@@ -230,15 +232,24 @@ export const partAxesAt = (age: Age): ReadonlyArray<PartAxis> => partAxesByAge[a
  */
 const LATER_AGE_AXES: ReadonlyArray<readonly [Age, PartAxis]> = [["baby", "hair"]];
 /** The part axes a figure with `parts` draws at `age`: partAxesAt, less an axis the age gained after the figure was drawn. */
-export const figurePartAxes = (parts: ReadonlyArray<{ readonly age: Age; readonly axis: PartAxis }>, age: Age): ReadonlyArray<PartAxis> =>
-  partAxesAt(age).filter((axis) => !LATER_AGE_AXES.some(([a, x]) => a === age && x === axis) || parts.some((part) => part.age === age && part.axis === axis));
+export const figurePartAxes = (
+  parts: ReadonlyArray<{ readonly age: Age; readonly axis: PartAxis }>,
+  age: Age,
+): ReadonlyArray<PartAxis> =>
+  partAxesAt(age).filter(
+    (axis) =>
+      !LATER_AGE_AXES.some(([a, x]) => a === age && x === axis) ||
+      parts.some((part) => part.age === age && part.axis === axis),
+  );
 
 /** Whether `option` is offered at `age` (D51). */
 export const offeredAt = (option: LookOption, age: Age) => option.ages === undefined || option.ages.includes(age);
 
 /** The options of `axis` offered at `age`, in vocabulary order. */
 export const optionsAt = <A extends LookAxis>(axis: A, age: Age): (typeof lookVocabulary)[A] =>
-  (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) => offeredAt(option, age)) as unknown as (typeof lookVocabulary)[A];
+  (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) =>
+    offeredAt(option, age),
+  ) as unknown as (typeof lookVocabulary)[A];
 
 /**
  * The hairstyle a look keeps at `age`: its own where `age` offers it, else the nearest one there, keeping the hair's
@@ -263,14 +274,20 @@ export const hairAt = (age: Age, hair: Look["hair"]): Look["hair"] => {
   const option = hairOptions.find((candidate) => candidate.id === hair)!;
   if (offeredAt(option, age)) return hair;
   const nearest = nearestHair[hair]!;
-  return offeredAt(hairOptions.find((candidate) => candidate.id === nearest.young)!, age) ? nearest.young : nearest.older;
+  return offeredAt(
+    hairOptions.find((candidate) => candidate.id === nearest.young)!,
+    age,
+  )
+    ? nearest.young
+    : nearest.older;
 };
 
 /** Whether bases at `age` come in both features. */
 export const hasFeatures = (age: Age) => featureAges.includes(age);
 
 /** The features a base at `age` draws for `look`: the look's own from teen up, none (one base) below. */
-export const featuresAt = (age: Age, look: Pick<Look, "features">): FeaturesOption | undefined => (hasFeatures(age) ? look.features : undefined);
+export const featuresAt = (age: Age, look: Pick<Look, "features">): FeaturesOption | undefined =>
+  hasFeatures(age) ? look.features : undefined;
 
 /**
  * Whether a stored base or part (whose `features` defaults to defined) is the one for `age`, `face`, and `features`
@@ -281,7 +298,10 @@ export const sameAppearance = (
   age: Age,
   face: string,
   features: FeaturesOption | undefined,
-) => item.age === age && item.face === face && (features === undefined || (item.features ?? DEFAULT_FEATURES) === features);
+) =>
+  item.age === age &&
+  item.face === face &&
+  (features === undefined || (item.features ?? DEFAULT_FEATURES) === features);
 
 /**
  * The features a figure draws for `look` at `age` from its `bases`: the look's own when the figure has that base,
@@ -316,4 +336,13 @@ export const optionLabel = (id: string): string => {
  * Where the picker starts for a new character: one complete look, so the preview is never empty. The parent then
  * changes one axis at a time; there are no whole-look presets, which reset edits made further down (D50).
  */
-export const defaultLook: Look = { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" };
+export const defaultLook: Look = {
+  age: "young-child",
+  features: "features:defined",
+  face: "face:round",
+  skin: "skin:s4",
+  hair: "hair:curly",
+  hairColour: "hair-colour:black",
+  glasses: "glasses:none",
+  facialHair: "facial-hair:none",
+};

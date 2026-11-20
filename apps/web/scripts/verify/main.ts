@@ -70,7 +70,8 @@ if (config === "live" && values.port) fail("--port doesn't apply to live; use --
 if (config !== "live" && values.url) fail("--url applies only to live");
 // One port per run: a PORT in the environment that disagrees would start the web app on one origin and print from another.
 const port = Number(values.port ?? process.env.E2E_PORT ?? DEFAULT_PORT[config]);
-if (process.env.PORT && Number(process.env.PORT) !== port) fail(`PORT=${process.env.PORT} is set but this run uses :${port}; unset PORT or pass --port ${process.env.PORT}`);
+if (process.env.PORT && Number(process.env.PORT) !== port)
+  fail(`PORT=${process.env.PORT} is set but this run uses :${port}; unset PORT or pass --port ${process.env.PORT}`);
 
 const report = new Report(name!, config, repoRoot);
 let stack: Stack | undefined;
@@ -78,7 +79,10 @@ let error: unknown;
 try {
   if (name === "e2e") await e2e(report, { port, ci: values.ci, args: split === -1 ? [] : argv.slice(split + 1) });
   else {
-    stack = await startStack({ config, port, url: values.url, as: values.as, inspectOnly: name === "doctor", build: !values["no-build"] }, report);
+    stack = await startStack(
+      { config, port, url: values.url, as: values.as, inspectOnly: name === "doctor", build: !values["no-build"] },
+      report,
+    );
     report.facts.origin = stack.origin;
     if (name === "picker") await picker(stack, report);
     if (name === "proof") await proof(stack, report, { story: values.story });
@@ -91,7 +95,8 @@ try {
   }
 } catch (caught) {
   error = caught;
-  if (caught instanceof FatalCheck === false) report.checks.push({ name: "error", ok: false, detail: String(caught instanceof Error ? caught.message : caught) });
+  if (caught instanceof FatalCheck === false)
+    report.checks.push({ name: "error", ok: false, detail: String(caught instanceof Error ? caught.message : caught) });
 } finally {
   await stack?.teardown();
 }

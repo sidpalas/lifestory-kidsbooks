@@ -194,7 +194,6 @@ jq -n --arg email "$LIFESTORY_AGENT_EMAIL" --arg password "$LIFESTORY_AGENT_PASS
 curl -sf -b /tmp/agent.jar https://lifestory.devopsdirective.com/api/auth/get-session | jq .user.email
 ```
 
-
 ## Image generation on Modal
 
 Image generation is authoring tooling for illustrators (D26); no family's data reaches it. Development, tests, and CI

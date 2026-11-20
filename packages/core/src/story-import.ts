@@ -43,9 +43,15 @@ const readJson = (dir: string, name: string) =>
 const readAdditions = (dir: string) =>
   Effect.promise(async () => {
     const names = await readdir(resolve(dir, "additions")).catch(() => [] as Array<string>);
-    const numbers = names.flatMap((name) => /^(\d+)\.json$/.exec(name)?.[1] ?? []).map(Number).toSorted((a, b) => a - b);
-    if (numbers.some((n, i) => n !== i + 1)) throw new Error(`${dir}/additions: expected 1.json to ${numbers.length}.json, found ${names.join(", ")}`);
-    return Promise.all(numbers.map(async (n) => JSON.parse(await readFile(resolve(dir, "additions", `${n}.json`), "utf8")) as unknown));
+    const numbers = names
+      .flatMap((name) => /^(\d+)\.json$/.exec(name)?.[1] ?? [])
+      .map(Number)
+      .toSorted((a, b) => a - b);
+    if (numbers.some((n, i) => n !== i + 1))
+      throw new Error(`${dir}/additions: expected 1.json to ${numbers.length}.json, found ${names.join(", ")}`);
+    return Promise.all(
+      numbers.map(async (n) => JSON.parse(await readFile(resolve(dir, "additions", `${n}.json`), "utf8")) as unknown),
+    );
   });
 
 /**
@@ -60,12 +66,24 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
   const [stored] = yield* Database.query(async (db) => {
     await db
       .insert(schema.story)
-      .values({ id: story.id, authorId, slug: story.slug, title: story.title, summary: story.summary, status: "published", publishedAt })
+      .values({
+        id: story.id,
+        authorId,
+        slug: story.slug,
+        title: story.title,
+        summary: story.summary,
+        status: "published",
+        publishedAt,
+      })
       .onConflictDoNothing();
-    return db.select({ authorId: schema.story.authorId, slug: schema.story.slug }).from(schema.story).where(eq(schema.story.id, story.id));
+    return db
+      .select({ authorId: schema.story.authorId, slug: schema.story.slug })
+      .from(schema.story)
+      .where(eq(schema.story.id, story.id));
   });
   if (!stored) return yield* Effect.die(new Error(`another story already has the slug "${story.slug}"`));
-  if (stored.authorId !== authorId) return yield* Effect.die(new Error(`story ${story.id} already exists with another author`));
+  if (stored.authorId !== authorId)
+    return yield* Effect.die(new Error(`story ${story.id} already exists with another author`));
   const additions = yield* readAdditions(dir);
   const readAsset = async (asset: string) => ({
     body: await readFile(resolve(dir, asset)),
@@ -102,7 +120,9 @@ if (import.meta.main) {
     if (!author) throw new Error(`no account for ${email}; create it first (operator-create.ts, or an invitation)`);
     for (const dir of positionals) {
       const story = await runtime.runPromise(importStoryDirectory(dir, author.id));
-      console.log(`${story.title} (/stories/${story.slug}) v${story.version} is published with ${story.additions} additions, by ${email}.`);
+      console.log(
+        `${story.title} (/stories/${story.slug}) v${story.version} is published with ${story.additions} additions, by ${email}.`,
+      );
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

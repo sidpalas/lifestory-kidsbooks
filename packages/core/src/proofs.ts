@@ -61,13 +61,18 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
       requestedBy: input.requestedBy,
     }),
   );
-  const { taskId } = yield* Jobs.use((jobs) => jobs.spawn(renderProof, { proofId: id }, { idempotencyKey: `proof:${id}` }));
+  const { taskId } = yield* Jobs.use((jobs) =>
+    jobs.spawn(renderProof, { proofId: id }, { idempotencyKey: `proof:${id}` }),
+  );
   yield* Database.query((db) => db.update(schema.proof).set({ taskId }).where(eq(schema.proof.id, id)));
   return { id };
 });
 
 /** The proofs matching `where`, newest first, as the family sees them. */
-export const proofSummaries = Effect.fn("proofs.summaries")(function* (where: SQL | undefined, manifest: StoryManifest) {
+export const proofSummaries = Effect.fn("proofs.summaries")(function* (
+  where: SQL | undefined,
+  manifest: StoryManifest,
+) {
   const rows = yield* Database.query((db) =>
     db
       .select({
@@ -132,7 +137,10 @@ export const approveProof = Effect.fn("proofs.approve")(function* (userId: strin
   if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
   yield* requireFamilyAccess(userId, row.familyId, "edit");
   if (!row.bookId) return yield* new InvalidInput({ message: "Only a proof of a book can be approved for print." });
-  if (row.status !== "ready") return yield* new InvalidInput({ message: "The proof is still rendering. Approve it once you've checked the PDF." });
+  if (row.status !== "ready")
+    return yield* new InvalidInput({
+      message: "The proof is still rendering. Approve it once you've checked the PDF.",
+    });
   yield* Database.query((db) =>
     db
       .update(schema.proof)
@@ -169,7 +177,9 @@ export const proofPageText = (page: Page, content: ProofContent) =>
     {
       text: page.text.map((block, blockIndex) => ({
         style: block.style,
-        content: content.textEdits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? block.content,
+        content:
+          content.textEdits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ??
+          block.content,
       })),
     },
     content.cast,

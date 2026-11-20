@@ -21,6 +21,8 @@ export const demoLayers = (look: Look): ReadonlyArray<string> => {
   return [
     `${at}-skin-${id(look.skin)}.webp`,
     ...(drawn.includes("glasses") && look.glasses !== "glasses:none" ? [`${at}-glasses-${id(look.glasses)}.webp`] : []),
-    ...(drawn.includes("hair") && look.hair !== "hair:none" ? [`${at}-hair-${id(look.hair)}-${id(look.hairColour)}.webp`] : []),
+    ...(drawn.includes("hair") && look.hair !== "hair:none"
+      ? [`${at}-hair-${id(look.hair)}-${id(look.hairColour)}.webp`]
+      : []),
   ];
 };

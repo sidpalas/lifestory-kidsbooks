@@ -64,7 +64,9 @@ if (!email || !email.includes("@")) {
 
 const runtime = makeServerRuntime();
 const existing = await runtime.runPromise(
-  Database.query((db) => db.select({ id: schema.user.id, role: schema.user.role }).from(schema.user).where(eq(schema.user.email, email))),
+  Database.query((db) =>
+    db.select({ id: schema.user.id, role: schema.user.role }).from(schema.user).where(eq(schema.user.email, email)),
+  ),
 );
 
 if (existing[0]) {
@@ -76,7 +78,9 @@ if (existing[0]) {
       yield* ensureOwnFamily(user.id);
     }),
   );
-  console.log(user.role === "admin" ? `${email} is already the operator; nothing changed.` : `${email} is now the operator.`);
+  console.log(
+    user.role === "admin" ? `${email} is already the operator; nothing changed.` : `${email} is now the operator.`,
+  );
 } else {
   const lines = process.stdin.isTTY ? undefined : pipedLines();
   const password = await readSecret("Password: ", lines);

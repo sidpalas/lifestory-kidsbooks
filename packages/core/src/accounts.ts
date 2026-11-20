@@ -27,9 +27,13 @@ export const insertUser = async (
       .insert(schema.user)
       .values({ id, name: user.name, email: user.email.toLowerCase(), emailVerified: true, role: user.role ?? "user" });
     if (user.password !== undefined)
-      await tx
-        .insert(schema.account)
-        .values({ id: `account_${id}`, accountId: id, providerId: "credential", userId: id, password: await hashPassword(user.password) });
+      await tx.insert(schema.account).values({
+        id: `account_${id}`,
+        accountId: id,
+        providerId: "credential",
+        userId: id,
+        password: await hashPassword(user.password),
+      });
   });
   return id;
 };
@@ -44,7 +48,13 @@ const findUserByEmail = (email: string) =>
     const [login] = await db
       .select({ id: schema.account.id })
       .from(schema.account)
-      .where(and(eq(schema.account.userId, user.id), eq(schema.account.providerId, "credential"), isNotNull(schema.account.password)));
+      .where(
+        and(
+          eq(schema.account.userId, user.id),
+          eq(schema.account.providerId, "credential"),
+          isNotNull(schema.account.password),
+        ),
+      );
     return { ...user, hasPassword: login !== undefined };
   });
 
@@ -59,12 +69,23 @@ export const authCall = <A>(call: (auth: Auth["Service"]["auth"]) => Promise<A>)
     Effect.catch((error) =>
       "defect" in error
         ? Effect.die(error.defect)
-        : Effect.fail(new AuthRejected({ code: String(error.body?.code ?? error.status), message: error.body?.message ?? error.message })),
+        : Effect.fail(
+            new AuthRejected({
+              code: String(error.body?.code ?? error.status),
+              message: error.body?.message ?? error.message,
+            }),
+          ),
     ),
   );
 
 const familySlug = (name: string) =>
-  `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "family"}-${generateRandomString(6, "a-z", "0-9")}`;
+  `${
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "family"
+  }-${generateRandomString(6, "a-z", "0-9")}`;
 
 /**
  * Gives a user their one-person family, "<name>'s family", unless they already belong
@@ -73,15 +94,21 @@ const familySlug = (name: string) =>
  */
 export const ensureOwnFamily = Effect.fn("accounts.ensureOwnFamily")(function* (userId: string) {
   const existing = yield* Database.query((db) =>
-    db.select({ id: schema.member.organizationId }).from(schema.member).where(eq(schema.member.userId, userId)).limit(1),
+    db
+      .select({ id: schema.member.organizationId })
+      .from(schema.member)
+      .where(eq(schema.member.userId, userId))
+      .limit(1),
   );
   if (existing[0]) return existing[0].id;
-  const [user] = yield* Database.query((db) => db.select({ name: schema.user.name }).from(schema.user).where(eq(schema.user.id, userId)));
+  const [user] = yield* Database.query((db) =>
+    db.select({ name: schema.user.name }).from(schema.user).where(eq(schema.user.id, userId)),
+  );
   if (!user) return yield* Effect.die(new Error(`no user ${userId}`));
   const name = `${user.name}'s family`;
-  const family = yield* authCall((auth) => auth.api.createOrganization({ body: { name, slug: familySlug(user.name), userId } })).pipe(
-    Effect.orDie,
-  );
+  const family = yield* authCall((auth) =>
+    auth.api.createOrganization({ body: { name, slug: familySlug(user.name), userId } }),
+  ).pipe(Effect.orDie);
   return family.id;
 });
 
@@ -142,7 +169,10 @@ export const findPasswordToken = Effect.fn("accounts.findPasswordToken")(functio
   );
   if (!verification || verification.expiresAt < new Date()) return yield* new InviteInvalid();
   const [user] = yield* Database.query((db) =>
-    db.select({ name: schema.user.name, email: schema.user.email }).from(schema.user).where(eq(schema.user.id, verification.value)),
+    db
+      .select({ name: schema.user.name, email: schema.user.email })
+      .from(schema.user)
+      .where(eq(schema.user.id, verification.value)),
   );
   if (!user) return yield* new InviteInvalid();
   return user;
@@ -157,7 +187,10 @@ export const signIn = Effect.fn("accounts.signIn")(function* (input: { email: st
 });
 
 /** Sets the first password from a set-password link, then signs in. Returns the session's Set-Cookie headers. */
-export const setPasswordFromLink = Effect.fn("accounts.setPasswordFromLink")(function* (input: { token: string; password: string }) {
+export const setPasswordFromLink = Effect.fn("accounts.setPasswordFromLink")(function* (input: {
+  token: string;
+  password: string;
+}) {
   const user = yield* findPasswordToken(input.token);
   yield* authCall((auth) => auth.api.resetPassword({ body: { token: input.token, newPassword: input.password } })).pipe(
     Effect.catchIf(
@@ -174,7 +207,8 @@ const pendingInvitation = (invitationId: string) =>
     const [invitation] = yield* Database.query((db) =>
       db.select().from(schema.invitation).where(eq(schema.invitation.id, invitationId)),
     );
-    if (!invitation || invitation.status !== "pending" || invitation.expiresAt < new Date()) return yield* new InviteInvalid();
+    if (!invitation || invitation.status !== "pending" || invitation.expiresAt < new Date())
+      return yield* new InviteInvalid();
     return invitation;
   });
 
@@ -191,14 +225,19 @@ export const acceptInvitationAsNewUser = Effect.fn("accounts.acceptInvitationAsN
 }) {
   const invitation = yield* pendingInvitation(input.invitationId);
   if (yield* findUserByEmail(invitation.email)) return yield* new AccountExists({ email: invitation.email });
-  yield* Database.query((db) => insertUser(db, { name: input.name, email: invitation.email, password: input.password }));
+  yield* Database.query((db) =>
+    insertUser(db, { name: input.name, email: invitation.email, password: input.password }),
+  );
   const signInCookies = yield* signIn({ email: invitation.email, password: input.password }).pipe(Effect.orDie);
   const accepted = yield* acceptInvitation(input.invitationId, cookieHeaders(signInCookies));
   return [...signInCookies, ...accepted];
 });
 
 /** Accepts an invitation as the signed-in user (in `headers`). Returns Set-Cookie headers. */
-export const acceptInvitation = Effect.fn("accounts.acceptInvitation")(function* (invitationId: string, headers: Headers) {
+export const acceptInvitation = Effect.fn("accounts.acceptInvitation")(function* (
+  invitationId: string,
+  headers: Headers,
+) {
   yield* pendingInvitation(invitationId);
   const { headers: responseHeaders } = yield* authCall((auth) =>
     auth.api.acceptInvitation({ body: { invitationId }, headers, returnHeaders: true }),

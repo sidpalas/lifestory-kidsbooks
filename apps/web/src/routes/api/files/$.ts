@@ -26,7 +26,9 @@ export const Route = createFileRoute("/api/files/$")({
                 "content-security-policy": "sandbox",
                 "x-content-type-options": "nosniff",
                 // A proof downloads as a file named after it rather than opening in the app's tab.
-                ...(key.endsWith(".pdf") ? { "content-disposition": `attachment; filename="${key.split("/").pop()}"` } : {}),
+                ...(key.endsWith(".pdf")
+                  ? { "content-disposition": `attachment; filename="${key.split("/").pop()}"` }
+                  : {}),
               },
             });
           }).pipe(

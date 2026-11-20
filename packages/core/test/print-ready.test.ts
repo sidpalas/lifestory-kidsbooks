@@ -8,24 +8,38 @@ import { checkPrintReady, printTrimIssues, setPrintBoxes } from "../src/print-re
 const trim = { widthIn: 2, heightIn: 3 };
 const page = { width: 162, height: 234 };
 const jpeg = (width: number, height: number) =>
-  sharp({ create: { width, height, channels: 3, background: "#c84" } }).jpeg().toBuffer();
+  sharp({ create: { width, height, channels: 3, background: "#c84" } })
+    .jpeg()
+    .toBuffer();
 const pngWithAlpha = (width: number, height: number) =>
-  sharp({ create: { width, height, channels: 4, background: { r: 200, g: 120, b: 60, alpha: 0.5 } } }).png().toBuffer();
+  sharp({ create: { width, height, channels: 4, background: { r: 200, g: 120, b: 60, alpha: 0.5 } } })
+    .png()
+    .toBuffer();
 
 /** A PDF of `pages` pages, each drawn by `draw`, with print boxes set unless `boxes` is false. */
 const book = async (
-  draw: (doc: PDFDocument, pdfPage: ReturnType<PDFDocument["addPage"]>, index: number) => Promise<void> = async () => {},
-  { pages = 2, size = page, boxes = true }: { pages?: number; size?: { width: number; height: number }; boxes?: boolean } = {},
+  draw: (
+    doc: PDFDocument,
+    pdfPage: ReturnType<PDFDocument["addPage"]>,
+    index: number,
+  ) => Promise<void> = async () => {},
+  {
+    pages = 2,
+    size = page,
+    boxes = true,
+  }: { pages?: number; size?: { width: number; height: number }; boxes?: boolean } = {},
 ) => {
   const doc = await PDFDocument.create();
   for (let i = 0; i < pages; i++) await draw(doc, doc.addPage([size.width, size.height]), i);
   const bytes = await doc.save();
   return boxes ? setPrintBoxes(bytes, trim) : bytes;
 };
-const fullBleedArt = (pixels = { width: 675, height: 975 }) => async (doc: PDFDocument, pdfPage: ReturnType<PDFDocument["addPage"]>) => {
-  const image = await doc.embedJpg(await jpeg(pixels.width, pixels.height));
-  pdfPage.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
-};
+const fullBleedArt =
+  (pixels = { width: 675, height: 975 }) =>
+  async (doc: PDFDocument, pdfPage: ReturnType<PDFDocument["addPage"]>) => {
+    const image = await doc.embedJpg(await jpeg(pixels.width, pixels.height));
+    pdfPage.drawImage(image, { x: 0, y: 0, width: page.width, height: page.height });
+  };
 
 describe("checkPrintReady", () => {
   it("passes opaque full-bleed art at 300 ppi on pages of trim + bleed with their boxes", async () => {
@@ -46,21 +60,32 @@ describe("checkPrintReady", () => {
 
   it("needs TrimBox and BleedBox", async () => {
     const report = await checkPrintReady(await book(fullBleedArt(), { boxes: false }), trim);
-    expect(report.issues).toEqual(["page 1: no TrimBox", "page 1: no BleedBox", "page 2: no TrimBox", "page 2: no BleedBox"]);
+    expect(report.issues).toEqual([
+      "page 1: no TrimBox",
+      "page 1: no BleedBox",
+      "page 2: no TrimBox",
+      "page 2: no BleedBox",
+    ]);
   });
 
   it("needs pages of trim + 0.125 in bleed, not the trim alone, and one size throughout", async () => {
     const trimOnly = await checkPrintReady(await book(undefined, { size: { width: 144, height: 216 } }), trim);
-    expect(trimOnly.issues).toContain("page 1: page is 2 × 3 in; a 2 × 3 in book with Lulu's 0.125 in bleed needs 2.25 × 3.25 in");
+    expect(trimOnly.issues).toContain(
+      "page 1: page is 2 × 3 in; a 2 × 3 in book with Lulu's 0.125 in bleed needs 2.25 × 3.25 in",
+    );
 
     const mixed = await book(async (_doc, pdfPage, i) => {
       if (i === 1) pdfPage.setSize(page.width + 36, page.height);
     });
-    expect((await checkPrintReady(mixed, trim)).issues).toContain("pages differ in size (2.25 × 3.25 in, 2.75 × 3.25 in); Lulu needs one size");
+    expect((await checkPrintReady(mixed, trim)).issues).toContain(
+      "pages differ in size (2.25 × 3.25 in, 2.75 × 3.25 in); Lulu needs one size",
+    );
   });
 
   it("needs at least two pages", async () => {
-    expect((await checkPrintReady(await book(fullBleedArt(), { pages: 1 }), trim)).issues).toEqual(["1 pages; Lulu needs at least 2"]);
+    expect((await checkPrintReady(await book(fullBleedArt(), { pages: 1 }), trim)).issues).toEqual([
+      "1 pages; Lulu needs at least 2",
+    ]);
   });
 
   it("measures each image where it's drawn, through rotation and nested forms", async () => {
@@ -91,9 +116,13 @@ describe("checkPrintReady", () => {
     const alpha = await book(async (doc, pdfPage) => {
       pdfPage.drawImage(await doc.embedPng(await pngWithAlpha(100, 100)), { x: 0, y: 0, width: 24, height: 24 });
     });
-    expect((await checkPrintReady(alpha, trim)).issues).toContain("page 1: an image has a soft mask (transparency) that isn't flattened");
+    expect((await checkPrintReady(alpha, trim)).issues).toContain(
+      "page 1: an image has a soft mask (transparency) that isn't flattened",
+    );
 
-    const faded = await book(async (_doc, pdfPage) => pdfPage.drawRectangle({ x: 0, y: 0, width: 50, height: 50, opacity: 0.9 }));
+    const faded = await book(async (_doc, pdfPage) =>
+      pdfPage.drawRectangle({ x: 0, y: 0, width: 50, height: 50, opacity: 0.9 }),
+    );
     expect((await checkPrintReady(faded, trim)).issues).toEqual([
       "page 1: opacity below 1 (transparency) isn't flattened",
       "page 2: opacity below 1 (transparency) isn't flattened",
@@ -116,6 +145,8 @@ describe("printTrimIssues", () => {
     expect(printTrimIssues({ bleedIn: 0.125, safeMarginIn: 0.375 })).toEqual([
       "trim.safeMarginIn: 0.375 in; Lulu needs text at least 0.5 in inside the trim",
     ]);
-    expect(printTrimIssues({ bleedIn: 0.25, safeMarginIn: 0.75 })).toEqual(["trim.bleedIn: 0.25 in; Lulu prints a 0.125 in bleed"]);
+    expect(printTrimIssues({ bleedIn: 0.25, safeMarginIn: 0.75 })).toEqual([
+      "trim.bleedIn: 0.25 in; Lulu prints a 0.125 in bleed",
+    ]);
   });
 });

@@ -98,8 +98,8 @@ function Invitation() {
             </>
           ) : signedInEmail ? (
             <p className="text-sm">
-              You're signed in as {signedInEmail}. This invitation is for {invitation.email}: sign out and sign in as that
-              account to accept it.
+              You're signed in as {signedInEmail}. This invitation is for {invitation.email}: sign out and sign in as
+              that account to accept it.
             </p>
           ) : invitation.hasAccount ? (
             <p className="text-sm">

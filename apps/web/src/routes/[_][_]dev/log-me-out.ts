@@ -15,7 +15,9 @@ export const Route = createFileRoute("/__dev/log-me-out")({
         if (!devRoutesEnabled()) return devRouteNotFound();
         const returnTo = safeReturnTo(new URL(request.url).searchParams.get("returnTo"));
         const signOut = await serverRuntime().runPromise(
-          Auth.use(({ auth }) => Effect.promise(() => auth.api.signOut({ headers: request.headers, asResponse: true }))),
+          Auth.use(({ auth }) =>
+            Effect.promise(() => auth.api.signOut({ headers: request.headers, asResponse: true })),
+          ),
         );
         const headers = new Headers({ location: returnTo });
         for (const cookie of signOut.headers.getSetCookie()) headers.append("set-cookie", cookie);

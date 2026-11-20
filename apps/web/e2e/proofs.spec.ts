@@ -11,22 +11,50 @@ const pdfFacts = (pdf: Buffer) => {
   };
 };
 
-test("a parent makes a print-ready PDF proof of a book, and only the family downloads it", async ({ page, browser, request }) => {
+test("a parent makes a print-ready PDF proof of a book, and only the family downloads it", async ({
+  page,
+  browser,
+  request,
+}) => {
   // A book of the sample story with two new family members, made directly (books.spec.ts makes one in the UI).
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
   const { createBook, createCharacter, listBooks, makeServerRuntime } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  const look = { face: "face:round", features: "features:defined", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:round", facialHair: "facial-hair:none" } as const;
+  const look = {
+    face: "face:round",
+    features: "features:defined",
+    skin: "skin:s3",
+    hair: "hair:curly",
+    hairColour: "hair-colour:black",
+    glasses: "glasses:round",
+    facialHair: "facial-hair:none",
+  } as const;
   let bookId = "";
   try {
     const [parent, family] = ["user_parent", "org_example_family"];
-    const hero = await run(createCharacter(parent, family, { name: `Ivy ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
-    const grown = await run(createCharacter(parent, family, { name: `Ray ${suffix}`, title: "Dad", pronouns: "he/him", look: { ...look, age: "adult" } }));
+    const hero = await run(
+      createCharacter(parent, family, {
+        name: `Ivy ${suffix}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const grown = await run(
+      createCharacter(parent, family, {
+        name: `Ray ${suffix}`,
+        title: "Dad",
+        pronouns: "he/him",
+        look: { ...look, age: "adult" },
+      }),
+    );
     // Another copy next to the family's books of the story from earlier tests and runs (D47).
     const existing = (await run(listBooks(parent, family))).books.map((book) => book.id);
-    ({ id: bookId } = await run(createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing })));
+    ({ id: bookId } = await run(
+      createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing }),
+    ));
   } finally {
     await runtime.dispose();
   }
@@ -41,7 +69,10 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
   await expect(proofs.first()).toContainText(`Ivy ${suffix} & Ray ${suffix}`);
   await expect(proofs.first()).toContainText("6 pages");
 
-  const href = await proofs.first().getByRole("link", { name: /Download PDF/ }).getAttribute("href");
+  const href = await proofs
+    .first()
+    .getByRole("link", { name: /Download PDF/ })
+    .getAttribute("href");
   expect(href).toMatch(/^\/api\/files\/families\/[^/]+\/proofs\/proof_[\w-]+\.pdf$/);
   const download = await page.request.get(href!);
   expect(download.status()).toBe(200);
@@ -83,7 +114,10 @@ test("the print page needs the worker's print token, not a session", async ({ pa
   }
 });
 
-test("a parent deletes proofs, rendering, failed, ready, or approved after a stronger warning; viewers and outsiders can't", async ({ page, browser }) => {
+test("a parent deletes proofs, rendering, failed, ready, or approved after a stronger warning; viewers and outsiders can't", async ({
+  page,
+  browser,
+}) => {
   test.setTimeout(180_000);
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
   const core = await import("@lifestory/core");
@@ -93,17 +127,49 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
   const outcome = <A, E>(effect: Effect.Effect<A, E, ServerServices>) =>
     run(effect.pipe(Effect.match({ onSuccess: () => "ok", onFailure: (error) => (error as { _tag: string })._tag })));
   const proofRow = async (id: string) => {
-    const result = await run(core.Database.use(({ pool }) => Effect.promise(() => pool.query("select task_id from proof where id = $1", [id]))));
+    const result = await run(
+      core.Database.use(({ pool }) =>
+        Effect.promise(() => pool.query("select task_id from proof where id = $1", [id])),
+      ),
+    );
     return result.rows[0] as { task_id: string } | undefined;
   };
   try {
     const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-    const look = { face: "face:round", features: "features:defined", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:round", facialHair: "facial-hair:none" } as const;
+    const look = {
+      face: "face:round",
+      features: "features:defined",
+      skin: "skin:s3",
+      hair: "hair:curly",
+      hairColour: "hair-colour:black",
+      glasses: "glasses:round",
+      facialHair: "facial-hair:none",
+    } as const;
     const [parent, family] = ["user_parent", "org_example_family"];
-    const hero = await run(core.createCharacter(parent, family, { name: `Nell ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
-    const grown = await run(core.createCharacter(parent, family, { name: `Abe ${suffix}`, title: "Dad", pronouns: "he/him", look: { ...look, age: "adult" } }));
+    const hero = await run(
+      core.createCharacter(parent, family, {
+        name: `Nell ${suffix}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const grown = await run(
+      core.createCharacter(parent, family, {
+        name: `Abe ${suffix}`,
+        title: "Dad",
+        pronouns: "he/him",
+        look: { ...look, age: "adult" },
+      }),
+    );
     const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
-    const { id: bookId } = await run(core.createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing }));
+    const { id: bookId } = await run(
+      core.createBook(parent, family, {
+        slug: "the-moon-picnic",
+        cast: { hero: hero.id, grownup: grown.id },
+        existing,
+      }),
+    );
 
     // Rendering: deleting it right after the request removes the row and cancels the render, which takes seconds.
     const rendering = await run(core.requestBookProof(parent, bookId));
@@ -124,7 +190,8 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
     // The panel loads its list after the page; on a cold dev server that takes a while.
     await expect(page.getByRole("button", { name: "Make a PDF proof" })).toBeVisible({ timeout: 30_000 });
     await expect(row(failed.id)).toHaveAttribute("data-status", "failed");
-    for (const id of [approved.id, draft.id]) await expect(row(id)).toHaveAttribute("data-status", "ready", { timeout: 90_000 });
+    for (const id of [approved.id, draft.id])
+      await expect(row(id)).toHaveAttribute("data-status", "ready", { timeout: 90_000 });
     await run(core.approveProof(parent, approved.id));
     await page.reload();
     await expect(row(approved.id)).toHaveAttribute("data-approved", "true");
@@ -143,17 +210,25 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
     await viewer.close();
 
     // A ready draft: the confirmation names it; cancelling keeps it, confirming deletes it and its PDF.
-    const href = (await row(draft.id).getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
+    const href = (await row(draft.id)
+      .getByRole("link", { name: /Download PDF/ })
+      .getAttribute("href"))!;
     expect((await page.request.get(href)).status()).toBe(200);
     const cancel = page.waitForEvent("dialog").then(async (dialog) => {
-      expect(dialog.message()).toMatch(new RegExp(`^Delete the proof of Nell ${suffix} & Abe ${suffix}, made .*Its PDF is deleted too`));
+      expect(dialog.message()).toMatch(
+        new RegExp(`^Delete the proof of Nell ${suffix} & Abe ${suffix}, made .*Its PDF is deleted too`),
+      );
       await dialog.dismiss();
     });
-    await row(draft.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await row(draft.id)
+      .getByRole("button", { name: /^Delete proof of/ })
+      .click();
     await cancel;
     await expect(row(draft.id)).toHaveCount(1);
     const confirm = page.waitForEvent("dialog").then((dialog) => dialog.accept());
-    await row(draft.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await row(draft.id)
+      .getByRole("button", { name: /^Delete proof of/ })
+      .click();
     await confirm;
     await expect(row(draft.id)).toHaveCount(0);
     expect(await proofRow(draft.id)).toBeUndefined();
@@ -161,17 +236,25 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
 
     // The failed one goes the same way.
     const confirmFailed = page.waitForEvent("dialog").then((dialog) => dialog.accept());
-    await row(failed.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await row(failed.id)
+      .getByRole("button", { name: /^Delete proof of/ })
+      .click();
     await confirmFailed;
     await expect(page.getByTestId("proof")).toHaveCount(1);
 
     // The approved one too (Sid), after a warning that names the approval: its PDF and approval go with it.
-    const approvedHref = (await row(approved.id).getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
+    const approvedHref = (await row(approved.id)
+      .getByRole("link", { name: /Download PDF/ })
+      .getAttribute("href"))!;
     const confirmApproved = page.waitForEvent("dialog").then(async (dialog) => {
-      expect(dialog.message()).toMatch(/^Delete the APPROVED proof of .* approved for print by Pat Parent on .*its approval are deleted/);
+      expect(dialog.message()).toMatch(
+        /^Delete the APPROVED proof of .* approved for print by Pat Parent on .*its approval are deleted/,
+      );
       await dialog.accept();
     });
-    await row(approved.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await row(approved.id)
+      .getByRole("button", { name: /^Delete proof of/ })
+      .click();
     await confirmApproved;
     await expect(page.getByTestId("proof")).toHaveCount(0);
     expect(await proofRow(approved.id)).toBeUndefined();

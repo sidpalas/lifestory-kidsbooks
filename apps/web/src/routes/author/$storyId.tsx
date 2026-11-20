@@ -24,9 +24,16 @@ export const Route = createFileRoute("/author/$storyId")({
   loader: async ({ params }) => {
     try {
       const versions = unwrapResult(StoryVersionsResult)(await storyVersionsFn({ data: { storyId: params.storyId } }));
-      const draft = versions.draftVersion === null ? null : unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: params.storyId } }));
+      const draft =
+        versions.draftVersion === null
+          ? null
+          : unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: params.storyId } }));
       // Family members the author can preview roles as; an author without a family to read just has none.
-      const characters = draft ? await getFamilyLibrary().then((r) => unwrapResult(FamilyLibraryResult)(r).characters).catch(() => []) : [];
+      const characters = draft
+        ? await getFamilyLibrary()
+            .then((r) => unwrapResult(FamilyLibraryResult)(r).characters)
+            .catch(() => [])
+        : [];
       return { versions, draft, characters };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
@@ -59,40 +66,52 @@ function AuthorStory() {
   };
   return (
     <>
-    <StudioBar />
-    <main className="mx-auto flex max-w-[1500px] flex-col gap-4 p-6">
-      <header className="flex flex-col gap-1">
-        <Link to="/author" className="text-muted-foreground text-sm hover:underline">
-          ← Your stories
-        </Link>
-        <h1 className="text-2xl font-semibold" data-testid="authoring-title">
-          {versions.story.title}
-        </h1>
-        <p className="text-muted-foreground text-sm" data-testid="authoring-meta">
-          /{versions.story.slug} · {draft ? `drafting version ${draft.version}` : "no draft open"}
-          {latest && ` · version ${latest.version} published ${new Date(latest.publishedAt).toLocaleDateString()}`}
-        </p>
-        {versions.story.status !== "draft" && <Catalogue storyId={versions.story.id} archived={versions.story.status === "archived"} />}
-      </header>
-      {draft ? (
-        <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} characters={characters} />
-      ) : (
-        <section className="flex flex-col gap-3" data-testid="published-versions">
-          {latest && (
-            <p className="text-sm" role="status">
-              Version {latest.version} is published and can't change.{" "}
-              <Link to="/stories/$slug" params={{ slug: versions.story.slug }} className="font-medium underline">
-                Open the story
-              </Link>
-            </p>
+      <StudioBar />
+      <main className="mx-auto flex max-w-[1500px] flex-col gap-4 p-6">
+        <header className="flex flex-col gap-1">
+          <Link to="/author" className="text-muted-foreground text-sm hover:underline">
+            ← Your stories
+          </Link>
+          <h1 className="text-2xl font-semibold" data-testid="authoring-title">
+            {versions.story.title}
+          </h1>
+          <p className="text-muted-foreground text-sm" data-testid="authoring-meta">
+            /{versions.story.slug} · {draft ? `drafting version ${draft.version}` : "no draft open"}
+            {latest && ` · version ${latest.version} published ${new Date(latest.publishedAt).toLocaleDateString()}`}
+          </p>
+          {versions.story.status !== "draft" && (
+            <Catalogue storyId={versions.story.id} archived={versions.story.status === "archived"} />
           )}
-          <Button className="self-start" variant="outline" disabled={starting} aria-busy={starting} onClick={() => void startNext()}>
-            {starting ? `Starting version ${next}…` : `Start version ${next}`}
-          </Button>
-          {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
-        </section>
-      )}
-    </main>
+        </header>
+        {draft ? (
+          <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} characters={characters} />
+        ) : (
+          <section className="flex flex-col gap-3" data-testid="published-versions">
+            {latest && (
+              <p className="text-sm" role="status">
+                Version {latest.version} is published and can't change.{" "}
+                <Link to="/stories/$slug" params={{ slug: versions.story.slug }} className="font-medium underline">
+                  Open the story
+                </Link>
+              </p>
+            )}
+            <Button
+              className="self-start"
+              variant="outline"
+              disabled={starting}
+              aria-busy={starting}
+              onClick={() => void startNext()}
+            >
+              {starting ? `Starting version ${next}…` : `Start version ${next}`}
+            </Button>
+            {error && (
+              <p role="alert" className="text-destructive text-sm">
+                {error}
+              </p>
+            )}
+          </section>
+        )}
+      </main>
     </>
   );
 }
@@ -124,8 +143,9 @@ function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }
       {archived ? (
         <>
           <p>
-            <span className="font-medium">Archived.</span> Families don't see this story and can't make new books of it. Books already made, their proofs, and
-            every version stay as they are. Publishing a new version keeps it archived.
+            <span className="font-medium">Archived.</span> Families don't see this story and can't make new books of it.
+            Books already made, their proofs, and every version stay as they are. Publishing a new version keeps it
+            archived.
           </p>
           <Button size="sm" className="self-start" disabled={busy} onClick={() => void set(false)}>
             Restore to families' stories
@@ -134,8 +154,9 @@ function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }
       ) : confirming ? (
         <>
           <p>
-            <span className="font-medium">Archive this story?</span> It leaves every family's stories and nobody can make a new book of it. Families keep the
-            books they made, with their proofs, and you can restore it at any time.
+            <span className="font-medium">Archive this story?</span> It leaves every family's stories and nobody can
+            make a new book of it. Families keep the books they made, with their proofs, and you can restore it at any
+            time.
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="destructive" disabled={busy} onClick={() => void set(true)}>
@@ -154,7 +175,11 @@ function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }
           </Button>
         </div>
       )}
-      {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

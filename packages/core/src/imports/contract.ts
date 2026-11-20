@@ -14,7 +14,10 @@ export const ImportSource = Schema.Union([
   /** A layered file (PSD, read in the browser) or a set of PNG layers, uploaded as full-canvas PNGs. */
   Schema.Struct({
     kind: Schema.Literal("layers"),
-    layers: Schema.Array(Schema.Struct({ asset: Schema.String, name: Schema.String, use: LayerUse })).check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+    layers: Schema.Array(Schema.Struct({ asset: Schema.String, name: Schema.String, use: LayerUse })).check(
+      Schema.isMinLength(1),
+      Schema.isMaxLength(64),
+    ),
   }),
   /** One flat picture of the page: the image model removes the character inside `box` and paints what was behind. */
   Schema.Struct({
@@ -84,7 +87,12 @@ export const ImportResult = Schema.Struct({
   /** The bald figure in its own colours, the starting point for other face types. */
   colourFigure: Schema.String,
   /** For review: the figure on the lightest and the darkest skin, and its skin mask tinted over it. */
-  review: Schema.Struct({ light: Schema.String, dark: Schema.String, mask: Schema.String, plate: Schema.NullOr(Schema.String) }),
+  review: Schema.Struct({
+    light: Schema.String,
+    dark: Schema.String,
+    mask: Schema.String,
+    plate: Schema.NullOr(Schema.String),
+  }),
   costUsd: Schema.Number,
   notes: Schema.Array(Schema.String),
 });
@@ -115,7 +123,9 @@ export const applyImport = (page: Page, result: ImportResult): Page => {
   }
   // An import draws defined features (D40: absent means defined), so a softer base of the same age and face stays.
   const sameBase = (candidate: { age: string; face: string; features?: string }) =>
-    candidate.age === request.age && candidate.face === request.face && (candidate.features ?? "features:defined") === "features:defined";
+    candidate.age === request.age &&
+    candidate.face === request.face &&
+    (candidate.features ?? "features:defined") === "features:defined";
   const at = layers.findIndex((layer) => layer.kind === "figure" && layer.slotId === request.slotId);
   const existing = at === -1 ? null : (layers[at] as FigureLayer);
   const figure: FigureLayer = {
@@ -127,7 +137,10 @@ export const applyImport = (page: Page, result: ImportResult): Page => {
     ...(existing?.partOrder ? { partOrder: existing.partOrder } : {}),
     bases: [...(existing?.bases ?? []).filter((base) => !sameBase(base)), result.base],
     parts: [
-      ...(existing?.parts ?? []).filter((part) => !result.parts.some((added) => sameBase(part) && part.axis === added.axis && part.option === added.option)),
+      ...(existing?.parts ?? []).filter(
+        (part) =>
+          !result.parts.some((added) => sameBase(part) && part.axis === added.axis && part.option === added.option),
+      ),
       ...result.parts,
     ],
   };

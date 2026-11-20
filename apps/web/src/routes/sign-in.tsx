@@ -22,7 +22,9 @@ function SignIn() {
     setError(null);
     try {
       unwrapResult(SignInResult)(
-        await signInWithPassword({ data: { email: String(form.get("email")), password: String(form.get("password")) } }),
+        await signInWithPassword({
+          data: { email: String(form.get("email")), password: String(form.get("password")) },
+        }),
       );
       await router.navigate({ to: "/" });
     } catch (caught) {

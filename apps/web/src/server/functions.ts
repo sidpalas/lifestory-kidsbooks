@@ -82,7 +82,9 @@ export const StoryPreviewResult = ResultSchema(
     roles: Schema.Array(PreviewRole),
     cast: Schema.Record(Schema.String, CastMember),
     /** Each page's composed illustration, as storage keys placed in the illustration area. */
-    pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
+    pages: Schema.Array(
+      Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) }),
+    ),
     /** The active family's members, who can fill the roles, and whether the user may make books in it. */
     characters: Schema.Array(Character),
     canEdit: Schema.Boolean,
@@ -110,9 +112,15 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
       Effect.gen(function* () {
         const user = yield* currentUser;
         const { active } = yield* activeFamily(user);
-        const { characters, canEdit } = active ? yield* listCharacters(user.id, active.id) : { characters: [], canEdit: false };
+        const { characters, canEdit } = active
+          ? yield* listCharacters(user.id, active.id)
+          : { characters: [], canEdit: false };
         const { books } = active ? yield* listBooks(user.id, active.id) : { books: [] };
-        const preview = yield* getStoryPreview(user.id, data.slug, characters, { cast: data.cast, looks: data.looks, changes: data.changes });
+        const preview = yield* getStoryPreview(user.id, data.slug, characters, {
+          cast: data.cast,
+          looks: data.looks,
+          changes: data.changes,
+        });
         return { ...preview, characters, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
       }),
     ),

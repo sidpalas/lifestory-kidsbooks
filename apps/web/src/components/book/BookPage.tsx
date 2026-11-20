@@ -1,7 +1,14 @@
 // The one page component: the editor shows it scaled on screen, and the print
 // route renders it at full size for the PDF proof, so both use the same layout,
 // the same physical units (inches and points), and the same font files.
-import type { CastMember, FontFile, Page, PlacedRect, ResolvedTextBlock, StoryManifest } from "@lifestory/core/contracts";
+import type {
+  CastMember,
+  FontFile,
+  Page,
+  PlacedRect,
+  ResolvedTextBlock,
+  StoryManifest,
+} from "@lifestory/core/contracts";
 import type * as React from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -14,7 +21,13 @@ export const pageSizeIn = (trim: StoryManifest["trim"]) => ({
 });
 
 /** @font-face rules for a story's fonts, loaded from its assets. Render once per document. */
-export function StoryFonts({ fonts, assetUrl }: { fonts: ReadonlyArray<FontFile>; assetUrl: (asset: string) => string }) {
+export function StoryFonts({
+  fonts,
+  assetUrl,
+}: {
+  fonts: ReadonlyArray<FontFile>;
+  assetUrl: (asset: string) => string;
+}) {
   const css = fonts
     .map((font) =>
       [
@@ -59,7 +72,13 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
   const slotLabels = new Map(manifest.characterSlots.map((slot) => [slot.slotId, slot.label]));
 
   const textArea: React.CSSProperties = artLeft
-    ? { left: inch(trim.bleedIn + trim.widthIn / 2 + trim.safeMarginIn), right: inch(inset), top: inch(inset), bottom: inch(inset), justifyContent: "center" }
+    ? {
+        left: inch(trim.bleedIn + trim.widthIn / 2 + trim.safeMarginIn),
+        right: inch(inset),
+        top: inch(inset),
+        bottom: inch(inset),
+        justifyContent: "center",
+      }
     : page.layout === "full-bleed-art/text-top"
       ? { left: inch(inset), right: inch(inset), top: inch(inset) }
       : { left: inch(inset), right: inch(inset), bottom: inch(inset) };
@@ -68,11 +87,24 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
     <div
       data-testid="book-page"
       data-page-id={page.pageId}
-      style={{ position: "relative", width: inch(widthIn), height: inch(heightIn), overflow: "hidden", background: "#fffaf0", color: "#2b2118" }}
+      style={{
+        position: "relative",
+        width: inch(widthIn),
+        height: inch(heightIn),
+        overflow: "hidden",
+        background: "#fffaf0",
+        color: "#2b2118",
+      }}
     >
       <div
         data-testid="illustration"
-        style={{ position: "absolute", left: 0, top: 0, height: "100%", width: artLeft ? inch(trim.bleedIn + trim.widthIn / 2) : "100%" }}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          height: "100%",
+          width: artLeft ? inch(trim.bleedIn + trim.widthIn / 2) : "100%",
+        }}
       >
         {illustration.map(({ url, rect: [x0, y0, x1, y1] }, i) => (
           <img
@@ -91,12 +123,20 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
         {guides &&
           page.illustration.layers.map((layer, i) =>
             layer.kind === "figure" ? (
-              <FigureBox key={i} box={layer.box} name={cast[layer.slotId]?.name} label={slotLabels.get(layer.slotId) ?? layer.slotId} />
+              <FigureBox
+                key={i}
+                box={layer.box}
+                name={cast[layer.slotId]?.name}
+                label={slotLabels.get(layer.slotId) ?? layer.slotId}
+              />
             ) : null,
           )}
       </div>
 
-      <div data-testid="page-text" style={{ position: "absolute", display: "flex", flexDirection: "column", gap: "0.12in", ...textArea }}>
+      <div
+        data-testid="page-text"
+        style={{ position: "absolute", display: "flex", flexDirection: "column", gap: "0.12in", ...textArea }}
+      >
         <div
           data-testid="text-panel"
           style={
@@ -140,7 +180,15 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
 }
 
 /** A guide over a figure: its box, labelled with who fills it. */
-function FigureBox({ box: [x0, y0, x1, y1], name, label }: { box: PlacedRect; name: string | undefined; label: string }) {
+function FigureBox({
+  box: [x0, y0, x1, y1],
+  name,
+  label,
+}: {
+  box: PlacedRect;
+  name: string | undefined;
+  label: string;
+}) {
   return (
     <div
       data-testid="figure-box"
@@ -161,7 +209,14 @@ function FigureBox({ box: [x0, y0, x1, y1], name, label }: { box: PlacedRect; na
         pointerEvents: "none",
       }}
     >
-      <span style={{ background: "rgb(255 255 255 / 0.85)", borderRadius: "0.04in", padding: "0 0.04in", textAlign: "center" }}>
+      <span
+        style={{
+          background: "rgb(255 255 255 / 0.85)",
+          borderRadius: "0.04in",
+          padding: "0 0.04in",
+          textAlign: "center",
+        }}
+      >
         {name ?? label}
         {name && <span style={{ display: "block", fontWeight: 400, opacity: 0.75 }}>{label}</span>}
       </span>
@@ -182,7 +237,15 @@ function Guide({ inset, color, testId }: { inset: number; color: string; testId:
  * Shows a page at `scale` on screen, or smaller when its container is narrower, keeping the page's shape. The page
  * inside keeps its physical size, so layout is identical to print.
  */
-export function ScaledPage({ trim, scale, children }: { trim: StoryManifest["trim"]; scale: number; children: React.ReactNode }) {
+export function ScaledPage({
+  trim,
+  scale,
+  children,
+}: {
+  trim: StoryManifest["trim"];
+  scale: number;
+  children: React.ReactNode;
+}) {
   const { widthIn, heightIn } = pageSizeIn(trim);
   const box = useRef<HTMLDivElement>(null);
   const [fitted, setFitted] = useState(scale);
@@ -197,8 +260,23 @@ export function ScaledPage({ trim, scale, children }: { trim: StoryManifest["tri
     <div ref={box} style={{ position: "relative", overflow: "hidden" }}>
       {/* Sizes the box: up to the page at `scale`, down to its container's width. As a replaced element with a
           percentage max-width it asks for no minimum width, so narrow grid cells and flex rows can shrink it. */}
-      <svg aria-hidden viewBox={`0 0 ${widthIn} ${heightIn}`} style={{ display: "block", width: `calc(${inch(widthIn)} * ${scale})`, maxWidth: "100%", height: "auto" }} />
-      <div style={{ position: "absolute", left: 0, top: 0, transform: `scale(${fitted})`, transformOrigin: "top left", width: inch(widthIn) }}>{children}</div>
+      <svg
+        aria-hidden
+        viewBox={`0 0 ${widthIn} ${heightIn}`}
+        style={{ display: "block", width: `calc(${inch(widthIn)} * ${scale})`, maxWidth: "100%", height: "auto" }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: `scale(${fitted})`,
+          transformOrigin: "top left",
+          width: inch(widthIn),
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

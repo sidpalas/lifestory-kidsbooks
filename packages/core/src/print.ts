@@ -51,7 +51,9 @@ export const printPdf = (url: string, readFile: (key: string) => Effect.Effect<S
           const faces = [...document.fonts];
           return {
             bookPages: document.querySelectorAll("[data-testid=book-page]").length,
-            brokenImages: [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).map((img) => img.src),
+            brokenImages: [...document.images]
+              .filter((img) => !img.complete || img.naturalWidth === 0)
+              .map((img) => img.src),
             failedFonts: faces.filter((face) => face.status === "error").map((face) => face.family),
             missingFonts: [...families].filter(
               (family) => !faces.some((face) => unquote(face.family) === family && face.status === "loaded"),
@@ -115,4 +117,6 @@ const flattenArt = async (page: import("playwright-core").Page) => {
 
 /** Page objects in a PDF. Chromium writes page dictionaries uncompressed, so counting `/Type /Page` is exact. */
 export const countPdfPages = (pdf: Uint8Array) =>
-  Buffer.from(pdf).toString("latin1").match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0;
+  Buffer.from(pdf)
+    .toString("latin1")
+    .match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0;

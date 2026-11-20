@@ -12,7 +12,9 @@ export const Route = createFileRoute("/print/proofs/$proofId")({
   loaderDeps: ({ search }) => ({ token: search.token ?? "" }),
   loader: async ({ params, deps }) => {
     try {
-      return unwrapResult(PrintableProofResult)(await getPrintableProofFn({ data: { proofId: params.proofId, token: deps.token } }));
+      return unwrapResult(PrintableProofResult)(
+        await getPrintableProofFn({ data: { proofId: params.proofId, token: deps.token } }),
+      );
     } catch (error) {
       if (error instanceof NotFound) throw notFound();
       throw error;

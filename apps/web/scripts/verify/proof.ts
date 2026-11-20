@@ -41,19 +41,32 @@ const domWords = (page: import("@playwright/test").Page) =>
           range.setStart(node, match.index);
           range.setEnd(node, match.index + match[0].length);
           const rect = range.getBoundingClientRect();
-          words.push({ text: match[0], x: ((rect.left - box.left) / scale) * 0.75, y: ((rect.top - box.top) / scale) * 0.75 });
+          words.push({
+            text: match[0],
+            x: ((rect.left - box.left) / scale) * 0.75,
+            y: ((rect.top - box.top) / scale) * 0.75,
+          });
         }
       }
       return words;
     }),
   );
 
-const entities: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&apos;": "'" };
+const entities: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+};
 /** Words of one PDF page from pdftotext -bbox, in pt from the page's top-left. */
 const pdfWords = (pdfPath: string, pageNumber: number): Word[] =>
-  [...execFileSync("pdftotext", ["-bbox", "-f", String(pageNumber), "-l", String(pageNumber), pdfPath, "-"], { encoding: "utf8" })
-    .matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)"[^>]*>([^<]*)<\/word>/g)]
-    .map((m) => ({ text: m[3]!.replace(/&[#\w]+;/g, (e) => entities[e] ?? e), x: Number(m[1]), y: Number(m[2]) }));
+  [
+    ...execFileSync("pdftotext", ["-bbox", "-f", String(pageNumber), "-l", String(pageNumber), pdfPath, "-"], {
+      encoding: "utf8",
+    }).matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)"[^>]*>([^<]*)<\/word>/g),
+  ].map((m) => ({ text: m[3]!.replace(/&[#\w]+;/g, (e) => entities[e] ?? e), x: Number(m[1]), y: Number(m[2]) }));
 
 /** Line index of each word: a new line starts where a word's top moves down by more than a few points. */
 const lineOf = (words: ReadonlyArray<Word>) => {
@@ -65,7 +78,12 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
   try {
     execFileSync("pdftoppm", ["-v"], { stdio: "ignore" });
   } catch {
-    report.check("tools", false, "pdftoppm and pdftotext are missing: sudo apt-get install -y poppler-utils (.agents/setup installs them)", { fatal: true });
+    report.check(
+      "tools",
+      false,
+      "pdftoppm and pdftotext are missing: sudo apt-get install -y poppler-utils (.agents/setup installs them)",
+      { fatal: true },
+    );
   }
   const session = await signedIn(stack, { deviceScaleFactor: DPI / 96 });
   const { page } = session;
@@ -85,30 +103,60 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
     await sheets.first().waitFor();
     const pageCount = await sheets.count();
     const bookPath = new URL(page.url()).pathname;
-    report.check("route", true, `${new URL(page.url()).pathname} of ${options.story} as ${stack.who}: ${pageCount} pages`);
+    report.check(
+      "route",
+      true,
+      `${new URL(page.url()).pathname} of ${options.story} as ${stack.who}: ${pageCount} pages`,
+    );
 
     // Request a proof the way a parent does, then wait for the worker.
     const proofs = page.getByTestId("proof");
     const before = await proofs.count();
     const started = Date.now();
     await page.getByRole("button", { name: "Make a PDF proof" }).click();
-    await page.waitForFunction((n) => document.querySelectorAll("[data-testid=proof]").length > n, before, { timeout: 15_000 });
+    await page.waitForFunction((n) => document.querySelectorAll("[data-testid=proof]").length > n, before, {
+      timeout: 15_000,
+    });
     const newest = proofs.first();
-    await page.waitForFunction(() => ["ready", "failed"].includes(document.querySelector("[data-testid=proof]")?.getAttribute("data-status") ?? ""), undefined, { timeout: 90_000 }).catch(() => undefined);
+    await page
+      .waitForFunction(
+        () =>
+          ["ready", "failed"].includes(
+            document.querySelector("[data-testid=proof]")?.getAttribute("data-status") ?? "",
+          ),
+        undefined,
+        { timeout: 90_000 },
+      )
+      .catch(() => undefined);
     const status = await newest.getAttribute("data-status");
-    report.check("render", status === "ready", `the worker rendered it in ${((Date.now() - started) / 1000).toFixed(1)} s (status ${status})`, { fatal: true });
+    report.check(
+      "render",
+      status === "ready",
+      `the worker rendered it in ${((Date.now() - started) / 1000).toFixed(1)} s (status ${status})`,
+      { fatal: true },
+    );
     const href = (await newest.getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
     const download = await page.request.get(href);
     const pdf = await download.body();
     const pdfPath = report.file("proof.pdf");
     writeFileSync(pdfPath, pdf);
-    report.check("download", download.ok() && download.headers()["content-type"] === "application/pdf", `${href} → ${download.status()}, ${(pdf.length / 1e6).toFixed(2)} MB`);
+    report.check(
+      "download",
+      download.ok() && download.headers()["content-type"] === "application/pdf",
+      `${href} → ${download.status()}, ${(pdf.length / 1e6).toFixed(2)} MB`,
+    );
 
     // Imported on use: @lifestory/core is big, and the other commands don't need it.
     const { checkPrintReady } = await import("@lifestory/core");
     const ready = await checkPrintReady(pdf, trim);
     writeFileSync(report.file("print-ready.json"), `${JSON.stringify(ready, null, 2)}\n`);
-    report.check("print-ready", ready.issues.length === 0 && ready.pages === pageCount, ready.issues.length ? ready.issues.join("; ") : `${ready.pages} pages, fonts ${ready.fonts.join(", ")}, art at ${[...new Set(ready.images.map((i) => i.ppi))].join("/")} ppi`);
+    report.check(
+      "print-ready",
+      ready.issues.length === 0 && ready.pages === pageCount,
+      ready.issues.length
+        ? ready.issues.join("; ")
+        : `${ready.pages} pages, fonts ${ready.fonts.join(", ")}, art at ${[...new Set(ready.images.map((i) => i.ppi))].join("/")} ppi`,
+    );
 
     // The editor's pages at full size: undo thumbnail scaling so each page is 8.75 in = 840 CSS px.
     await page.evaluate(() => {
@@ -124,7 +172,11 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
       }
     });
     const broken = await imagesSettled(page);
-    report.check("editor images", broken.length === 0, broken.length ? `${broken.length} failed: ${broken[0]}` : "every layer loaded");
+    report.check(
+      "editor images",
+      broken.length === 0,
+      broken.length ? `${broken.length} failed: ${broken[0]}` : "every layer loaded",
+    );
     const screenWords = await domWords(page);
     execFileSync("pdftoppm", ["-r", String(DPI), "-png", pdfPath, report.file("pdf")]);
 
@@ -140,8 +192,16 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
       // Compared at 96 dpi after downscaling both, as D27 measured: at 192 dpi the art's resampling (a 300 ppi JPEG
       // in the PDF, layers drawn at 2x on screen) outlines every painted edge without anything having moved.
       const size = Math.round((await sharp(screenPath).metadata()).width! / 2);
-      const screen = await sharp(screenPath).removeAlpha().resize(size, size, { fit: "fill" }).raw().toBuffer({ resolveWithObject: true });
-      const printed = await sharp(pdfPng).removeAlpha().resize(screen.info.width, screen.info.height, { fit: "fill" }).raw().toBuffer();
+      const screen = await sharp(screenPath)
+        .removeAlpha()
+        .resize(size, size, { fit: "fill" })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const printed = await sharp(pdfPng)
+        .removeAlpha()
+        .resize(screen.info.width, screen.info.height, { fit: "fill" })
+        .raw()
+        .toBuffer();
       const diff = Buffer.alloc(screen.data.length);
       let differing = 0;
       for (let p = 0; p < screen.data.length; p += 3) {
@@ -153,7 +213,9 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
       }
       const share = differing / (screen.data.length / 3);
       worstShare = Math.max(worstShare, share);
-      await sharp(diff, { raw: screen.info }).png().toFile(report.file(`diff-${i + 1}.png`));
+      await sharp(diff, { raw: screen.info })
+        .png()
+        .toFile(report.file(`diff-${i + 1}.png`));
       pixelRows.push(`page ${i + 1}: ${(share * 100).toFixed(2)}%`);
 
       const dom = screenWords[i]!;
@@ -162,16 +224,34 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
       const pdfLines = lineOf(printedWords);
       dom.forEach((word, w) => {
         const other = printedWords[w];
-        if (!other || other.text !== word.text) return void lineMismatches.push(`page ${i + 1} word ${w + 1} "${word.text}" vs "${other?.text}"`);
+        if (!other || other.text !== word.text)
+          return void lineMismatches.push(`page ${i + 1} word ${w + 1} "${word.text}" vs "${other?.text}"`);
         worstShift = Math.max(worstShift, Math.abs(other.x - word.x));
-        if (pdfLines[w] !== domLines[w]) lineMismatches.push(`page ${i + 1}: "${word.text}" on line ${domLines[w]! + 1} on screen, ${pdfLines[w]! + 1} in print`);
+        if (pdfLines[w] !== domLines[w])
+          lineMismatches.push(
+            `page ${i + 1}: "${word.text}" on line ${domLines[w]! + 1} on screen, ${pdfLines[w]! + 1} in print`,
+          );
       });
     }
     report.facts.pixelDiff = pixelRows;
     report.facts.maxWordShiftPt = Number(worstShift.toFixed(2));
-    report.check("pixels", worstShare <= MAX_DIFF_SHARE, `worst page ${(worstShare * 100).toFixed(2)}% of pixels off by >5% (limit ${MAX_DIFF_SHARE * 100}%); ${pixelRows.join(", ")}`);
-    report.check("line breaks", lineMismatches.length === 0, lineMismatches.length ? lineMismatches.slice(0, 3).join("; ") : `${screenWords.flat().length} words on the same lines on screen and in print`);
-    report.check("word positions", worstShift <= MAX_WORD_SHIFT_PT, `max |Δx| ${worstShift.toFixed(2)} pt (limit ${MAX_WORD_SHIFT_PT} pt)`);
+    report.check(
+      "pixels",
+      worstShare <= MAX_DIFF_SHARE,
+      `worst page ${(worstShare * 100).toFixed(2)}% of pixels off by >5% (limit ${MAX_DIFF_SHARE * 100}%); ${pixelRows.join(", ")}`,
+    );
+    report.check(
+      "line breaks",
+      lineMismatches.length === 0,
+      lineMismatches.length
+        ? lineMismatches.slice(0, 3).join("; ")
+        : `${screenWords.flat().length} words on the same lines on screen and in print`,
+    );
+    report.check(
+      "word positions",
+      worstShift <= MAX_WORD_SHIFT_PT,
+      `max |Δx| ${worstShift.toFixed(2)} pt (limit ${MAX_WORD_SHIFT_PT} pt)`,
+    );
 
     // Delete the proof the way a parent does, so a run leaves no draft behind: it leaves the list and its PDF.
     await page.goto(bookPath);

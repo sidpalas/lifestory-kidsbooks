@@ -52,7 +52,10 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
  * author. An unpublished version is the author's draft (D37), read only through authoring and its files.
  */
 const readableBy = (userId: string) =>
-  and(isNotNull(schema.storyVersion.publishedAt), or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")));
+  and(
+    isNotNull(schema.storyVersion.publishedAt),
+    or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")),
+  );
 
 const decodeAddition = Schema.decodeUnknownEffect(StoryAddition);
 
@@ -61,7 +64,11 @@ const decodeAddition = Schema.decodeUnknownEffect(StoryAddition);
  * proof's pinned revision) or all of them. Returns the revision it merged up to. Every stored manifest and addition
  * was checked when published, so a failure here is a bug.
  */
-export const withStoredAdditions = Effect.fn("stories.withStoredAdditions")(function* (storyVersionId: string, stored: unknown, upTo?: number) {
+export const withStoredAdditions = Effect.fn("stories.withStoredAdditions")(function* (
+  storyVersionId: string,
+  stored: unknown,
+  upTo?: number,
+) {
   const manifest = yield* decodeStoryManifest(stored).pipe(Effect.orDie);
   const rows = yield* Database.query((db) =>
     db
@@ -76,7 +83,10 @@ export const withStoredAdditions = Effect.fn("stories.withStoredAdditions")(func
       .orderBy(asc(schema.storyVersionAddition.revision)),
   );
   const additions = yield* Effect.forEach(rows, (row) => decodeAddition(row.addition).pipe(Effect.orDie));
-  return { manifest: yield* mergeAdditions(manifest, additions).pipe(Effect.orDie), additionRevision: rows.at(-1)?.revision ?? 0 };
+  return {
+    manifest: yield* mergeAdditions(manifest, additions).pipe(Effect.orDie),
+    additionRevision: rows.at(-1)?.revision ?? 0,
+  };
 });
 
 /** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
@@ -105,7 +115,14 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
   const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
   const { storyVersionId, version, manifest: _, status, ...story } = row;
   // Only its author reads an archived story (D49), to preview it; nobody makes a book of it.
-  return { story: story satisfies StorySummary, archived: status === "archived", storyVersionId, version, manifest, additionRevision };
+  return {
+    story: story satisfies StorySummary,
+    archived: status === "archived",
+    storyVersionId,
+    version,
+    manifest,
+    additionRevision,
+  };
 });
 
 /** What a story preview casts: see previewRoles. */
@@ -136,10 +153,22 @@ export const previewRoles = (
         : characters.find((candidate) => slot.ages.includes(candidate.look.age));
     const changes = (character && choice.changes?.[slot.slotId]) || {};
     const member: CastMember = character
-      ? { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: withLookChanges(character.look, changes) }
+      ? {
+          name: character.name,
+          ...(character.title ? { title: character.title } : {}),
+          pronouns: character.pronouns,
+          look: withLookChanges(character.look, changes),
+        }
       : { ...slot.example, look: tried ?? slot.example.look };
     const fill = castLook(manifest, slot.slotId, member.look);
-    return { slotId: slot.slotId, characterId: character?.id ?? null, member, changes, wrongAge: fill.wrongAge, unsupported: [...fill.unsupported] };
+    return {
+      slotId: slot.slotId,
+      characterId: character?.id ?? null,
+      member,
+      changes,
+      wrongAge: fill.wrongAge,
+      unsupported: [...fill.unsupported],
+    };
   });
 
 /**
@@ -157,7 +186,9 @@ export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
   const { story, archived, version, manifest } = yield* readableStoryVersion(userId, slug);
   const roles = previewRoles(manifest, characters, choice);
   const cast = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
-  const drawable = Object.fromEntries(roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]));
+  const drawable = Object.fromEntries(
+    roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]),
+  );
   const pages = yield* Effect.forEach(manifest.pages, (page) =>
     resolveIllustration(story.id, version, composeIllustration(manifest, page, drawable)).pipe(
       Effect.map((layers) => ({ pageId: page.pageId, layers })),
@@ -179,7 +210,10 @@ export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (us
   const [, storyId, version] = match;
   // The author reads every version's files, including the unpublished draft's (D37).
   const authored = yield* Database.query((db) =>
-    db.select({ id: schema.story.id }).from(schema.story).where(and(eq(schema.story.id, storyId!), eq(schema.story.authorId, userId))),
+    db
+      .select({ id: schema.story.id })
+      .from(schema.story)
+      .where(and(eq(schema.story.id, storyId!), eq(schema.story.authorId, userId))),
   );
   if (authored.length > 0) return true;
   const rows = yield* Database.query((db) =>
@@ -187,7 +221,13 @@ export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (us
       .select({ id: schema.storyVersion.id })
       .from(schema.storyVersion)
       .innerJoin(schema.story, eq(schema.story.id, schema.storyVersion.storyId))
-      .where(and(eq(schema.storyVersion.storyId, storyId!), eq(schema.storyVersion.version, Number(version)), readableBy(userId)))
+      .where(
+        and(
+          eq(schema.storyVersion.storyId, storyId!),
+          eq(schema.storyVersion.version, Number(version)),
+          readableBy(userId),
+        ),
+      )
       .limit(1),
   );
   if (rows.length > 0) return true;
@@ -196,7 +236,10 @@ export const canReadStoryAsset = Effect.fn("stories.canReadAsset")(function* (us
       .select({ id: schema.book.id })
       .from(schema.book)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
-      .innerJoin(schema.member, and(eq(schema.member.organizationId, schema.book.familyId), eq(schema.member.userId, userId)))
+      .innerJoin(
+        schema.member,
+        and(eq(schema.member.organizationId, schema.book.familyId), eq(schema.member.userId, userId)),
+      )
       .where(and(eq(schema.storyVersion.storyId, storyId!), eq(schema.storyVersion.version, Number(version))))
       .limit(1),
   );
@@ -240,9 +283,12 @@ const storeVersionFiles = Effect.fn("stories.storeVersionFiles")(function* (
     else if (!Buffer.from((yield* storage.get(key)).body).equals(file.body)) changed.push(file.asset);
   }
   if (changed.length > 0) {
-    return yield* Effect.die(new Error(`story ${storyId} v${version} already has different files; add a new version:\n${changed.join("\n")}`));
+    return yield* Effect.die(
+      new Error(`story ${storyId} v${version} already has different files; add a new version:\n${changed.join("\n")}`),
+    );
   }
-  for (const file of missing) yield* storage.put(storyAssetKey(storyId, version, file.asset), file.body, file.contentType);
+  for (const file of missing)
+    yield* storage.put(storyAssetKey(storyId, version, file.asset), file.body, file.contentType);
 });
 
 /**
@@ -256,18 +302,27 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
   if (input.publishedAt) {
     // Publishing needs every part approved and the whole look vocabulary covered (D26), counting its additions (D41),
     // except options added to the vocabulary after it was published (D43).
-    const additions = yield* Effect.forEach(input.coveredWith ?? [], (addition) => decodeAddition(addition).pipe(Effect.orDie));
+    const additions = yield* Effect.forEach(input.coveredWith ?? [], (addition) =>
+      decodeAddition(addition).pipe(Effect.orDie),
+    );
     const covered = yield* mergeAdditions(manifest, additions).pipe(Effect.orDie);
-    const problems = [...unapprovedParts(manifest).map((part) => `not approved: ${part}`), ...vocabularyGaps(covered, input.publishedAt)];
+    const problems = [
+      ...unapprovedParts(manifest).map((part) => `not approved: ${part}`),
+      ...vocabularyGaps(covered, input.publishedAt),
+    ];
     if (problems.length > 0) {
-      return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`));
+      return yield* Effect.die(
+        new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`),
+      );
     }
   }
   // The trim must suit the printer: Lulu's bleed and safe margin (D35). Checked here, like fonts below, so versions
   // stored before the rule stay readable.
   const trimProblems = printTrimIssues(manifest.trim);
   if (trimProblems.length > 0) {
-    return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} won't print:\n${trimProblems.join("\n")}`));
+    return yield* Effect.die(
+      new Error(`story ${input.storyId} v${input.version} won't print:\n${trimProblems.join("\n")}`),
+    );
   }
   // Fonts must be static so PDFs embed them as real fonts, not Type 3 (D27). Checked here, not when decoding,
   // so versions stored before the rule stay readable.
@@ -277,16 +332,26 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
   );
   const fontProblems = [
     ...staticFontIssues(manifest),
-    ...files.filter((file) => fontAssets.has(file.asset) && isVariableFont(file.body)).map((file) => `${file.asset}: variable font; use static instances`),
+    ...files
+      .filter((file) => fontAssets.has(file.asset) && isVariableFont(file.body))
+      .map((file) => `${file.asset}: variable font; use static instances`),
   ];
   if (fontProblems.length > 0) {
-    return yield* Effect.die(new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`));
+    return yield* Effect.die(
+      new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`),
+    );
   }
   yield* storeVersionFiles(input.storyId, input.version, files);
   const [stored] = yield* Database.query(async (db) => {
     await db
       .insert(schema.storyVersion)
-      .values({ id: input.id, storyId: input.storyId, version: input.version, manifest, publishedAt: input.publishedAt })
+      .values({
+        id: input.id,
+        storyId: input.storyId,
+        version: input.version,
+        manifest,
+        publishedAt: input.publishedAt,
+      })
       .onConflictDoNothing();
     return db
       .select({ manifest: schema.storyVersion.manifest })
@@ -320,7 +385,11 @@ export const publishStoryAddition = Effect.fn("stories.publishAddition")(functio
   const addition = yield* decodeAddition(input.addition).pipe(Effect.orDie);
   const [version] = yield* Database.query((db) =>
     db
-      .select({ storyId: schema.storyVersion.storyId, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest })
+      .select({
+        storyId: schema.storyVersion.storyId,
+        version: schema.storyVersion.version,
+        manifest: schema.storyVersion.manifest,
+      })
       .from(schema.storyVersion)
       .where(and(eq(schema.storyVersion.id, input.storyVersionId), isNotNull(schema.storyVersion.publishedAt))),
   );
@@ -331,13 +400,25 @@ export const publishStoryAddition = Effect.fn("stories.publishAddition")(functio
     db
       .select({ addition: schema.storyVersionAddition.addition })
       .from(schema.storyVersionAddition)
-      .where(and(eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId), eq(schema.storyVersionAddition.revision, input.revision))),
+      .where(
+        and(
+          eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId),
+          eq(schema.storyVersionAddition.revision, input.revision),
+        ),
+      ),
   );
   if (!existing && before.additionRevision !== input.revision - 1) {
-    return yield* Effect.die(new Error(`${label}: the version has ${before.additionRevision} additions; the next is ${before.additionRevision + 1}`));
+    return yield* Effect.die(
+      new Error(
+        `${label}: the version has ${before.additionRevision} additions; the next is ${before.additionRevision + 1}`,
+      ),
+    );
   }
   // The format's checks and the additive ones (nothing replaced, parts approved) on the version as it stood.
-  yield* mergeAdditions(before.manifest, [addition]).pipe(Effect.mapError((error) => new Error(`${label} can't be added: ${error.message}`)), Effect.orDie);
+  yield* mergeAdditions(before.manifest, [addition]).pipe(
+    Effect.mapError((error) => new Error(`${label} can't be added: ${error.message}`)),
+    Effect.orDie,
+  );
   const files = yield* Effect.forEach(additionAssets(addition), (asset) =>
     Effect.promise(() => input.readAsset(asset)).pipe(Effect.map((file) => ({ asset, ...file }))),
   );
@@ -346,15 +427,27 @@ export const publishStoryAddition = Effect.fn("stories.publishAddition")(functio
   const [stored] = yield* Database.query(async (db) => {
     await db
       .insert(schema.storyVersionAddition)
-      .values({ storyVersionId: input.storyVersionId, revision: input.revision, addition: encoded, createdBy: input.createdBy })
+      .values({
+        storyVersionId: input.storyVersionId,
+        revision: input.revision,
+        addition: encoded,
+        createdBy: input.createdBy,
+      })
       .onConflictDoNothing();
     return db
       .select({ addition: schema.storyVersionAddition.addition })
       .from(schema.storyVersionAddition)
-      .where(and(eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId), eq(schema.storyVersionAddition.revision, input.revision)));
+      .where(
+        and(
+          eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId),
+          eq(schema.storyVersionAddition.revision, input.revision),
+        ),
+      );
   });
   const storedAddition = yield* decodeAddition(stored?.addition).pipe(Effect.orDie);
   if (!isDeepStrictEqual(storedAddition, addition)) {
-    return yield* Effect.die(new Error(`${label} already exists with different content; add the next revision instead`));
+    return yield* Effect.die(
+      new Error(`${label} already exists with different content; add the next revision instead`),
+    );
   }
 });

@@ -2,9 +2,6 @@
   "name": "lifestory",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=26.13.0 <27"
-  },
   "devDependencies": {
     "@playwright/test": "1.65.1",
     "@types/node": "26.6.6",
@@ -13,5 +10,8 @@
     "railway": "3.17.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": ">=26.13.0 <27"
   }
 }

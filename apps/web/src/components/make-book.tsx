@@ -2,7 +2,17 @@
 // right away; then make the book. A role can instead try looks on the story's example character, which is a preview
 // only and never touches the family. A role accepts some character ages (D29), so only family members of those ages
 // are offered, and a look the story can't draw yet is left out of the pictures with a warning (D28, D41).
-import { ageLabel, BookExists, type BookSummary, type Character, type CharacterSlot, type LookAxis, type LookOverride, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
+import {
+  ageLabel,
+  BookExists,
+  type BookSummary,
+  type Character,
+  type CharacterSlot,
+  type LookAxis,
+  type LookOverride,
+  type PreviewRole,
+  unwrapResult,
+} from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { lookPickerId, lookToggleId } from "~/components/book-look";
@@ -22,7 +32,8 @@ export const EXAMPLE = "example";
 export const tryPickerId = (slotId: string) => `try-picker-${slotId}`;
 export const tryToggleId = (slotId: string) => `try-toggle-${slotId}`;
 
-const missingLabel = (role: PreviewRole) => role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ");
+const missingLabel = (role: PreviewRole) =>
+  role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ");
 
 export function StoryCast({
   slug,
@@ -107,9 +118,15 @@ export function StoryCast({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {books.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="story-books" role="status">
+          <div
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm"
+            data-testid="story-books"
+            role="status"
+          >
             <p className="font-medium">
-              {books.length === 1 ? "Your family already has a book of this story" : `Your family already has ${books.length} books of this story`}
+              {books.length === 1
+                ? "Your family already has a book of this story"
+                : `Your family already has ${books.length} books of this story`}
             </p>
             <ul className="mt-1 flex flex-col gap-0.5">
               {books.map((book) => (
@@ -117,14 +134,16 @@ export function StoryCast({
                   <Link to="/books/$bookId" params={{ bookId: book.id }} className="underline">
                     {book.title} with {book.cast}
                   </Link>
-                  {book.version !== version && <span className="text-muted-foreground"> · made from version {book.version}</span>}
+                  {book.version !== version && (
+                    <span className="text-muted-foreground"> · made from version {book.version}</span>
+                  )}
                 </li>
               ))}
             </ul>
             {canEdit && (
               <p className="text-muted-foreground mt-1 text-xs">
-                {books.length === 1 ? "Open it" : "Choose one to open"} to change who's in it, edit its text, and print it. Opening it keeps its cast and
-                looks as they are; the choices below aren't applied to it.
+                {books.length === 1 ? "Open it" : "Choose one to open"} to change who's in it, edit its text, and print
+                it. Opening it keeps its cast and looks as they are; the choices below aren't applied to it.
               </p>
             )}
           </div>
@@ -136,13 +155,29 @@ export function StoryCast({
             const character = characters.find((candidate) => candidate.id === role.characterId);
             const example = value === EXAMPLE;
             return (
-              <li key={slot.slotId} className="flex min-w-0 gap-3 rounded-md border p-3" data-testid={`role-${slot.slotId}`}>
-                <img src={portraitUrl(role.member.look)} alt="" width={61} height={70} className="h-[70px] w-[61px] shrink-0 rounded-md ring-1 ring-black/10" />
+              <li
+                key={slot.slotId}
+                className="flex min-w-0 gap-3 rounded-md border p-3"
+                data-testid={`role-${slot.slotId}`}
+              >
+                <img
+                  src={portraitUrl(role.member.look)}
+                  alt=""
+                  width={61}
+                  height={70}
+                  className="h-[70px] w-[61px] shrink-0 rounded-md ring-1 ring-black/10"
+                />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
                   <label htmlFor={`cast-${slot.slotId}`} className="font-medium">
                     {slot.label} <span className="text-muted-foreground font-normal">({agesLabel(slot)})</span>
                   </label>
-                  <NativeSelect id={`cast-${slot.slotId}`} className="w-full min-w-0" value={value} disabled={!hydrated} onChange={(event) => onSelect(slot.slotId, event.target.value)}>
+                  <NativeSelect
+                    id={`cast-${slot.slotId}`}
+                    className="w-full min-w-0"
+                    value={value}
+                    disabled={!hydrated}
+                    onChange={(event) => onSelect(slot.slotId, event.target.value)}
+                  >
                     {fits(slot).length > 0 && (
                       <optgroup label="Your family">
                         {fits(slot).map((candidate) => (
@@ -203,7 +238,8 @@ export function StoryCast({
                   )}
                   {role.wrongAge ? (
                     <p className="text-xs text-amber-700" data-testid={`cast-warning-${slot.slotId}`}>
-                      {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()}, and this part is for {agesLabel(slot)}, so the pages leave them out.
+                      {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()}, and this part is for{" "}
+                      {agesLabel(slot)}, so the pages leave them out.
                     </p>
                   ) : (
                     role.unsupported.length > 0 && (
@@ -241,7 +277,12 @@ export function StoryCast({
                   </Link>
                 </Button>
               )}
-              <Button type="button" variant="outline" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={create}
+                disabled={!hydrated || !everyoneFromFamily || making || updating}
+              >
                 Make another copy
               </Button>
               <p className="text-muted-foreground text-xs">
@@ -260,4 +301,3 @@ export function StoryCast({
     </Card>
   );
 }
-

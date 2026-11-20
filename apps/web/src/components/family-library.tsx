@@ -27,15 +27,26 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
               params={{ characterId: character.id }}
               className="flex w-24 flex-col items-center gap-1 rounded-md p-1 text-sm hover:bg-accent"
             >
-              <img src={portraitUrl(character.look)} alt="" width={61} height={70} className="rounded-md ring-1 ring-black/10" />
+              <img
+                src={portraitUrl(character.look)}
+                alt=""
+                width={61}
+                height={70}
+                className="rounded-md ring-1 ring-black/10"
+              />
               <span className="w-full truncate text-center font-medium">{character.name}</span>
-              <span className="text-muted-foreground text-xs">{character.title ? `${character.title} · ${character.pronouns}` : character.pronouns}</span>
+              <span className="text-muted-foreground text-xs">
+                {character.title ? `${character.title} · ${character.pronouns}` : character.pronouns}
+              </span>
             </Link>
           </li>
         ))}
         {canEdit && (
           <li>
-            <Link to="/characters/new" className="flex h-[70px] w-24 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent">
+            <Link
+              to="/characters/new"
+              className="flex h-[70px] w-24 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent"
+            >
               Add someone
             </Link>
           </li>
@@ -93,7 +104,15 @@ export function FamilyBooks({ books, canEdit }: { books: ReadonlyArray<BookSumma
  * Published stories. One the family has a book of opens that book instead of offering another; with several, the
  * story page lists them all, as D47 has it, instead of the card picking one.
  */
-export function StoryList({ stories, books, canEdit }: { stories: ReadonlyArray<StorySummary>; books: ReadonlyArray<BookSummary>; canEdit: boolean }) {
+export function StoryList({
+  stories,
+  books,
+  canEdit,
+}: {
+  stories: ReadonlyArray<StorySummary>;
+  books: ReadonlyArray<BookSummary>;
+  canEdit: boolean;
+}) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2" data-testid="stories">
       {stories.map((story) => {

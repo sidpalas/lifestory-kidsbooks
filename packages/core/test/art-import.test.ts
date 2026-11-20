@@ -25,7 +25,10 @@ const figure = () =>
 
 const pixels = async (png: Uint8Array) => {
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  return { at: (x: number, y: number) => [...data.subarray((y * info.width + x) * 4, (y * info.width + x) * 4 + 4)], width: info.width };
+  return {
+    at: (x: number, y: number) => [...data.subarray((y * info.width + x) * 4, (y * info.width + x) * 4 + 4)],
+    width: info.width,
+  };
 };
 
 describe("makeBase", () => {
@@ -38,9 +41,22 @@ describe("makeBase", () => {
     const alpha = (image: Awaited<ReturnType<typeof pixels>>, x: number, y: number) => image.at(x, y)[3]!;
 
     // Skin: forehead, both arms; the eyes and cheeks it encloses (the gradient map keeps their tone); the outline.
-    for (const [x, y] of [[200, 90], [85, 400], [315, 400], [165, 130], [150, 185], [200, 252]] as const) expect(alpha(mask, x, y), `${x},${y}`).toBeGreaterThan(200);
+    for (const [x, y] of [
+      [200, 90],
+      [85, 400],
+      [315, 400],
+      [165, 130],
+      [150, 185],
+      [200, 252],
+    ] as const)
+      expect(alpha(mask, x, y), `${x},${y}`).toBeGreaterThan(200);
     // Not skin: the shirt between the arms, and the transparent paper.
-    for (const [x, y] of [[200, 400], [150, 500], [20, 20]] as const) expect(alpha(mask, x, y), `${x},${y}`).toBeLessThan(30);
+    for (const [x, y] of [
+      [200, 400],
+      [150, 500],
+      [20, 20],
+    ] as const)
+      expect(alpha(mask, x, y), `${x},${y}`).toBeLessThan(30);
 
     // The skin is neutral grey at the palettes' skin tone (0.77, the starter palettes' stop), the shirt untouched.
     const [r, g, b] = base.at(200, 90);
@@ -60,12 +76,34 @@ describe("makeBase", () => {
 
 const result = (overrides: Partial<ImportResult>): ImportResult => ({
   storyId: "s",
-  request: { kind: "page", pageId: "p01", slotId: "hero", age: "young-child", face: "face:round", hair: "hair:curly", bald: false, hairZone: [0, 0, 1000, 400], source: { kind: "flat", asset: "pages/p01/import/a.png", box: [0, 0, 500, 500], description: "her" }, seed: 1 },
+  request: {
+    kind: "page",
+    pageId: "p01",
+    slotId: "hero",
+    age: "young-child",
+    face: "face:round",
+    hair: "hair:curly",
+    bald: false,
+    hairZone: [0, 0, 1000, 400],
+    source: { kind: "flat", asset: "pages/p01/import/a.png", box: [0, 0, 500, 500], description: "her" },
+    seed: 1,
+  },
   plate: "pages/p01/hero/import-1-plate.jpg",
   foreground: null,
   box: [100, 200, 400, 900],
   base: { age: "young-child", face: "face:round", asset: "new-base.png", skinMask: "new-skin.png" },
-  parts: [{ age: "young-child", face: "face:round", axis: "hair", option: "hair:curly", asset: "new-curly.png", at: [0, 0, 1000, 300], palette: "hairColour", approved: false }],
+  parts: [
+    {
+      age: "young-child",
+      face: "face:round",
+      axis: "hair",
+      option: "hair:curly",
+      asset: "new-curly.png",
+      at: [0, 0, 1000, 300],
+      palette: "hairColour",
+      approved: false,
+    },
+  ],
   colourFigure: "c.png",
   review: { light: "l.png", dark: "d.png", mask: "m.png", plate: null },
   costUsd: 0,
@@ -73,7 +111,13 @@ const result = (overrides: Partial<ImportResult>): ImportResult => ({
   ...overrides,
 });
 
-const adult = (features?: "features:soft") => ({ age: "adult" as const, face: "face:round" as const, asset: features ? "soft.png" : "defined.png", skinMask: "s.png", ...(features ? { features } : {}) });
+const adult = (features?: "features:soft") => ({
+  age: "adult" as const,
+  face: "face:round" as const,
+  asset: features ? "soft.png" : "defined.png",
+  skinMask: "s.png",
+  ...(features ? { features } : {}),
+});
 
 describe("applyImport", () => {
   const page: Page = {
@@ -92,8 +136,26 @@ describe("applyImport", () => {
             { age: "young-child", face: "face:oval", asset: "oval.png", skinMask: "oval-skin.png" },
           ],
           parts: [
-            { age: "young-child", face: "face:round", axis: "hair", option: "hair:curly", asset: "old-curly.png", at: [0, 0, 10, 10], palette: "hairColour", approved: true },
-            { age: "young-child", face: "face:oval", axis: "hair", option: "hair:curly", asset: "oval-curly.png", at: [0, 0, 10, 10], palette: "hairColour", approved: true },
+            {
+              age: "young-child",
+              face: "face:round",
+              axis: "hair",
+              option: "hair:curly",
+              asset: "old-curly.png",
+              at: [0, 0, 10, 10],
+              palette: "hairColour",
+              approved: true,
+            },
+            {
+              age: "young-child",
+              face: "face:oval",
+              axis: "hair",
+              option: "hair:curly",
+              asset: "oval-curly.png",
+              at: [0, 0, 10, 10],
+              palette: "hairColour",
+              approved: true,
+            },
           ],
         },
         { kind: "art", asset: "reeds.webp" },
@@ -114,11 +176,23 @@ describe("applyImport", () => {
   it("puts a new role's figure above the plate and below the foreground, and a derived base keeps the box", () => {
     const empty: Page = { ...page, illustration: { layers: [{ kind: "art", asset: "old-plate.jpg" }] } };
     const withForeground = applyImport(empty, result({ foreground: "fg.png" })).illustration.layers;
-    expect(withForeground.map((layer) => (layer.kind === "art" ? layer.asset : layer.slotId))).toEqual(["pages/p01/hero/import-1-plate.jpg", "hero", "fg.png"]);
+    expect(withForeground.map((layer) => (layer.kind === "art" ? layer.asset : layer.slotId))).toEqual([
+      "pages/p01/hero/import-1-plate.jpg",
+      "hero",
+      "fg.png",
+    ]);
     const derived = applyImport(
       page,
       result({
-        request: { kind: "derive", pageId: "p01", slotId: "hero", age: "young-child", face: "face:oval", from: "c.png", seed: 1 },
+        request: {
+          kind: "derive",
+          pageId: "p01",
+          slotId: "hero",
+          age: "young-child",
+          face: "face:oval",
+          from: "c.png",
+          seed: 1,
+        },
         plate: null,
         box: null,
         parts: [],
@@ -133,8 +207,25 @@ describe("applyImport", () => {
   });
 
   it("leaves an adult's softer base alone: an import draws defined features (D40)", () => {
-    const grownUp: Page = { ...page, illustration: { layers: [{ kind: "figure", slotId: "hero", box: [0, 0, 100, 100], bases: [adult(), adult("features:soft")], parts: [] }] } };
-    const imported = result({ base: { age: "adult", face: "face:round", asset: "new.png", skinMask: "n.png" }, parts: [], plate: null });
+    const grownUp: Page = {
+      ...page,
+      illustration: {
+        layers: [
+          {
+            kind: "figure",
+            slotId: "hero",
+            box: [0, 0, 100, 100],
+            bases: [adult(), adult("features:soft")],
+            parts: [],
+          },
+        ],
+      },
+    };
+    const imported = result({
+      base: { age: "adult", face: "face:round", asset: "new.png", skinMask: "n.png" },
+      parts: [],
+      plate: null,
+    });
     const request = { ...imported.request, age: "adult" as const };
     const hero = applyImport(grownUp, { ...imported, request }).illustration.layers[0];
     if (hero?.kind !== "figure") throw new Error("no figure");

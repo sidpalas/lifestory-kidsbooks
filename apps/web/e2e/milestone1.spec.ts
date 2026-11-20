@@ -10,11 +10,17 @@ const PASSWORD = "a-long-test-password";
 
 /** Saves a screenshot for the report when E2E_SCREENSHOTS names a directory. */
 const evidence = async (page: Page, name: string) => {
-  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage: true });
+  if (process.env.E2E_SCREENSHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage: true });
 };
 
 const imagesLoaded = (page: Page) =>
-  expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
+  expect
+    .poll(
+      () => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+      { timeout: 30_000 },
+    )
+    .toBe(0);
 
 /** A signed-out page of its own, so each person keeps their session. The test closes its context: the test browser outlives the test. */
 const personPage = async (browser: Browser) => (await browser.newContext()).newPage();
@@ -40,12 +46,16 @@ const pdfFacts = (pdf: Buffer) => {
   const text = pdf.toString("latin1");
   return {
     pages: text.match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0,
-    mediaBoxes: [...new Set([...text.matchAll(/\/MediaBox\s*\[\s*([^\]]*?)\s*\]/g)].map((match) => `/MediaBox [${match[1]}]`))],
+    mediaBoxes: [
+      ...new Set([...text.matchAll(/\/MediaBox\s*\[\s*([^\]]*?)\s*\]/g)].map((match) => `/MediaBox [${match[1]}]`)),
+    ],
     fonts: [...new Set([...text.matchAll(/\/FontName\s*\/[A-Z]{6}\+([\w-]+)/g)].map((match) => match[1]))],
   };
 };
 
-test("milestone 1: invite, family, viewer, characters, a personalized book, a look change, a text edit, an approved PDF proof", async ({ browser }) => {
+test("milestone 1: invite, family, viewer, characters, a personalized book, a look change, a text edit, an approved PDF proof", async ({
+  browser,
+}) => {
   test.setTimeout(180_000);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const ownerEmail = `robin-${id}@example.com`;
@@ -61,7 +71,9 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await inviteFamily.getByLabel("Name").fill("Robin");
   await inviteFamily.getByLabel("Email").fill(ownerEmail);
   await inviteFamily.getByRole("button", { name: "Invite family" }).click();
-  await expect(operator.getByTestId("invite-family").getByRole("status")).toContainText(`Invitation sent to ${ownerEmail}`);
+  await expect(operator.getByTestId("invite-family").getByRole("status")).toContainText(
+    `Invitation sent to ${ownerEmail}`,
+  );
   const setPassword = await emailedLink(operator, ownerEmail);
   await operator.context().close();
 
@@ -105,7 +117,9 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByRole("button", { name: "Long hair" }).click();
   await expect(preview).not.toHaveAttribute("src", curly!);
   await owner.getByRole("button", { name: "Round glasses" }).click();
-  await expect(owner.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, long black hair, glasses");
+  await expect(owner.getByTestId("look-summary")).toHaveText(
+    "Young child, round face, brown skin, long black hair, glasses",
+  );
   await imagesLoaded(owner);
   await evidence(owner, "m1-picker");
   await owner.getByRole("button", { name: "Add to the family" }).click();
@@ -116,7 +130,8 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByLabel("Pronouns").selectOption("he/him");
   await owner.getByLabel(/What the kids call them/).fill("Dad");
   await owner.getByRole("button", { name: "Adult", exact: true }).click();
-  for (const name of ["Very light skin", "Oval face", "Short hair", "Blonde hair colour", "Round glasses"]) await owner.getByRole("button", { name, exact: true }).click();
+  for (const name of ["Very light skin", "Oval face", "Short hair", "Blonde hair colour", "Round glasses"])
+    await owner.getByRole("button", { name, exact: true }).click();
   await owner.getByRole("button", { name: "Add to the family" }).click();
   await expect(owner.getByTestId("characters")).toContainText(grownup);
 
@@ -130,7 +145,9 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   const bookPath = new URL(owner.url()).pathname;
   const allPages = owner.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(allPages).toHaveCount(6);
-  await expect(allPages.nth(2)).toContainText(`Dad checked the fuel. ${child} checked the cocoa. She buckled herself in tight.`);
+  await expect(allPages.nth(2)).toContainText(
+    `Dad checked the fuel. ${child} checked the cocoa. She buckled herself in tight.`,
+  );
   await imagesLoaded(owner);
 
   // 5. A look change applies on every page right away: Ada is on all six, so each page gets a recoloured layer.
@@ -144,13 +161,19 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(owner);
   const after = await pageSources(owner);
-  expect(after.map((sources, page) => sources.filter((src, layer) => src !== before[page]![layer]).length).every((changed) => changed >= 1)).toBe(true);
+  expect(
+    after
+      .map((sources, page) => sources.filter((src, layer) => src !== before[page]![layer]).length)
+      .every((changed) => changed >= 1),
+  ).toBe(true);
   expect(after.flat()).toHaveLength(before.flat().length);
 
   // 6. Edit page 1's paragraph in the editor, which shows the page as it will print (8.5 in trim + bleed = 840 px).
   const editor = owner.getByTestId("editor-page");
   expect(await editor.getByTestId("book-page").evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(840);
-  await owner.getByRole("textbox", { name: "Text block 2" }).fill("{{hero.name}} packed the basket with {{grownup.title}}'s moon cheese.");
+  await owner
+    .getByRole("textbox", { name: "Text block 2" })
+    .fill("{{hero.name}} packed the basket with {{grownup.title}}'s moon cheese.");
   await expect(editor).toContainText(`${child} packed the basket with Dad's moon cheese.`);
   await owner.getByRole("button", { name: "Save text block 2" }).click();
   await expect(owner.getByText("Paragraph 2 · edited")).toBeVisible();

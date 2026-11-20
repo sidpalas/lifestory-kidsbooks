@@ -42,7 +42,8 @@ export const requireFamilyAccess = Effect.fn("families.requireAccess")(function*
   );
   if (!row) return yield* new NotFound({ entity: "family", id: familyId });
   const canEdit = roleCan(row.role, { book: ["edit"] });
-  if (access === "edit" && !canEdit) return yield* new Forbidden({ message: "Viewers can read this family's books but not change them." });
+  if (access === "edit" && !canEdit)
+    return yield* new Forbidden({ message: "Viewers can read this family's books but not change them." });
   return { role: row.role, canEdit };
 });
 
@@ -95,13 +96,19 @@ export const inviteMember = Effect.fn("families.inviteMember")(function* (
   input: { familyId: string; email: string; role: InviteRole },
 ) {
   const invitation = yield* authCall((auth) =>
-    auth.api.createInvitation({ headers, body: { organizationId: input.familyId, email: input.email, role: input.role } }),
+    auth.api.createInvitation({
+      headers,
+      body: { organizationId: input.familyId, email: input.email, role: input.role },
+    }),
   );
   return { id: invitation.id, email: invitation.email };
 });
 
 /** Renames a family. Better Auth checks the role (owners only) and the name (auth.ts `beforeUpdateOrganization`). */
-export const renameFamily = Effect.fn("families.rename")(function* (headers: Headers, input: { familyId: string; name: string }) {
+export const renameFamily = Effect.fn("families.rename")(function* (
+  headers: Headers,
+  input: { familyId: string; name: string },
+) {
   const family = yield* authCall((auth) =>
     auth.api.updateOrganization({ headers, body: { organizationId: input.familyId, data: { name: input.name } } }),
   );

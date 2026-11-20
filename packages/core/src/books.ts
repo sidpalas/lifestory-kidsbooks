@@ -5,13 +5,7 @@
 import { schema } from "@lifestory/db";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
-import {
-  type CastMember,
-  castLook,
-  LookOverride,
-  type StoryManifest,
-  withLookChanges,
-} from "./book-format/index.ts";
+import { type CastMember, castLook, LookOverride, type StoryManifest, withLookChanges } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
 import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
@@ -27,7 +21,8 @@ import { readableStoryVersion, withStoredAdditions } from "./stories.ts";
 const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
 const decodeOverride = Schema.decodeUnknownEffect(LookOverride);
 /** No row value for no changes, so "drawn as saved" has one representation. */
-const lookChangesOrNull = (changes: LookOverride | undefined) => (changes && Object.keys(changes).length > 0 ? changes : null);
+const lookChangesOrNull = (changes: LookOverride | undefined) =>
+  changes && Object.keys(changes).length > 0 ? changes : null;
 
 const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
   ids.length === 0
@@ -51,8 +46,12 @@ const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
  * offers only what the story draws, so it never needs a stand-in.
  */
 const checkLookChanges = (manifest: StoryManifest, slotId: string, look: Look, changes: LookOverride) => {
-  const missing = castLook(manifest, slotId, withLookChanges(look, changes)).unsupported.filter((axis) => axis in changes);
-  return missing.length > 0 ? Effect.fail(new InvalidInput({ message: `This story can't draw that ${missing.join(", ")} yet.` })) : Effect.void;
+  const missing = castLook(manifest, slotId, withLookChanges(look, changes)).unsupported.filter(
+    (axis) => axis in changes,
+  );
+  return missing.length > 0
+    ? Effect.fail(new InvalidInput({ message: `This story can't draw that ${missing.join(", ")} yet.` }))
+    : Effect.void;
 };
 
 /** Every role filled by a character of the book's family, of the role's age, with look changes the story draws. */
@@ -67,12 +66,15 @@ const checkCast = Effect.fn("books.checkCast")(function* (
     const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
     if (!character) return yield* new InvalidInput({ message: `Choose who plays ${slot.label.toLowerCase()}.` });
     if (castLook(manifest, slot.slotId, character.look).wrongAge) {
-      return yield* new InvalidInput({ message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.` });
+      return yield* new InvalidInput({
+        message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.`,
+      });
     }
     yield* checkLookChanges(manifest, slot.slotId, character.look, looks[slot.slotId] ?? {});
   }
   for (const slotId of Object.keys(cast)) {
-    if (!manifest.characterSlots.some((slot) => slot.slotId === slotId)) return yield* new InvalidInput({ message: `The story has no role "${slotId}".` });
+    if (!manifest.characterSlots.some((slot) => slot.slotId === slotId))
+      return yield* new InvalidInput({ message: `The story has no role "${slotId}".` });
   }
 });
 
@@ -97,7 +99,10 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
       .where(eq(schema.book.familyId, familyId))
       .orderBy(asc(schema.book.createdAt), asc(schema.bookCast.slotId)),
   );
-  const books = new Map<string, { id: string; title: string; storySlug: string; storyTitle: string; version: number; names: Array<string> }>();
+  const books = new Map<
+    string,
+    { id: string; title: string; storySlug: string; storyTitle: string; version: number; names: Array<string> }
+  >();
   for (const row of rows) {
     const { name: _, ...summary } = row;
     const book = books.get(row.id) ?? { ...summary, names: [] };
@@ -137,7 +142,10 @@ export const createBook = Effect.fn("books.create")(function* (
     db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`book:${familyId}:${story.id}`}, 0))`);
       // Checked here, not only when reading the story, so a story archived meanwhile gets no new book (D49).
-      const [current] = await tx.select({ status: schema.story.status }).from(schema.story).where(eq(schema.story.id, story.id));
+      const [current] = await tx
+        .select({ status: schema.story.status })
+        .from(schema.story)
+        .where(eq(schema.story.id, story.id));
       if (current?.status === "archived") return "archived" as const;
       const books = await tx
         .select({ id: schema.book.id })
@@ -149,12 +157,18 @@ export const createBook = Effect.fn("books.create")(function* (
       if (bookIds.some((bookId) => !input.existing?.includes(bookId))) return bookIds;
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
       await tx.insert(schema.bookCast).values(
-        Object.entries(input.cast).map(([slotId, characterId]) => ({ bookId: id, slotId, characterId, lookChanges: lookChangesOrNull(input.looks?.[slotId]) })),
+        Object.entries(input.cast).map(([slotId, characterId]) => ({
+          bookId: id,
+          slotId,
+          characterId,
+          lookChanges: lookChangesOrNull(input.looks?.[slotId]),
+        })),
       );
       return null;
     }),
   );
-  if (unseen === "archived") return yield* new InvalidInput({ message: `${story.title} is archived, so no new books are made of it.` });
+  if (unseen === "archived")
+    return yield* new InvalidInput({ message: `${story.title} is archived, so no new books are made of it.` });
   if (unseen) {
     return yield* new BookExists({
       message: `Your family already has ${unseen.length === 1 ? "a book" : `${unseen.length} books`} of ${story.title}, so no new one was made.`,
@@ -211,7 +225,10 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     Database.query((db) => db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId))),
     Database.query((db) => db.select().from(schema.bookTextEdit).where(eq(schema.bookTextEdit.bookId, bookId))),
   ]);
-  const characters = yield* familyCharacters(book.familyId, castRows.map((row) => row.characterId));
+  const characters = yield* familyCharacters(
+    book.familyId,
+    castRows.map((row) => row.characterId),
+  );
 
   const roles: Array<BookRole> = [];
   for (const slot of manifest.characterSlots) {
@@ -224,7 +241,12 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     roles.push({
       slotId: slot.slotId,
       characterId: character.id,
-      member: { name: character.name, ...(character.title ? { title: character.title } : {}), pronouns: character.pronouns, look: fill.look },
+      member: {
+        name: character.name,
+        ...(character.title ? { title: character.title } : {}),
+        pronouns: character.pronouns,
+        look: fill.look,
+      },
       override,
       changes,
       wrongAge: fill.wrongAge,
@@ -232,7 +254,9 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     });
   }
   const cast: Record<string, CastMember> = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
-  const drawable = Object.fromEntries(roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]));
+  const drawable = Object.fromEntries(
+    roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]),
+  );
 
   const pages = yield* Effect.forEach(manifest.pages, (page) =>
     resolveIllustration(book.storyId, book.version, composeIllustration(manifest, page, drawable)).pipe(
@@ -240,8 +264,14 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
         pageId: page.pageId,
         layers,
         text: page.text.map((block, blockIndex) => {
-          const edited = edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
-          return { style: block.style, original: block.content, edited, text: resolveText(edited ?? block.content, cast) };
+          const edited =
+            edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
+          return {
+            style: block.style,
+            original: block.content,
+            edited,
+            text: resolveText(edited ?? block.content, cast),
+          };
         }),
       })),
     ),
@@ -264,8 +294,13 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
   input: { readonly bookId: string; readonly slotId: string; readonly characterId: string },
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
-  const rows = yield* Database.query((db) => db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, input.bookId)));
-  const cast = { ...Object.fromEntries(rows.map((row) => [row.slotId, row.characterId])), [input.slotId]: input.characterId };
+  const rows = yield* Database.query((db) =>
+    db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, input.bookId)),
+  );
+  const cast = {
+    ...Object.fromEntries(rows.map((row) => [row.slotId, row.characterId])),
+    [input.slotId]: input.characterId,
+  };
   yield* checkCast(book.manifest, book.familyId, cast);
   yield* Database.query((db) =>
     db
@@ -288,7 +323,10 @@ export const setLookOverride = Effect.fn("books.setLookOverride")(function* (
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
   const [row] = yield* Database.query((db) =>
-    db.select().from(schema.bookCast).where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
+    db
+      .select()
+      .from(schema.bookCast)
+      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
   );
   if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
   const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
@@ -315,7 +353,10 @@ export const setBookLook = Effect.fn("books.setLook")(function* (
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
   const [row] = yield* Database.query((db) =>
-    db.select().from(schema.bookCast).where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
+    db
+      .select()
+      .from(schema.bookCast)
+      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
   );
   if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
   const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
@@ -334,7 +375,12 @@ export const setBookLook = Effect.fn("books.setLook")(function* (
  */
 export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
   userId: string,
-  input: { readonly bookId: string; readonly pageId: string; readonly blockIndex: number; readonly content: string | null },
+  input: {
+    readonly bookId: string;
+    readonly pageId: string;
+    readonly blockIndex: number;
+    readonly content: string | null;
+  },
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
   const page = book.manifest.pages.find((candidate) => candidate.pageId === input.pageId);
@@ -357,7 +403,10 @@ export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
     db
       .insert(schema.bookTextEdit)
       .values({ bookId: input.bookId, pageId: input.pageId, blockIndex: input.blockIndex, content })
-      .onConflictDoUpdate({ target: [schema.bookTextEdit.bookId, schema.bookTextEdit.pageId, schema.bookTextEdit.blockIndex], set: { content } }),
+      .onConflictDoUpdate({
+        target: [schema.bookTextEdit.bookId, schema.bookTextEdit.pageId, schema.bookTextEdit.blockIndex],
+        set: { content },
+      }),
   );
 });
 
@@ -370,11 +419,17 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
   const { view } = yield* getBook(userId, bookId);
   const undrawable = view.roles.filter((role) => role.wrongAge || role.unsupported.length > 0);
   if (undrawable.length > 0 || view.roles.length < view.manifest.characterSlots.length) {
-    return yield* new InvalidInput({ message: "Every role needs someone the story can draw before the book can be printed." });
+    return yield* new InvalidInput({
+      message: "Every role needs someone the story can draw before the book can be printed.",
+    });
   }
   const edits = yield* Database.query((db) =>
     db
-      .select({ pageId: schema.bookTextEdit.pageId, blockIndex: schema.bookTextEdit.blockIndex, content: schema.bookTextEdit.content })
+      .select({
+        pageId: schema.bookTextEdit.pageId,
+        blockIndex: schema.bookTextEdit.blockIndex,
+        content: schema.bookTextEdit.content,
+      })
       .from(schema.bookTextEdit)
       .where(eq(schema.bookTextEdit.bookId, bookId)),
   );

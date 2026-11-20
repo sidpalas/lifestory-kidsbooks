@@ -16,7 +16,10 @@ export const Route = createFileRoute("/_family/books/")({
   component: function Books() {
     const { books, canEdit } = Route.useLoaderData();
     return (
-      <ShellPage title="Our books" description={canEdit ? "Open a book to edit its words and print a proof." : "The family's personalized books."}>
+      <ShellPage
+        title="Our books"
+        description={canEdit ? "Open a book to edit its words and print a proof." : "The family's personalized books."}
+      >
         <FamilyBooks books={books} canEdit={canEdit} />
       </ShellPage>
     );

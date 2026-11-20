@@ -48,7 +48,12 @@ export const StoryPart = Schema.Struct({
    * its storage key for `/api/files/<key>`. Approving the part puts one manifest `Part` per layer into its figure.
    */
   layers: Schema.Array(
-    Schema.Struct({ asset: Schema.String, at: Rect, palette: Schema.Literals(["skin", "hairColour", "none"]), key: Schema.String }),
+    Schema.Struct({
+      asset: Schema.String,
+      at: Rect,
+      palette: Schema.Literals(["skin", "hairColour", "none"]),
+      key: Schema.String,
+    }),
   ),
   /** Storage keys for `/api/files/<key>`: the provider's edit and the review images. */
   files: Schema.Struct({

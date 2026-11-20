@@ -45,54 +45,63 @@ function AuthoringHome() {
   const { canAuthor, isOperator, stories, authors } = Route.useLoaderData();
   return (
     <>
-    <StudioBar />
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
-      <h1 className="text-2xl font-semibold">Write stories</h1>
-      {canAuthor ? (
-        <>
-          <NewStory />
-          <Card>
-            <CardHeader>
-              <CardTitle>Your stories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stories.length === 0 ? (
-                <p className="text-muted-foreground text-sm">None yet.</p>
-              ) : (
-                <ul className="flex flex-col gap-2" data-testid="authored-stories">
-                  {stories.map((story) => (
-                    <li key={story.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
-                      <div>
-                        <Link to="/author/$storyId" params={{ storyId: story.id }} className="font-medium hover:underline">
-                          {story.title}
-                        </Link>
-                        <p className="text-muted-foreground text-xs">
-                          /{story.slug} · {story.publishedVersion ? `version ${story.publishedVersion} published` : "not published yet"}
-                          {story.status === "archived" && " · archived: hidden from families"}
-                          {story.draftVersion && ` · drafting version ${story.draftVersion}`}
-                          {story.additions > 0 && ` · ${story.additions} ${story.additions === 1 ? "addition" : "additions"}`}
-                        </p>
-                        {story.missingOptions.length > 0 && (
-                          <p className="text-xs text-amber-700" data-testid="missing-options">
-                            Can't draw yet: {story.missingOptions.map(optionLabel).join(", ")}. Families pick a stand-in until you add them.
+      <StudioBar />
+      <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
+        <h1 className="text-2xl font-semibold">Write stories</h1>
+        {canAuthor ? (
+          <>
+            <NewStory />
+            <Card>
+              <CardHeader>
+                <CardTitle>Your stories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {stories.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">None yet.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2" data-testid="authored-stories">
+                    {stories.map((story) => (
+                      <li key={story.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                        <div>
+                          <Link
+                            to="/author/$storyId"
+                            params={{ storyId: story.id }}
+                            className="font-medium hover:underline"
+                          >
+                            {story.title}
+                          </Link>
+                          <p className="text-muted-foreground text-xs">
+                            /{story.slug} ·{" "}
+                            {story.publishedVersion
+                              ? `version ${story.publishedVersion} published`
+                              : "not published yet"}
+                            {story.status === "archived" && " · archived: hidden from families"}
+                            {story.draftVersion && ` · drafting version ${story.draftVersion}`}
+                            {story.additions > 0 &&
+                              ` · ${story.additions} ${story.additions === 1 ? "addition" : "additions"}`}
                           </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <p className="text-sm" data-testid="not-an-author">
-          Writing stories is open to invited authors for now. Ask the operator to let you author.
-        </p>
-      )}
-      {isOperator && <Authors authors={authors} />}
-      {isOperator && <InviteFamilyCard />}
-    </main>
+                          {story.missingOptions.length > 0 && (
+                            <p className="text-xs text-amber-700" data-testid="missing-options">
+                              Can't draw yet: {story.missingOptions.map(optionLabel).join(", ")}. Families pick a
+                              stand-in until you add them.
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <p className="text-sm" data-testid="not-an-author">
+            Writing stories is open to invited authors for now. Ask the operator to let you author.
+          </p>
+        )}
+        {isOperator && <Authors authors={authors} />}
+        {isOperator && <InviteFamilyCard />}
+      </main>
     </>
   );
 }
@@ -109,7 +118,9 @@ function NewStory() {
     const title = String(form.get("title") ?? "").trim();
     const slug = String(form.get("slug") ?? "").trim() || slugify(title);
     try {
-      const { id } = unwrapResult(CreateStoryResult)(await createStoryFn({ data: { title, slug, summary: String(form.get("summary") ?? "") } }));
+      const { id } = unwrapResult(CreateStoryResult)(
+        await createStoryFn({ data: { title, slug, summary: String(form.get("summary") ?? "") } }),
+      );
       await router.navigate({ to: "/author/$storyId", params: { storyId: id } });
     } catch (cause) {
       setError(message(cause));
@@ -164,14 +175,22 @@ function Authors({ authors }: { authors: ReadonlyArray<{ userId: string; name: s
       formElement.reset();
       await load();
     } catch (cause) {
-      setStatus(cause instanceof NotFound ? `No account uses ${email}; invite them first.` : cause instanceof Forbidden ? cause.message : message(cause));
+      setStatus(
+        cause instanceof NotFound
+          ? `No account uses ${email}; invite them first.`
+          : cause instanceof Forbidden
+            ? cause.message
+            : message(cause),
+      );
     }
   };
   return (
     <Card data-testid="authors">
       <CardHeader>
         <CardTitle>Authors</CardTitle>
-        <CardDescription>You can always author. Let other accounts write and publish stories of their own.</CardDescription>
+        <CardDescription>
+          You can always author. Let other accounts write and publish stories of their own.
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <ul className="flex flex-col gap-1 text-sm">
@@ -198,7 +217,11 @@ function Authors({ authors }: { authors: ReadonlyArray<{ userId: string; name: s
             Let them author
           </Button>
         </form>
-        {status && <p role="status" className="text-sm">{status}</p>}
+        {status && (
+          <p role="status" className="text-sm">
+            {status}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

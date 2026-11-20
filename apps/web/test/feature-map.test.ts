@@ -10,9 +10,13 @@ const read = (name: string) => readFileSync(new URL(name, dir), "utf8");
 
 describe("feature map", () => {
   it("names only verify commands that exist", () => {
-    const named = files.flatMap((name) => [...read(name).matchAll(/verify(?: --)? ([a-z][\w-]*)/g)].map((m) => `${name}: ${m[1]}`));
+    const named = files.flatMap((name) =>
+      [...read(name).matchAll(/verify(?: --)? ([a-z][\w-]*)/g)].map((m) => `${name}: ${m[1]}`),
+    );
     expect(named.length).toBeGreaterThan(0);
-    const unknown = named.filter((entry) => entry.split(": ")[1] !== "help" && !commands.some((c) => c.name === entry.split(": ")[1]));
+    const unknown = named.filter(
+      (entry) => entry.split(": ")[1] !== "help" && !commands.some((c) => c.name === entry.split(": ")[1]),
+    );
     expect(unknown).toEqual([]);
   });
 

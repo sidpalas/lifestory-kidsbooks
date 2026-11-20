@@ -8,7 +8,14 @@ export function PasswordFields() {
     <>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
+          required
+        />
         <p className="text-muted-foreground text-xs">At least {MIN_PASSWORD_LENGTH} characters.</p>
       </div>
       <div className="flex flex-col gap-2">

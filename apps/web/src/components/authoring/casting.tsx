@@ -20,7 +20,8 @@ import { NativeSelect } from "~/components/ui/native-select";
 import { ArtImportStartResult, castingStatusFn, CastingStatusResult, requestCastingFn } from "~/server/authoring";
 import { type DraftFiles, draftFileUrl, message, RectFields, uploadDraftFile } from "./fields";
 
-const without = <T,>(record: Readonly<Record<string, T>>, key: string) => Object.fromEntries(Object.entries(record).filter(([k]) => k !== key));
+const without = <T,>(record: Readonly<Record<string, T>>, key: string) =>
+  Object.fromEntries(Object.entries(record).filter(([k]) => k !== key));
 
 /** A running suggestion or extraction; the elapsed time counts from `started`. */
 const startJob = (mode: "detect" | "extract") => ({ mode, started: Date.now() });
@@ -105,7 +106,10 @@ export function CastingTab({
         await requestCastingFn({ data: { storyId: files.storyId, pageId, mode, requestId: crypto.randomUUID() } }),
       );
       const field = mode === "detect" ? "detectionTaskId" : "extractionTaskId";
-      const started = await save((saved) => ({ ...saved, local: saved.local.map((p) => (p.pageId === pageId ? { ...p, [field]: taskId } : p)) }));
+      const started = await save((saved) => ({
+        ...saved,
+        local: saved.local.map((p) => (p.pageId === pageId ? { ...p, [field]: taskId } : p)),
+      }));
       if (!started) return;
       await follow(pageId, taskId, mode);
     } catch (cause) {
@@ -117,7 +121,9 @@ export function CastingTab({
   const follow = async (pageId: string, taskId: string, mode: "detect" | "extract") => {
     for (let i = 0; i < 600; i++) {
       if (!mounted.current) return;
-      const result = unwrapResult(CastingStatusResult)(await castingStatusFn({ data: { storyId: files.storyId, taskId } }));
+      const result = unwrapResult(CastingStatusResult)(
+        await castingStatusFn({ data: { storyId: files.storyId, taskId } }),
+      );
       if (!mounted.current) return;
       if (result.state === "failed") throw new Error(result.error ?? "Couldn't finish. Correct the casting or retry.");
       if (result.state === "done" && result.outcome) {
@@ -125,16 +131,16 @@ export function CastingTab({
         await save((saved) => ({
           ...saved,
           local: saved.local.map((p) =>
-          p.pageId !== pageId
-            ? p
-            : {
-                ...p,
-                detectionTaskId: null,
-                extractionTaskId: null,
-                ...(mode === "detect"
-                  ? { figures: outcome.figures, approved: false, applied: false, results: [] }
-                  : { results: outcome.results }),
-              },
+            p.pageId !== pageId
+              ? p
+              : {
+                  ...p,
+                  detectionTaskId: null,
+                  extractionTaskId: null,
+                  ...(mode === "detect"
+                    ? { figures: outcome.figures, approved: false, applied: false, results: [] }
+                    : { results: outcome.results }),
+                },
           ),
         }));
         setNote(pageId, {
@@ -193,8 +199,8 @@ export function CastingTab({
       <div>
         <h2 className="text-xl font-semibold">Cast the book first</h2>
         <p className="text-sm text-muted-foreground">
-          Upload page pictures in reading order. Review who appears and where, then approve casting before extraction. Layered PSDs still
-          use the manual import in Pages.
+          Upload page pictures in reading order. Review who appears and where, then approve casting before extraction.
+          Layered PSDs still use the manual import in Pages.
         </p>
       </div>
       <FileInput
@@ -204,7 +210,9 @@ export function CastingTab({
         disabled={busy}
         onChange={(e) => void upload(e.currentTarget)}
       />
-      {draft.characterSlots.length === 0 && <p className="text-sm">Add the story's roles in Roles before asking for suggestions.</p>}
+      {draft.characterSlots.length === 0 && (
+        <p className="text-sm">Add the story's roles in Roles before asking for suggestions.</p>
+      )}
       {(() => {
         // Pages never suggested: suggesting again would replace corrections, so those stay a per-page action.
         const fresh = local.filter((p) => !p.figures.length && !jobs[p.pageId] && !p.detectionTaskId);
@@ -223,8 +231,8 @@ export function CastingTab({
         );
       })()}
       <p className="text-xs text-muted-foreground">
-        Development defaults to labelled sample boxes, not image analysis. Real suggestions require CASTING_PROVIDER=openai; image
-        extraction uses IMAGE_PROVIDER.
+        Development defaults to labelled sample boxes, not image analysis. Real suggestions require
+        CASTING_PROVIDER=openai; image extraction uses IMAGE_PROVIDER.
       </p>
       {error && (
         <p role="alert" className="text-destructive">
@@ -233,9 +241,18 @@ export function CastingTab({
       )}
       <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
         {local.map((page, index) => (
-          <article key={page.pageId} className="rounded-lg border p-4" data-testid="cast-page" aria-busy={!!jobs[page.pageId]}>
+          <article
+            key={page.pageId}
+            className="rounded-lg border p-4"
+            data-testid="cast-page"
+            aria-busy={!!jobs[page.pageId]}
+          >
             {jobs[page.pageId] && (
-              <div role="status" className="mb-3 flex flex-col gap-2 rounded border bg-muted/40 p-3 text-sm" data-testid="cast-job">
+              <div
+                role="status"
+                className="mb-3 flex flex-col gap-2 rounded border bg-muted/40 p-3 text-sm"
+                data-testid="cast-job"
+              >
                 <p>
                   {jobs[page.pageId]!.mode === "detect"
                     ? "Finding characters on this page"
@@ -249,227 +266,253 @@ export function CastingTab({
                     pages or leave and Resume later.
                   </span>
                 </p>
-                <progress className="h-2 w-full" aria-label={jobs[page.pageId]!.mode === "detect" ? "Finding characters" : "Extracting characters"} />
+                <progress
+                  className="h-2 w-full"
+                  aria-label={jobs[page.pageId]!.mode === "detect" ? "Finding characters" : "Extracting characters"}
+                />
               </div>
             )}
             <fieldset disabled={!!jobs[page.pageId]} className="min-w-0">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">
-                {page.pageId} · {page.name}
-              </h3>
-              <span className="text-sm text-muted-foreground">
-                {page.applied ? "Extraction approved" : page.approved ? "Casting approved" : "Casting needs review"}
-              </span>
-            </div>
-            <CastPageEditor
-              page={page}
-              roles={draft.characterSlots}
-              src={draftFileUrl(files.storyId, files.version, page.asset)}
-              onChange={(next) =>
-                edit(page.pageId, () => ({
-                  ...next,
-                  approved: false,
-                  applied: false,
-                  results: [],
-                  detectionTaskId: null,
-                  extractionTaskId: null,
-                }))
-              }
-            />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" disabled={!!jobs[page.pageId] || !draft.characterSlots.length} onClick={() => void run(page.pageId, "detect")}>
-                Suggest characters
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  edit(page.pageId, (p) => ({
-                    ...p,
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold">
+                  {page.pageId} · {page.name}
+                </h3>
+                <span className="text-sm text-muted-foreground">
+                  {page.applied ? "Extraction approved" : page.approved ? "Casting approved" : "Casting needs review"}
+                </span>
+              </div>
+              <CastPageEditor
+                page={page}
+                roles={draft.characterSlots}
+                src={draftFileUrl(files.storyId, files.version, page.asset)}
+                onChange={(next) =>
+                  edit(page.pageId, () => ({
+                    ...next,
                     approved: false,
                     applied: false,
                     results: [],
-                    figures: [
-                      ...p.figures,
-                      {
-                        id: crypto.randomUUID(),
-                        slotId: draft.characterSlots[0]?.slotId ?? "",
-                        age: draft.characterSlots[0]?.ages[0] ?? "young-child",
-                        face: "face:round",
-                        hair: "hair:short",
-                        description: "",
-                        box: [250, 100, 750, 950],
-                        head: [250, 100, 750, 400],
-                        ignored: false,
-                      },
-                    ],
+                    detectionTaskId: null,
+                    extractionTaskId: null,
                   }))
                 }
-              >
-                Add a missed character
-              </Button>
-              <Button
-                size="sm"
-                disabled={!page.figures.some((f) => !f.ignored) || page.approved}
-                onClick={() => {
-                  // Casting saved before head boxes were kept inside their figures may still have one outside; pull it in.
-                  void save((saved) => ({
-                    ...saved,
-                    local: saved.local.map((p) =>
-                      p.pageId === page.pageId
-                        ? { ...p, approved: true, figures: p.figures.map((f) => ({ ...f, head: inside(f.head, f.box) })) }
-                        : p,
-                    ),
-                  }));
-                }}
-              >
-                Approve casting
-              </Button>
-              <Button size="sm" disabled={!!jobs[page.pageId] || !page.approved || page.applied} onClick={() => void run(page.pageId, "extract")}>
-                Extract characters · ~US${((1 + page.figures.filter((f) => !f.ignored && f.hair !== null).length) * 0.049).toFixed(2)}
-              </Button>
-              {(page.detectionTaskId || page.extractionTaskId) && (
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
-                  disabled={!!jobs[page.pageId]}
-                  onClick={() => {
-                    const mode = page.extractionTaskId ? "extract" : "detect";
-                    setJobs((old) => ({ ...old, [page.pageId]: startJob(mode) }));
-                    void follow(page.pageId, (page.extractionTaskId ?? page.detectionTaskId)!, mode)
-                      .catch((e) => setNote(page.pageId, { text: message(e), error: true }))
-                      .finally(() => setJobs((old) => without(old, page.pageId)));
-                  }}
+                  size="sm"
+                  disabled={!!jobs[page.pageId] || !draft.characterSlots.length}
+                  onClick={() => void run(page.pageId, "detect")}
                 >
-                  Resume
+                  Suggest characters
                 </Button>
-              )}
-              <Button variant="ghost" size="sm" disabled={index === 0} onClick={() => reorder(index, -1)}>
-                Move earlier
-              </Button>
-              <Button variant="ghost" size="sm" disabled={index === local.length - 1} onClick={() => reorder(index, 1)}>
-                Move later
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  void save((saved) => ({ ...saved, local: saved.local.filter((p) => p.pageId !== page.pageId) }));
-                }}
-              >
-                Remove source page
-              </Button>
-            </div>
-            {notes[page.pageId] && (
-              <p
-                role={notes[page.pageId]!.error ? "alert" : "status"}
-                className={`mt-2 text-sm ${notes[page.pageId]!.error ? "text-destructive" : "text-muted-foreground"}`}
-              >
-                {notes[page.pageId]!.text}
-              </p>
-            )}
-            {page.results.length > 0 && (
-              <div className="mt-5 flex flex-col gap-3" data-testid="cast-extraction">
-                <h4 className="font-semibold">Review extraction before accepting bases</h4>
-                <p className="text-xs text-muted-foreground">
-                  Check the shared background, hidden scalp, masks and both skin extremes. Overlapping people or foreground may need
-                  correction in your drawing tool; keep manual import available.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <figure>
-                    <img
-                      src={draftFileUrl(files.storyId, files.version, page.asset)}
-                      alt="Original page"
-                      className="w-full rounded border"
-                    />
-                    <figcaption className="text-xs">Original page</figcaption>
-                  </figure>
-                  {(["light", "dark"] as const).map((side) => (
-                    <figure key={side}>
-                      <div className="relative overflow-hidden rounded border">
-                        <img src={draftFileUrl(files.storyId, files.version, page.asset)} alt="" className="invisible block w-full" />
-                        {page.results[0]?.plate && (
-                          <img
-                            src={draftFileUrl(files.storyId, files.version, page.results[0].plate)}
-                            alt={`Reconstructed page on ${side} skin`}
-                            className="absolute inset-0 h-full w-full"
-                          />
-                        )}
-                        {page.results.map(
-                          (r) =>
-                            r.box && (
-                              <img
-                                key={r.request.slotId}
-                                src={draftFileUrl(files.storyId, files.version, r.review[side])}
-                                alt=""
-                                className="absolute"
-                                style={{
-                                  left: `${r.box[0] / 10}%`,
-                                  top: `${r.box[1] / 10}%`,
-                                  width: `${(r.box[2] - r.box[0]) / 10}%`,
-                                  height: `${(r.box[3] - r.box[1]) / 10}%`,
-                                }}
-                              />
-                            ),
-                        )}
-                      </div>
-                      <figcaption className="text-xs">Reconstructed · {side} skin</figcaption>
-                    </figure>
-                  ))}
-                </div>
-                {page.results.map((r) => (
-                  <div key={r.request.slotId}>
-                    <h5>{draft.characterSlots.find((s) => s.slotId === r.request.slotId)?.label}</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {(
-                        [
-                          ["Shared background", r.plate],
-                          ["Skin mask", r.review.mask],
-                          ["Light skin", r.review.light],
-                          ["Dark skin", r.review.dark],
-                        ] as const
-                      ).map(
-                        ([label, asset]) =>
-                          asset && (
-                            <figure key={label}>
-                              <img
-                                src={draftFileUrl(files.storyId, files.version, asset)}
-                                alt={label}
-                                className="h-36 w-36 rounded border object-contain"
-                              />
-                              <figcaption className="text-xs">{label}</figcaption>
-                            </figure>
-                          ),
-                      )}
-                    </div>
-                    {r.notes.map((n) => (
-                      <p key={n} className="text-xs text-amber-700">
-                        {n}
-                      </p>
-                    ))}
-                  </div>
-                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    edit(page.pageId, (p) => ({
+                      ...p,
+                      approved: false,
+                      applied: false,
+                      results: [],
+                      figures: [
+                        ...p.figures,
+                        {
+                          id: crypto.randomUUID(),
+                          slotId: draft.characterSlots[0]?.slotId ?? "",
+                          age: draft.characterSlots[0]?.ages[0] ?? "young-child",
+                          face: "face:round",
+                          hair: "hair:short",
+                          description: "",
+                          box: [250, 100, 750, 950],
+                          head: [250, 100, 750, 400],
+                          ignored: false,
+                        },
+                      ],
+                    }))
+                  }
+                >
+                  Add a missed character
+                </Button>
                 <Button
                   size="sm"
-                  className="self-start"
-                  disabled={page.applied}
+                  disabled={!page.figures.some((f) => !f.ignored) || page.approved}
                   onClick={() => {
-                    const results = page.results;
+                    // Casting saved before head boxes were kept inside their figures may still have one outside; pull it in.
                     void save((saved) => ({
-                      draft: {
-                        ...saved.draft,
-                        pages: saved.draft.pages.map((p) =>
-                          p.pageId === page.pageId ? results.reduce((current, r) => applyImport(current, r), p) : p,
-                        ),
-                      },
-                      local: saved.local.map((p) => (p.pageId === page.pageId ? { ...p, applied: true } : p)),
+                      ...saved,
+                      local: saved.local.map((p) =>
+                        p.pageId === page.pageId
+                          ? {
+                              ...p,
+                              approved: true,
+                              figures: p.figures.map((f) => ({ ...f, head: inside(f.head, f.box) })),
+                            }
+                          : p,
+                      ),
                     }));
                   }}
                 >
-                  Approve extraction and use these bases
+                  Approve casting
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!!jobs[page.pageId] || !page.approved || page.applied}
+                  onClick={() => void run(page.pageId, "extract")}
+                >
+                  Extract characters · ~US$
+                  {((1 + page.figures.filter((f) => !f.ignored && f.hair !== null).length) * 0.049).toFixed(2)}
+                </Button>
+                {(page.detectionTaskId || page.extractionTaskId) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!jobs[page.pageId]}
+                    onClick={() => {
+                      const mode = page.extractionTaskId ? "extract" : "detect";
+                      setJobs((old) => ({ ...old, [page.pageId]: startJob(mode) }));
+                      void follow(page.pageId, (page.extractionTaskId ?? page.detectionTaskId)!, mode)
+                        .catch((e) => setNote(page.pageId, { text: message(e), error: true }))
+                        .finally(() => setJobs((old) => without(old, page.pageId)));
+                    }}
+                  >
+                    Resume
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" disabled={index === 0} onClick={() => reorder(index, -1)}>
+                  Move earlier
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={index === local.length - 1}
+                  onClick={() => reorder(index, 1)}
+                >
+                  Move later
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    void save((saved) => ({ ...saved, local: saved.local.filter((p) => p.pageId !== page.pageId) }));
+                  }}
+                >
+                  Remove source page
                 </Button>
               </div>
-            )}
+              {notes[page.pageId] && (
+                <p
+                  role={notes[page.pageId]!.error ? "alert" : "status"}
+                  className={`mt-2 text-sm ${notes[page.pageId]!.error ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {notes[page.pageId]!.text}
+                </p>
+              )}
+              {page.results.length > 0 && (
+                <div className="mt-5 flex flex-col gap-3" data-testid="cast-extraction">
+                  <h4 className="font-semibold">Review extraction before accepting bases</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Check the shared background, hidden scalp, masks and both skin extremes. Overlapping people or
+                    foreground may need correction in your drawing tool; keep manual import available.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <figure>
+                      <img
+                        src={draftFileUrl(files.storyId, files.version, page.asset)}
+                        alt="Original page"
+                        className="w-full rounded border"
+                      />
+                      <figcaption className="text-xs">Original page</figcaption>
+                    </figure>
+                    {(["light", "dark"] as const).map((side) => (
+                      <figure key={side}>
+                        <div className="relative overflow-hidden rounded border">
+                          <img
+                            src={draftFileUrl(files.storyId, files.version, page.asset)}
+                            alt=""
+                            className="invisible block w-full"
+                          />
+                          {page.results[0]?.plate && (
+                            <img
+                              src={draftFileUrl(files.storyId, files.version, page.results[0].plate)}
+                              alt={`Reconstructed page on ${side} skin`}
+                              className="absolute inset-0 h-full w-full"
+                            />
+                          )}
+                          {page.results.map(
+                            (r) =>
+                              r.box && (
+                                <img
+                                  key={r.request.slotId}
+                                  src={draftFileUrl(files.storyId, files.version, r.review[side])}
+                                  alt=""
+                                  className="absolute"
+                                  style={{
+                                    left: `${r.box[0] / 10}%`,
+                                    top: `${r.box[1] / 10}%`,
+                                    width: `${(r.box[2] - r.box[0]) / 10}%`,
+                                    height: `${(r.box[3] - r.box[1]) / 10}%`,
+                                  }}
+                                />
+                              ),
+                          )}
+                        </div>
+                        <figcaption className="text-xs">Reconstructed · {side} skin</figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                  {page.results.map((r) => (
+                    <div key={r.request.slotId}>
+                      <h5>{draft.characterSlots.find((s) => s.slotId === r.request.slotId)?.label}</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {(
+                          [
+                            ["Shared background", r.plate],
+                            ["Skin mask", r.review.mask],
+                            ["Light skin", r.review.light],
+                            ["Dark skin", r.review.dark],
+                          ] as const
+                        ).map(
+                          ([label, asset]) =>
+                            asset && (
+                              <figure key={label}>
+                                <img
+                                  src={draftFileUrl(files.storyId, files.version, asset)}
+                                  alt={label}
+                                  className="h-36 w-36 rounded border object-contain"
+                                />
+                                <figcaption className="text-xs">{label}</figcaption>
+                              </figure>
+                            ),
+                        )}
+                      </div>
+                      {r.notes.map((n) => (
+                        <p key={n} className="text-xs text-amber-700">
+                          {n}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                  <Button
+                    size="sm"
+                    className="self-start"
+                    disabled={page.applied}
+                    onClick={() => {
+                      const results = page.results;
+                      void save((saved) => ({
+                        draft: {
+                          ...saved.draft,
+                          pages: saved.draft.pages.map((p) =>
+                            p.pageId === page.pageId ? results.reduce((current, r) => applyImport(current, r), p) : p,
+                          ),
+                        },
+                        local: saved.local.map((p) => (p.pageId === page.pageId ? { ...p, applied: true } : p)),
+                      }));
+                    }}
+                  >
+                    Approve extraction and use these bases
+                  </Button>
+                </div>
+              )}
             </fieldset>
           </article>
         ))}
@@ -509,7 +552,8 @@ function CastPageEditor({
   const figure = page.figures.find((f) => f.id === selected) ?? page.figures[0];
   const [head, setHead] = useState(false);
   const drag = useRef<{ x: number; y: number; box: Rect; head: Rect; resize: boolean } | null>(null);
-  const update = (next: CastFigure) => onChange({ ...page, figures: page.figures.map((f) => (f.id === next.id ? next : f)) });
+  const update = (next: CastFigure) =>
+    onChange({ ...page, figures: page.figures.map((f) => (f.id === next.id ? next : f)) });
   const move = (event: PointerEvent<SVGSVGElement>) => {
     if (!drag.current || !figure) return;
     const r = event.currentTarget.getBoundingClientRect();
@@ -616,11 +660,18 @@ function CastPageEditor({
       </div>
       <div className="flex min-w-0 flex-col gap-3">
         <p className="text-xs text-muted-foreground">
-          Solid boxes are whole figures; dashed green boxes are heads (including hair) and move with their figure. Drag a box to move it, or its bottom-right handle to resize. Turn on “Edit head boxes” below to move or resize the heads. Exact coordinates are in Details.
+          Solid boxes are whole figures; dashed green boxes are heads (including hair) and move with their figure. Drag
+          a box to move it, or its bottom-right handle to resize. Turn on “Edit head boxes” below to move or resize the
+          heads. Exact coordinates are in Details.
         </p>
         <div className="flex flex-wrap gap-1">
           {page.figures.map((f, i) => (
-            <Button key={f.id} size="sm" variant={figure?.id === f.id ? "default" : "outline"} onClick={() => setSelected(f.id)}>
+            <Button
+              key={f.id}
+              size="sm"
+              variant={figure?.id === f.id ? "default" : "outline"}
+              onClick={() => setSelected(f.id)}
+            >
               {i + 1}
               {f.ignored ? " · ignored" : ""}
             </Button>
@@ -662,7 +713,11 @@ function CastPageEditor({
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs">
                 Age
-                <NativeSelect aria-label="Cast age" value={figure.age} onChange={(e) => update({ ...figure, age: e.target.value as Age })}>
+                <NativeSelect
+                  aria-label="Cast age"
+                  value={figure.age}
+                  onChange={(e) => update({ ...figure, age: e.target.value as Age })}
+                >
                   {ageOptions.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.label}
@@ -701,7 +756,11 @@ function CastPageEditor({
               </NativeSelect>
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={figure.ignored} onChange={(e) => update({ ...figure, ignored: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={figure.ignored}
+                onChange={(e) => update({ ...figure, ignored: e.target.checked })}
+              />
               Ignore this person
             </label>
             <label className="flex items-center gap-2 text-sm">
@@ -710,8 +769,16 @@ function CastPageEditor({
             </label>
             <details>
               <summary className="cursor-pointer text-sm">Details: exact boundaries</summary>
-              <RectFields label="Cast figure box" value={figure.box} onChange={(box) => update({ ...figure, box, head: inside(figure.head, box) })} />
-              <RectFields label="Cast head box" value={figure.head} onChange={(box) => update({ ...figure, head: box })} />
+              <RectFields
+                label="Cast figure box"
+                value={figure.box}
+                onChange={(box) => update({ ...figure, box, head: inside(figure.head, box) })}
+              />
+              <RectFields
+                label="Cast head box"
+                value={figure.head}
+                onChange={(box) => update({ ...figure, head: box })}
+              />
             </details>
           </>
         )}

@@ -39,7 +39,12 @@ export const resolveText = (content: string, cast: TextCast): string =>
     const member = cast[slotId];
     if (!member) return token;
     const key = field.toLowerCase() as Field;
-    const value = key === "name" ? member.name : key === "title" ? (member.title ?? member.name) : pronounForms[member.pronouns][key];
+    const value =
+      key === "name"
+        ? member.name
+        : key === "title"
+          ? (member.title ?? member.name)
+          : pronounForms[member.pronouns][key];
     return field === key ? value : capitalize(value);
   });
 
@@ -47,7 +52,8 @@ export const resolveText = (content: string, cast: TextCast): string =>
 export const resolvePageText = (
   page: { readonly text: ReadonlyArray<{ readonly style: TextStyleName; readonly content: string }> },
   cast: TextCast,
-): ReadonlyArray<ResolvedTextBlock> => page.text.map((block) => ({ style: block.style, text: resolveText(block.content, cast) }));
+): ReadonlyArray<ResolvedTextBlock> =>
+  page.text.map((block) => ({ style: block.style, text: resolveText(block.content, cast) }));
 
 export interface ResolvedTextBlock {
   readonly style: TextStyleName;

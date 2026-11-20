@@ -11,7 +11,15 @@ const WIDTHS = [320, 390, 1280];
 
 interface Measured {
   readonly scrollWidth: number;
-  readonly previews: ReadonlyArray<{ readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly ratio: number; readonly visibleRight: number; readonly cropped: boolean }>;
+  readonly previews: ReadonlyArray<{
+    readonly left: number;
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+    readonly ratio: number;
+    readonly visibleRight: number;
+    readonly cropped: boolean;
+  }>;
 }
 
 /** Every page preview's box on screen, the part of it that shows (previews clip the page), and its width/height. */
@@ -43,14 +51,22 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
   try {
     await page.goto(`/stories/${options.story}`);
     await page.getByTestId("book-page").first().waitFor({ timeout: 30_000 });
-    const ratio = await page.getByTestId("book-page").first().evaluate((sheet) => (sheet as HTMLElement).offsetWidth / (sheet as HTMLElement).offsetHeight);
+    const ratio = await page
+      .getByTestId("book-page")
+      .first()
+      .evaluate((sheet) => (sheet as HTMLElement).offsetWidth / (sheet as HTMLElement).offsetHeight);
     const storyUrl = page.url();
     const existing = page.getByTestId("story-books").getByRole("link").first();
     if (await existing.count()) await existing.click();
     else {
       // Cast each role with the first family member it accepts, adding a child and a grown-up if nobody fits.
       const roles = page.getByRole("list", { name: "Roles" }).locator("select");
-      const family = () => roles.evaluateAll((selects) => selects.map((select) => select.querySelector<HTMLOptionElement>('optgroup[label="Your family"] option')?.value ?? null));
+      const family = () =>
+        roles.evaluateAll((selects) =>
+          selects.map(
+            (select) => select.querySelector<HTMLOptionElement>('optgroup[label="Your family"] option')?.value ?? null,
+          ),
+        );
       if ((await family()).includes(null)) {
         for (const age of ["Young child", "Adult"]) {
           await page.goto("/characters/new");
@@ -82,7 +98,11 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
       }
       await page.goto("/author");
     }
-    report.check("views", true, `${views.map(([name, url]) => `${name} ${new URL(url).pathname}`).join(", ")}${views.length < 3 ? " (no draft to preview as this account)" : ""}; page ratio ${ratio.toFixed(3)}`);
+    report.check(
+      "views",
+      true,
+      `${views.map(([name, url]) => `${name} ${new URL(url).pathname}`).join(", ")}${views.length < 3 ? " (no draft to preview as this account)" : ""}; page ratio ${ratio.toFixed(3)}`,
+    );
 
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
@@ -94,16 +114,26 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
         const problems: string[] = [];
         if (scrollWidth > width) problems.push(`scrolls sideways (${scrollWidth} px wide)`);
         previews.forEach((p, i) => {
-          if (Math.abs(p.ratio - ratio) > 0.02) problems.push(`preview ${i + 1} shows ${p.ratio.toFixed(3)} of the page's ${ratio.toFixed(3)} shape`);
+          if (Math.abs(p.ratio - ratio) > 0.02)
+            problems.push(`preview ${i + 1} shows ${p.ratio.toFixed(3)} of the page's ${ratio.toFixed(3)} shape`);
           if (p.cropped) problems.push(`preview ${i + 1} is cropped`);
-          if (p.visibleRight > width + 0.5) problems.push(`preview ${i + 1} runs ${Math.round(p.visibleRight - width)} px off screen`);
+          if (p.visibleRight > width + 0.5)
+            problems.push(`preview ${i + 1} runs ${Math.round(p.visibleRight - width)} px off screen`);
           previews.slice(i + 1).forEach((q, j) => {
-            const overlap = Math.min(p.right, q.right) - Math.max(p.left, q.left) > 1 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 1;
+            const overlap =
+              Math.min(p.right, q.right) - Math.max(p.left, q.left) > 1 &&
+              Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 1;
             if (overlap) problems.push(`previews ${i + 1} and ${i + j + 2} overlap`);
           });
         });
         const widths = [...new Set(previews.map((p) => Math.round(p.right - p.left)))].join("/");
-        report.check(`${name} ${width}px`, problems.length === 0, problems.length ? problems.slice(0, 4).join("; ") : `${previews.length} previews ${widths} px wide, none overlap or crop, no sideways scroll`);
+        report.check(
+          `${name} ${width}px`,
+          problems.length === 0,
+          problems.length
+            ? problems.slice(0, 4).join("; ")
+            : `${previews.length} previews ${widths} px wide, none overlap or crop, no sideways scroll`,
+        );
         await page.screenshot({ path: report.file(`${name}-${width}.png`), fullPage: true });
       }
     }

@@ -12,21 +12,33 @@ const manifest = Schema.decodeUnknownSync(StoryManifest)(
 describe("proofPageText", () => {
   it("prints a family's edit in place of that block only, with its tokens resolved for the proof's cast", () => {
     const [p01, p02] = manifest.pages;
-    const cast = { ...exampleCast(manifest), hero: { ...exampleCast(manifest).hero!, name: "Łucja", pronouns: "she/her" as const } };
-    const content = { cast, textEdits: [{ pageId: "p01", blockIndex: 1, content: "{{hero.They}} packed {{hero.their}} basket." }] };
+    const cast = {
+      ...exampleCast(manifest),
+      hero: { ...exampleCast(manifest).hero!, name: "Łucja", pronouns: "she/her" as const },
+    };
+    const content = {
+      cast,
+      textEdits: [{ pageId: "p01", blockIndex: 1, content: "{{hero.They}} packed {{hero.their}} basket." }],
+    };
 
     expect(proofPageText(p01!, content)).toEqual([
       { style: "title", text: "The Moon Picnic" },
       { style: "body", text: "She packed her basket." },
     ]);
     // Page 2 has no edit: the story's own text, with the cast's name.
-    expect(proofPageText(p02!, content).map((block) => block.text).join(" ")).toContain("Łucja pointed straight up at the Moon");
+    expect(
+      proofPageText(p02!, content)
+        .map((block) => block.text)
+        .join(" "),
+    ).toContain("Łucja pointed straight up at the Moon");
   });
 });
 
 describe("countPdfPages", () => {
   it("counts page objects, not the page tree", () => {
-    const pdf = new TextEncoder().encode("<</Type /Pages /Kids [3 0 R 4 0 R]>> <</Type /Page /MediaBox [0 0 630 630]>> <</Type/Page>>");
+    const pdf = new TextEncoder().encode(
+      "<</Type /Pages /Kids [3 0 R 4 0 R]>> <</Type /Page /MediaBox [0 0 630 630]>> <</Type/Page>>",
+    );
     expect(countPdfPages(pdf)).toBe(2);
   });
 });

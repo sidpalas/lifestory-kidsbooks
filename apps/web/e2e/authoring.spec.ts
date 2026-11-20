@@ -9,11 +9,17 @@ const art = (file: string) => resolve("fixtures/stories/moon-picnic", file);
 
 /** Saves a screenshot for the report when E2E_SCREENSHOTS names a directory: the whole page, or the viewport (the editor's sticky preview). */
 const evidence = async (page: Page, name: string, fullPage = true) => {
-  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage });
+  if (process.env.E2E_SCREENSHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage });
 };
 
 const imagesLoaded = (page: Page) =>
-  expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
+  expect
+    .poll(
+      () => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+      { timeout: 30_000 },
+    )
+    .toBe(0);
 
 const save = async (page: Page) => {
   await page.getByRole("button", { name: "Save draft" }).click();
@@ -49,7 +55,9 @@ const hairstyles = [
   { label: "Puffs", file: "curly" },
 ] as const;
 
-test("authoring: an invited author writes, checks, and publishes a story, and a family makes a book of it", async ({ browser }) => {
+test("authoring: an invited author writes, checks, and publishes a story, and a family makes a book of it", async ({
+  browser,
+}) => {
   test.setTimeout(240_000);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const authorEmail = `author-${id}@example.com`;
@@ -104,7 +112,10 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   expect((await author.request.get(`/api/files/stories/${storyId}/v1/${fontAsset}`)).status()).toBe(200);
   const upload = await stranger.request.post(`/api/authoring/stories/${storyId}/assets`, {
     headers: { "x-lifestory-upload": "1" },
-    multipart: { folder: "pages/p01", file: { name: "x.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") } },
+    multipart: {
+      folder: "pages/p01",
+      file: { name: "x.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") },
+    },
   });
   expect(upload.status()).toBe(403);
 
@@ -118,11 +129,17 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   // 5. The page: text with tokens, shown live as BookPage prints it, then plate art, the child, and foreground art.
   await author.getByRole("tab", { name: "Pages" }).click();
   await author.getByRole("button", { name: "Add a paragraph" }).click();
-  await author.getByRole("textbox", { name: "Text block 2" }).fill("{{hero.name}} walked to the end of the garden. {{hero.They}} counted the stars with {{hero.their}} finger.");
-  await expect(author.getByTestId("draft-preview")).toContainText("Mia walked to the end of the garden. She counted the stars with her finger.");
+  await author
+    .getByRole("textbox", { name: "Text block 2" })
+    .fill("{{hero.name}} walked to the end of the garden. {{hero.They}} counted the stars with {{hero.their}} finger.");
+  await expect(author.getByTestId("draft-preview")).toContainText(
+    "Mia walked to the end of the garden. She counted the stars with her finger.",
+  );
   await author.getByRole("textbox", { name: "Text block 2" }).fill("{{hero.name}} walked with {{friend.name}}.");
   await expect(author.getByRole("alert").filter({ hasText: 'unknown slot "friend"' })).toBeVisible();
-  await author.getByRole("textbox", { name: "Text block 2" }).fill("{{hero.name}} walked to the end of the garden. {{hero.They}} counted the stars with {{hero.their}} finger.");
+  await author
+    .getByRole("textbox", { name: "Text block 2" })
+    .fill("{{hero.name}} walked to the end of the garden. {{hero.They}} counted the stars with {{hero.their}} finger.");
 
   await author.getByLabel("Add plate art").setInputFiles(art("pages/p01/background.svg"));
   await expect(author.getByTestId("layer")).toHaveCount(1);
@@ -150,7 +167,9 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   const generatedAt = "Curly, young child, round face";
   await author.getByRole("button", { name: `Generate ${generatedAt}` }).click();
   const generatedCell = author.getByTestId("part-cell").filter({ hasText: generatedAt });
-  await expect(generatedCell.getByTestId("generated-part")).toHaveAttribute("data-status", "pending_review", { timeout: 60_000 });
+  await expect(generatedCell.getByTestId("generated-part")).toHaveAttribute("data-status", "pending_review", {
+    timeout: 60_000,
+  });
   await expect(generatedCell).toHaveAttribute("data-state", "unapproved");
   await expect(generatedCell.getByRole("img", { name: `${generatedAt} on dark skin` })).toBeVisible();
   for (const { face, file, hair, glasses } of faces) {
@@ -171,12 +190,20 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await imagesLoaded(author);
   // The example's look (Mia: round face, short brown hair) is composed from the uploaded base and parts.
   await expect(author.getByTestId("draft-preview").locator("img")).toHaveCount(4);
-  if (process.env.E2E_SCREENSHOTS) await author.getByTestId("figure-hero").screenshot({ path: `${process.env.E2E_SCREENSHOTS}/author-4-figure.png`, style: ".sticky { position: static !important }" });
+  if (process.env.E2E_SCREENSHOTS)
+    await author.getByTestId("figure-hero").screenshot({
+      path: `${process.env.E2E_SCREENSHOTS}/author-4-figure.png`,
+      style: ".sticky { position: static !important }",
+    });
   await author.evaluate(() => window.scrollTo(0, 0));
   await evidence(author, "author-4-page", false);
 
   // The preview follows edits before they're saved: long hair for Mia recomposes her figure, and saving changes nothing.
-  const previewSources = () => author.getByTestId("draft-preview").locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")).join());
+  const previewSources = () =>
+    author
+      .getByTestId("draft-preview")
+      .locator("img")
+      .evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")).join());
   const shortHair = await previewSources();
   await author.getByRole("tab", { name: "Roles" }).click();
   await author.getByLabel("Example hairstyle").selectOption("hair:long");
@@ -233,7 +260,9 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(author).toHaveURL(/\/books\/book_/);
   const pages = author.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(pages).toHaveCount(1);
-  await expect(pages.first()).toContainText(`${child} walked to the end of the garden. She counted the stars with her finger.`);
+  await expect(pages.first()).toContainText(
+    `${child} walked to the end of the garden. She counted the stars with her finger.`,
+  );
   await imagesLoaded(author);
   // Plate, base, generated curls, foreground: without the published part the figure couldn't be drawn at all.
   await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(4);
@@ -244,7 +273,9 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.getByRole("button", { name: "Start version 2" }).click();
   await author.getByLabel("Preview The child as").selectOption({ label: child });
   const draftPreview = author.getByTestId("draft-preview");
-  await expect(draftPreview).toContainText(`${child} walked to the end of the garden. She counted the stars with her finger.`);
+  await expect(draftPreview).toContainText(
+    `${child} walked to the end of the garden. She counted the stars with her finger.`,
+  );
   await expect(draftPreview.locator("img")).toHaveCount(4);
   await imagesLoaded(author);
   await evidence(author, "author-8-preview-as", false);

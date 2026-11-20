@@ -57,7 +57,13 @@ const makeAuth = (options: {
   secret: string;
   baseURL: string;
   trustedOrigins: ReadonlyArray<string>;
-  sendInvitationEmail: (invite: { id: string; email: string; familyName: string; inviterName: string; role: string }) => Promise<void>;
+  sendInvitationEmail: (invite: {
+    id: string;
+    email: string;
+    familyName: string;
+    inviterName: string;
+    role: string;
+  }) => Promise<void>;
 }) =>
   betterAuth({
     appName: "Lifestory",
@@ -83,7 +89,11 @@ const makeAuth = (options: {
         organizationHooks: {
           beforeUpdateOrganization: async ({ organization: data }) => {
             const name = typeof data.name === "string" ? data.name.trim() : "";
-            if (Object.keys(data).some((key) => key !== "name") || name.length === 0 || name.length > FAMILY_NAME_MAX_LENGTH) {
+            if (
+              Object.keys(data).some((key) => key !== "name") ||
+              name.length === 0 ||
+              name.length > FAMILY_NAME_MAX_LENGTH
+            ) {
               throw new APIError("BAD_REQUEST", {
                 message: `A family name needs 1 to ${FAMILY_NAME_MAX_LENGTH} characters, and only the name can change.`,
               });
@@ -164,7 +174,9 @@ export class Auth extends Context.Service<
       });
       // Domain-separated from Better Auth's own use of the secret.
       const printSignature = (proofId: string, expires: number) =>
-        createHmac("sha256", Redacted.value(secret)).update(`lifestory.print-proof:${proofId}:${expires}`).digest("base64url");
+        createHmac("sha256", Redacted.value(secret))
+          .update(`lifestory.print-proof:${proofId}:${expires}`)
+          .digest("base64url");
       return {
         auth,
         appUrl,

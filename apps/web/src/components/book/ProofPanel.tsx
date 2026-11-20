@@ -5,7 +5,8 @@ import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 
-const formatBytes = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+const formatBytes = (bytes: number) =>
+  bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 export interface ProofList {
   readonly canRequest: boolean;
@@ -106,8 +107,8 @@ export function ProofPanel({
         <div>
           <h2 className="font-medium">Print proof</h2>
           <p className="text-muted-foreground text-sm">
-            A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every page, then
-            approve it for print.
+            A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every
+            page, then approve it for print.
           </p>
         </div>
         {state?.canRequest && (
@@ -136,7 +137,8 @@ export function ProofPanel({
                 </span>
                 {proof.approvedAt ? (
                   <span className="font-medium text-emerald-700" data-testid="proof-approval">
-                    ✓ Approved for print by {proof.approvedBy ?? "a former member"} on {new Date(proof.approvedAt).toLocaleString()}
+                    ✓ Approved for print by {proof.approvedBy ?? "a former member"} on{" "}
+                    {new Date(proof.approvedAt).toLocaleString()}
                   </span>
                 ) : (
                   proof.expiresAt && (
@@ -153,7 +155,12 @@ export function ProofPanel({
                       Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
                     </a>
                     {state.canRequest && !proof.approvedAt && (
-                      <Button size="sm" variant="outline" onClick={() => void approveProof(proof.id)} disabled={!hydrated || approving !== null}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void approveProof(proof.id)}
+                        disabled={!hydrated || approving !== null}
+                      >
                         {approving === proof.id ? "Approving…" : "Approve for print"}
                       </Button>
                     )}

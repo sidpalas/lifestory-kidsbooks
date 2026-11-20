@@ -29,19 +29,28 @@ export const landingHead = ({ url }: { url: string }) => ({
     { property: "og:image", content: new URL(socialPreview, url).href },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: "Two pages of The Paper Boat, the same scene drawn with two different families" },
+    {
+      property: "og:image:alt",
+      content: "Two pages of The Paper Boat, the same scene drawn with two different families",
+    },
     { name: "twitter:card", content: "summary_large_image" },
   ],
   links: [{ rel: "canonical", href: url }],
 });
 
 const steps = [
-  { title: "Pick a story", text: "Each book is written and illustrated by people, with a range of looks for every character." },
+  {
+    title: "Pick a story",
+    text: "Each book is written and illustrated by people, with a range of looks for every character.",
+  },
   {
     title: "Add your family",
     text: "Choose how each person looks: age, face, skin tone, hairstyle, hair colour, and glasses. No photos needed.",
   },
-  { title: "Get your book", text: "Every page is drawn with your family. Tweak the words, then download a print-ready proof." },
+  {
+    title: "Get your book",
+    text: "Every page is drawn with your family. Tweak the words, then download a print-ready proof.",
+  },
 ];
 
 export function Landing() {
@@ -59,10 +68,12 @@ export function Landing() {
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-16 px-6 pt-6 pb-16 sm:gap-20 sm:pt-10">
         <section className="grid items-center gap-10 md:grid-cols-[1fr_1.1fr]">
           <div className="flex flex-col gap-5">
-            <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">Picture books starring your family</h1>
+            <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
+              Picture books starring your family
+            </h1>
             <p className="text-muted-foreground text-lg">
-              Real stories by human authors and illustrators. You choose how each of your family looks, and every page is
-              drawn with them.
+              Real stories by human authors and illustrators. You choose how each of your family looks, and every page
+              is drawn with them.
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button asChild size="lg">
@@ -121,7 +132,9 @@ export function Landing() {
               hairstyles, skin tones, and hair colours in the same style. The illustrator approves every option, so each
               person in your family can look like themselves on every page.
             </p>
-            <p className="text-muted-foreground">Pick their age, then skin, face, and hair one at a time, with a live preview.</p>
+            <p className="text-muted-foreground">
+              Pick their age, then skin, face, and hair one at a time, with a live preview.
+            </p>
             {!trying && (
               <Button variant="outline" className="self-start" disabled={!hydrated} onClick={() => setTrying(true)}>
                 Try it: build a child
@@ -138,7 +151,11 @@ export function Landing() {
           />
         </section>
         {trying && (
-          <section aria-labelledby="try-picker" className="-mt-8 flex scroll-mt-4 flex-col gap-3 sm:-mt-10" ref={(node) => node?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+          <section
+            aria-labelledby="try-picker"
+            className="-mt-8 flex scroll-mt-4 flex-col gap-3 sm:-mt-10"
+            ref={(node) => node?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
             <h2 id="try-picker" className="text-xl font-semibold">
               Try the character picker
             </h2>
@@ -152,8 +169,8 @@ export function Landing() {
           <div className="flex flex-col gap-3 md:order-2">
             <h2 className="text-2xl font-semibold">Your words, ready to print</h2>
             <p className="text-muted-foreground">
-              Read each page as it will print and change the text if you like. Then download a print-ready PDF of the whole
-              book, as in <span className="italic">The Moon Picnic</span>.
+              Read each page as it will print and change the text if you like. Then download a print-ready PDF of the
+              whole book, as in <span className="italic">The Moon Picnic</span>.
             </p>
           </div>
           <img

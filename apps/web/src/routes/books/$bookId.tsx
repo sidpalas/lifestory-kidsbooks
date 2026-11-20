@@ -81,12 +81,19 @@ function BookEditor() {
   const [savingLook, setSavingLook] = useState(false);
   // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page. Every choice
   // is saved as it's made, so hiding a picker keeps the book's look.
-  const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(view.roles.filter((role) => Object.keys(role.changes).length > 0).map((role) => role.slotId)));
+  const [styling, setStyling] = useState<ReadonlySet<string>>(
+    () => new Set(view.roles.filter((role) => Object.keys(role.changes).length > 0).map((role) => role.slotId)),
+  );
   const style = (slotId: string, open: boolean) =>
-    setStyling((current) => (open ? new Set([...current, slotId]) : new Set([...current].filter((id) => id !== slotId))));
+    setStyling((current) =>
+      open ? new Set([...current, slotId]) : new Set([...current].filter((id) => id !== slotId)),
+    );
   const { manifest, story, version } = view;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
-  const pageIndex = Math.max(0, manifest.pages.findIndex((page) => page.pageId === selected));
+  const pageIndex = Math.max(
+    0,
+    manifest.pages.findIndex((page) => page.pageId === selected),
+  );
   const page = manifest.pages[pageIndex]!;
 
   const run = async (call: () => Promise<unknown>) => {
@@ -100,12 +107,16 @@ function BookEditor() {
   };
 
   const bookId = view.book.id;
-  const loadProofs = useCallback(async () => unwrapResult(BookProofsResult)(await listBookProofsFn({ data: { bookId } })), [bookId]);
+  const loadProofs = useCallback(
+    async () => unwrapResult(BookProofsResult)(await listBookProofsFn({ data: { bookId } })),
+    [bookId],
+  );
   const requestProof = async () => {
     unwrapResult(RequestBookProofResult)(await requestBookProofFn({ data: { bookId } }));
   };
 
-  const illustration = (index: number) => view.pages[index]!.layers.map((layer) => ({ url: `/api/files/${layer.key}`, rect: layer.rect }));
+  const illustration = (index: number) =>
+    view.pages[index]!.layers.map((layer) => ({ url: `/api/files/${layer.key}`, rect: layer.rect }));
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 p-8">
@@ -130,7 +141,8 @@ function BookEditor() {
               setError(null);
               try {
                 const cast = view.roles.map((role) => role.member.name).join(", ");
-                if (await confirmDeleteBook({ id: view.book.id, title: view.book.title, cast })) await router.navigate({ to: "/" });
+                if (await confirmDeleteBook({ id: view.book.id, title: view.book.title, cast }))
+                  await router.navigate({ to: "/" });
               } catch (cause) {
                 setError(message(cause));
               }
@@ -153,8 +165,12 @@ function BookEditor() {
               slot={slot}
               characters={characters}
               canEdit={canEdit}
-              onCast={(characterId) => run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))}
-              onOverride={(override) => run(() => setLookOverrideFn({ data: { bookId: view.book.id, slotId: slot.slotId, override } }))}
+              onCast={(characterId) =>
+                run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))
+              }
+              onOverride={(override) =>
+                run(() => setLookOverrideFn({ data: { bookId: view.book.id, slotId: slot.slotId, override } }))
+              }
               styling={styling.has(slot.slotId)}
               onStyle={(open) => style(slot.slotId, open)}
             />
@@ -205,12 +221,18 @@ function BookEditor() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-sm">
             <span>
-              Page {pageIndex + 1} of {manifest.pages.length}, as it will print ({manifest.trim.widthIn} × {manifest.trim.heightIn} in plus bleed)
+              Page {pageIndex + 1} of {manifest.pages.length}, as it will print ({manifest.trim.widthIn} ×{" "}
+              {manifest.trim.heightIn} in plus bleed)
             </span>
           </div>
           <div className="w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="editor-page">
             <ScaledPage trim={manifest.trim} scale={0.72}>
-              <TextDraftPage key={page.pageId} view={view} pageIndex={pageIndex} illustration={illustration(pageIndex)} />
+              <TextDraftPage
+                key={page.pageId}
+                view={view}
+                pageIndex={pageIndex}
+                illustration={illustration(pageIndex)}
+              />
             </ScaledPage>
           </div>
         </div>
@@ -219,7 +241,9 @@ function BookEditor() {
           view={view}
           pageIndex={pageIndex}
           canEdit={canEdit}
-          onSave={(blockIndex, content) => run(() => saveTextEditFn({ data: { bookId: view.book.id, pageId: page.pageId, blockIndex, content } }))}
+          onSave={(blockIndex, content) =>
+            run(() => saveTextEditFn({ data: { bookId: view.book.id, pageId: page.pageId, blockIndex, content } }))
+          }
         />
       </section>
 
@@ -272,7 +296,15 @@ const useDrafts = () => {
   return drafts;
 };
 
-function TextDraftPage({ view, pageIndex, illustration }: { view: BookView; pageIndex: number; illustration: ReadonlyArray<{ url: string; rect: readonly [number, number, number, number] }> }) {
+function TextDraftPage({
+  view,
+  pageIndex,
+  illustration,
+}: {
+  view: BookView;
+  pageIndex: number;
+  illustration: ReadonlyArray<{ url: string; rect: readonly [number, number, number, number] }>;
+}) {
   const current = useDrafts();
   const page = view.manifest.pages[pageIndex]!;
   const text = view.pages[pageIndex]!.text.map((block, i) => {
@@ -355,7 +387,11 @@ function TextEditor({
           </div>
         );
       })}
-      <p className="text-muted-foreground text-xs">Names, titles, and pronouns fill in from the cast: {tokens}, {`{{${view.manifest.characterSlots.at(-1)!.slotId}.title}}`} (what the kids call them), {`{{hero.they}}`}, {`{{hero.their}}`}…</p>
+      <p className="text-muted-foreground text-xs">
+        Names, titles, and pronouns fill in from the cast: {tokens},{" "}
+        {`{{${view.manifest.characterSlots.at(-1)!.slotId}.title}}`} (what the kids call them), {`{{hero.they}}`},{" "}
+        {`{{hero.their}}`}…
+      </p>
     </div>
   );
 }
@@ -384,19 +420,37 @@ function RoleCard({
   onStyle: (open: boolean) => void;
 }) {
   const character = characters.find((candidate) => candidate.id === role.characterId);
-  const fits = characters.filter((candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId);
+  const fits = characters.filter(
+    (candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId,
+  );
   // For each unsupported axis, the options this story version can draw for this role, given the rest of the look.
   const supported = (axis: LookAxis) =>
-    lookVocabulary[axis].filter((option) => !castLook(view.manifest, role.slotId, role.member.look, { ...role.override, [axis]: option.id }).unsupported.includes(axis));
+    lookVocabulary[axis].filter(
+      (option) =>
+        !castLook(view.manifest, role.slotId, role.member.look, {
+          ...role.override,
+          [axis]: option.id,
+        }).unsupported.includes(axis),
+    );
 
   return (
     <div className="flex gap-3 rounded-md border p-3" data-testid={`role-${role.slotId}`}>
-      <img src={portraitUrl(role.member.look)} alt="" width={61} height={70} className="h-[70px] rounded-md ring-1 ring-black/10" />
+      <img
+        src={portraitUrl(role.member.look)}
+        alt=""
+        width={61}
+        height={70}
+        className="h-[70px] rounded-md ring-1 ring-black/10"
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{label}:</span>
           {canEdit ? (
-            <NativeSelect aria-label={`Who plays ${label.toLowerCase()}`} value={role.characterId} onChange={(event) => onCast(event.target.value)}>
+            <NativeSelect
+              aria-label={`Who plays ${label.toLowerCase()}`}
+              value={role.characterId}
+              onChange={(event) => onCast(event.target.value)}
+            >
               {fits.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.name}
@@ -419,7 +473,11 @@ function RoleCard({
             </button>
           )}
           {character && (
-            <Link to="/characters/$characterId" params={{ characterId: character.id }} className="text-muted-foreground text-xs underline">
+            <Link
+              to="/characters/$characterId"
+              params={{ characterId: character.id }}
+              className="text-muted-foreground text-xs underline"
+            >
               {canEdit ? "Edit saved look" : "See saved look"}
             </Link>
           )}
@@ -431,14 +489,15 @@ function RoleCard({
         )}
         {role.wrongAge ? (
           <p className="text-destructive" role="status">
-            {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()} now, and this role is for {agesLabel(slot)}, so the pages leave them out.
-            Choose someone else for {label.toLowerCase()}.
+            {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()} now, and this role is for{" "}
+            {agesLabel(slot)}, so the pages leave them out. Choose someone else for {label.toLowerCase()}.
           </p>
         ) : role.unsupported.length > 0 ? (
           <div className="flex flex-col gap-2" role="status">
             <p className="text-destructive">
-              This edition of the story can't draw {role.member.name}'s {role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ")} yet, so the pages
-              leave them out. {canEdit && "Pick what this book shows instead:"}
+              This edition of the story can't draw {role.member.name}'s{" "}
+              {role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ")} yet, so the
+              pages leave them out. {canEdit && "Pick what this book shows instead:"}
             </p>
             {canEdit &&
               role.unsupported.map((axis) => (
@@ -463,8 +522,12 @@ function RoleCard({
           // The override applies only while the story can't draw the character's own option (D28); once it can, such
           // as after an addition (D41), the pages draw the character as they are.
           character &&
-          (Object.keys(role.override) as Array<LookAxis>).some((axis) => role.member.look[axis] !== ({ ...character.look, ...role.changes } as Look)[axis]) && (
-            <p className="text-muted-foreground text-xs">This book draws a stand-in for options the story can't draw yet.</p>
+          (Object.keys(role.override) as Array<LookAxis>).some(
+            (axis) => role.member.look[axis] !== ({ ...character.look, ...role.changes } as Look)[axis],
+          ) && (
+            <p className="text-muted-foreground text-xs">
+              This book draws a stand-in for options the story can't draw yet.
+            </p>
           )
         )}
       </div>

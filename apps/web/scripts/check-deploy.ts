@@ -64,13 +64,13 @@ console.log(`Checking ${origin} for commit ${short(sha)} (${expectedMigrations} 
 for (;;) {
   const health = await readHealth();
   const web = typeof health === "string" ? health : `web ${short(health.version)}`;
-  const workers = typeof health === "string" ? "" : `workers ${health.workers?.map((w) => short(w.version)).join(",") || "none"}`;
+  const workers =
+    typeof health === "string" ? "" : `workers ${health.workers?.map((w) => short(w.version)).join(",") || "none"}`;
   if (typeof health !== "string" && health.version && health.version !== sha && isAncestor(sha, health.version)) {
     console.log(`Superseded: ${short(health.version)}, a newer commit, is live. Nothing to check for ${short(sha)}.`);
     process.exit(0);
   }
-  const live =
-    typeof health !== "string" && health.version === sha && health.workers?.some((w) => w.version === sha);
+  const live = typeof health !== "string" && health.version === sha && health.workers?.some((w) => w.version === sha);
   if (live || Date.now() >= deadline) break;
   console.log(`  waiting: ${web} ${workers}`);
   await new Promise((resolve) => setTimeout(resolve, 15_000));
@@ -147,7 +147,10 @@ try {
 try {
   const page = await get("/");
   const html = await page.text();
-  check(page.status === 200 && html.includes("Picture books starring your family"), `/ shows the landing page (HTTP ${page.status})`);
+  check(
+    page.status === 200 && html.includes("Picture books starring your family"),
+    `/ shows the landing page (HTTP ${page.status})`,
+  );
   const preview = /<meta[^>]*property="og:image"[^>]*content="([^"]*)"/.exec(html)?.[1];
   check(preview?.startsWith(`${origin}/`) ?? false, `/ names a same-origin og:image (${preview ?? "none"})`);
   if (preview) await checkAsset(new URL(preview).pathname, "social preview image");

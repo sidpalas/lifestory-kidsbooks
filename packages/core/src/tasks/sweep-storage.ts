@@ -51,7 +51,9 @@ export const sweepStorage = defineTask({
         const storage = yield* ObjectStorage;
         const now = Date.now();
         yield* Database.query((db) =>
-          db.delete(schema.proof).where(and(isNull(schema.proof.approvedAt), lt(schema.proof.createdAt, new Date(now - PROOF_TTL_MS)))),
+          db
+            .delete(schema.proof)
+            .where(and(isNull(schema.proof.approvedAt), lt(schema.proof.createdAt, new Date(now - PROOF_TTL_MS)))),
         );
         const objects = [...(yield* storage.list("samples/")), ...(yield* storage.list("families/"))];
         const familyIds = [...new Set(objects.flatMap(({ key }) => FAMILY_KEY.exec(key)?.[1] ?? []))];
@@ -60,19 +62,26 @@ export const sweepStorage = defineTask({
           familyIds.length === 0
             ? Effect.succeed([])
             : Database.query((db) =>
-                db.select({ id: schema.organization.id }).from(schema.organization).where(inArray(schema.organization.id, familyIds)),
+                db
+                  .select({ id: schema.organization.id })
+                  .from(schema.organization)
+                  .where(inArray(schema.organization.id, familyIds)),
               ),
           proofIds.length === 0
             ? Effect.succeed([])
-            : Database.query((db) => db.select({ id: schema.proof.id }).from(schema.proof).where(inArray(schema.proof.id, proofIds))),
+            : Database.query((db) =>
+                db.select({ id: schema.proof.id }).from(schema.proof).where(inArray(schema.proof.id, proofIds)),
+              ),
         ]);
-        const keys = expiredKeys(
-          objects,
-          { families: new Set(families.map((row) => row.id)), proofs: new Set(proofs.map((row) => row.id)) },
-        );
+        const keys = expiredKeys(objects, {
+          families: new Set(families.map((row) => row.id)),
+          proofs: new Set(proofs.map((row) => row.id)),
+        });
         const samples = keys.filter((key) => key.startsWith("samples/"));
         if (samples.length > 0) {
-          yield* Database.query((db) => db.delete(schema.generation).where(inArray(schema.generation.objectKey, samples)));
+          yield* Database.query((db) =>
+            db.delete(schema.generation).where(inArray(schema.generation.objectKey, samples)),
+          );
         }
         yield* Effect.forEach(keys, storage.delete, { concurrency: 8, discard: true });
         return { deleted: keys.length };

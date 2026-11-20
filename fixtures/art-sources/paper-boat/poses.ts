@@ -12,10 +12,27 @@ export interface Pose {
 
 export const POSES: ReadonlyArray<Pose> = [
   { role: "hero", pose: "point", faces: ["round", "oval"], flip: true, notSkin: [[0, 868, 1000, 1000]] },
-  { role: "hero", pose: "kneel", faces: ["round", "oval"], notSkin: [[0, 790, 160, 1000], [395, 845, 640, 1000]] },
+  {
+    role: "hero",
+    pose: "kneel",
+    faces: ["round", "oval"],
+    notSkin: [
+      [0, 790, 160, 1000],
+      [395, 845, 640, 1000],
+    ],
+  },
   { role: "hero", pose: "sit", faces: ["round", "oval"], notSkin: [[470, 812, 1000, 1000]] },
   { role: "grownup", pose: "back", faces: ["round"], notSkin: [[0, 895, 1000, 1000]] },
-  { role: "grownup", pose: "sit", faces: ["round", "oval"], occluder: [250, 0, 1000, 420], notSkin: [[80, 850, 418, 1000], [550, 850, 1000, 1000]] },
+  {
+    role: "grownup",
+    pose: "sit",
+    faces: ["round", "oval"],
+    occluder: [250, 0, 1000, 420],
+    notSkin: [
+      [80, 850, 418, 1000],
+      [550, 850, 1000, 1000],
+    ],
+  },
 ];
 
 /** D43's options (D43: 2026-11-19T19:30). */

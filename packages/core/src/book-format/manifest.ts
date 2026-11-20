@@ -33,7 +33,9 @@ import {
 import { tokenIssues } from "./text.ts";
 
 /** Slot and page IDs: lowercase, stable across versions, used in object keys and text tokens. */
-const Id = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]*$/, { message: "must be lowercase letters, digits, and dashes" }));
+const Id = Schema.String.check(
+  Schema.isPattern(/^[a-z][a-z0-9-]*$/, { message: "must be lowercase letters, digits, and dashes" }),
+);
 
 // Asset paths are relative to the story version's folder in object storage
 // (`stories/<storyId>/v<version>/`), so they may not climb out of it.
@@ -204,7 +206,11 @@ export type IllustrationLayer = typeof IllustrationLayer.Type;
  * The closed set of page layouts BookPage knows. The illustration covers the whole
  * page including bleed ("full-bleed-art/...") or the left half ("art-left/...").
  */
-export const PageLayout = Schema.Literals(["full-bleed-art/text-bottom", "full-bleed-art/text-top", "art-left/text-right"]);
+export const PageLayout = Schema.Literals([
+  "full-bleed-art/text-bottom",
+  "full-bleed-art/text-top",
+  "art-left/text-right",
+]);
 export type PageLayout = typeof PageLayout.Type;
 
 export const TextBlock = Schema.Struct({
@@ -227,7 +233,10 @@ export type Page = typeof Page.Type;
 
 /** A gradient map for the recolour: neutral tone (0 = black, 1 = white) to colour, at least two stops. */
 export const Palette = Schema.Array(
-  Schema.Struct({ at: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })), colour: Schema.String.check(Schema.isPattern(/^#[0-9a-f]{6}$/)) }),
+  Schema.Struct({
+    at: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+    colour: Schema.String.check(Schema.isPattern(/^#[0-9a-f]{6}$/)),
+  }),
 ).check(Schema.isMinLength(2));
 export type Palette = typeof Palette.Type;
 
@@ -247,7 +256,10 @@ export const StoryDraft = Schema.Struct({
   textStyles: Schema.Struct({ title: TextStyle, body: TextStyle }),
   characterSlots: Schema.Array(CharacterSlot),
   /** The illustrator's colours for every skin tone and hair colour in the look vocabulary. */
-  palettes: Schema.Struct({ skin: Schema.Record(Schema.String, Palette), hairColour: Schema.Record(Schema.String, Palette) }),
+  palettes: Schema.Struct({
+    skin: Schema.Record(Schema.String, Palette),
+    hairColour: Schema.Record(Schema.String, Palette),
+  }),
   /** Bottom to top, the part axes drawn between the base face and the occluder. */
   partOrder: Schema.Array(PartAxis),
   pages: Schema.Array(Page),
@@ -272,7 +284,8 @@ export const StoryManifest = StoryDraft.check(
       }
     }
     const slotIds = manifest.characterSlots.map((slot) => slot.slotId);
-    for (const id of new Set(duplicates(slotIds))) issues.push({ path: ["characterSlots"], issue: `duplicate slotId "${id}"` });
+    for (const id of new Set(duplicates(slotIds)))
+      issues.push({ path: ["characterSlots"], issue: `duplicate slotId "${id}"` });
     for (const id of new Set(duplicates(manifest.pages.map((page) => page.pageId)))) {
       issues.push({ path: ["pages"], issue: `duplicate pageId "${id}"` });
     }
@@ -284,28 +297,37 @@ export const StoryManifest = StoryDraft.check(
         }
       }
     }
-    if (partOrderIssue(manifest.partOrder)) issues.push({ path: ["partOrder"], issue: partOrderIssue(manifest.partOrder)! });
+    if (partOrderIssue(manifest.partOrder))
+      issues.push({ path: ["partOrder"], issue: partOrderIssue(manifest.partOrder)! });
     manifest.characterSlots.forEach((slot, s) => {
       if (!slot.ages.includes(slot.example.look.age)) {
-        issues.push({ path: ["characterSlots", s, "example", "look", "age"], issue: `the example is not one of the slot's ages` });
+        issues.push({
+          path: ["characterSlots", s, "example", "look", "age"],
+          issue: `the example is not one of the slot's ages`,
+        });
       }
-      for (const age of new Set(duplicates(slot.ages))) issues.push({ path: ["characterSlots", s, "ages"], issue: `"${age}" twice` });
+      for (const age of new Set(duplicates(slot.ages)))
+        issues.push({ path: ["characterSlots", s, "ages"], issue: `"${age}" twice` });
     });
     manifest.pages.forEach((page, p) => {
-      if (page.illustration.layers.length === 0) issues.push({ path: ["pages", p, "illustration", "layers"], issue: "a page needs at least one layer" });
+      if (page.illustration.layers.length === 0)
+        issues.push({ path: ["pages", p, "illustration", "layers"], issue: "a page needs at least one layer" });
       page.illustration.layers.forEach((layer, l) => {
         if (layer.kind !== "figure") return;
         const path = ["pages", p, "illustration", "layers", l];
-        if (layer.bases.length === 0) issues.push({ path: [...path, "bases"], issue: "a figure needs at least one base" });
+        if (layer.bases.length === 0)
+          issues.push({ path: [...path, "bases"], issue: "a figure needs at least one base" });
         const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId);
         if (!slot) {
           issues.push({ path: [...path, "slotId"], issue: `unknown slot "${layer.slotId}"` });
           return;
         }
-        for (const issue of figureIssues(layer, drawnAges(layer, slot))) issues.push({ path: [...path, ...issue.path], issue: issue.issue });
+        for (const issue of figureIssues(layer, drawnAges(layer, slot)))
+          issues.push({ path: [...path, ...issue.path], issue: issue.issue });
       });
       page.text.forEach((block, b) => {
-        for (const issue of tokenIssues(block.content, slots)) issues.push({ path: ["pages", p, "text", b, "content"], issue });
+        for (const issue of tokenIssues(block.content, slots))
+          issues.push({ path: ["pages", p, "text", b, "content"], issue });
       });
     });
     return issues;
@@ -314,36 +336,53 @@ export const StoryManifest = StoryDraft.check(
 export type StoryManifest = typeof StoryManifest.Type;
 
 /** The ages a figure draws its role at: its pinned age, or every age the slot accepts. */
-const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> => (figure.age ? [figure.age] : slot.ages);
+const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> =>
+  figure.age ? [figure.age] : slot.ages;
 
 /** What a figure has extra or misplaced, given the ages it draws. Paths are relative to the figure. */
 /** A `partOrder` lists each part axis once; axes added later may be missing, and go at the bottom (D43). */
 const partOrderIssue = (order: ReadonlyArray<PartAxis>): string | undefined =>
-  new Set(order).size !== order.length || PartAxis.literals.some((axis) => !order.includes(axis) && !LATER_PART_AXES.includes(axis))
+  new Set(order).size !== order.length ||
+  PartAxis.literals.some((axis) => !order.includes(axis) && !LATER_PART_AXES.includes(axis))
     ? `must list each of ${PartAxis.literals.filter((axis) => !LATER_PART_AXES.includes(axis)).join(", ")} once${LATER_PART_AXES.map((axis) => `, and ${axis} at most once`).join("")}`
     : undefined;
 
-const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
+const figureIssues = (
+  figure: FigureLayer,
+  ages: ReadonlyArray<Age>,
+): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
   const issues: Array<{ path: ReadonlyArray<PropertyKey>; issue: string }> = [];
-  const keys = figure.bases.map((base) => `${base.age}/${base.face}${hasFeatures(base.age) ? `/${base.features ?? "features:defined"}` : ""}`);
+  const keys = figure.bases.map(
+    (base) => `${base.age}/${base.face}${hasFeatures(base.age) ? `/${base.features ?? "features:defined"}` : ""}`,
+  );
   for (const key of new Set(duplicates(keys))) issues.push({ path: ["bases"], issue: `two bases for "${key}"` });
   figure.bases.forEach((base, b) => {
-    if (!ages.includes(base.age)) issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
-    else if (base.features && !hasFeatures(base.age)) issues.push({ path: ["bases", b, "features"], issue: `"${base.age}" bases have no features` });
+    if (!ages.includes(base.age))
+      issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
+    else if (base.features && !hasFeatures(base.age))
+      issues.push({ path: ["bases", b, "features"], issue: `"${base.age}" bases have no features` });
   });
-  if (figure.partOrder && partOrderIssue(figure.partOrder)) issues.push({ path: ["partOrder"], issue: partOrderIssue(figure.partOrder)! });
+  if (figure.partOrder && partOrderIssue(figure.partOrder))
+    issues.push({ path: ["partOrder"], issue: partOrderIssue(figure.partOrder)! });
   if (figure.showsHead === false) {
     if (figure.parts.length > 0) issues.push({ path: ["parts"], issue: "a figure without a head has no parts" });
     return issues;
   }
   figure.parts.forEach((part, i) => {
-    if (!ages.includes(part.age)) issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
-    else if (part.features && !hasFeatures(part.age)) issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
-    else if (!partAxesAt(part.age).includes(part.axis)) issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
+    if (!ages.includes(part.age))
+      issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
+    else if (part.features && !hasFeatures(part.age))
+      issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
+    else if (!partAxesAt(part.age).includes(part.axis))
+      issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
     const known = lookVocabulary[part.axis].find((option) => option.id === part.option);
     if (!known || NO_PART_OPTIONS.has(part.option)) {
-      issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" is not a ${part.axis} option with a drawing` });
-    } else if (!offeredAt(known, part.age)) issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" isn't offered at "${part.age}"` });
+      issues.push({
+        path: ["parts", i, "option"],
+        issue: `"${part.option}" is not a ${part.axis} option with a drawing`,
+      });
+    } else if (!offeredAt(known, part.age))
+      issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" isn't offered at "${part.age}"` });
   });
   return issues;
 };
@@ -367,12 +406,16 @@ export const uncoveredOptions = (manifest: StoryManifest): ReadonlyArray<string>
 ];
 
 /** Gaps in the vocabulary's coverage; with `publishedAt`, only those in options a version published then must draw. */
-const coverageGaps = (manifest: StoryManifest, publishedAt?: Date): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
+const coverageGaps = (
+  manifest: StoryManifest,
+  publishedAt?: Date,
+): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
   const gaps: Array<{ text: string; option?: string }> = [];
   const required = (option: LookOption) => !publishedAt || requiredAt(option, publishedAt);
   for (const axis of ["skin", "hairColour"] as const) {
     for (const option of lookVocabulary[axis]) {
-      if (required(option) && !manifest.palettes[axis][option.id]) gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
+      if (required(option) && !manifest.palettes[axis][option.id])
+        gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
     }
   }
   for (const page of manifest.pages) {
@@ -383,15 +426,26 @@ const coverageGaps = (manifest: StoryManifest, publishedAt?: Date): ReadonlyArra
         for (const { id: face } of faceOptions) {
           // From teen up the defined base is required, and a softer one, when drawn, needs its parts too (D40).
           const soft = layer.bases.some((base) => sameAppearance(base, age, face, "features:soft"));
-          for (const features of hasFeatures(age) ? [DEFAULT_FEATURES, ...(soft ? (["features:soft"] as const) : [])] : [undefined]) {
+          for (const features of hasFeatures(age)
+            ? [DEFAULT_FEATURES, ...(soft ? (["features:soft"] as const) : [])]
+            : [undefined]) {
             const at = `${age}/${face}${features ? `/${features}` : ""}`;
-            if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) gaps.push({ text: `${page.pageId}/${layer.slotId}: no base for "${at}"` });
+            if (!layer.bases.some((base) => sameAppearance(base, age, face, features)))
+              gaps.push({ text: `${page.pageId}/${layer.slotId}: no base for "${at}"` });
             if (layer.showsHead === false) continue;
             for (const axis of partAxesAt(age)) {
               for (const option of optionsAt(axis, age)) {
                 if (NO_PART_OPTIONS.has(option.id) || !required(option)) continue;
-                if (!layer.parts.some((part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id)) {
-                  gaps.push({ text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`, option: option.id });
+                if (
+                  !layer.parts.some(
+                    (part) =>
+                      sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id,
+                  )
+                ) {
+                  gaps.push({
+                    text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`,
+                    option: option.id,
+                  });
                 }
               }
             }
@@ -429,7 +483,12 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
       for (const axis of figurePartAxes(layer.parts, age)) {
         const option = axis === "hair" ? hairAt(age, look.hair) : look[axis];
         if (NO_PART_OPTIONS.has(option)) continue;
-        if (!layer.parts.some((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option)) unsupported.add(axis);
+        if (
+          !layer.parts.some(
+            (part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option,
+          )
+        )
+          unsupported.add(axis);
       }
     }
   }
@@ -469,7 +528,12 @@ export const withLookChanges = (look: Look, changes: LookOverride): Look => ({ .
  * How a character fills `slotId` in this story version (D26). The override replaces only options the story can't
  * draw, so a look edit back to a supported option takes effect again on its own.
  */
-export const castLook = (manifest: StoryManifest, slotId: string, look: Look, override: LookOverride = {}): CastLook => {
+export const castLook = (
+  manifest: StoryManifest,
+  slotId: string,
+  look: Look,
+  override: LookOverride = {},
+): CastLook => {
   const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
   if (slot && !slot.ages.includes(look.age)) return { look, wrongAge: true, unsupported: ["age"] };
   const patched: { -readonly [K in keyof Look]: Look[K] } = { ...look };
@@ -484,7 +548,9 @@ export const castLook = (manifest: StoryManifest, slotId: string, look: Look, ov
 export const unapprovedParts = (manifest: StoryManifest): ReadonlyArray<string> =>
   manifest.pages.flatMap((page) =>
     page.illustration.layers.flatMap((layer) =>
-      layer.kind === "figure" ? layer.parts.filter((part) => !part.approved).map((part) => `${page.pageId}: ${part.asset}`) : [],
+      layer.kind === "figure"
+        ? layer.parts.filter((part) => !part.approved).map((part) => `${page.pageId}: ${part.asset}`)
+        : [],
     ),
   );
 
@@ -502,10 +568,14 @@ const format1Faces: Record<string, { readonly age: string; readonly face: string
 const format1Ages: Record<string, string> = { child: "young-child", adult: "adult" };
 
 // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
-const withFace = (item: any) => (item && format1Faces[item.face] ? { age: format1Faces[item.face]!.age, ...item, face: format1Faces[item.face]!.face } : item);
+const withFace = (item: any) =>
+  item && format1Faces[item.face]
+    ? { age: format1Faces[item.face]!.age, ...item, face: format1Faces[item.face]!.face }
+    : item;
 
 export const upgradeFormat1 = (input: unknown): unknown => {
-  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 1) return input;
+  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 1)
+    return input;
   // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
   const m = structuredClone(input) as any;
   m.formatVersion = 2;
@@ -529,10 +599,12 @@ export const decodeStoryManifest = (input: unknown) =>
   Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgradeFormat1(input)));
 
 /** Decodes a draft (D37): the format's shape, upgraded from format 1 like a manifest, without the publishing checks. */
-export const decodeStoryDraft = (input: unknown) => Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgradeFormat1(input)));
+export const decodeStoryDraft = (input: unknown) =>
+  Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgradeFormat1(input)));
 
 /** Decodes a stored story version: published ones as manifests, the author's unpublished draft only by its shape. */
-export const decodeStoryVersion = (input: unknown, publishedAt: Date | null) => (publishedAt ? decodeStoryManifest(input) : decodeStoryDraft(input));
+export const decodeStoryVersion = (input: unknown, publishedAt: Date | null) =>
+  publishedAt ? decodeStoryManifest(input) : decodeStoryDraft(input);
 
 /** Every asset the manifest references, each once: what an upload or import must provide. */
 export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> => [
@@ -548,7 +620,9 @@ export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> =
                 base.skinMask,
                 ...(base.browMask ? [base.browMask] : []),
                 ...(base.overlay ? [base.overlay] : []),
-                ...(base.occluder ? [base.occluder.asset, ...(base.occluder.skinMask ? [base.occluder.skinMask] : [])] : []),
+                ...(base.occluder
+                  ? [base.occluder.asset, ...(base.occluder.skinMask ? [base.occluder.skinMask] : [])]
+                  : []),
               ]),
               ...layer.parts.map((part) => part.asset),
             ],
@@ -558,7 +632,8 @@ export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> =
 ];
 
 /** The object storage key of a story version's asset. */
-export const storyAssetKey = (storyId: string, version: number, asset: string) => `stories/${storyId}/v${version}/${asset}`;
+export const storyAssetKey = (storyId: string, version: number, asset: string) =>
+  `stories/${storyId}/v${version}/${asset}`;
 
 /** The cast a story preview uses: each slot filled by its example character. */
 export const exampleCast = (manifest: StoryManifest): Record<string, CastMember> =>

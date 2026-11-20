@@ -42,10 +42,13 @@ export class Jobs extends Context.Service<
       params: P["Type"],
       options?: { readonly idempotencyKey?: string },
     ) => Effect.Effect<{ readonly taskId: string }, JobError>;
-    readonly status: (taskId: string) => Effect.Effect<{
-      readonly state: TaskState;
-      readonly result: unknown;
-    }, JobError>;
+    readonly status: (taskId: string) => Effect.Effect<
+      {
+        readonly state: TaskState;
+        readonly result: unknown;
+      },
+      JobError
+    >;
     /** Emits an Absurd event, waking tasks that await it. First emit wins, so repeats are harmless. */
     readonly emit: (eventName: string, payload: JsonValue) => Effect.Effect<void>;
     /** Stops a task that hasn't finished; a finished one stays as it is. A run already in a step finishes that step. */

@@ -1,11 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "react",
-    "import",
-    "unicorn"
-  ],
+  "plugins": ["typescript", "react", "import", "unicorn"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -16,9 +11,5 @@
     "import/no-unassigned-import": "off",
     "no-underscore-dangle": "off"
   },
-  "ignorePatterns": [
-    "**/routeTree.gen.ts",
-    "**/.output/**",
-    "**/migrations/**"
-  ]
+  "ignorePatterns": ["**/routeTree.gen.ts", "**/.output/**", "**/migrations/**"]
 }

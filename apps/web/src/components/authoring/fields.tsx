@@ -6,14 +6,19 @@ import { Input } from "~/components/ui/input";
 
 export const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-export const draftFileUrl = (storyId: string, version: number, asset: string) => `/api/files/${storyAssetKey(storyId, version, asset)}`;
+export const draftFileUrl = (storyId: string, version: number, asset: string) =>
+  `/api/files/${storyAssetKey(storyId, version, asset)}`;
 
 /** Stores a file in the draft's folder (routes/api/authoring) and returns its path for the manifest. */
 export async function uploadDraftFile(storyId: string, folder: string, file: File): Promise<string> {
   const form = new FormData();
   form.set("file", file);
   form.set("folder", folder);
-  const response = await fetch(`/api/authoring/stories/${storyId}/assets`, { method: "POST", body: form, headers: { "x-lifestory-upload": "1" } });
+  const response = await fetch(`/api/authoring/stories/${storyId}/assets`, {
+    method: "POST",
+    body: form,
+    headers: { "x-lifestory-upload": "1" },
+  });
   const body = (await response.json().catch(() => ({}))) as { asset?: string; error?: string };
   if (!response.ok || !body.asset) throw new Error(body.error ?? `Upload failed (${response.status})`);
   return body.asset;
@@ -68,7 +73,13 @@ export function UploadField({
       />
       {asset && (
         <span className="flex min-w-0 items-center gap-2" data-testid="uploaded">
-          {!asset.endsWith(".woff2") && <img src={draftFileUrl(files.storyId, files.version, asset)} alt="" className="size-10 shrink-0 rounded border bg-white object-contain" />}
+          {!asset.endsWith(".woff2") && (
+            <img
+              src={draftFileUrl(files.storyId, files.version, asset)}
+              alt=""
+              className="size-10 shrink-0 rounded border bg-white object-contain"
+            />
+          )}
           <code className="text-muted-foreground truncate">{asset}</code>
         </span>
       )}
@@ -98,7 +109,13 @@ export function NumberField({
   return (
     <label className={`flex flex-col gap-1 text-xs ${className ?? ""}`}>
       {label}
-      <Input type="number" step={step} value={Number.isFinite(value) ? value : ""} onChange={(event) => onChange(event.target.valueAsNumber)} className="h-8" />
+      <Input
+        type="number"
+        step={step}
+        value={Number.isFinite(value) ? value : ""}
+        onChange={(event) => onChange(event.target.valueAsNumber)}
+        className="h-8"
+      />
     </label>
   );
 }
@@ -106,7 +123,15 @@ export function NumberField({
 export type Rect4 = readonly [number, number, number, number];
 
 /** [x0, y0, x1, y1] in thousandths of the container. */
-export function RectFields({ label, value, onChange }: { label: string; value: Rect4; onChange: (rect: Rect4) => void }) {
+export function RectFields({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: Rect4;
+  onChange: (rect: Rect4) => void;
+}) {
   const names = ["left", "top", "right", "bottom"] as const;
   return (
     <fieldset className="flex flex-col gap-1 text-xs">

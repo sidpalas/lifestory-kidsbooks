@@ -24,25 +24,49 @@ import {
   type TilePlacement,
   tileBases,
 } from "../parts/images.ts";
-import { findAppearance, partAssets, partPrompt, PartTaskParams, type StoredLayer, tiledPrompt } from "../parts/parts.ts";
+import {
+  findAppearance,
+  partAssets,
+  partPrompt,
+  PartTaskParams,
+  type StoredLayer,
+  tiledPrompt,
+} from "../parts/parts.ts";
 import { ObjectStorage } from "../storage.ts";
 
 /** The part, its story version, and the appearance it is for; a missing one is a bug (requestParts checked it). */
 const loadPart = Effect.fn("parts.load")(function* (partId: string) {
   const [row] = yield* Database.query((db) =>
     db
-      .select({ part: schema.storyPart, storyId: schema.storyVersion.storyId, version: schema.storyVersion.version, manifest: schema.storyVersion.manifest, publishedAt: schema.storyVersion.publishedAt })
+      .select({
+        part: schema.storyPart,
+        storyId: schema.storyVersion.storyId,
+        version: schema.storyVersion.version,
+        manifest: schema.storyVersion.manifest,
+        publishedAt: schema.storyVersion.publishedAt,
+      })
       .from(schema.storyPart)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.storyPart.storyVersionId))
       .where(eq(schema.storyPart.id, partId)),
   );
   if (!row) return yield* Effect.die(new Error(`part ${partId} doesn't exist`));
   const manifest = yield* decodeStoryVersion(row.manifest, row.publishedAt).pipe(Effect.orDie);
-  const appearance = findAppearance(manifest, row.part.pageId, row.part.slotId, row.part.age as Age, row.part.face, row.part.features as FeaturesOption | null);
+  const appearance = findAppearance(
+    manifest,
+    row.part.pageId,
+    row.part.slotId,
+    row.part.age as Age,
+    row.part.face,
+    row.part.features as FeaturesOption | null,
+  );
   if ("problem" in appearance) return yield* Effect.die(new Error(`part ${partId}: ${appearance.problem}`));
   const storage = yield* ObjectStorage;
   const key = (asset: string) => storyAssetKey(row.storyId, row.version, asset);
-  const read = (asset: string) => storage.get(key(asset)).pipe(Effect.map((object) => object.body), Effect.orDie);
+  const read = (asset: string) =>
+    storage.get(key(asset)).pipe(
+      Effect.map((object) => object.body),
+      Effect.orDie,
+    );
   const put = (asset: string, body: Uint8Array) => storage.put(key(asset), body, "image/png").pipe(Effect.orDie);
   return { ...row, decoded: manifest, ...appearance, assets: partAssets(partId), key, read, put };
 });
@@ -63,11 +87,30 @@ const referenceFor = Effect.fn("parts.reference")(function* (parts: ReadonlyArra
       const drawn = layer.parts.filter((part) => part.option === option && part.approved);
       // One candidate per appearance, with all its layers (a part and any skin drawn with it).
       return drawn
-        .filter((part, i) => drawn.findIndex((other) => sameAppearance(other, part.age, part.face, part.features ?? DEFAULT_FEATURES)) === i)
+        .filter(
+          (part, i) =>
+            drawn.findIndex((other) =>
+              sameAppearance(other, part.age, part.face, part.features ?? DEFAULT_FEATURES),
+            ) === i,
+        )
         .flatMap((part) => {
-          const base = layer.bases.find((candidate) => sameAppearance(candidate, part.age, part.face, part.features ?? DEFAULT_FEATURES));
-          const layers = drawn.filter((other) => sameAppearance(other, part.age, part.face, part.features ?? DEFAULT_FEATURES));
-          return base ? [{ from: `${page.pageId}/${layer.slotId}/${part.age}/${part.face}`, slotId: layer.slotId, face: part.face, base: base.asset, layers }] : [];
+          const base = layer.bases.find((candidate) =>
+            sameAppearance(candidate, part.age, part.face, part.features ?? DEFAULT_FEATURES),
+          );
+          const layers = drawn.filter((other) =>
+            sameAppearance(other, part.age, part.face, part.features ?? DEFAULT_FEATURES),
+          );
+          return base
+            ? [
+                {
+                  from: `${page.pageId}/${layer.slotId}/${part.age}/${part.face}`,
+                  slotId: layer.slotId,
+                  face: part.face,
+                  base: base.asset,
+                  layers,
+                },
+              ]
+            : [];
         });
     }),
   );
@@ -75,31 +118,69 @@ const referenceFor = Effect.fn("parts.reference")(function* (parts: ReadonlyArra
     db
       .select()
       .from(schema.storyPart)
-      .where(and(eq(schema.storyPart.storyVersionId, first.part.storyVersionId), eq(schema.storyPart.option, option), eq(schema.storyPart.status, "approved")))
+      .where(
+        and(
+          eq(schema.storyPart.storyVersionId, first.part.storyVersionId),
+          eq(schema.storyPart.option, option),
+          eq(schema.storyPart.status, "approved"),
+        ),
+      )
       .orderBy(asc(schema.storyPart.reviewedAt), asc(schema.storyPart.id)),
   );
   const fromGenerated = approved.flatMap((row) => {
     if (generating.has(row.id)) return [];
-    const appearance = findAppearance(first.decoded, row.pageId, row.slotId, row.age as Age, row.face, row.features as FeaturesOption | null);
-    return "problem" in appearance ? [] : [{ from: row.id, slotId: row.slotId, face: row.face, base: appearance.base.asset, layers: (row.layers as ReadonlyArray<StoredLayer> | null) ?? [] }];
+    const appearance = findAppearance(
+      first.decoded,
+      row.pageId,
+      row.slotId,
+      row.age as Age,
+      row.face,
+      row.features as FeaturesOption | null,
+    );
+    return "problem" in appearance
+      ? []
+      : [
+          {
+            from: row.id,
+            slotId: row.slotId,
+            face: row.face,
+            base: appearance.base.asset,
+            layers: (row.layers as ReadonlyArray<StoredLayer> | null) ?? [],
+          },
+        ];
   });
-  const score = (candidate: { slotId: string; face: string }) => (candidate.slotId === first.part.slotId ? 2 : 0) + (candidate.face === first.part.face ? 1 : 0);
-  type Candidate = { readonly from: string; readonly slotId: string; readonly face: string; readonly base: string; readonly layers: ReadonlyArray<{ readonly asset: string; readonly at: Rect }> };
-  const best = [...fromManifest, ...fromGenerated].filter((candidate) => candidate.layers.length > 0).reduce<Candidate | null>(
-    (chosen, candidate) => (chosen === null || score(candidate) > score(chosen) ? candidate : chosen),
-    null,
-  );
+  const score = (candidate: { slotId: string; face: string }) =>
+    (candidate.slotId === first.part.slotId ? 2 : 0) + (candidate.face === first.part.face ? 1 : 0);
+  type Candidate = {
+    readonly from: string;
+    readonly slotId: string;
+    readonly face: string;
+    readonly base: string;
+    readonly layers: ReadonlyArray<{ readonly asset: string; readonly at: Rect }>;
+  };
+  const best = [...fromManifest, ...fromGenerated]
+    .filter((candidate) => candidate.layers.length > 0)
+    .reduce<Candidate | null>(
+      (chosen, candidate) => (chosen === null || score(candidate) > score(chosen) ? candidate : chosen),
+      null,
+    );
   if (!best) return null;
-  const [base, layers] = yield* Effect.all([first.read(best.base), Effect.forEach(best.layers, (layer) => first.read(layer.asset).pipe(Effect.map((png) => ({ png, at: layer.at }))))]);
+  const [base, layers] = yield* Effect.all([
+    first.read(best.base),
+    Effect.forEach(best.layers, (layer) => first.read(layer.asset).pipe(Effect.map((png) => ({ png, at: layer.at })))),
+  ]);
   return { from: best.from, png: yield* Effect.promise(() => referenceImage(base, layers)) };
 });
 
 /** Updates the part's row; returns true, since a step's result must be JSON. */
 const setPart = (partId: string, patch: Partial<typeof schema.storyPart.$inferInsert>) =>
-  Database.query((db) => db.update(schema.storyPart).set(patch).where(eq(schema.storyPart.id, partId))).pipe(Effect.as(true));
+  Database.query((db) => db.update(schema.storyPart).set(patch).where(eq(schema.storyPart.id, partId))).pipe(
+    Effect.as(true),
+  );
 
 /** Glasses keep their colours; hair and facial hair are recoloured and reach the figure's silhouette. */
-const cutOutOptions = (part: LoadedPart, figure: Uint8Array): CutOutOptions => (part.part.axis === "glasses" ? { neutral: false } : { neutral: true, figure });
+const cutOutOptions = (part: LoadedPart, figure: Uint8Array): CutOutOptions =>
+  part.part.axis === "glasses" ? { neutral: false } : { neutral: true, figure };
 
 /** Where a part's edit came from: its own edit, or one tile of a tiled edit (D44). */
 interface Edit {
@@ -120,7 +201,13 @@ const finishPart = (
   suffix: string,
   geometry: { readonly width: number; readonly height: number },
   edit: Edit,
-  cutOut: (part: LoadedPart, base: Uint8Array, skinMask: Uint8Array, figure: Uint8Array, output: Uint8Array) => Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: object }>,
+  cutOut: (
+    part: LoadedPart,
+    base: Uint8Array,
+    skinMask: Uint8Array,
+    figure: Uint8Array,
+    output: Uint8Array,
+  ) => Promise<{ readonly layers: ReadonlyArray<PartLayer>; readonly metrics: object }>,
 ) =>
   Effect.gen(function* () {
     const cut = yield* step(
@@ -129,19 +216,44 @@ const finishPart = (
       Effect.gen(function* () {
         const part = yield* loadPart(partId);
         const storage = yield* ObjectStorage;
-        const [base, skinMask, figure, output] = yield* Effect.all([part.read(part.assets.base), part.read(part.base.skinMask), part.read(part.base.asset), storage.get(edit.key).pipe(Effect.orDie)]);
+        const [base, skinMask, figure, output] = yield* Effect.all([
+          part.read(part.assets.base),
+          part.read(part.base.skinMask),
+          part.read(part.base.asset),
+          storage.get(edit.key).pipe(Effect.orDie),
+        ]);
         const { layers, metrics } = yield* Effect.promise(() => cutOut(part, base, skinMask, figure, output.body));
         const stored: Array<StoredLayer> = [];
         for (const layer of layers) {
           const asset = layer.region === "skin" ? part.assets.skin : part.assets.part;
           yield* part.put(asset, layer.png);
-          stored.push({ asset, at: layer.at, palette: layer.region === "skin" ? "skin" : part.part.axis !== "glasses" ? "hairColour" : "none" });
+          stored.push({
+            asset,
+            at: layer.at,
+            palette: layer.region === "skin" ? "skin" : part.part.axis !== "glasses" ? "hairColour" : "none",
+          });
         }
-        return { layers: stored, metrics: { ...metrics, ...(edit.tile ? { tile: edit.tile } : {}), ...(edit.reference ? { reference: edit.reference } : {}) } };
+        return {
+          layers: stored,
+          metrics: {
+            ...metrics,
+            ...(edit.tile ? { tile: edit.tile } : {}),
+            ...(edit.reference ? { reference: edit.reference } : {}),
+          },
+        };
       }),
     );
     if (!cut.layers.some((layer) => layer.palette !== "skin")) {
-      yield* step(ctx, `failed${suffix}`, setPart(partId, { status: "failed", error: "the edit added nothing inside the zone", generationId: edit.generationId, metrics: cut.metrics }));
+      yield* step(
+        ctx,
+        `failed${suffix}`,
+        setPart(partId, {
+          status: "failed",
+          error: "the edit added nothing inside the zone",
+          generationId: edit.generationId,
+          metrics: cut.metrics,
+        }),
+      );
       return { partId, status: "failed" as const };
     }
 
@@ -157,7 +269,9 @@ const finishPart = (
           part.read(part.base.asset),
           part.read(part.base.skinMask),
           part.base.browMask ? part.read(part.base.browMask) : Effect.succeed(undefined),
-          Effect.forEach(cut.layers, (layer) => part.read(layer.asset).pipe(Effect.map((png) => ({ png, at: layer.at, palette: layer.palette })))),
+          Effect.forEach(cut.layers, (layer) =>
+            part.read(layer.asset).pipe(Effect.map((png) => ({ png, at: layer.at, palette: layer.palette }))),
+          ),
         ]);
         const inputs = { base, skinMask, ...(browMask ? { browMask } : {}), layers };
         // The lightest skin with the darkest hair, and the darkest skin with the lightest: a band of the base's old
@@ -165,8 +279,12 @@ const finishPart = (
         const light = { skin: palettes.skin[skins[0]!]!, hair: palettes.hairColour[hairs.at(-1)!]! };
         const dark = { skin: palettes.skin[skins.at(-1)!]!, hair: palettes.hairColour[hairs[0]!]! };
         const { width, height } = geometry;
-        const [lightPng, darkPng] = yield* Effect.promise(() => Promise.all([composeReview(inputs, light, width, height), composeReview(inputs, dark, width, height)]));
-        const sheet = yield* Effect.promise(() => reviewSheet(lightPng, darkPng, layers, part.part.zone as Rect, width, height));
+        const [lightPng, darkPng] = yield* Effect.promise(() =>
+          Promise.all([composeReview(inputs, light, width, height), composeReview(inputs, dark, width, height)]),
+        );
+        const sheet = yield* Effect.promise(() =>
+          reviewSheet(lightPng, darkPng, layers, part.part.zone as Rect, width, height),
+        );
         yield* part.put(part.assets.light, lightPng);
         yield* part.put(part.assets.dark, darkPng);
         yield* part.put(part.assets.sheet, sheet);
@@ -174,7 +292,17 @@ const finishPart = (
       }),
     );
 
-    yield* step(ctx, `record${suffix}`, setPart(partId, { status: "pending_review", layers: cut.layers, metrics: cut.metrics, generationId: edit.generationId, error: null }));
+    yield* step(
+      ctx,
+      `record${suffix}`,
+      setPart(partId, {
+        status: "pending_review",
+        layers: cut.layers,
+        metrics: cut.metrics,
+        generationId: edit.generationId,
+        error: null,
+      }),
+    );
     return { partId, status: "pending_review" as const };
   });
 
@@ -214,14 +342,30 @@ const generateOne = (ctx: TaskContext, partId: string) =>
       outputKey: prepared.edit,
     }).pipe(
       Effect.catchTag("GenerationFailed", (error) =>
-        step(ctx, "failed", setPart(partId, { status: "failed", error: error.message, generationId: error.generationId })).pipe(Effect.as(null)),
+        step(
+          ctx,
+          "failed",
+          setPart(partId, { status: "failed", error: error.message, generationId: error.generationId }),
+        ).pipe(Effect.as(null)),
       ),
     );
     if (!edit) return [{ partId, status: "failed" as const }];
 
     return [
-      yield* finishPart(ctx, partId, "", prepared, { ...edit, reference: prepared.reference?.from ?? null }, (part, base, skinMask, figure, output) =>
-        cutOutLayer({ base, width: prepared.width, height: prepared.height, padding: prepared.padding }, output, skinMask, part.part.zone as Rect, cutOutOptions(part, figure)),
+      yield* finishPart(
+        ctx,
+        partId,
+        "",
+        prepared,
+        { ...edit, reference: prepared.reference?.from ?? null },
+        (part, base, skinMask, figure, output) =>
+          cutOutLayer(
+            { base, width: prepared.width, height: prepared.height, padding: prepared.padding },
+            output,
+            skinMask,
+            part.part.zone as Rect,
+            cutOutOptions(part, figure),
+          ),
       ),
     ];
   });
@@ -244,7 +388,9 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
             const base = yield* Effect.promise(() => prepareBase(asset));
             yield* part.put(part.assets.base, base.base);
             const zone = part.part.zone as Rect;
-            const top = yield* Effect.promise(() => headTop(skinMask, base.width, base.height, rectToPixels(zone, base.width, base.height)));
+            const top = yield* Effect.promise(() =>
+              headTop(skinMask, base.width, base.height, rectToPixels(zone, base.width, base.height)),
+            );
             return { base: base.base, width: base.width, height: base.height, zone, headTop: top };
           }),
         );
@@ -265,7 +411,12 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
               width: image.width,
               height: image.height,
               prompt,
-              tiles: image.bases.map((i, slot) => ({ partId: partIds[i]!, width: bases[i]!.width, height: bases[i]!.height, ...image.tiles[slot]! })),
+              tiles: image.bases.map((i, slot) => ({
+                partId: partIds[i]!,
+                width: bases[i]!.width,
+                height: bases[i]!.height,
+                ...image.tiles[slot]!,
+              })),
             };
           }),
         );
@@ -286,7 +437,9 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
           step(
             ctx,
             `failed-${k}`,
-            Effect.forEach(image.tiles, (tile) => setPart(tile.partId, { status: "failed", error: error.message, generationId: error.generationId })),
+            Effect.forEach(image.tiles, (tile) =>
+              setPart(tile.partId, { status: "failed", error: error.message, generationId: error.generationId }),
+            ),
           ).pipe(Effect.as(null)),
         ),
       );
@@ -297,8 +450,21 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
       for (const [index, tile] of image.tiles.entries()) {
         const placement = { slot: tile.slot, window: tile.window, index, of: image.tiles.length };
         results.push(
-          yield* finishPart(ctx, tile.partId, `:${tile.partId}`, tile, { ...edit, tile: placement, reference: image.reference?.from ?? null }, (part, base, skinMask, figure, output) =>
-            cutOutTile({ base, width: tile.width, height: tile.height }, output, placement, skinMask, part.part.zone as Rect, cutOutOptions(part, figure)),
+          yield* finishPart(
+            ctx,
+            tile.partId,
+            `:${tile.partId}`,
+            tile,
+            { ...edit, tile: placement, reference: image.reference?.from ?? null },
+            (part, base, skinMask, figure, output) =>
+              cutOutTile(
+                { base, width: tile.width, height: tile.height },
+                output,
+                placement,
+                skinMask,
+                part.part.zone as Rect,
+                cutOutOptions(part, figure),
+              ),
           ),
         );
       }

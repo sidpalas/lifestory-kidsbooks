@@ -13,9 +13,15 @@ const readBody = async (request: IncomingMessage) => {
   return body;
 };
 const server = createServer(async (request, response) => {
-  requests.push({ path: request.url ?? "", authorization: request.headers.authorization, body: JSON.parse(await readBody(request)) });
+  requests.push({
+    path: request.url ?? "",
+    authorization: request.headers.authorization,
+    body: JSON.parse(await readBody(request)),
+  });
   const status = statuses.shift() ?? 200;
-  response.writeHead(status, { "content-type": "application/json" }).end(status === 200 ? '{"id":"email_1"}' : '{"message":"domain not verified"}');
+  response
+    .writeHead(status, { "content-type": "application/json" })
+    .end(status === 200 ? '{"id":"email_1"}' : '{"message":"domain not verified"}');
 });
 beforeAll(() => new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve)));
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
@@ -24,12 +30,15 @@ const send = (env: Record<string, string>) =>
   Effect.runPromiseExit(
     Effect.gen(function* () {
       yield* Mailer.use((mailer) =>
-        mailer.send({ to: "gran@example.com", subject: "You're invited", text: "Choose a password:", link: "https://app.test/set-password/t0k" }),
+        mailer.send({
+          to: "gran@example.com",
+          subject: "You're invited",
+          text: "Choose a password:",
+          link: "https://app.test/set-password/t0k",
+        }),
       );
       return yield* Mailer.use((mailer) => mailer.outbox);
-    }).pipe(
-      Effect.provide(Mailer.layer.pipe(Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(env))))),
-    ),
+    }).pipe(Effect.provide(Mailer.layer.pipe(Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(env)))))),
   );
 
 const resendEnv = () => ({

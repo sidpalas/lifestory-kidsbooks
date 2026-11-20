@@ -1,7 +1,15 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
 import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { drawnFeatures, figurePartAxes, fullPartOrder, hairAt, type Look, NO_PART_OPTIONS, sameAppearance } from "./vocabulary.ts";
+import {
+  drawnFeatures,
+  figurePartAxes,
+  fullPartOrder,
+  hairAt,
+  type Look,
+  NO_PART_OPTIONS,
+  sameAppearance,
+} from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -58,7 +66,9 @@ export const composeFigure = (
           // A page may pin an age the look doesn't have, which may not offer its hairstyle (D29, D51).
           const option = axis === "hair" ? hairAt(age, look.hair) : look[axis];
           if (NO_PART_OPTIONS.has(option) || !figurePartAxes(layer.parts, age).includes(axis)) return [];
-          const drawn = layer.parts.filter((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option);
+          const drawn = layer.parts.filter(
+            (part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option,
+          );
           if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${age}/${look.face}"`);
           return drawn.map((part) => ({
             asset: part.asset,
@@ -71,17 +81,30 @@ export const composeFigure = (
     {
       asset: base.asset,
       rect: layer.box,
-      recolour: [{ mask: base.skinMask, palette: skin }, ...(base.browMask ? [{ mask: base.browMask, palette: hair }] : [])],
+      recolour: [
+        { mask: base.skinMask, palette: skin },
+        ...(base.browMask ? [{ mask: base.browMask, palette: hair }] : []),
+      ],
     },
     ...(base.overlay ? [{ asset: base.overlay, rect: layer.box, recolour: [] }] : []),
     ...parts,
     ...(base.occluder
-      ? [{ asset: base.occluder.asset, rect: layer.box, recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [] }]
+      ? [
+          {
+            asset: base.occluder.asset,
+            rect: layer.box,
+            recolour: base.occluder.skinMask ? [{ mask: base.occluder.skinMask, palette: skin }] : [],
+          },
+        ]
       : []),
   ];
   if (!layer.flip) return specs;
   const [bx0, , bx1] = layer.box;
-  return specs.map(({ rect: [x0, y0, x1, y1], ...spec }) => ({ ...spec, rect: [bx0 + bx1 - x1, y0, bx0 + bx1 - x0, y1], flip: true }));
+  return specs.map(({ rect: [x0, y0, x1, y1], ...spec }) => ({
+    ...spec,
+    rect: [bx0 + bx1 - x1, y0, bx0 + bx1 - x0, y1],
+    flip: true,
+  }));
 };
 
 /** The page's illustration, bottom to top: its art and each figure (composeFigure). A slot without a cast member is left out. */

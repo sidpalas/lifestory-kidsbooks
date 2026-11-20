@@ -36,7 +36,8 @@ export class Generations extends Context.Service<
           query((db) => db.select().from(generation).where(eq(generation.id, id))).pipe(
             Effect.map((rows) => Option.fromNullishOr(rows[0])),
           ),
-        update: (id, patch) => query((db) => db.update(generation).set(patch).where(eq(generation.id, id))).pipe(Effect.asVoid),
+        update: (id, patch) =>
+          query((db) => db.update(generation).set(patch).where(eq(generation.id, id))).pipe(Effect.asVoid),
       };
     }),
   );

@@ -10,7 +10,21 @@ import { NativeSelect } from "~/components/ui/native-select";
 import { saveCharacterFn, SaveCharacterResult } from "~/server/books";
 
 /** Suggestions only: families use many words and spellings, so the field takes any text. */
-const titleSuggestions = ["Mum", "Mom", "Dad", "Mama", "Papa", "Grandma", "Grandpa", "Nana", "Granny", "Abuela", "Abuelo", "Auntie", "Uncle"];
+const titleSuggestions = [
+  "Mum",
+  "Mom",
+  "Dad",
+  "Mama",
+  "Papa",
+  "Grandma",
+  "Grandpa",
+  "Nana",
+  "Granny",
+  "Abuela",
+  "Abuelo",
+  "Auntie",
+  "Uncle",
+];
 
 export function CharacterForm({ character, canEdit }: { character?: Character; canEdit: boolean }) {
   const router = useRouter();
@@ -27,7 +41,11 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
     event.preventDefault();
     setSaving(true);
     try {
-      unwrapResult(SaveCharacterResult)(await saveCharacterFn({ data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } } }));
+      unwrapResult(SaveCharacterResult)(
+        await saveCharacterFn({
+          data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } },
+        }),
+      );
       await router.navigate({ to: "/characters" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -41,12 +59,23 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
         ← Characters
       </Link>
       <h1 className="text-2xl font-semibold">{character ? character.name : "Add a family member"}</h1>
-      {!canEdit && <p className="text-muted-foreground text-sm">You're a viewer in this family, so you can see characters but not change them.</p>}
+      {!canEdit && (
+        <p className="text-muted-foreground text-sm">
+          You're a viewer in this family, so you can see characters but not change them.
+        </p>
+      )}
       <form className="flex flex-col gap-6" onSubmit={save} aria-label="Character">
         <div className="flex flex-wrap gap-4">
           <div className="flex min-w-56 flex-col gap-2">
             <Label htmlFor="character-name">Name</Label>
-            <Input id="character-name" value={name} required maxLength={60} disabled={locked} onChange={(event) => setName(event.target.value)} />
+            <Input
+              id="character-name"
+              value={name}
+              required
+              maxLength={60}
+              disabled={locked}
+              onChange={(event) => setName(event.target.value)}
+            />
           </div>
           <div className="flex min-w-48 flex-col gap-2">
             <Label htmlFor="character-title">
@@ -69,11 +98,16 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="character-pronouns">Pronouns</Label>
-            <NativeSelect id="character-pronouns" value={pronouns} disabled={locked} onChange={(event) => {
+            <NativeSelect
+              id="character-pronouns"
+              value={pronouns}
+              disabled={locked}
+              onChange={(event) => {
                 const next = event.target.value as PronounSet;
                 setPronouns(next);
                 setLook((current) => withPronounFeatures(current, next));
-              }}>
+              }}
+            >
               {PronounSet.literals.map((set) => (
                 <option key={set} value={set}>
                   {set}
@@ -88,7 +122,11 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
             <Button type="submit" disabled={locked || saving || name.trim() === ""}>
               {character ? "Save changes" : "Add to the family"}
             </Button>
-            {character && <p className="text-muted-foreground text-xs">Every book with {character.name} redraws from the new look.</p>}
+            {character && (
+              <p className="text-muted-foreground text-xs">
+                Every book with {character.name} redraws from the new look.
+              </p>
+            )}
           </div>
         )}
         {error && (

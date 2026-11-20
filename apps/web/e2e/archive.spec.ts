@@ -6,10 +6,13 @@ import { Effect } from "effect";
 
 // Archiving a story (D49): its author takes it out of every family's stories and stops new books of it, without
 // touching the books already made, and can restore it. A fresh story each run, so the seeded ones stay published.
-test("an author archives a story: families can't find it or make a book of it, existing books still draw, and restoring brings it back", async ({ browser }) => {
+test("an author archives a story: families can't find it or make a book of it, existing books still draw, and restoring brings it back", async ({
+  browser,
+}) => {
   test.setTimeout(120_000);
   // Imported here, not at the top (AGENTS.md, "Orb size").
-  const { createBook, createCharacter, Database, importStoryVersion, makeServerRuntime } = await import("@lifestory/core");
+  const { createBook, createCharacter, Database, importStoryVersion, makeServerRuntime } =
+    await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
@@ -38,18 +41,49 @@ test("an author archives a story: families can't find it or make a book of it, e
     await run(
       Database.use(({ pool }) =>
         Effect.promise(() =>
-          pool.query("insert into story (id, author_id, slug, title, summary, status, published_at) values ($1, 'user_operator', $2, $3, 'e2e', 'published', now())", [
-            storyId,
-            slug,
-            title,
-          ]),
+          pool.query(
+            "insert into story (id, author_id, slug, title, summary, status, published_at) values ($1, 'user_operator', $2, $3, 'e2e', 'published', now())",
+            [storyId, slug, title],
+          ),
         ),
       ),
     );
-    await run(importStoryVersion({ id: `${storyId}_v1`, storyId, version: 1, manifest, readAsset, publishedAt: new Date("2026-11-19T19:00:00Z"), coveredWith: [redHair] }));
-    const look = { face: "face:round", features: "features:defined", skin: "skin:s2", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" } as const;
-    const hero = await run(createCharacter(parent, family, { name: `Ada ${id}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
-    const grown = await run(createCharacter(parent, family, { name: `Bea ${id}`, title: null, pronouns: "she/her", look: { ...look, age: "adult" } }));
+    await run(
+      importStoryVersion({
+        id: `${storyId}_v1`,
+        storyId,
+        version: 1,
+        manifest,
+        readAsset,
+        publishedAt: new Date("2026-11-19T19:00:00Z"),
+        coveredWith: [redHair],
+      }),
+    );
+    const look = {
+      face: "face:round",
+      features: "features:defined",
+      skin: "skin:s2",
+      hair: "hair:short",
+      hairColour: "hair-colour:brown",
+      glasses: "glasses:none",
+      facialHair: "facial-hair:none",
+    } as const;
+    const hero = await run(
+      createCharacter(parent, family, {
+        name: `Ada ${id}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const grown = await run(
+      createCharacter(parent, family, {
+        name: `Bea ${id}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "adult" },
+      }),
+    );
     const cast = { hero: hero.id, grownup: grown.id };
     // The family made a book before the story was archived.
     const { id: bookId } = await run(createBook(parent, family, { slug, cast }));
@@ -75,7 +109,11 @@ test("an author archives a story: families can't find it or make a book of it, e
     expect(storyPage?.status()).toBe(404);
     await expect(run(createBook(parent, family, { slug, cast, existing: [bookId] }))).rejects.toThrow();
     const { rows } = await run(
-      Database.use(({ pool }) => Effect.promise(() => pool.query("select count(*)::int as n from book where story_version_id = $1", [`${storyId}_v1`]))),
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool.query("select count(*)::int as n from book where story_version_id = $1", [`${storyId}_v1`]),
+        ),
+      ),
     );
     expect(rows[0].n).toBe(1);
 
@@ -83,7 +121,11 @@ test("an author archives a story: families can't find it or make a book of it, e
     await reader.goto(`/books/${bookId}`);
     await expect(reader.getByTestId("book-page").first()).toBeVisible();
     await expect
-      .poll(() => reader.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 })
+      .poll(
+        () =>
+          reader.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+        { timeout: 30_000 },
+      )
       .toBe(0);
     expect((await reader.request.get(asset)).status()).toBe(200);
     // Someone with no book of it can't read its files.
@@ -93,12 +135,30 @@ test("an author archives a story: families can't find it or make a book of it, e
     // 4. The author still previews it, told it's archived, with no way to make a book, not even on the server for
     // their own family, who can read the story.
     const { rows: own } = await run(
-      Database.use(({ pool }) => Effect.promise(() => pool.query("select organization_id from member where user_id = 'user_operator' limit 1"))),
+      Database.use(({ pool }) =>
+        Effect.promise(() => pool.query("select organization_id from member where user_id = 'user_operator' limit 1")),
+      ),
     );
     const ownFamily = own[0].organization_id as string;
-    const ownHero = await run(createCharacter("user_operator", ownFamily, { name: `Cy ${id}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
-    const ownGrown = await run(createCharacter("user_operator", ownFamily, { name: `Di ${id}`, title: null, pronouns: "she/her", look: { ...look, age: "adult" } }));
-    await expect(run(createBook("user_operator", ownFamily, { slug, cast: { hero: ownHero.id, grownup: ownGrown.id } }))).rejects.toThrow("is archived");
+    const ownHero = await run(
+      createCharacter("user_operator", ownFamily, {
+        name: `Cy ${id}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const ownGrown = await run(
+      createCharacter("user_operator", ownFamily, {
+        name: `Di ${id}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "adult" },
+      }),
+    );
+    await expect(
+      run(createBook("user_operator", ownFamily, { slug, cast: { hero: ownHero.id, grownup: ownGrown.id } })),
+    ).rejects.toThrow("is archived");
     await author.goto(`/stories/${slug}`);
     await expect(author.getByTestId("story-archived")).toContainText("Archived.");
     await expect(author.getByRole("button", { name: /^(Make the book|Make another copy)$/ })).toHaveCount(0);

@@ -27,7 +27,11 @@ export const castingTask = defineTask({
       const read = (asset: string) => ObjectStorage.use((s) => s.get(key(asset))).pipe(Effect.orDie);
       const write = (asset: string, bytes: Uint8Array, contentType = "image/png") =>
         ObjectStorage.use((s) => s.put(key(asset), bytes, contentType)).pipe(Effect.orDie);
-      const outcome = (error: string | null, figures = page.figures, results: ReadonlyArray<ImportResult> = []): CastingOutcome => ({
+      const outcome = (
+        error: string | null,
+        figures = page.figures,
+        results: ReadonlyArray<ImportResult> = [],
+      ): CastingOutcome => ({
         storyId,
         error,
         figures,
@@ -142,7 +146,10 @@ export const castingTask = defineTask({
           const results: ImportResult[] = [];
           for (const s of states) {
             const result = Schema.decodeUnknownSync(
-              Schema.Union([Schema.Struct({ result: ImportResult }), Schema.Struct({ storyId: Schema.String, error: Schema.String })]),
+              Schema.Union([
+                Schema.Struct({ result: ImportResult }),
+                Schema.Struct({ storyId: Schema.String, error: Schema.String }),
+              ]),
             )(s.result);
             if ("error" in result) return outcome(result.error);
             results.push(result.result);

@@ -55,7 +55,11 @@ export const recolour = async (
   const out = Uint8Array.from(data);
   for (const region of regions) {
     const mask = region.mask
-      ? await sharp(await (await rasterize(region.mask)).png().toBuffer()).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer()
+      ? await sharp(await (await rasterize(region.mask)).png().toBuffer())
+          .resize(width, height, { fit: "fill" })
+          .extractChannel(3)
+          .raw()
+          .toBuffer()
       : null;
     const lut = Array.from({ length: 256 }, (_, tone) => paletteAt(region.palette, tone / 255));
     for (let p = 0; p < width * height; p++) {
@@ -69,5 +73,9 @@ export const recolour = async (
   }
   // zlib level 6, not 9: on textured raster art (the watercolour sample) level 9 took ~90% of a recolour (~0.8 s of
   // ~0.85 s for an 800 × 1600 figure) for files only 4–5% smaller. The pixels, and so the cache key, are the same.
-  return new Uint8Array(await sharp(out, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 6 }).toBuffer());
+  return new Uint8Array(
+    await sharp(out, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 6 })
+      .toBuffer(),
+  );
 };

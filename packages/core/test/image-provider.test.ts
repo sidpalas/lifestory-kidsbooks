@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderPlaceholder } from "../src/image-provider.ts";
 import { signBody, verifySignature } from "../src/providers/modal.ts";
 
-const render = (key: string, prompt = "a <cat> & \"dog\"") => renderPlaceholder({ key, prompt, width: 300, height: 200 });
+const render = (key: string, prompt = 'a <cat> & "dog"') => renderPlaceholder({ key, prompt, width: 300, height: 200 });
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
 describe("renderPlaceholder (fake provider)", () => {

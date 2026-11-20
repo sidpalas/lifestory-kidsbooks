@@ -8,10 +8,16 @@ import { Effect } from "effect";
 // version. Both sample stories gained red hair through `additions/1.json`, imported by the seed.
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 const evidence = async (page: Page, name: string) => {
-  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage: true });
+  if (process.env.E2E_SCREENSHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage: true });
 };
 const imagesLoaded = (page: Page) =>
-  expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
+  expect
+    .poll(
+      () => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+      { timeout: 30_000 },
+    )
+    .toBe(0);
 
 const addCharacter = async (page: Page, name: string, age: string, choices: ReadonlyArray<string>) => {
   await page.goto("/characters/new");
@@ -23,7 +29,9 @@ const addCharacter = async (page: Page, name: string, age: string, choices: Read
   await expect(page.getByTestId("characters")).toContainText(name);
 };
 
-test("a red-haired child is drawn with red hair in books of both sample stories, which are still on their published versions", async ({ page }) => {
+test("a red-haired child is drawn with red hair in books of both sample stories, which are still on their published versions", async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   const id = unique();
   const child = `Rosie ${id}`;
@@ -32,7 +40,10 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
   await addCharacter(page, child, "Young child", ["Very light skin", "Oval face", "Long hair", "Red hair colour"]);
   await addCharacter(page, grownup, "Adult", ["Medium skin", "Oval face", "Long hair", "Red hair colour"]);
 
-  for (const [slug, version, name] of [["the-paper-boat", 6, "paper-boat"], ["the-moon-picnic", 5, "moon-picnic"]] as const) {
+  for (const [slug, version, name] of [
+    ["the-paper-boat", 6, "paper-boat"],
+    ["the-moon-picnic", 5, "moon-picnic"],
+  ] as const) {
     await page.goto(`/stories/${slug}`);
     await expect(page.getByText(`version ${version}`)).toBeVisible();
     const make = page.getByRole("list", { name: "Roles" });
@@ -53,16 +64,32 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
 
 /** Every image a page draws (the book editor's page list, or a proof's print page), as object keys, sorted. */
 const drawnKeys = (page: Page, scope: string) =>
-  page.locator(scope).locator("img").evaluateAll((imgs) =>
-    imgs.map((img) => img.getAttribute("src")!).filter((src) => src.startsWith("/api/files/stories/")).toSorted(),
-  );
+  page
+    .locator(scope)
+    .locator("img")
+    .evaluateAll((imgs) =>
+      imgs
+        .map((img) => img.getAttribute("src")!)
+        .filter((src) => src.startsWith("/api/files/stories/"))
+        .toSorted(),
+    );
 
-test("an addition draws in an existing book at once, and a proof made before it keeps drawing what it was requested with", async ({ page }) => {
+test("an addition draws in an existing book at once, and a proof made before it keeps drawing what it was requested with", async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   // Imported here, not at the top (AGENTS.md, "Orb size"). Only light calls run in this process: the web server and
   // the worker compose and recolour the pages.
-  const { Auth, createBook, createCharacter, Database, importStoryVersion, makeServerRuntime, publishStoryAddition, setLookOverride } =
-    await import("@lifestory/core");
+  const {
+    Auth,
+    createBook,
+    createCharacter,
+    Database,
+    importStoryVersion,
+    makeServerRuntime,
+    publishStoryAddition,
+    setLookOverride,
+  } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
@@ -74,9 +101,15 @@ test("an addition draws in an existing book at once, and a proof made before it 
   });
   // The addition: red hair, and softer features (D40) for the grown-up's round face on page 2, drawn here with the
   // oval base's file so the pages show the difference. Until it exists, a softer look draws the defined base there.
-  const grownupFigure = manifest.pages[1].illustration.layers.find((layer: { slotId?: string }) => layer.slotId === "grownup");
-  const oval = grownupFigure.bases.find((base: { age: string; face: string }) => base.age === "adult" && base.face === "face:oval");
-  const roundParts = grownupFigure.parts.filter((part: { age: string; face: string }) => part.age === "adult" && part.face === "face:round");
+  const grownupFigure = manifest.pages[1].illustration.layers.find(
+    (layer: { slotId?: string }) => layer.slotId === "grownup",
+  );
+  const oval = grownupFigure.bases.find(
+    (base: { age: string; face: string }) => base.age === "adult" && base.face === "face:oval",
+  );
+  const roundParts = grownupFigure.parts.filter(
+    (part: { age: string; face: string }) => part.age === "adult" && part.face === "face:round",
+  );
   const addition = {
     ...redHair,
     figures: [
@@ -101,27 +134,64 @@ test("an addition draws in an existing book at once, and a proof made before it 
     await run(
       Database.use(({ pool }) =>
         Effect.promise(() =>
-          pool.query("insert into story (id, author_id, slug, title, summary, status, published_at) values ($1, 'user_operator', $2, 'Additions', 'e2e', 'published', now())", [
-            storyId,
-            slug,
-          ]),
+          pool.query(
+            "insert into story (id, author_id, slug, title, summary, status, published_at) values ($1, 'user_operator', $2, 'Additions', 'e2e', 'published', now())",
+            [storyId, slug],
+          ),
         ),
       ),
     );
-    await run(importStoryVersion({ id: storyVersionId, storyId, version: 1, manifest, readAsset, publishedAt: new Date("2026-11-19T19:00:00Z"), coveredWith: [redHair] }));
-    const look = { face: "face:round", features: "features:soft", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:red", glasses: "glasses:none", facialHair: "facial-hair:none" } as const;
-    const hero = await run(createCharacter(parent, family, { name: `Rosie ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
-    const grown = await run(createCharacter(parent, family, { name: `Fern ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "adult" } }));
+    await run(
+      importStoryVersion({
+        id: storyVersionId,
+        storyId,
+        version: 1,
+        manifest,
+        readAsset,
+        publishedAt: new Date("2026-11-19T19:00:00Z"),
+        coveredWith: [redHair],
+      }),
+    );
+    const look = {
+      face: "face:round",
+      features: "features:soft",
+      skin: "skin:s2",
+      hair: "hair:long",
+      hairColour: "hair-colour:red",
+      glasses: "glasses:none",
+      facialHair: "facial-hair:none",
+    } as const;
+    const hero = await run(
+      createCharacter(parent, family, {
+        name: `Rosie ${suffix}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const grown = await run(
+      createCharacter(parent, family, {
+        name: `Fern ${suffix}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "adult" },
+      }),
+    );
     // Choosing them on the story page warns before the book is made, and the pictures leave them out (D28, D41).
     const cast = encodeURIComponent(JSON.stringify({ hero: hero.id, grownup: grown.id }));
-    await page.goto(`/__dev/log-me-in/parent@lifestory.dev?returnTo=${encodeURIComponent(`/stories/${slug}?cast=${cast}`)}`);
+    await page.goto(
+      `/__dev/log-me-in/parent@lifestory.dev?returnTo=${encodeURIComponent(`/stories/${slug}?cast=${cast}`)}`,
+    );
     await expect(page.getByTestId("cast-warning-hero")).toHaveText(
       `This story can't draw Rosie ${suffix}'s hair colour yet, so the pages leave Rosie ${suffix} out. In the book you'll pick a stand-in.`,
     );
     await expect(page.getByTestId("cast-warning-grownup")).toBeVisible();
     // Every figure is recoloured from the cast's skin and hair; with both left out, no page draws one.
     await imagesLoaded(page);
-    const drawn = await page.getByRole("region", { name: "Pages" }).locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")!));
+    const drawn = await page
+      .getByRole("region", { name: "Pages" })
+      .locator("img")
+      .evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")!));
     expect(drawn.length).toBeGreaterThan(0);
     expect(drawn.filter((src) => src.includes("/recoloured/"))).toEqual([]);
     const { id: bookId } = await run(createBook(parent, family, { slug, cast: { hero: hero.id, grownup: grown.id } }));
@@ -159,16 +229,20 @@ test("an addition draws in an existing book at once, and a proof made before it 
     await run(publishStoryAddition({ storyVersionId, revision: 1, addition, readAsset, createdBy: "user_operator" }));
     const changed = structuredClone(addition);
     changed.palettes.hairColour["hair-colour:red"][1].colour = "#ff0000";
-    await expect(run(publishStoryAddition({ storyVersionId, revision: 1, addition: changed, readAsset, createdBy: "user_operator" }))).rejects.toThrow(
-      "already exists with different content",
-    );
+    await expect(
+      run(
+        publishStoryAddition({ storyVersionId, revision: 1, addition: changed, readAsset, createdBy: "user_operator" }),
+      ),
+    ).rejects.toThrow("already exists with different content");
 
     // Each proof records the additions it was requested with, and its print page (what the worker prints, and would
     // print again on a retry) draws exactly what the book drew then: the first one still the brown stand-ins and the
     // defined base, though the book has moved on.
     const { rows } = await run(
       Database.use(({ pool }) =>
-        Effect.promise(() => pool.query("select id, addition_revision from proof where book_id = $1 order by created_at", [bookId])),
+        Effect.promise(() =>
+          pool.query("select id, addition_revision from proof where book_id = $1 order by created_at", [bookId]),
+        ),
       ),
     );
     expect(rows.map((row) => row.addition_revision)).toEqual([0, 1]);

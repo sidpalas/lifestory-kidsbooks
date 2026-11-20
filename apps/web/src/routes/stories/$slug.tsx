@@ -1,5 +1,21 @@
-import { type Look, type LookOverride, NotAuthenticated, NotFound, resolvePageText, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter, useRouterState } from "@tanstack/react-router";
+import {
+  type Look,
+  type LookOverride,
+  NotAuthenticated,
+  NotFound,
+  resolvePageText,
+  storyAssetKey,
+  unwrapResult,
+} from "@lifestory/core/contracts";
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  redirect,
+  useHydrated,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
@@ -50,7 +66,11 @@ function StoryPreview() {
   // pages recompose, so each change builds on this, and a change made during a load isn't lost. The state renders
   // the controls; the ref lets changes arriving faster than renders build on each other.
   const search = Route.useSearch();
-  const [choice, setChoice] = useState<Choice>({ cast: { ...search.cast }, looks: { ...search.looks }, changes: { ...search.changes } });
+  const [choice, setChoice] = useState<Choice>({
+    cast: { ...search.cast },
+    looks: { ...search.looks },
+    changes: { ...search.changes },
+  });
   // Which roles' "look in this book" pickers are open; a role with changes opens with the page. Hiding a picker keeps
   // its changes, like hiding the picker of looks tried on an example keeps that look.
   const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(Object.keys(search.changes ?? {})));
@@ -63,7 +83,11 @@ function StoryPreview() {
     latest.current = change(latest.current);
     setChoice(latest.current);
     // Only the search changes: keep the reader where they are on the page.
-    const next = { cast: orNone(latest.current.cast), looks: orNone(latest.current.looks), changes: orNone(latest.current.changes) };
+    const next = {
+      cast: orNone(latest.current.cast),
+      looks: orNone(latest.current.looks),
+      changes: orNone(latest.current.changes),
+    };
     void router.navigate({ to: "/stories/$slug", params: { slug }, search: next, replace: true, resetScroll: false });
   };
   // Another member (or the example) drops the role's look changes: they were for the person picked before.
@@ -83,7 +107,8 @@ function StoryPreview() {
       const { [slotId]: _, ...others } = current.changes;
       return { ...current, changes: Object.keys(changes).length > 0 ? { ...others, [slotId]: changes } : others };
     });
-  const tryLook = (slotId: string, look: Look) => update((current) => ({ ...current, looks: { ...current.looks, [slotId]: look } }));
+  const tryLook = (slotId: string, look: Look) =>
+    update((current) => ({ ...current, looks: { ...current.looks, [slotId]: look } }));
 
   const shown = slots.map((slot) => cast[slot.slotId]!.name).join(" and ");
   const tryingOpen = (slotId: string) => choice.looks[slotId] !== undefined && !tryHidden.has(slotId);
@@ -106,9 +131,13 @@ function StoryPreview() {
           by {story.authorName} · version {version} · {widthIn} × {heightIn} in · {manifest.pages.length} pages
         </p>
         {archived && (
-          <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="story-archived" role="status">
-            <span className="font-medium">Archived.</span> Families can't find this story or make new books of it; the books they made stay theirs. You see it
-            because you wrote it.{" "}
+          <p
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm"
+            data-testid="story-archived"
+            role="status"
+          >
+            <span className="font-medium">Archived.</span> Families can't find this story or make new books of it; the
+            books they made stay theirs. You see it because you wrote it.{" "}
             <Link to="/author/$storyId" params={{ storyId: story.id }} className="underline">
               Restore it in Studio
             </Link>
@@ -178,7 +207,13 @@ function StoryPreview() {
               focusById(tryToggleId(slot.slotId));
             }}
           >
-            <LookPicker look={look} pronouns={slot.example.pronouns} ages={slot.ages} disabled={!hydrated} onChange={(next) => tryLook(slot.slotId, next)} />
+            <LookPicker
+              look={look}
+              pronouns={slot.example.pronouns}
+              ages={slot.ages}
+              disabled={!hydrated}
+              onChange={(next) => tryLook(slot.slotId, next)}
+            />
           </PickerCard>
         );
       })}
@@ -199,7 +234,10 @@ function StoryPreview() {
                     manifest={manifest}
                     page={page}
                     text={resolvePageText(page, cast)}
-                    illustration={pages[i]!.layers.map((layer) => ({ url: `/api/files/${layer.key}`, rect: layer.rect }))}
+                    illustration={pages[i]!.layers.map((layer) => ({
+                      url: `/api/files/${layer.key}`,
+                      rect: layer.rect,
+                    }))}
                     cast={cast}
                   />
                 </ScaledPage>

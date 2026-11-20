@@ -12,10 +12,15 @@ export const Route = createFileRoute("/")({
   loader: async () => {
     try {
       const [home, library] = await Promise.all([getHome(), getFamilyLibrary()]);
-      return { signedIn: true as const, shell: unwrapResult(HomeResult)(home), library: unwrapResult(FamilyLibraryResult)(library) };
+      return {
+        signedIn: true as const,
+        shell: unwrapResult(HomeResult)(home),
+        library: unwrapResult(FamilyLibraryResult)(library),
+      };
     } catch (error) {
       // Signed-out visitors get the landing page instead of the app home.
-      if (error instanceof NotAuthenticated) return { signedIn: false as const, ...unwrapResult(LandingResult)(await getLanding()) };
+      if (error instanceof NotAuthenticated)
+        return { signedIn: false as const, ...unwrapResult(LandingResult)(await getLanding()) };
       throw error;
     }
   },
@@ -74,7 +79,11 @@ function NextStep({ hasFamily }: { hasFamily: boolean }) {
   const steps = ["Add your family", "Make your first book", "Check the words and print a proof"];
   const current = hasFamily ? 1 : 0;
   return (
-    <section className="bg-card flex flex-col gap-4 rounded-lg border p-5" aria-labelledby="next-step" data-testid="next-step">
+    <section
+      className="bg-card flex flex-col gap-4 rounded-lg border p-5"
+      aria-labelledby="next-step"
+      data-testid="next-step"
+    >
       <div className="flex flex-col gap-1">
         <p className="text-muted-foreground text-sm">Next step</p>
         <h2 id="next-step" className="text-xl font-semibold">

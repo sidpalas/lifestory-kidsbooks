@@ -46,13 +46,16 @@ export const SignOutResult = ResultSchema(Done, Schema.Never);
 export const signOut = createServerFn({ method: "POST" }).handler(() =>
   runEffect(
     SignOutResult,
-    Auth.use(({ auth }) => Effect.promise(() => auth.api.signOut({ headers: getRequest().headers, returnHeaders: true }))).pipe(
-      Effect.flatMap(({ headers }) => setCookies(headers.getSetCookie())),
-    ),
+    Auth.use(({ auth }) =>
+      Effect.promise(() => auth.api.signOut({ headers: getRequest().headers, returnHeaders: true })),
+    ).pipe(Effect.flatMap(({ headers }) => setCookies(headers.getSetCookie()))),
   ),
 );
 
-export const PasswordLinkResult = ResultSchema(Schema.Struct({ name: Schema.String, email: Schema.String }), InviteInvalid);
+export const PasswordLinkResult = ResultSchema(
+  Schema.Struct({ name: Schema.String, email: Schema.String }),
+  InviteInvalid,
+);
 
 export const getPasswordLink = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ token: Schema.String })))
@@ -82,7 +85,10 @@ export const getInvitation = createServerFn({ method: "GET" })
     ),
   );
 
-export const AcceptInvitationResult = ResultSchema(Done, Schema.Union([InviteInvalid, AccountExists, AuthRejected, NotAuthenticated]));
+export const AcceptInvitationResult = ResultSchema(
+  Done,
+  Schema.Union([InviteInvalid, AccountExists, AuthRejected, NotAuthenticated]),
+);
 
 /** Accepts as a new account (name and password given) or as the signed-in user. */
 export const acceptInvitationFn = createServerFn({ method: "POST" })
@@ -90,7 +96,9 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
     Schema.toStandardSchemaV1(
       Schema.Struct({
         invitationId: Schema.String,
-        newAccount: Schema.optional(Schema.Struct({ name: Schema.String.check(Schema.isMinLength(1)), password: Password })),
+        newAccount: Schema.optional(
+          Schema.Struct({ name: Schema.String.check(Schema.isMinLength(1)), password: Password }),
+        ),
       }),
     ),
   )
@@ -99,7 +107,8 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
       AcceptInvitationResult,
       Effect.gen(function* () {
         const headers = getRequest().headers;
-        if (data.newAccount) return yield* acceptInvitationAsNewUser({ invitationId: data.invitationId, ...data.newAccount });
+        if (data.newAccount)
+          return yield* acceptInvitationAsNewUser({ invitationId: data.invitationId, ...data.newAccount });
         yield* Auth.use((auth) => auth.requireUser(headers));
         return yield* acceptInvitation(data.invitationId, headers);
       }).pipe(Effect.flatMap(setCookies)),

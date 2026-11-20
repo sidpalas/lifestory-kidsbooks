@@ -83,7 +83,10 @@ export const renderFakeEdit = async (reference: Uint8Array, request: { key: stri
   const h = height!;
   const seed = createHash("sha256").update(request.key).digest();
   // A tiled edit (D44) holds several portraits: two side by side, or four in a 2 × 2 grid; each gets the part.
-  const count = ["one", "two", "three", "four"].indexOf(/holds (one|two|three|four) separate portraits/.exec(request.prompt)?.[1] ?? "one") + 1;
+  const count =
+    ["one", "two", "three", "four"].indexOf(
+      /holds (one|two|three|four) separate portraits/.exec(request.prompt)?.[1] ?? "one",
+    ) + 1;
   const columns = count > 1 ? 2 : 1;
   const rows = count > 1 && h > w ? 2 : 1;
   const tw = w / columns;
@@ -92,8 +95,12 @@ export const renderFakeEdit = async (reference: Uint8Array, request: { key: stri
     const [ox, oy] = [(k % columns) * tw, Math.floor(k / columns) * th];
     return /glasses/i.test(request.prompt)
       ? [0.443, 0.559]
-          .map((x) => `<circle cx="${ox + x * tw}" cy="${oy + 0.226 * th}" r="${0.045 * tw}" fill="none" stroke="#1d1a1c" stroke-width="${0.006 * tw}"/>`)
-          .join("") + `<path d="M${ox + 0.488 * tw} ${oy + 0.226 * th} H${ox + 0.514 * tw}" stroke="#1d1a1c" stroke-width="${0.005 * tw}"/>`
+          .map(
+            (x) =>
+              `<circle cx="${ox + x * tw}" cy="${oy + 0.226 * th}" r="${0.045 * tw}" fill="none" stroke="#1d1a1c" stroke-width="${0.006 * tw}"/>`,
+          )
+          .join("") +
+          `<path d="M${ox + 0.488 * tw} ${oy + 0.226 * th} H${ox + 0.514 * tw}" stroke="#1d1a1c" stroke-width="${0.005 * tw}"/>`
       : `<ellipse cx="${ox + 0.5 * tw}" cy="${oy + 0.135 * th}" rx="${0.185 * tw}" ry="${0.055 * th}" fill="#4b3a33" filter="url(#soft)"/>` +
           [0, 1, 2, 3, 4, 5]
             .map((i) => {
@@ -105,8 +112,17 @@ export const renderFakeEdit = async (reference: Uint8Array, request: { key: stri
   const overlay = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="soft"><feGaussianBlur stdDeviation="1.5"/></filter></defs>${part}</svg>`,
   );
-  const shifted = await sharp(reference).removeAlpha().extend({ left: 1, top: 1, extendWith: "copy" }).extract({ left: 0, top: 0, width: w, height: h }).linear(0.98, 4).png().toBuffer();
-  const body = await sharp(shifted).composite([{ input: overlay }]).png().toBuffer();
+  const shifted = await sharp(reference)
+    .removeAlpha()
+    .extend({ left: 1, top: 1, extendWith: "copy" })
+    .extract({ left: 0, top: 0, width: w, height: h })
+    .linear(0.98, 4)
+    .png()
+    .toBuffer();
+  const body = await sharp(shifted)
+    .composite([{ input: overlay }])
+    .png()
+    .toBuffer();
   return { body: new Uint8Array(body), contentType: "image/png" };
 };
 
@@ -130,10 +146,15 @@ const renderFakeImportEdit = async (reference: Uint8Array, prompt: string) => {
   const match = /from (\d+)% to (\d+)% across and (\d+)% to (\d+)% down/.exec(prompt);
   if (match && (remove || bald)) {
     const [x0, x1, y0, y1] = [match[1], match[2], match[3], match[4]].map(Number) as [number, number, number, number];
-    const px0 = Math.floor((x0 * w) / 100), px1 = Math.ceil((x1 * w) / 100), py0 = Math.floor((y0 * h) / 100), py1 = Math.ceil((y1 * h) / 100);
+    const px0 = Math.floor((x0 * w) / 100),
+      px1 = Math.ceil((x1 * w) / 100),
+      py0 = Math.floor((y0 * h) / 100),
+      py1 = Math.ceil((y1 * h) / 100);
     const inArea = (x: number, y: number) => x >= px0 && x < px1 && y >= py0 && y < py1;
     const median = (pixels: Array<number>) =>
-      [0, 1, 2].map((c) => pixels.map((p) => data[p * 3 + c]!).toSorted((a, b) => a - b)[Math.floor(pixels.length / 2)] ?? 240);
+      [0, 1, 2].map(
+        (c) => pixels.map((p) => data[p * 3 + c]!).toSorted((a, b) => a - b)[Math.floor(pixels.length / 2)] ?? 240,
+      );
     const lum = (p: number) => 0.2126 * data[p * 3]! + 0.7152 * data[p * 3 + 1]! + 0.0722 * data[p * 3 + 2]!;
     if (remove) {
       const ring: Array<number> = [];
@@ -141,7 +162,8 @@ const renderFakeImportEdit = async (reference: Uint8Array, prompt: string) => {
         for (let x = Math.max(0, px0 - 3); x < Math.min(w, px1 + 3); x++) if (!inArea(x, y)) ring.push(y * w + x);
       }
       const fill = median(ring);
-      for (let y = py0; y < py1; y++) for (let x = px0; x < px1; x++) for (let c = 0; c < 3; c++) out[(y * w + x) * 3 + c] = fill[c]!;
+      for (let y = py0; y < py1; y++)
+        for (let x = px0; x < px1; x++) for (let c = 0; c < 3; c++) out[(y * w + x) * 3 + c] = fill[c]!;
     } else {
       const skin: Array<number> = [];
       const dark: Array<number> = [];
@@ -183,12 +205,18 @@ export const FakeImageProvider = Layer.effect(
           const [reference] = job.references;
           const image = reference
             ? yield* storage.get(reference).pipe(
-                Effect.flatMap((object) => Effect.promise(() => renderFakeEdit(object.body, { key: job.generationId, prompt: job.prompt }))),
+                Effect.flatMap((object) =>
+                  Effect.promise(() => renderFakeEdit(object.body, { key: job.generationId, prompt: job.prompt })),
+                ),
                 Effect.orDie,
               )
             : renderPlaceholder({ key: job.generationId, ...job });
           yield* storage.put(job.outputKey, image.body, image.contentType).pipe(Effect.orDie);
-          const outcome: GenerationOutcome = { generationId: job.generationId, status: "succeeded", contentType: image.contentType };
+          const outcome: GenerationOutcome = {
+            generationId: job.generationId,
+            status: "succeeded",
+            contentType: image.contentType,
+          };
           yield* jobs.emit(generationEvent(job.generationId), outcome);
           return { externalId: null, costUsd: 0 };
         }),

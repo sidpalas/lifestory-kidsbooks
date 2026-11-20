@@ -10,19 +10,27 @@ const fixture = (file: string) => resolve("fixtures/imports", file);
 const font = (file: string) => resolve("fixtures/stories/moon-picnic/fonts", file);
 
 const evidence = async (page: Page, name: string, fullPage = true) => {
-  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage });
+  if (process.env.E2E_SCREENSHOTS)
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage });
 };
 const shoot = async (page: Page, testId: string, name: string) => {
-  if (process.env.E2E_SCREENSHOTS) await page.getByTestId(testId).screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png` });
+  if (process.env.E2E_SCREENSHOTS)
+    await page.getByTestId(testId).screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png` });
 };
 const imagesLoaded = (page: Page) =>
-  expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
+  expect
+    .poll(
+      () => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length),
+      { timeout: 30_000 },
+    )
+    .toBe(0);
 const save = async (page: Page) => {
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByTestId("draft-state")).toContainText("Saved");
 };
 const setRect = async (page: Page | Locator, label: string, rect: readonly [number, number, number, number]) => {
-  for (const [i, side] of (["left", "top", "right", "bottom"] as const).entries()) await page.getByLabel(`${label} ${side}`, { exact: true }).fill(String(rect[i]));
+  for (const [i, side] of (["left", "top", "right", "bottom"] as const).entries())
+    await page.getByLabel(`${label} ${side}`, { exact: true }).fill(String(rect[i]));
 };
 
 /** A new story by the operator with Literata, one role (a young child), on its Pages tab. */
@@ -50,13 +58,17 @@ const startStory = async (page: Page, title: string) => {
 
 const importTimeout = { timeout: 180_000 };
 
-test("art import: a layered PSD becomes a page, its figure, and its hair; the story publishes and a family makes a book", async ({ browser }) => {
+test("art import: a layered PSD becomes a page, its figure, and its hair; the story publishes and a family makes a book", async ({
+  browser,
+}) => {
   test.setTimeout(600_000);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const title = `The Runaway Kite ${id}`;
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage();
   await startStory(page, title);
-  await page.getByRole("textbox", { name: "Text block 1" }).fill("The kite flew up into the old oak, and {{hero.name}} looked up.");
+  await page
+    .getByRole("textbox", { name: "Text block 1" })
+    .fill("The kite flew up into the old oak, and {{hero.name}} looked up.");
 
   // 1. The PSD's layers, bottom to top, with a use suggested from each name; the hidden sketch is left out.
   const panel = page.getByTestId("art-import");
@@ -81,8 +93,14 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await shoot(page, "art-import", "import-2-review");
   await review.getByRole("button", { name: "Apply to this page" }).click();
   await expect(page.getByTestId("layer")).toHaveCount(2);
-  await expect(page.getByTestId("base-cell").filter({ hasText: "Young child, round face" })).toHaveAttribute("data-ready", "true");
-  await expect(page.getByTestId("part-cell").filter({ hasText: "Curly, young child, round face" })).toHaveAttribute("data-state", "unapproved");
+  await expect(page.getByTestId("base-cell").filter({ hasText: "Young child, round face" })).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+  await expect(page.getByTestId("part-cell").filter({ hasText: "Curly, young child, round face" })).toHaveAttribute(
+    "data-state",
+    "unapproved",
+  );
 
   // 3. The other face type, drawn by the image model from the imported figure, applied as the oval base.
   await review.getByRole("button", { name: "Draw the oval face from it" }).click();
@@ -90,7 +108,10 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await imagesLoaded(page);
   await shoot(page, "art-import", "import-3-other-face");
   await review.getByRole("button", { name: "Apply to this page" }).click();
-  await expect(page.getByTestId("base-cell").filter({ hasText: "Young child, oval face" })).toHaveAttribute("data-ready", "true");
+  await expect(page.getByTestId("base-cell").filter({ hasText: "Young child, oval face" })).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
   await save(page);
 
   // 4. The part pipeline draws every other part from the imported bases; the author approves them all and publishes.
@@ -98,15 +119,32 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await page.getByRole("button", { name: "Generate 27 missing parts" }).click();
   const generated = page.getByTestId("generated-part");
   await expect(generated).toHaveCount(27, { timeout: 60_000 });
-  await expect.poll(() => generated.evaluateAll((parts) => parts.filter((p) => p.getAttribute("data-status") === "pending_review").length), { timeout: 300_000 }).toBe(27);
+  await expect
+    .poll(
+      () =>
+        generated.evaluateAll(
+          (parts) => parts.filter((p) => p.getAttribute("data-status") === "pending_review").length,
+        ),
+      { timeout: 300_000 },
+    )
+    .toBe(27);
   await imagesLoaded(page);
   // The example (round face, short hair) is drawn now: plate, base, (face overlay,) and the generated short hair.
-  await expect.poll(() => page.getByTestId("draft-preview").locator("img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+  await expect
+    .poll(() => page.getByTestId("draft-preview").locator("img").count(), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(3);
   await imagesLoaded(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await evidence(page, "import-4-page", false);
-  if (process.env.E2E_SCREENSHOTS) await page.getByTestId("figure-hero").screenshot({ path: `${process.env.E2E_SCREENSHOTS}/import-5-parts.png`, style: ".sticky { position: static !important }" });
-  for (const cell of await page.getByTestId("part-cell").filter({ has: page.getByTestId("generated-part") }).all()) {
+  if (process.env.E2E_SCREENSHOTS)
+    await page.getByTestId("figure-hero").screenshot({
+      path: `${process.env.E2E_SCREENSHOTS}/import-5-parts.png`,
+      style: ".sticky { position: static !important }",
+    });
+  for (const cell of await page
+    .getByTestId("part-cell")
+    .filter({ has: page.getByTestId("generated-part") })
+    .all()) {
     await cell.getByRole("button", { name: /^Approve generated/ }).click();
     await expect(cell).toHaveAttribute("data-state", "approved");
   }
@@ -137,7 +175,9 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await expect(book.first()).toContainText(`The kite flew up into the old oak, and ${child} looked up.`);
   await imagesLoaded(page);
   // Plate, base, (face overlay,) and the imported curls: without them the figure couldn't be drawn at all.
-  await expect.poll(() => page.getByTestId("editor-page").getByTestId("illustration").locator("img").count()).toBeGreaterThanOrEqual(3);
+  await expect
+    .poll(() => page.getByTestId("editor-page").getByTestId("illustration").locator("img").count())
+    .toBeGreaterThanOrEqual(3);
   await evidence(page, "import-6-book");
   await page.context().close();
 });
@@ -150,7 +190,9 @@ test("art import: a flat page is separated into its plate and the figure", async
   const panel = page.getByTestId("art-import");
   await panel.getByLabel("Art file").setInputFiles(fixture("kite-flat.jpg"));
   await setRect(page, "Where the character is", [250, 225, 625, 790]);
-  await panel.getByLabel("Who to remove").fill("the little girl with curly hair in the yellow T-shirt, and the kite string in her hand");
+  await panel
+    .getByLabel("Who to remove")
+    .fill("the little girl with curly hair in the yellow T-shirt, and the kite string in her hand");
   await panel.getByLabel("Drawn hair").selectOption("hair:curly");
   await setRect(page, "Where the hair is, in the character", [0, 0, 1000, 400]);
   await shoot(page, "art-import", "flat-1-box");
@@ -164,13 +206,18 @@ test("art import: a flat page is separated into its plate and the figure", async
   await review.getByRole("button", { name: "Apply to this page" }).click();
   await expect(page.getByTestId("layer")).toHaveCount(2);
   await expect(page.getByTestId("layer").first()).toHaveAttribute("data-kind", "art");
-  await expect(page.getByTestId("part-cell").filter({ hasText: "Curly, young child, round face" })).toHaveAttribute("data-state", "unapproved");
+  await expect(page.getByTestId("part-cell").filter({ hasText: "Curly, young child, round face" })).toHaveAttribute(
+    "data-state",
+    "unapproved",
+  );
   await save(page);
   // The example (short hair) has no short-hair part yet, so the preview shows the plate; with curls it draws her.
   await page.getByRole("tab", { name: "Roles" }).click();
   await page.getByLabel("Example hairstyle").selectOption("hair:curly");
   await page.getByRole("tab", { name: "Pages" }).click();
-  await expect.poll(() => page.getByTestId("draft-preview").locator("img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+  await expect
+    .poll(() => page.getByTestId("draft-preview").locator("img").count(), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(3);
   await imagesLoaded(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await evidence(page, "flat-3-page", false);
@@ -194,14 +241,18 @@ test("art import: a flat page is separated into its plate and the figure", async
   await page.getByRole("tab", { name: "Review", exact: true }).click();
   await page.getByLabel("Review option").selectOption("hair:short");
   candidate = page.getByTestId("review-candidate");
-  await expect(candidate.getByRole("textbox", { name: /Flag reason/ })).toHaveValue("Keep the fringe clear of the eyes");
+  await expect(candidate.getByRole("textbox", { name: /Flag reason/ })).toHaveValue(
+    "Keep the fringe clear of the eyes",
+  );
   await page.getByRole("button", { name: /^Redo 1 flagged/ }).click();
   await expect(candidate).toHaveAttribute("data-status", "pending_review", { timeout: 180_000 });
   await expect(candidate).toContainText("Previous flag: Keep the fringe clear of the eyes");
   await expect(candidate.getByRole("button", { name: "Approve candidate", exact: true })).toBeEnabled();
   await candidate.getByRole("button", { name: "On the page" }).click();
   const context = page.getByRole("dialog", { name: "Review on the page" });
-  await expect.poll(() => context.getByTestId("illustration").locator("img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+  await expect
+    .poll(() => context.getByTestId("illustration").locator("img").count(), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(3);
   await imagesLoaded(page);
   await evidence(page, "review-page-context", false);
   await context.getByRole("button", { name: "Back to sheet" }).click();
@@ -212,7 +263,9 @@ test("art import: a flat page is separated into its plate and the figure", async
   await page.context().close();
 });
 
-test("casting: corrections persist, approval gates extraction, and two figures share one plate", async ({ browser }) => {
+test("casting: corrections persist, approval gates extraction, and two figures share one plate", async ({
+  browser,
+}) => {
   test.setTimeout(240_000);
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage();
   try {
@@ -222,7 +275,13 @@ test("casting: corrections persist, approval gates extraction, and two figures s
     await save(page);
     await page.getByRole("tab", { name: "Casting", exact: true }).click();
     const sharp = (await import("sharp")).default;
-    const picture = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#f8f4ec"/><circle cx="200" cy="200" r="65" fill="#c98e60"/><rect x="140" y="265" width="120" height="225" fill="#2662ae"/><circle cx="600" cy="180" r="55" fill="#e0a77e"/><rect x="550" y="235" width="100" height="200" fill="#c84444"/></svg>`)).png().toBuffer();
+    const picture = await sharp(
+      Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#f8f4ec"/><circle cx="200" cy="200" r="65" fill="#c98e60"/><rect x="140" y="265" width="120" height="225" fill="#2662ae"/><circle cx="600" cy="180" r="55" fill="#e0a77e"/><rect x="550" y="235" width="100" height="200" fill="#c84444"/></svg>`,
+      ),
+    )
+      .png()
+      .toBuffer();
     const rotated = await sharp(picture).withMetadata({ orientation: 6 }).jpeg().toBuffer();
     await page.getByLabel("Book page pictures").setInputFiles([
       { name: "two-people.png", mimeType: "image/png", buffer: picture },
@@ -230,7 +289,13 @@ test("casting: corrections persist, approval gates extraction, and two figures s
     ]);
     await expect(page.getByTestId("cast-page")).toHaveCount(2);
     const castPage = page.getByTestId("cast-page").first();
-    await expect.poll(() => page.getByRole("img", { name: "Source art for p2", exact: true }).evaluate((image) => [(image as HTMLImageElement).naturalWidth, (image as HTMLImageElement).naturalHeight])).toEqual([600, 800]);
+    await expect
+      .poll(() =>
+        page
+          .getByRole("img", { name: "Source art for p2", exact: true })
+          .evaluate((image) => [(image as HTMLImageElement).naturalWidth, (image as HTMLImageElement).naturalHeight]),
+      )
+      .toEqual([600, 800]);
     // Both pages suggest at once; their results save through one queue, so neither fails the draft's revision check.
     await page.getByRole("button", { name: /^Suggest characters on 2 new pages/ }).click();
     for (const cast of await page.getByTestId("cast-page").all()) {
@@ -240,7 +305,8 @@ test("casting: corrections persist, approval gates extraction, and two figures s
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Suggest characters on/ })).toHaveCount(0);
     await page.reload();
-    for (const cast of await page.getByTestId("cast-page").all()) await expect(cast.getByLabel("Cast description")).not.toHaveValue("");
+    for (const cast of await page.getByTestId("cast-page").all())
+      await expect(cast.getByLabel("Cast description")).not.toHaveValue("");
     await expect(castPage.getByRole("button", { name: /^Extract characters/ })).toBeDisabled();
     await castPage.getByRole("button", { name: "Add a missed character" }).click();
     await castPage.getByRole("button", { name: "3", exact: true }).click();
@@ -278,16 +344,24 @@ test("casting: corrections persist, approval gates extraction, and two figures s
     const extraction = page.getByTestId("cast-extraction");
     await expect(extraction).toBeVisible({ timeout: 180_000 });
     await imagesLoaded(page);
-    const plates = await extraction.getByRole("img", { name: "Shared background", exact: true }).evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src));
+    const plates = await extraction
+      .getByRole("img", { name: "Shared background", exact: true })
+      .evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src));
     expect(plates).toHaveLength(2);
     expect(plates[0]).toBe(plates[1]);
-    const figureUrl = await extraction.getByRole("img", { name: "Light skin", exact: true }).first().getAttribute("src");
+    const figureUrl = await extraction
+      .getByRole("img", { name: "Light skin", exact: true })
+      .first()
+      .getAttribute("src");
     const figureBytes = await (await page.request.get(figureUrl!)).body();
     const figurePixels = await sharp(figureBytes).ensureAlpha().raw().toBuffer();
     expect(figurePixels[3]).toBe(0); // Scene reconstruction must not paste paper-coloured rectangles over the plate.
     const plateBytes = await (await page.request.get(plates[0]!)).body();
     const plate = await sharp(plateBytes).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-    for (const [x, y] of [[200, 200], [600, 180]] as const) {
+    for (const [x, y] of [
+      [200, 200],
+      [600, 180],
+    ] as const) {
       const offset = (y * plate.info.width + x) * 3;
       expect([...plate.data.subarray(offset, offset + 3)].every((channel) => channel > 225)).toBe(true);
     }
@@ -297,5 +371,7 @@ test("casting: corrections persist, approval gates extraction, and two figures s
     await page.getByRole("tab", { name: "Pages", exact: true }).click();
     await expect(page.getByTestId("layer")).toHaveCount(3);
     await expect(page.getByTestId("layer").first()).toHaveAttribute("data-kind", "art");
-  } finally { await page.context().close(); }
+  } finally {
+    await page.context().close();
+  }
 });

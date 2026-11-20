@@ -39,13 +39,18 @@ interface Appearance {
 }
 const appearancesAt = (ages: ReadonlyArray<Age>): ReadonlyArray<Appearance> =>
   ages.flatMap((age) =>
-    faceOptions.flatMap(({ id: face }) => (hasFeatures(age) ? featuresOptions.map(({ id: features }) => ({ age, face, features })) : [{ age, face }])),
+    faceOptions.flatMap(({ id: face }) =>
+      hasFeatures(age) ? featuresOptions.map(({ id: features }) => ({ age, face, features })) : [{ age, face }],
+    ),
   );
 const appearanceKey = (at: Appearance) => `${at.age}/${at.face}${at.features ? `/${at.features}` : ""}`;
 const appearanceLabel = (at: Appearance) =>
   `${ageLabel(at.age)}, ${faceLabel(at.face)}${at.features ? `, ${featuresOptions.find((option) => option.id === at.features)!.label.toLowerCase()}` : ""}`;
 /** Whether a base or part (stored, or generated with a null features) draws `at`; a missing features is defined. */
-const draws = (item: { readonly age: Age; readonly face: string; readonly features?: FeaturesOption | null | undefined }, at: Appearance) =>
+const draws = (
+  item: { readonly age: Age; readonly face: string; readonly features?: FeaturesOption | null | undefined },
+  at: Appearance,
+) =>
   item.age === at.age && item.face === at.face && (!at.features || (item.features ?? DEFAULT_FEATURES) === at.features);
 
 /** What the parts grid needs from the part pipeline (D36), for this figure. */
@@ -55,7 +60,15 @@ export interface Generation {
   /** Why generating isn't possible now (unsaved changes, two figures of the role on the page), or null. */
   readonly blocked: string | null;
   readonly generate: (
-    requests: ReadonlyArray<{ age: Age; face: FigureBase["face"]; features?: FeaturesOption; axis: Part["axis"]; option: string; zone: Rect; seed: number }>,
+    requests: ReadonlyArray<{
+      age: Age;
+      face: FigureBase["face"];
+      features?: FeaturesOption;
+      axis: Part["axis"];
+      option: string;
+      zone: Rect;
+      seed: number;
+    }>,
   ) => void;
   readonly review: (partId: string, decision: PartDecision) => void;
 }
@@ -85,7 +98,11 @@ export function FigureEditor({
       <div className="grid gap-3 md:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs font-medium">
           Role
-          <NativeSelect aria-label="Figure role" value={figure.slotId} onChange={(event) => onChange({ ...figure, slotId: event.target.value })}>
+          <NativeSelect
+            aria-label="Figure role"
+            value={figure.slotId}
+            onChange={(event) => onChange({ ...figure, slotId: event.target.value })}
+          >
             {!slot && <option value={figure.slotId}>{figure.slotId} (missing)</option>}
             {slots.map((candidate) => (
               <option key={candidate.slotId} value={candidate.slotId}>
@@ -138,7 +155,17 @@ export function FigureEditor({
       <RectFields label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
 
       <BasesGrid files={files} folder={folder} role={role} figure={figure} ages={ages} onChange={onChange} />
-      {figure.showsHead !== false && <PartsGrid files={files} folder={folder} role={role} figure={figure} ages={ages} generation={generation} onChange={onChange} />}
+      {figure.showsHead !== false && (
+        <PartsGrid
+          files={files}
+          folder={folder}
+          role={role}
+          figure={figure}
+          ages={ages}
+          generation={generation}
+          onChange={onChange}
+        />
+      )}
     </div>
   );
 }
@@ -165,7 +192,10 @@ function BasesGrid({
   const set = (at: Appearance, field: "asset" | "skinMask" | "browMask", asset: string) => {
     const existing = figure.bases.find((base) => draws(base, at));
     if (existing) {
-      onChange({ ...figure, bases: figure.bases.map((base) => (base === existing ? { ...base, [field]: asset } : base)) });
+      onChange({
+        ...figure,
+        bases: figure.bases.map((base) => (base === existing ? { ...base, [field]: asset } : base)),
+      });
       return;
     }
     const key = appearanceKey(at);
@@ -183,8 +213,9 @@ function BasesGrid({
     <section className="flex flex-col gap-2" aria-label={`Base drawings of ${role}`}>
       <h4 className="text-sm font-semibold">Base drawings</h4>
       <p className="text-muted-foreground text-xs">
-        One per face type at each age this figure draws, and from teen up one with softer and one with defined features: bald, in neutral greys, filling the box. The skin mask covers every visible bit of skin (it takes
-        the skin tone); the brow mask takes the hair colour.
+        One per face type at each age this figure draws, and from teen up one with softer and one with defined features:
+        bald, in neutral greys, filling the box. The skin mask covers every visible bit of skin (it takes the skin
+        tone); the brow mask takes the hair colour.
       </p>
       <ul className="grid gap-2 md:grid-cols-2">
         {appearancesAt(ages).map((appearance) => {
@@ -192,14 +223,41 @@ function BasesGrid({
           const waiting = pending[appearanceKey(appearance)];
           const at = appearanceLabel(appearance);
           return (
-            <li key={appearanceKey(appearance)} className="flex flex-col gap-2 rounded-md border p-2" data-testid="base-cell" data-ready={base ? "true" : "false"}>
+            <li
+              key={appearanceKey(appearance)}
+              className="flex flex-col gap-2 rounded-md border p-2"
+              data-testid="base-cell"
+              data-ready={base ? "true" : "false"}
+            >
               <span className="text-xs font-semibold">
                 {at}
-                {appearance.features === "features:soft" && <span className="text-muted-foreground font-normal"> (optional)</span>}
+                {appearance.features === "features:soft" && (
+                  <span className="text-muted-foreground font-normal"> (optional)</span>
+                )}
               </span>
-              <UploadField files={files} folder={folder} label={`Base drawing: ${at}`} asset={base?.asset ?? waiting?.asset} onUploaded={(asset) => set(appearance, "asset", asset)} />
-              <UploadField files={files} folder={folder} label={`Skin mask: ${at}`} asset={base?.skinMask ?? waiting?.skinMask} onUploaded={(asset) => set(appearance, "skinMask", asset)} />
-              {base && <UploadField files={files} folder={folder} label={`Brow mask: ${at}`} asset={base.browMask} onUploaded={(asset) => set(appearance, "browMask", asset)} />}
+              <UploadField
+                files={files}
+                folder={folder}
+                label={`Base drawing: ${at}`}
+                asset={base?.asset ?? waiting?.asset}
+                onUploaded={(asset) => set(appearance, "asset", asset)}
+              />
+              <UploadField
+                files={files}
+                folder={folder}
+                label={`Skin mask: ${at}`}
+                asset={base?.skinMask ?? waiting?.skinMask}
+                onUploaded={(asset) => set(appearance, "skinMask", asset)}
+              />
+              {base && (
+                <UploadField
+                  files={files}
+                  folder={folder}
+                  label={`Brow mask: ${at}`}
+                  asset={base.browMask}
+                  onUploaded={(asset) => set(appearance, "browMask", asset)}
+                />
+              )}
             </li>
           );
         })}
@@ -213,11 +271,14 @@ interface PartCell extends Appearance {
   readonly option: LookOption;
 }
 
-const sameCell = (cell: PartCell, part: Pick<Part, "age" | "face" | "axis" | "option"> & { readonly features?: FeaturesOption | null | undefined }) =>
-  draws(part, cell) && part.axis === cell.axis && part.option === cell.option.id;
+const sameCell = (
+  cell: PartCell,
+  part: Pick<Part, "age" | "face" | "axis" | "option"> & { readonly features?: FeaturesOption | null | undefined },
+) => draws(part, cell) && part.axis === cell.axis && part.option === cell.option.id;
 
 /** A cell's state from the generated part that fills it. */
-const generatedState = (part: StoryPart) => (part.status === "approved" ? "approved" : part.status === "generating" ? "generating" : "unapproved");
+const generatedState = (part: StoryPart) =>
+  part.status === "approved" ? "approved" : part.status === "generating" ? "generating" : "unapproved";
 
 const statusLabel: Record<StoryPart["status"], string> = {
   generating: "Generating…",
@@ -247,10 +308,14 @@ function PartsGrid({
   // Where generated parts may be, in thousandths of the base: the head, with room for long hair (D36).
   const [zone, setZone] = useState<Rect>([200, 0, 800, 450]);
   // A softer base is optional (without one the defined base draws, D40), so its parts are cells only once it exists.
-  const drawn = appearancesAt(ages).filter((at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)));
+  const drawn = appearancesAt(ages).filter(
+    (at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)),
+  );
   const cells: ReadonlyArray<PartCell> = drawn.flatMap((appearance) =>
     partAxesAt(appearance.age).flatMap((axis) =>
-      (optionsAt(axis, appearance.age) as ReadonlyArray<LookOption>).filter((option) => !NO_PART_OPTIONS.has(option.id)).map((option) => ({ ...appearance, axis, option })),
+      (optionsAt(axis, appearance.age) as ReadonlyArray<LookOption>)
+        .filter((option) => !NO_PART_OPTIONS.has(option.id))
+        .map((option) => ({ ...appearance, axis, option })),
     ),
   );
   const uploaded = (cell: PartCell) => figure.parts.find((part) => sameCell(cell, part));
@@ -258,7 +323,10 @@ function PartsGrid({
   /** The generated part that fills the cell: an approved one, else the newest still generating or waiting. */
   const generated = (cell: PartCell) => {
     const all = attempts(cell);
-    return all.findLast((part) => part.status === "approved") ?? all.findLast((part) => part.status === "pending_review" || part.status === "generating");
+    return (
+      all.findLast((part) => part.status === "approved") ??
+      all.findLast((part) => part.status === "pending_review" || part.status === "generating")
+    );
   };
   const hasBase = (cell: PartCell) => figure.bases.some((base) => draws(base, cell));
   /**
@@ -266,8 +334,20 @@ function PartsGrid({
    * the cell it shares, when that one is generated or about to be.
    */
   const sharedFrom = (cell: PartCell): PartCell | undefined => {
-    if (cell.features !== "features:soft" || !HEAD_ONLY_OPTIONS.has(cell.option.id) || uploaded(cell) || generated(cell)) return undefined;
-    const defined = cells.find((other) => other.features === DEFAULT_FEATURES && other.age === cell.age && other.face === cell.face && other.option.id === cell.option.id);
+    if (
+      cell.features !== "features:soft" ||
+      !HEAD_ONLY_OPTIONS.has(cell.option.id) ||
+      uploaded(cell) ||
+      generated(cell)
+    )
+      return undefined;
+    const defined = cells.find(
+      (other) =>
+        other.features === DEFAULT_FEATURES &&
+        other.age === cell.age &&
+        other.face === cell.face &&
+        other.option.id === cell.option.id,
+    );
     return defined && !uploaded(defined) && hasBase(defined) ? defined : undefined;
   };
   const request = (cell: PartCell) => ({
@@ -279,7 +359,8 @@ function PartsGrid({
     zone,
     seed: attempts(cell).reduce((max, part) => Math.max(max, part.seed), 0) + 1,
   });
-  const setPart = (old: Part, next: Part) => onChange({ ...figure, parts: figure.parts.map((part) => (part === old ? next : part)) });
+  const setPart = (old: Part, next: Part) =>
+    onChange({ ...figure, parts: figure.parts.map((part) => (part === old ? next : part)) });
   const add = (cell: PartCell, asset: string) => {
     // Hairstyles of one figure usually sit in the same place, so a new part starts where a part of its axis is.
     const sibling = figure.parts.find((part) => part.axis === cell.axis);
@@ -296,7 +377,9 @@ function PartsGrid({
     };
     onChange({ ...figure, parts: [...figure.parts, part] });
   };
-  const empty = cells.filter((cell) => !uploaded(cell) && !generated(cell) && !(sharedFrom(cell) && generated(sharedFrom(cell)!)));
+  const empty = cells.filter(
+    (cell) => !uploaded(cell) && !generated(cell) && !(sharedFrom(cell) && generated(sharedFrom(cell)!)),
+  );
   const generatable = empty.filter((cell) => hasBase(cell) && !sharedFrom(cell));
   const waiting = cells.filter((cell) => {
     const gen = generated(cell);
@@ -322,11 +405,14 @@ function PartsGrid({
           Approve every uploaded part of this figure
         </Button>
       </div>
-      <div className="flex flex-col gap-2 rounded-md border border-dashed bg-muted/40 p-2 text-xs" data-testid="part-generation">
+      <div
+        className="flex flex-col gap-2 rounded-md border border-dashed bg-muted/40 p-2 text-xs"
+        data-testid="part-generation"
+      >
         <p className="font-medium">Generate the missing parts from the base</p>
         <p className="text-muted-foreground">
-          Each empty cell is drawn on its base by the image model, cut out, and shown here on the lightest and darkest skin for you to approve or reject.
-          Parts may only appear inside the zone.
+          Each empty cell is drawn on its base by the image model, cut out, and shown here on the lightest and darkest
+          skin for you to approve or reject. Parts may only appear inside the zone.
         </p>
         <RectFields label="Head zone" value={zone} onChange={(rect) => setZone(rect as Rect)} />
         <div className="flex flex-wrap items-center gap-2">
@@ -339,7 +425,9 @@ function PartsGrid({
             Generate {generatable.length} missing parts
           </Button>
           {generation.blocked && <span className="text-muted-foreground">{generation.blocked}</span>}
-          {empty.length > generatable.length && <span className="text-muted-foreground">Cells without a base drawing can't be generated yet.</span>}
+          {empty.length > generatable.length && (
+            <span className="text-muted-foreground">Cells without a base drawing can't be generated yet.</span>
+          )}
         </div>
       </div>
       <ul className="grid gap-2 md:grid-cols-2">
@@ -350,7 +438,15 @@ function PartsGrid({
           const shared = sharedFrom(cell);
           const sharedGen = shared && generated(shared);
           const at = `${cell.option.label}, ${appearanceLabel(cell).replace(/^[^,]+/, (age) => age.toLowerCase())}`;
-          const state = gen ? generatedState(gen) : part ? (part.approved ? "approved" : "unapproved") : sharedGen ? generatedState(sharedGen) : "missing";
+          const state = gen
+            ? generatedState(gen)
+            : part
+              ? part.approved
+                ? "approved"
+                : "unapproved"
+              : sharedGen
+                ? generatedState(sharedGen)
+                : "missing";
           return (
             <li
               key={`${appearanceKey(cell)}/${cell.option.id}`}
@@ -362,14 +458,27 @@ function PartsGrid({
             >
               <span className="text-xs font-semibold">{at}</span>
               {gen ? (
-                <GeneratedPart part={gen} at={at} generation={generation} onRetry={() => generation.generate([request(cell)])} />
+                <GeneratedPart
+                  part={gen}
+                  at={at}
+                  generation={generation}
+                  onRetry={() => generation.generate([request(cell)])}
+                />
               ) : part ? (
                 <>
                   <span className="flex items-center gap-2 text-xs">
-                    <img src={draftFileUrl(files.storyId, files.version, part.asset)} alt="" className="size-12 rounded border bg-white object-contain" />
+                    <img
+                      src={draftFileUrl(files.storyId, files.version, part.asset)}
+                      alt=""
+                      className="size-12 rounded border bg-white object-contain"
+                    />
                     <code className="text-muted-foreground truncate">{part.asset}</code>
                   </span>
-                  <RectFields label={`Place ${at}`} value={part.at} onChange={(rect) => setPart(part, { ...part, at: rect })} />
+                  <RectFields
+                    label={`Place ${at}`}
+                    value={part.at}
+                    onChange={(rect) => setPart(part, { ...part, at: rect })}
+                  />
                   <div className="flex flex-wrap items-center gap-3 text-xs">
                     <label className="flex items-center gap-1">
                       Colour
@@ -385,10 +494,20 @@ function PartsGrid({
                       </NativeSelect>
                     </label>
                     <label className="flex items-center gap-1 font-medium">
-                      <input type="checkbox" aria-label={`Approve ${at}`} checked={part.approved} onChange={(event) => setPart(part, { ...part, approved: event.target.checked })} />
+                      <input
+                        type="checkbox"
+                        aria-label={`Approve ${at}`}
+                        checked={part.approved}
+                        onChange={(event) => setPart(part, { ...part, approved: event.target.checked })}
+                      />
                       Approved
                     </label>
-                    <Button size="sm" variant="ghost" className="h-7" onClick={() => onChange({ ...figure, parts: figure.parts.filter((p) => p !== part) })}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7"
+                      onClick={() => onChange({ ...figure, parts: figure.parts.filter((p) => p !== part) })}
+                    >
                       Remove
                     </Button>
                   </div>
@@ -396,9 +515,17 @@ function PartsGrid({
               ) : sharedGen ? (
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="text-muted-foreground" data-testid="shared-part">
-                    Uses the defined features' drawing ({statusLabel[sharedGen.status].toLowerCase()}): a head-only part fits both.
+                    Uses the defined features' drawing ({statusLabel[sharedGen.status].toLowerCase()}): a head-only part
+                    fits both.
                   </span>
-                  <Button size="sm" variant="ghost" className="h-7" aria-label={`Draw ${at} on its own`} disabled={generation.blocked !== null} onClick={() => generation.generate([request(cell)])}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    aria-label={`Draw ${at} on its own`}
+                    disabled={generation.blocked !== null}
+                    onClick={() => generation.generate([request(cell)])}
+                  >
                     Draw its own
                   </Button>
                 </div>
@@ -411,7 +538,13 @@ function PartsGrid({
                     </span>
                   )}
                   <div className="flex flex-wrap items-end gap-2">
-                    <UploadField files={files} folder={folder} label={`Upload ${at}`} asset={undefined} onUploaded={(asset) => add(cell, asset)} />
+                    <UploadField
+                      files={files}
+                      folder={folder}
+                      label={`Upload ${at}`}
+                      asset={undefined}
+                      onUploaded={(asset) => add(cell, asset)}
+                    />
                     <Button
                       size="sm"
                       variant="outline"
@@ -434,14 +567,32 @@ function PartsGrid({
 }
 
 /** A generated part in its cell: its review images, cost, and the author's decision. */
-function GeneratedPart({ part, at, generation, onRetry }: { part: StoryPart; at: string; generation: Generation; onRetry: () => void }) {
+function GeneratedPart({
+  part,
+  at,
+  generation,
+  onRetry,
+}: {
+  part: StoryPart;
+  at: string;
+  generation: Generation;
+  onRetry: () => void;
+}) {
   return (
     <div className="flex flex-col gap-2 text-xs" data-testid="generated-part" data-status={part.status}>
       <span className="font-medium">{statusLabel[part.status]}</span>
       {part.files.light && part.files.dark && (
         <span className="flex gap-2">
-          <img src={`/api/files/${part.files.light}`} alt={`${at} on light skin`} className="size-20 rounded border bg-white object-contain" />
-          <img src={`/api/files/${part.files.dark}`} alt={`${at} on dark skin`} className="size-20 rounded border bg-white object-contain" />
+          <img
+            src={`/api/files/${part.files.light}`}
+            alt={`${at} on light skin`}
+            className="size-20 rounded border bg-white object-contain"
+          />
+          <img
+            src={`/api/files/${part.files.dark}`}
+            alt={`${at} on dark skin`}
+            className="size-20 rounded border bg-white object-contain"
+          />
         </span>
       )}
       {part.status !== "generating" && (
@@ -453,11 +604,22 @@ function GeneratedPart({ part, at, generation, onRetry }: { part: StoryPart; at:
       {part.status !== "generating" && (
         <div className="flex flex-wrap gap-2">
           {part.status !== "approved" && (
-            <Button size="sm" className="h-7" aria-label={`Approve generated ${at}`} onClick={() => generation.review(part.id, "approve")}>
+            <Button
+              size="sm"
+              className="h-7"
+              aria-label={`Approve generated ${at}`}
+              onClick={() => generation.review(part.id, "approve")}
+            >
               Approve
             </Button>
           )}
-          <Button size="sm" variant="outline" className="h-7" aria-label={`Reject generated ${at}`} onClick={() => generation.review(part.id, "reject")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            aria-label={`Reject generated ${at}`}
+            onClick={() => generation.review(part.id, "reject")}
+          >
             Reject
           </Button>
           <Button size="sm" variant="ghost" className="h-7" disabled={generation.blocked !== null} onClick={onRetry}>

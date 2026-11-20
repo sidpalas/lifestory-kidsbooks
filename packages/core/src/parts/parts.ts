@@ -49,8 +49,16 @@ export const partAssets = (partId: string) => ({
  */
 export const partIdFor = (request: PartRequest) => {
   const key = JSON.stringify([
-    request.storyVersionId, request.pageId, request.slotId, request.age, request.face, request.axis, request.option,
-    request.zone, request.note ?? null, request.seed ?? 1,
+    request.storyVersionId,
+    request.pageId,
+    request.slotId,
+    request.age,
+    request.face,
+    request.axis,
+    request.option,
+    request.zone,
+    request.note ?? null,
+    request.seed ?? 1,
     // Only when set, so parts requested before features existed keep their IDs.
     ...(request.features ? [request.features] : []),
   ]);
@@ -75,27 +83,37 @@ const who: Record<Age, readonly [string, string]> = {
 const optionWords: Record<string, string> = {
   "hair:short": "short, neatly cut dark brown hair with a side parting, close at the sides and ending above the ears",
   "hair:curly": "a full, rounded head of tight, springy, small dark brown curls",
-  "hair:long": "long, straight dark brown hair with a straight-cut fringe, falling past the shoulders on both sides of the neck",
+  "hair:long":
+    "long, straight dark brown hair with a straight-cut fringe, falling past the shoulders on both sides of the neck",
   "glasses:round": "round, thin dark brown wire-frame glasses",
   "hair:buzz": "a very short dark brown buzz cut that follows the shape of the scalp",
-  "hair:ponytail": "dark brown hair pulled smoothly back into one ponytail tied at the back of the head, the ponytail visible behind the head",
+  "hair:ponytail":
+    "dark brown hair pulled smoothly back into one ponytail tied at the back of the head, the ponytail visible behind the head",
   "hair:braids": "dark brown hair parted in the middle into two braids that fall over the front of the shoulders",
   "hair:afro": "a full, rounded, tightly coiled dark brown afro",
   "hair:locs": "dark brown locs (dreadlocks) of even, rope-like thickness falling to the shoulders",
   "hair:bun": "dark brown hair pulled smoothly up into a round bun on top of the head",
   // D51: the young hairstyles. Sparse ones ask for distinct dark strands, or the cut-out drops them as noise (D43's stubble).
-  "hair:wispy": "a little fine, sparse, short dark brown baby hair: separate wisps over the crown and the sides of the head, clearly darker than the skin, with the scalp clearly showing between them, and a few slightly longer wisps on top",
-  "hair:soft-curls": "short, sparse, soft dark brown baby curls lying close to the scalp all over the crown and sides of the head, small separate curls clearly darker than the skin, with the scalp showing between them",
-  "hair:sprout": "fine, short dark brown hair gathered into one small top knot tied on top of the head, a little tuft that points upward like a tiny palm tree, with short, thin hair on the sides and back",
-  "hair:puffs": "short dark brown hair parted in the middle and gathered into two small, round, fluffy puffs, one high on each side of the top of the head, the hair between them lying close to the scalp",
-  "facial-hair:stubble": "short, dense dark brown stubble on the jaw, chin and upper lip: tiny dark brown dots, clearly darker than the skin, like a five o'clock shadow",
+  "hair:wispy":
+    "a little fine, sparse, short dark brown baby hair: separate wisps over the crown and the sides of the head, clearly darker than the skin, with the scalp clearly showing between them, and a few slightly longer wisps on top",
+  "hair:soft-curls":
+    "short, sparse, soft dark brown baby curls lying close to the scalp all over the crown and sides of the head, small separate curls clearly darker than the skin, with the scalp showing between them",
+  "hair:sprout":
+    "fine, short dark brown hair gathered into one small top knot tied on top of the head, a little tuft that points upward like a tiny palm tree, with short, thin hair on the sides and back",
+  "hair:puffs":
+    "short dark brown hair parted in the middle and gathered into two small, round, fluffy puffs, one high on each side of the top of the head, the hair between them lying close to the scalp",
+  "facial-hair:stubble":
+    "short, dense dark brown stubble on the jaw, chin and upper lip: tiny dark brown dots, clearly darker than the skin, like a five o'clock shadow",
   "facial-hair:moustache": "a neat, medium-thick dark brown moustache",
   "facial-hair:beard": "a full, neatly trimmed dark brown beard and moustache",
 };
 
 /** The option's description, and what the reference shows ("hair", "glasses", "facial hair"). */
 const describe = (option: string) => {
-  const [axis, found] = Object.entries(lookVocabulary).flatMap(([name, options]) => options.filter((o) => o.id === option).map((o) => [name, o] as const))[0] ?? [];
+  const [axis, found] =
+    Object.entries(lookVocabulary).flatMap(([name, options]) =>
+      options.filter((o) => o.id === option).map((o) => [name, o] as const),
+    )[0] ?? [];
   const words = optionWords[option] ?? found?.label.toLowerCase() ?? option;
   const has = axis === "glasses" ? `wears ${words}` : `has ${words}`;
   return { has, thing: axis === "glasses" ? "glasses" : axis === "facialHair" ? "facial hair" : "hair" };
@@ -115,7 +133,9 @@ export const partPrompt = (age: Age, option: string, note?: string | null, refer
     "drawn in exactly the same illustration style, line and texture as the rest of the picture.",
     `Keep exactly the same face, skin, eyebrows, expression, ${proportions}, pose, clothes, hands, props and background; change nothing else.`,
     ...(reference ? [`Use <ref_image_1> only as a reference for the ${thing}.`] : []),
-  ].join(" ").replace(" ,", ",");
+  ]
+    .join(" ")
+    .replace(" ,", ",");
 };
 
 const counts = ["", "one", "two", "three", "four"];
@@ -135,7 +155,9 @@ export const tiledPrompt = (count: number, option: string, note?: string | null,
     `Keep exactly the same faces, skin, ears, eyebrows, expressions, ages and proportions, clothes, framing and background in every portrait;`,
     `change nothing else, and keep the ${n} portraits separate.`,
     ...(reference ? [`Use <ref_image_1> only as a reference for the ${thing}.`] : []),
-  ].join(" ").replace(" ,", ",");
+  ]
+    .join(" ")
+    .replace(" ,", ",");
 };
 
 type PartRow = typeof schema.storyPart.$inferSelect;
@@ -143,7 +165,12 @@ type PartRow = typeof schema.storyPart.$inferSelect;
 /** What `story_part.layers` holds. */
 export type StoredLayer = { readonly asset: string; readonly at: Rect; readonly palette: Part["palette"] };
 
-const partView = (row: PartRow, storyId: string, version: number, generation: { provider: string; objectKey: string; costUsd: number | null } | null): StoryPart => {
+const partView = (
+  row: PartRow,
+  storyId: string,
+  version: number,
+  generation: { provider: string; objectKey: string; costUsd: number | null } | null,
+): StoryPart => {
   const key = (asset: string | null) => (asset ? storyAssetKey(storyId, version, asset) : null);
   const files = partAssets(row.id);
   const ready = row.status === "pending_review" || row.status === "approved" || row.status === "rejected";
@@ -162,7 +189,10 @@ const partView = (row: PartRow, storyId: string, version: number, generation: { 
     note: row.note,
     prompt: row.prompt,
     status: row.status,
-    layers: ((row.layers as ReadonlyArray<StoredLayer> | null) ?? []).map((layer) => ({ ...layer, key: key(layer.asset)! })),
+    layers: ((row.layers as ReadonlyArray<StoredLayer> | null) ?? []).map((layer) => ({
+      ...layer,
+      key: key(layer.asset)!,
+    })),
     files: {
       edit: generation?.objectKey ?? null,
       light: ready ? key(files.light) : null,
@@ -172,7 +202,10 @@ const partView = (row: PartRow, storyId: string, version: number, generation: { 
     metrics: row.metrics ?? null,
     provider: generation?.provider ?? null,
     // A tile's share of its tiled edit (D44).
-    costUsd: generation?.costUsd == null ? null : generation.costUsd / ((row.metrics as { tile?: { of: number } } | null)?.tile?.of ?? 1),
+    costUsd:
+      generation?.costUsd == null
+        ? null
+        : generation.costUsd / ((row.metrics as { tile?: { of: number } } | null)?.tile?.of ?? 1),
     error: row.error,
     reviewedBy: row.reviewedBy,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
@@ -197,22 +230,38 @@ const authoredVersion = Effect.fn("parts.authoredVersion")(function* (userId: st
       .where(eq(schema.storyVersion.id, storyVersionId)),
   );
   if (!row) return yield* new NotFound({ entity: "story version", id: storyVersionId });
-  if (row.authorId !== userId) return yield* new Forbidden({ message: "only the story's author generates and reviews its parts" });
+  if (row.authorId !== userId)
+    return yield* new Forbidden({ message: "only the story's author generates and reviews its parts" });
   // A draft only has the format's shape until it's published (D37).
   const manifest = yield* decodeStoryVersion(row.manifest, row.publishedAt).pipe(Effect.orDie);
   return { ...row, manifest };
 });
 
 /** The figure of `slotId` on `pageId` and its base for `age`, `face`, and `features` (D40), or why there is none. */
-export const findAppearance = (manifest: StoryManifest, pageId: string, slotId: string, age: Age, face: string, features?: FeaturesOption | null) => {
+export const findAppearance = (
+  manifest: StoryManifest,
+  pageId: string,
+  slotId: string,
+  age: Age,
+  face: string,
+  features?: FeaturesOption | null,
+) => {
   const page = manifest.pages.find((candidate) => candidate.pageId === pageId);
   if (!page) return { problem: `no page "${pageId}"` } as const;
-  const figures = page.illustration.layers.filter((layer): layer is FigureLayer => layer.kind === "figure" && layer.slotId === slotId);
-  if (figures.length !== 1) return { problem: `page "${pageId}" has ${figures.length} figures of "${slotId}"; parts need exactly one` } as const;
+  const figures = page.illustration.layers.filter(
+    (layer): layer is FigureLayer => layer.kind === "figure" && layer.slotId === slotId,
+  );
+  if (figures.length !== 1)
+    return {
+      problem: `page "${pageId}" has ${figures.length} figures of "${slotId}"; parts need exactly one`,
+    } as const;
   const figure = figures[0]!;
   const drawn = hasFeatures(age) ? (features ?? DEFAULT_FEATURES) : undefined;
   const base = figure.bases.find((candidate) => sameAppearance(candidate, age, face, drawn));
-  if (!base) return { problem: `the "${slotId}" figure on "${pageId}" has no base for ${[age, face, drawn].filter(Boolean).join(" / ")}` } as const;
+  if (!base)
+    return {
+      problem: `the "${slotId}" figure on "${pageId}" has no base for ${[age, face, drawn].filter(Boolean).join(" / ")}`,
+    } as const;
   return { figure, base } as const;
 };
 
@@ -220,7 +269,11 @@ const generationOf = (generationId: string | null) =>
   generationId
     ? Database.query((db) =>
         db
-          .select({ provider: schema.generation.provider, objectKey: schema.generation.objectKey, costUsd: schema.generation.costUsd })
+          .select({
+            provider: schema.generation.provider,
+            objectKey: schema.generation.objectKey,
+            costUsd: schema.generation.costUsd,
+          })
           .from(schema.generation)
           .where(eq(schema.generation.id, generationId)),
       ).pipe(Effect.map((rows) => rows[0] ?? null))
@@ -235,26 +288,50 @@ export const TILES_PER_TASK = 4;
  * edit (D44). Repeating a request returns the same part without generating again; another seed makes another
  * attempt. Fails with NotFound, Forbidden (not the author), or InvalidInput, before recording anything.
  */
-export const requestParts = Effect.fn("parts.request")(function* (userId: string, requests: ReadonlyArray<PartRequest>) {
+export const requestParts = Effect.fn("parts.request")(function* (
+  userId: string,
+  requests: ReadonlyArray<PartRequest>,
+) {
   const versions = new Set(requests.map((request) => request.storyVersionId));
   if (versions.size !== 1) return yield* new InvalidInput({ message: "request parts of one story version at a time" });
   const version = yield* authoredVersion(userId, requests[0]!.storyVersionId);
-  if (version.publishedAt) return yield* new InvalidInput({ message: "this version is published; generate parts for a draft" });
+  if (version.publishedAt)
+    return yield* new InvalidInput({ message: "this version is published; generate parts for a draft" });
   for (const request of requests) {
-    if (request.features && !hasFeatures(request.age)) return yield* new InvalidInput({ message: `${request.age} bases have no features` });
-    const appearance = findAppearance(version.manifest, request.pageId, request.slotId, request.age, request.face, request.features);
-    if ("problem" in appearance) return yield* new InvalidInput({ message: appearance.problem ?? "no such appearance" });
-    if (!version.manifest.characterSlots.find((slot) => slot.slotId === request.slotId)?.ages.includes(request.age) && appearance.figure.age !== request.age) {
+    if (request.features && !hasFeatures(request.age))
+      return yield* new InvalidInput({ message: `${request.age} bases have no features` });
+    const appearance = findAppearance(
+      version.manifest,
+      request.pageId,
+      request.slotId,
+      request.age,
+      request.face,
+      request.features,
+    );
+    if ("problem" in appearance)
+      return yield* new InvalidInput({ message: appearance.problem ?? "no such appearance" });
+    if (
+      !version.manifest.characterSlots.find((slot) => slot.slotId === request.slotId)?.ages.includes(request.age) &&
+      appearance.figure.age !== request.age
+    ) {
       return yield* new InvalidInput({ message: `the "${request.slotId}" role doesn't take the age ${request.age}` });
     }
     if (!partAxesAt(request.age).includes(request.axis)) {
-      return yield* new InvalidInput({ message: `${ageOptions.find((age) => age.id === request.age)!.label} figures have no ${request.axis} part` });
+      return yield* new InvalidInput({
+        message: `${ageOptions.find((age) => age.id === request.age)!.label} figures have no ${request.axis} part`,
+      });
     }
-    if (!optionsAt(request.axis, request.age).some((option) => option.id === request.option) || NO_PART_OPTIONS.has(request.option)) {
-      return yield* new InvalidInput({ message: `"${request.option}" is not a ${request.axis} option with a part at ${request.age}` });
+    if (
+      !optionsAt(request.axis, request.age).some((option) => option.id === request.option) ||
+      NO_PART_OPTIONS.has(request.option)
+    ) {
+      return yield* new InvalidInput({
+        message: `"${request.option}" is not a ${request.axis} option with a part at ${request.age}`,
+      });
     }
     const [x0, y0, x1, y1] = request.zone;
-    if ((x1 - x0) * (y1 - y0) < 100 * 100) return yield* new InvalidInput({ message: "the zone is too small to hold a part" });
+    if ((x1 - x0) * (y1 - y0) < 100 * 100)
+      return yield* new InvalidInput({ message: "the zone is too small to hold a part" });
   }
 
   // Record the parts and their jobs in one transaction: a crash cannot leave generating rows without a task.
@@ -297,13 +374,18 @@ export const requestParts = Effect.fn("parts.request")(function* (userId: string
       // Keep the caller's tile/reference order, independent of the lock acquisition order above.
       const order = new Map(requests.map((request, i) => [partIdFor(request), i]));
       // One option, note, and seed per edit: the tiles must ask for the same drawing.
-      const groups = Map.groupBy(added.toSorted((a, b) => order.get(a.id)! - order.get(b.id)!), (request) =>
-        JSON.stringify([request.axis, request.option, request.note ?? null, request.seed ?? 1]),
+      const groups = Map.groupBy(
+        added.toSorted((a, b) => order.get(a.id)! - order.get(b.id)!),
+        (request) => JSON.stringify([request.axis, request.option, request.note ?? null, request.seed ?? 1]),
       );
       for (const group of groups.values()) {
         for (let first = 0; first < group.length; first += TILES_PER_TASK) {
           const partIds = group.slice(first, first + TILES_PER_TASK).map((request) => request.id);
-          const { taskID } = await client.spawn("part.generate", { partIds }, { queue: Jobs.queue, idempotencyKey: `part.generate:${partIds.join(",")}` });
+          const { taskID } = await client.spawn(
+            "part.generate",
+            { partIds },
+            { queue: Jobs.queue, idempotencyKey: `part.generate:${partIds.join(",")}` },
+          );
           await db.update(schema.storyPart).set({ taskId: taskID }).where(inArray(schema.storyPart.id, partIds));
         }
       }
@@ -323,13 +405,17 @@ export const requestParts = Effect.fn("parts.request")(function* (userId: string
  * before tiled edits (D44) name one `partId`. Here so requestParts can spawn it without importing the task.
  */
 export const PartTaskParams = Schema.Union([
-  Schema.Struct({ partIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(TILES_PER_TASK)) }),
+  Schema.Struct({
+    partIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(TILES_PER_TASK)),
+  }),
   Schema.Struct({ partId: Schema.String }),
 ]);
 
 /** One part, with its files and cost. A part whose task gave up after its retries reads as failed. */
 export const getPart = Effect.fn("parts.get")(function* (userId: string, partId: string) {
-  const [row] = yield* Database.query((db) => db.select().from(schema.storyPart).where(eq(schema.storyPart.id, partId)));
+  const [row] = yield* Database.query((db) =>
+    db.select().from(schema.storyPart).where(eq(schema.storyPart.id, partId)),
+  );
   if (!row) return yield* new NotFound({ entity: "part", id: partId });
   const version = yield* authoredVersion(userId, row.storyVersionId);
   let current = row;
@@ -347,7 +433,14 @@ export const listParts = Effect.fn("parts.list")(function* (userId: string, stor
   const version = yield* authoredVersion(userId, storyVersionId);
   const rows = yield* Database.query((db) =>
     db
-      .select({ part: schema.storyPart, generation: { provider: schema.generation.provider, objectKey: schema.generation.objectKey, costUsd: schema.generation.costUsd } })
+      .select({
+        part: schema.storyPart,
+        generation: {
+          provider: schema.generation.provider,
+          objectKey: schema.generation.objectKey,
+          costUsd: schema.generation.costUsd,
+        },
+      })
       .from(schema.storyPart)
       .leftJoin(schema.generation, eq(schema.generation.id, schema.storyPart.generationId))
       .where(eq(schema.storyPart.storyVersionId, storyVersionId))
@@ -360,16 +453,28 @@ export const listParts = Effect.fn("parts.list")(function* (userId: string, stor
  * The illustrator's review: approve or reject a generated part. A decision can change while the version is a draft;
  * once it's published its parts are fixed. Fails with InvalidInput for a part still generating or failed.
  */
-export const reviewPart = Effect.fn("parts.review")(function* (userId: string, partId: string, decision: PartDecision, reason?: string) {
+export const reviewPart = Effect.fn("parts.review")(function* (
+  userId: string,
+  partId: string,
+  decision: PartDecision,
+  reason?: string,
+) {
   const part = yield* getPart(userId, partId);
   const version = yield* authoredVersion(userId, part.storyVersionId);
-  if (version.publishedAt) return yield* new InvalidInput({ message: "this version is published; its parts can't change" });
+  if (version.publishedAt)
+    return yield* new InvalidInput({ message: "this version is published; its parts can't change" });
   const reviewable: ReadonlyArray<PartStatus> = ["pending_review", "approved", "rejected"];
-  if (!reviewable.includes(part.status)) return yield* new InvalidInput({ message: `a ${part.status.replace("_", " ")} part can't be reviewed` });
+  if (!reviewable.includes(part.status))
+    return yield* new InvalidInput({ message: `a ${part.status.replace("_", " ")} part can't be reviewed` });
   yield* Database.query((db) =>
     db
       .update(schema.storyPart)
-      .set({ status: decision === "approve" ? "approved" : "rejected", reviewedBy: userId, reviewedAt: new Date(), reviewReason: decision === "reject" ? reason ?? null : null })
+      .set({
+        status: decision === "approve" ? "approved" : "rejected",
+        reviewedBy: userId,
+        reviewedAt: new Date(),
+        reviewReason: decision === "reject" ? (reason ?? null) : null,
+      })
       .where(eq(schema.storyPart.id, partId)),
   );
   return yield* getPart(userId, partId);
@@ -399,7 +504,11 @@ export const approvedParts = Effect.fn("parts.approved")(function* (userId: stri
 });
 
 const sameOption = (a: Part, b: Part) =>
-  a.age === b.age && a.face === b.face && (a.features ?? DEFAULT_FEATURES) === (b.features ?? DEFAULT_FEATURES) && a.axis === b.axis && a.option === b.option;
+  a.age === b.age &&
+  a.face === b.face &&
+  (a.features ?? DEFAULT_FEATURES) === (b.features ?? DEFAULT_FEATURES) &&
+  a.axis === b.axis &&
+  a.option === b.option;
 
 /**
  * `manifest` with approved parts in their figures: they replace the figure's parts for the same age, face, axis,
@@ -409,7 +518,12 @@ const sameOption = (a: Part, b: Part) =>
  */
 export const withApprovedParts = (
   manifest: StoryManifest,
-  entries: ReadonlyArray<{ readonly partId: string; readonly pageId: string; readonly slotId: string; readonly part: Part }>,
+  entries: ReadonlyArray<{
+    readonly partId: string;
+    readonly pageId: string;
+    readonly slotId: string;
+    readonly part: Part;
+  }>,
 ): StoryManifest => {
   return {
     ...manifest,
@@ -422,7 +536,10 @@ export const withApprovedParts = (
           const mine = entries.filter((entry) => entry.pageId === page.pageId && entry.slotId === layer.slotId);
           // Entries come per layer, grouped by part in review order: keep the last part's layers for each option.
           const own = mine
-            .filter((entry, i) => !mine.slice(i + 1).some((later) => sameOption(later.part, entry.part) && later.partId !== entry.partId))
+            .filter(
+              (entry, i) =>
+                !mine.slice(i + 1).some((later) => sameOption(later.part, entry.part) && later.partId !== entry.partId),
+            )
             .map((entry) => entry.part);
           // A head-only part is listed again for the face type's other features (D44), naming the same asset, where
           // the figure has that base and nothing of its own for the option: no generated part, no approved upload.
@@ -432,12 +549,17 @@ export const withApprovedParts = (
             const other = otherFeatures(part.features);
             const copy: Part = other === DEFAULT_FEATURES ? rest : { ...rest, features: other };
             const hasBase = layer.bases.some((base) => sameAppearance(base, part.age, part.face, other));
-            const drawn = [...own, ...layer.parts.filter((candidate) => candidate.approved)].some((candidate) => sameOption(candidate, copy));
+            const drawn = [...own, ...layer.parts.filter((candidate) => candidate.approved)].some((candidate) =>
+              sameOption(candidate, copy),
+            );
             return hasBase && !drawn ? [copy] : [];
           });
           const latest = [...own, ...shared];
           if (latest.length === 0) return layer;
-          return { ...layer, parts: [...layer.parts.filter((part) => !latest.some((approved) => sameOption(approved, part))), ...latest] };
+          return {
+            ...layer,
+            parts: [...layer.parts.filter((part) => !latest.some((approved) => sameOption(approved, part))), ...latest],
+          };
         }),
       },
     })),

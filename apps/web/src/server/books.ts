@@ -89,17 +89,21 @@ export const CharacterResult = ResultSchema(
 export const getCharacterFn = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ characterId: Schema.String })))
   .handler(({ data }) =>
-    runEffect(
-      CharacterResult,
-      currentUser.pipe(Effect.flatMap((user) => getCharacter(user.id, data.characterId))),
-    ),
+    runEffect(CharacterResult, currentUser.pipe(Effect.flatMap((user) => getCharacter(user.id, data.characterId)))),
   );
 
-export const SaveCharacterResult = ResultSchema(Schema.Struct({ id: Schema.String }), Schema.Union([NotAuthenticated, NotFound, Forbidden]));
+export const SaveCharacterResult = ResultSchema(
+  Schema.Struct({ id: Schema.String }),
+  Schema.Union([NotAuthenticated, NotFound, Forbidden]),
+);
 
 /** Creates a character in the active family, or with `characterId` changes that one. */
 export const saveCharacterFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ characterId: Schema.optional(Schema.String), character: CharacterInput })))
+  .validator(
+    Schema.toStandardSchemaV1(
+      Schema.Struct({ characterId: Schema.optional(Schema.String), character: CharacterInput }),
+    ),
+  )
   .handler(({ data }) =>
     runEffect(
       SaveCharacterResult,
@@ -164,21 +168,49 @@ export const getBookFn = createServerFn({ method: "GET" })
 export const EditBookResult = ResultSchema(Done, Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]));
 
 export const setBookCastFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, characterId: Schema.String })))
+  .validator(
+    Schema.toStandardSchemaV1(
+      Schema.Struct({ bookId: Schema.String, slotId: Schema.String, characterId: Schema.String }),
+    ),
+  )
   .handler(({ data }) =>
-    runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => setBookCast(user.id, data)), done)),
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => setBookCast(user.id, data)),
+        done,
+      ),
+    ),
   );
 
 export const setLookOverrideFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, override: LookOverride })))
+  .validator(
+    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, override: LookOverride })),
+  )
   .handler(({ data }) =>
-    runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => setLookOverride(user.id, data)), done)),
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => setLookOverride(user.id, data)),
+        done,
+      ),
+    ),
   );
 
 /** How this book draws a role's character instead of their saved look (D46); `{}` goes back to the saved look. */
 export const setBookLookFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, changes: LookOverride })))
-  .handler(({ data }) => runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => setBookLook(user.id, data)), done)));
+  .validator(
+    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, changes: LookOverride })),
+  )
+  .handler(({ data }) =>
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => setBookLook(user.id, data)),
+        done,
+      ),
+    ),
+  );
 
 export const saveTextEditFn = createServerFn({ method: "POST" })
   .validator(
@@ -192,13 +224,27 @@ export const saveTextEditFn = createServerFn({ method: "POST" })
     ),
   )
   .handler(({ data }) =>
-    runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => saveTextEdit(user.id, data)), done)),
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => saveTextEdit(user.id, data)),
+        done,
+      ),
+    ),
   );
 
 /** Deletes a book and its proofs (books.ts, deleteBook). */
 export const deleteBookFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String })))
-  .handler(({ data }) => runEffect(EditBookResult, currentUser.pipe(Effect.flatMap((user) => deleteBook(user.id, data.bookId)), done)));
+  .handler(({ data }) =>
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => deleteBook(user.id, data.bookId)),
+        done,
+      ),
+    ),
+  );
 
 export const BookProofsResult = ResultSchema(
   Schema.Struct({ canRequest: Schema.Boolean, proofs: Schema.Array(ProofSummary) }),
@@ -207,7 +253,9 @@ export const BookProofsResult = ResultSchema(
 
 export const listBookProofsFn = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String })))
-  .handler(({ data }) => runEffect(BookProofsResult, currentUser.pipe(Effect.flatMap((user) => listBookProofs(user.id, data.bookId)))));
+  .handler(({ data }) =>
+    runEffect(BookProofsResult, currentUser.pipe(Effect.flatMap((user) => listBookProofs(user.id, data.bookId)))),
+  );
 
 export const RequestBookProofResult = ResultSchema(
   Schema.Struct({ id: Schema.String }),
@@ -217,18 +265,42 @@ export const RequestBookProofResult = ResultSchema(
 /** Starts a PDF proof of the book with its cast and text as they are now (D27). */
 export const requestBookProofFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String })))
-  .handler(({ data }) => runEffect(RequestBookProofResult, currentUser.pipe(Effect.flatMap((user) => requestBookProof(user.id, data.bookId)))));
+  .handler(({ data }) =>
+    runEffect(
+      RequestBookProofResult,
+      currentUser.pipe(Effect.flatMap((user) => requestBookProof(user.id, data.bookId))),
+    ),
+  );
 
-export const ApproveProofResult = ResultSchema(Done, Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]));
+export const ApproveProofResult = ResultSchema(
+  Done,
+  Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]),
+);
 
 /** Approves a ready proof of a book for print, recording who and when. */
 export const approveProofFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String })))
-  .handler(({ data }) => runEffect(ApproveProofResult, currentUser.pipe(Effect.flatMap((user) => approveProof(user.id, data.proofId)), done)));
+  .handler(({ data }) =>
+    runEffect(
+      ApproveProofResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => approveProof(user.id, data.proofId)),
+        done,
+      ),
+    ),
+  );
 
 export const DeleteProofResult = ResultSchema(Done, Schema.Union([NotAuthenticated, NotFound, Forbidden]));
 
 /** Deletes a proof, approved or not, with its PDF (D32). */
 export const deleteProofFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String })))
-  .handler(({ data }) => runEffect(DeleteProofResult, currentUser.pipe(Effect.flatMap((user) => deleteProof(user.id, data.proofId)), done)));
+  .handler(({ data }) =>
+    runEffect(
+      DeleteProofResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => deleteProof(user.id, data.proofId)),
+        done,
+      ),
+    ),
+  );

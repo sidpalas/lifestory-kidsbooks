@@ -1,7 +1,14 @@
 // Modal's completion callback (modal/flux_klein.py). Verifies the HMAC signature, checks the generation exists,
 // and emits its `generation.done` event, which resumes the waiting workflow. Duplicate callbacks are harmless:
 // Absurd keeps the first payload for an event name.
-import { Generations, GenerationOutcome, generationEvent, Jobs, signatureHeader, verifySignature } from "@lifestory/core";
+import {
+  Generations,
+  GenerationOutcome,
+  generationEvent,
+  Jobs,
+  signatureHeader,
+  verifySignature,
+} from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Config, Effect, Option, Redacted, Schema } from "effect";
 import { serverRuntime } from "~/server/runtime";

@@ -109,9 +109,7 @@ export const memoryObjectStorage = (objects: Map<string, StoredObject> = new Map
     },
     list: (prefix) =>
       Effect.sync(() =>
-        [...objects.keys()]
-          .filter((key) => key.startsWith(prefix))
-          .map((key) => ({ key, lastModified: new Date() })),
+        [...objects.keys()].filter((key) => key.startsWith(prefix)).map((key) => ({ key, lastModified: new Date() })),
       ),
     delete: (key) => Effect.sync(() => void objects.delete(key)),
     ensureBucket: Effect.void,

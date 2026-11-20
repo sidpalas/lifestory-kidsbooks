@@ -11,7 +11,9 @@ test("signed-out visitors get the landing page, with public images and a way to 
   for (const image of await images.all()) {
     await image.scrollIntoViewIfNeeded();
     expect(await image.getAttribute("src")).toMatch(/^\/(assets|src\/assets\/marketing)\//);
-    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+    await expect
+      .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+      .toBeGreaterThan(0);
   }
   const preview = await page.locator('meta[property="og:image"]').getAttribute("content");
   expect((await page.request.get(new URL(preview ?? "").pathname)).headers()["content-type"]).toBe("image/png");
@@ -21,7 +23,9 @@ test("signed-out visitors get the landing page, with public images and a way to 
   await expect(page.getByText("Lifestory is invite-only.")).toBeVisible();
 });
 
-test("signed-out visitors try the character picker from static layers, with nothing sent to the server", async ({ page }) => {
+test("signed-out visitors try the character picker from static layers, with nothing sent to the server", async ({
+  page,
+}) => {
   const calls: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
@@ -31,24 +35,38 @@ test("signed-out visitors try the character picker from static layers, with noth
   await page.getByRole("button", { name: "Try it: build a child" }).click();
   const demo = page.getByTestId("look-demo");
   await expect(demo.getByText("Nothing here is saved or sent anywhere.")).toBeVisible();
-  await expect(demo.getByRole("group", { name: "1. Age" }).getByRole("button")).toHaveText(["Baby0–1", "Toddler1–3", "Young child3–7"]);
+  await expect(demo.getByRole("group", { name: "1. Age" }).getByRole("button")).toHaveText([
+    "Baby0–1",
+    "Toddler1–3",
+    "Young child3–7",
+  ]);
   const preview = demo.getByTestId("look-preview");
   const layers = preview.locator("img");
   // A baby keeps the nearest hairstyle a baby has (the demo's curly hair becomes soft curls, D51): the base and the hair. Bald is the
   // base alone, with no hair colour to pick.
   await demo.getByRole("button", { name: "Baby", exact: true }).click();
-  await expect.poll(() => demo.getByRole("group", { name: /Hairstyle/ }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")))).toEqual(["Bald", "Wispy hair", "Soft curls hair"]);
+  await expect
+    .poll(() =>
+      demo
+        .getByRole("group", { name: /Hairstyle/ })
+        .getByRole("button")
+        .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label"))),
+    )
+    .toEqual(["Bald", "Wispy hair", "Soft curls hair"]);
   await expect(layers).toHaveCount(2);
   await demo.getByRole("button", { name: "Bald", exact: true }).click();
   await expect(layers).toHaveCount(1);
   await expect(demo.getByRole("group", { name: /Hair colour/ })).toHaveCount(0);
-  for (const name of ["Toddler", "Braids hair", "Red hair colour", "Young child", "Round glasses"]) await demo.getByRole("button", { name, exact: true }).click();
+  for (const name of ["Toddler", "Braids hair", "Red hair colour", "Young child", "Round glasses"])
+    await demo.getByRole("button", { name, exact: true }).click();
   await expect(demo.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, red braids, glasses");
   await expect(preview).toHaveAccessibleName("Young child, round face, brown skin, red braids, glasses");
   await expect(layers).toHaveCount(3);
   for (const layer of await layers.all()) {
     expect(await layer.getAttribute("src")).toMatch(/^\/marketing\/looks\/young-child-round-/);
-    await expect.poll(() => layer.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+    await expect
+      .poll(() => layer.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+      .toBeGreaterThan(0);
   }
   await expect(demo.getByRole("button", { name: /save|add to the family/i })).toHaveCount(0);
   expect(calls).toEqual([]);
@@ -62,7 +80,9 @@ test("seeded parent signs in and sees stories from Postgres", async ({ page }) =
 });
 
 test("health reports every migration and a live worker", async ({ request }) => {
-  const journal = JSON.parse(readFileSync("packages/db/migrations/meta/_journal.json", "utf8")) as { entries: unknown[] };
+  const journal = JSON.parse(readFileSync("packages/db/migrations/meta/_journal.json", "utf8")) as {
+    entries: unknown[];
+  };
   // Playwright starts a worker; its first beat follows "worker started" by a moment, hence the poll.
   await expect
     .poll(async () => (await request.get("/api/health")).json())
@@ -74,7 +94,9 @@ test("health reports every migration and a live worker", async ({ request }) => 
 });
 
 test("the dev sign-in route refuses off-site redirects", async ({ request }) => {
-  const response = await request.get("/__dev/log-me-in/parent@lifestory.dev?returnTo=//evil.example", { maxRedirects: 0 });
+  const response = await request.get("/__dev/log-me-in/parent@lifestory.dev?returnTo=//evil.example", {
+    maxRedirects: 0,
+  });
   expect(response.status()).toBe(302);
   expect(response.headers().location).toBe("/");
 });

@@ -1,7 +1,14 @@
 // How one book draws a family member, without changing the family member (D46): the character builder's picker,
 // starting from their saved look, offering only what the story draws for the role, at their own age. The story page
 // keeps the result in its URL until the book is made; the book editor saves it to the book.
-import { castLook, type Character, type Look, type LookAxis, type LookOverride, type StoryManifest } from "@lifestory/core/contracts";
+import {
+  castLook,
+  type Character,
+  type Look,
+  type LookAxis,
+  type LookOverride,
+  type StoryManifest,
+} from "@lifestory/core/contracts";
 import type { ReactNode } from "react";
 import { LookPicker } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
@@ -9,7 +16,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 
 /** The axes `look` draws differently from `saved`, never age: what a book stores. */
 export const lookChanges = (saved: Look, look: Look): LookOverride =>
-  Object.fromEntries((Object.keys(look) as Array<LookAxis>).filter((axis) => axis !== "age" && look[axis] !== saved[axis]).map((axis) => [axis, look[axis]]));
+  Object.fromEntries(
+    (Object.keys(look) as Array<LookAxis>)
+      .filter((axis) => axis !== "age" && look[axis] !== saved[axis])
+      .map((axis) => [axis, look[axis]]),
+  );
 
 /** The IDs of a role's "look in this book" picker and of the button that shows and hides it. */
 export const lookPickerId = (slotId: string) => `book-look-picker-${slotId}`;
@@ -108,7 +119,14 @@ export function PickerCard({
           </CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
-        <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={closeLabel} onClick={onClose}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-label={closeLabel}
+          onClick={onClose}
+        >
           Done
         </Button>
       </CardHeader>
