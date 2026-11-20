@@ -80,6 +80,8 @@ function BookEditor() {
   const navigate = Route.useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [savingLook, setSavingLook] = useState(false);
+  /** Paragraphs of the shown page whose frame their text runs past, with this family's names and edits. */
+  const [overflowing, setOverflowing] = useState<ReadonlyArray<number>>([]);
   // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page. Every choice
   // is saved as it's made, so hiding a picker keeps the book's look.
   const [styling, setStyling] = useState<ReadonlySet<string>>(
@@ -233,6 +235,7 @@ function BookEditor() {
                 view={view}
                 pageIndex={pageIndex}
                 illustration={illustration(pageIndex)}
+                onOverflow={setOverflowing}
               />
             </ScaledPage>
           </div>
@@ -242,6 +245,7 @@ function BookEditor() {
           view={view}
           pageIndex={pageIndex}
           canEdit={canEdit}
+          overflowing={overflowing}
           onSave={(blockIndex, content) =>
             run(() => saveTextEditFn({ data: { bookId: view.book.id, pageId: page.pageId, blockIndex, content } }))
           }
@@ -301,10 +305,13 @@ function TextDraftPage({
   view,
   pageIndex,
   illustration,
+  onOverflow,
 }: {
   view: BookView;
   pageIndex: number;
   illustration: ReadonlyArray<{ url: string; rect: readonly [number, number, number, number] }>;
+  /** Told which paragraphs (in pageText order) sit in a frame their text runs past. */
+  onOverflow: (blocks: ReadonlyArray<number>) => void;
 }) {
   const current = useDrafts();
   const page = view.manifest.pages[pageIndex]!;
@@ -312,18 +319,37 @@ function TextDraftPage({
     const draft = current.get(`${page.pageId}/${i}`);
     return { style: block.style, text: draft === undefined ? block.text : resolveText(draft, view.cast) };
   });
-  return <BookPage manifest={view.manifest} page={page} text={text} illustration={illustration} cast={view.cast} />;
+  return (
+    <BookPage
+      manifest={view.manifest}
+      page={page}
+      text={text}
+      illustration={illustration}
+      cast={view.cast}
+      // BookPage names frames; the text editor lists paragraphs, so a frame's overflow marks each of its paragraphs.
+      onOverflow={(frames) =>
+        onOverflow(
+          page.frames.flatMap((frame, f) => {
+            const first = page.frames.slice(0, f).reduce((n, earlier) => n + earlier.paragraphs.length, 0);
+            return frames.includes(f) ? frame.paragraphs.map((_p, i) => first + i) : [];
+          }),
+        )
+      }
+    />
+  );
 }
 
 function TextEditor({
   view,
   pageIndex,
   canEdit,
+  overflowing,
   onSave,
 }: {
   view: BookView;
   pageIndex: number;
   canEdit: boolean;
+  overflowing: ReadonlyArray<number>;
   onSave: (blockIndex: number, content: string | null) => Promise<void>;
 }) {
   const page = view.manifest.pages[pageIndex]!;
@@ -356,6 +382,11 @@ function TextEditor({
                 }}
               />
             </label>
+            {overflowing.includes(i) && (
+              <p role="alert" className="text-xs text-destructive">
+                This text runs past the space the story gives it on the page. Shorten it, or use the story's text.
+              </p>
+            )}
             {canEdit && (
               <div className="flex gap-2">
                 <Button

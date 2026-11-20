@@ -12,7 +12,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { Effect, Schema } from "effect";
 
 import { Auth } from "./auth.ts";
-import { type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
+import { type Page, pageText, resolveText, type StoryManifest } from "./book-format/index.ts";
 import { ProofContent, type ProofSummary } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { InvalidInput, NotFound } from "./errors.ts";
@@ -173,17 +173,14 @@ export const deleteProof = Effect.fn("proofs.delete")(function* (userId: string,
 
 /** A page's text with the proof's edits applied, tokens resolved: what BookPage prints. */
 export const proofPageText = (page: Page, content: ProofContent) =>
-  resolvePageText(
-    {
-      text: page.text.map((block, blockIndex) => ({
-        style: block.style,
-        content:
-          content.textEdits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ??
-          block.content,
-      })),
-    },
-    content.cast,
-  );
+  pageText(page).map((block, blockIndex) => ({
+    style: block.style,
+    text: resolveText(
+      content.textEdits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ??
+        block.content,
+      content.cast,
+    ),
+  }));
 
 /**
  * Everything the print page draws for a proof, for the worker's Chromium holding a print token (no session).

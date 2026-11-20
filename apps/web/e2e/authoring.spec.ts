@@ -142,6 +142,17 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
     .getByRole("textbox", { name: "Text block 2" })
     .fill("{{hero.name}} walked to the end of the garden. {{hero.They}} counted the stars with {{hero.their}} finger.");
 
+  // A second text frame (D54), placed by its inch fields and then by the keyboard, keeping the typed line break.
+  await author.getByRole("button", { name: "A small frame to place" }).click();
+  await author.getByRole("textbox", { name: "Text block 3" }).fill("Goodnight,\n{{hero.name}}!");
+  await author.getByTestId("text-frame-fields-2").getByLabel("From left (in)").fill("4");
+  const frame = author.getByRole("group", { name: /^Text frame 2:/ });
+  await frame.focus();
+  await frame.press("Shift+ArrowDown");
+  await frame.press("Shift+ArrowDown");
+  await expect(frame).toHaveAccessibleName(/^Text frame 2: 4\.00 in from the left, 0\.70 in from the top/);
+  await expect(author.getByTestId("draft-preview").getByTestId("text-frame")).toHaveCount(2);
+
   await author.getByLabel("Add plate art").setInputFiles(art("pages/p01/background.svg"));
   await expect(author.getByTestId("layer")).toHaveCount(1);
   await author.getByRole("button", { name: "Place The child" }).click();
@@ -264,6 +275,11 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(pages.first()).toContainText(
     `${child} walked to the end of the garden. She counted the stars with her finger.`,
   );
+  // The published frame sits where the author put it, in inches from the trim plus the bleed, line break and all.
+  const placed = pages.first().getByTestId("text-frame").nth(1);
+  await expect(placed).toHaveCSS("left", "396px"); // (0.125 + 4) in × 96
+  await expect(placed).toHaveCSS("top", "79.2px"); // (0.125 + 0.7) in × 96
+  expect(await placed.innerText()).toBe(`Goodnight,\n${child}!`);
   await imagesLoaded(author);
   // Plate, base, generated curls, foreground: without the published part the figure couldn't be drawn at all.
   await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(4);

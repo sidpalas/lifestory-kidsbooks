@@ -48,12 +48,18 @@ export const resolveText = (content: string, cast: TextCast): string =>
     return field === key ? value : capitalize(value);
   });
 
-/** A page's text blocks with tokens resolved for `cast`: what BookPage prints. */
+/** A page's paragraphs in reading order (pageText) with tokens resolved for `cast`: what BookPage prints. */
 export const resolvePageText = (
-  page: { readonly text: ReadonlyArray<{ readonly style: TextStyleName; readonly content: string }> },
+  page: {
+    readonly frames: ReadonlyArray<{
+      readonly paragraphs: ReadonlyArray<{ readonly style: TextStyleName; readonly content: string }>;
+    }>;
+  },
   cast: TextCast,
 ): ReadonlyArray<ResolvedTextBlock> =>
-  page.text.map((block) => ({ style: block.style, text: resolveText(block.content, cast) }));
+  page.frames.flatMap((frame) =>
+    frame.paragraphs.map((block) => ({ style: block.style, text: resolveText(block.content, cast) })),
+  );
 
 export interface ResolvedTextBlock {
   readonly style: TextStyleName;

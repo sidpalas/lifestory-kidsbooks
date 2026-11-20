@@ -51,7 +51,7 @@ export function StoryFonts({
 export interface BookPageProps {
   readonly manifest: StoryManifest;
   readonly page: Page;
-  /** The page's text, tokens already resolved (and, in a book, the family's edits applied). */
+  /** The page's paragraphs in reading order (pageText), tokens resolved (and, in a book, the family's edits applied). */
   readonly text: ReadonlyArray<ResolvedTextBlock>;
   /**
    * The composed illustration, bottom to top: art, and each figure's base face, parts, and occluder, recoloured for
@@ -60,31 +60,26 @@ export interface BookPageProps {
   readonly illustration: ReadonlyArray<{ readonly url: string; readonly rect: PlacedRect }>;
   /** Who fills each character slot; labels the figure boxes in the guides. */
   readonly cast: Readonly<Record<string, CastMember>>;
-  /** Show the trim line, the safe area, and each figure's box, for the editor. Never printed. */
+  /** Show the trim line, the safe area, each figure's box and each text frame, for the editor. Never printed. */
   readonly guides?: boolean;
+  /** Told which text frames (by index) hold more text than fits, whenever that changes. */
+  readonly onOverflow?: (frames: ReadonlyArray<number>) => void;
 }
 
-export function BookPage({ manifest, page, text, illustration, cast, guides = false }: BookPageProps) {
+export function BookPage({ manifest, page, text, illustration, cast, guides = false, onOverflow }: BookPageProps) {
   const { trim, textStyles } = manifest;
   const { widthIn, heightIn } = pageSizeIn(trim);
-  const inset = trim.bleedIn + trim.safeMarginIn;
-  const artLeft = page.layout === "art-left/text-right";
   const slotLabels = new Map(manifest.characterSlots.map((slot) => [slot.slotId, slot.label]));
-
-  const textArea: React.CSSProperties = artLeft
-    ? {
-        left: inch(trim.bleedIn + trim.widthIn / 2 + trim.safeMarginIn),
-        right: inch(inset),
-        top: inch(inset),
-        bottom: inch(inset),
-        justifyContent: "center",
-      }
-    : page.layout === "full-bleed-art/text-top"
-      ? { left: inch(inset), right: inch(inset), top: inch(inset) }
-      : { left: inch(inset), right: inch(inset), bottom: inch(inset) };
+  const { overflowing, sheet } = useOverflow(page.frames.length, onOverflow);
+  // `text` is the page's paragraphs in reading order (pageText); each frame takes the next ones.
+  const frames = page.frames.map((frame, f) => {
+    const first = page.frames.slice(0, f).reduce((n, earlier) => n + earlier.paragraphs.length, 0);
+    return { frame, paragraphs: text.slice(first, first + frame.paragraphs.length) };
+  });
 
   return (
     <div
+      ref={sheet}
       data-testid="book-page"
       data-page-id={page.pageId}
       style={{
@@ -103,7 +98,7 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
           left: 0,
           top: 0,
           height: "100%",
-          width: artLeft ? inch(trim.bleedIn + trim.widthIn / 2) : "100%",
+          width: page.art === "left-half" ? inch(trim.bleedIn + trim.widthIn / 2) : "100%",
         }}
       >
         {illustration.map(({ url, rect: [x0, y0, x1, y1] }, i) => (
@@ -133,50 +128,107 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
           )}
       </div>
 
-      <div
-        data-testid="page-text"
-        style={{ position: "absolute", display: "flex", flexDirection: "column", gap: "0.12in", ...textArea }}
-      >
-        <div
-          data-testid="text-panel"
-          style={
-            artLeft
-              ? undefined
-              : { background: "rgb(255 250 240 / 0.9)", borderRadius: "0.14in", padding: "0.16in 0.22in" }
-          }
-        >
-          {text.map((block, i) => {
-            const style = textStyles[block.style];
-            return (
-              <p
-                key={i}
-                style={{
-                  margin: i === 0 ? 0 : "0.5em 0 0",
-                  fontFamily: `${JSON.stringify(style.fontFamily)}, serif`,
-                  fontSize: `${style.sizePt}pt`,
-                  lineHeight: style.lineHeight,
-                  fontWeight: style.weight,
-                  textAlign: style.align,
-                  // Lay out with the font's own fractional advances. Without it the worker's headless Chromium rounds
-                  // each word to whole CSS pixels, so print drifted up to 3.4 pt along a line from the editor (D12).
-                  textRendering: "geometricPrecision",
-                }}
-              >
-                {block.text}
-              </p>
-            );
-          })}
-        </div>
-      </div>
+      {frames.map(({ frame, paragraphs }, f) =>
+        paragraphs.length === 0 ? null : (
+          <div
+            key={frame.frameId}
+            data-testid="text-frame"
+            data-frame={f}
+            data-overflow={overflowing.includes(f) || undefined}
+            style={{
+              position: "absolute",
+              left: inch(trim.bleedIn + frame.box.xIn),
+              top: inch(trim.bleedIn + frame.box.yIn),
+              width: inch(frame.box.widthIn),
+              height: inch(frame.box.heightIn),
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: { top: "flex-start", middle: "center", bottom: "flex-end" }[frame.valign],
+              ...(guides
+                ? { outline: `0.01in dashed ${overflowing.includes(f) ? "#d92d20" : "#0f9d58"}`, outlineOffset: 0 }
+                : {}),
+            }}
+          >
+            {/* As tall as the text, so a frame keeping to its bottom grows upward, panel and all. */}
+            <div data-testid="text-panel" style={{ flexShrink: 0, ...(frame.panel ? panelStyle : {}) }}>
+              {paragraphs.map((block, i) => {
+                const style = textStyles[block.style];
+                return (
+                  <p
+                    key={i}
+                    style={{
+                      margin: i === 0 ? 0 : "0.5em 0 0",
+                      fontFamily: `${JSON.stringify(style.fontFamily)}, serif`,
+                      fontSize: `${style.sizePt}pt`,
+                      lineHeight: style.lineHeight,
+                      fontWeight: style.weight,
+                      textAlign: style.align,
+                      // Lines break where the author or family typed a break, and where they run out of room.
+                      whiteSpace: "pre-line",
+                      // Lay out with the font's own fractional advances. Without it the worker's headless Chromium
+                      // rounds each word to whole CSS pixels, so print drifted up to 3.4 pt along a line from the
+                      // editor (D12).
+                      textRendering: "geometricPrecision",
+                    }}
+                  >
+                    {block.text}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        ),
+      )}
 
       {guides && (
         <>
           <Guide inset={trim.bleedIn} color="#e0218a" testId="trim-guide" />
-          <Guide inset={inset} color="#00a3d9" testId="safe-guide" />
+          <Guide inset={trim.bleedIn + trim.safeMarginIn} color="#00a3d9" testId="safe-guide" />
         </>
       )}
     </div>
   );
+}
+
+const panelStyle: React.CSSProperties = {
+  background: "rgb(255 250 240 / 0.9)",
+  borderRadius: "0.14in",
+  padding: "0.16in 0.22in",
+};
+
+/**
+ * Which text frames on this page (by index) hold more text than fits: a family's longer names or edit can make a
+ * frame overflow, and the text then prints past it. Measured after layout and again whenever a frame or its text
+ * resizes (fonts loading, edits typed, frames moved).
+ */
+function useOverflow(frames: number, onOverflow: ((frames: ReadonlyArray<number>) => void) | undefined) {
+  const [overflowing, setOverflowing] = useState<ReadonlyArray<number>>([]);
+  const sheet = useRef<HTMLDivElement>(null);
+  const callback = useRef(onOverflow);
+  useLayoutEffect(() => {
+    callback.current = onOverflow;
+  });
+  useLayoutEffect(() => {
+    const page = sheet.current!;
+    const measure = () => {
+      const next = [...page.querySelectorAll<HTMLElement>("[data-testid=text-frame]")]
+        // Half a CSS pixel of slack for sub-pixel line heights.
+        .filter(
+          (frame) =>
+            frame.querySelector<HTMLElement>("[data-testid=text-panel]")!.offsetHeight > frame.clientHeight + 0.5,
+        )
+        .map((frame) => Number(frame.dataset.frame));
+      setOverflowing((current) => (current.join() === next.join() ? current : next));
+    };
+    const observer = new ResizeObserver(measure);
+    for (const element of page.querySelectorAll("[data-testid=text-frame], [data-testid=text-panel]"))
+      observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- frames: an added frame needs observing too
+  }, [frames]);
+  useLayoutEffect(() => callback.current?.(overflowing), [overflowing]);
+  return { overflowing, sheet };
 }
 
 /** A guide over a figure: its box, labelled with who fills it. */

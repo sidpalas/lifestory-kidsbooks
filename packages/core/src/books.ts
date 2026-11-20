@@ -6,7 +6,14 @@ import { schema } from "@lifestory/db";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
-import { type CastMember, castLook, LookOverride, type StoryManifest, withLookChanges } from "./book-format/index.ts";
+import {
+  type CastMember,
+  castLook,
+  LookOverride,
+  pageText,
+  type StoryManifest,
+  withLookChanges,
+} from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
 import { Character as CharacterSchema } from "./contracts.ts";
@@ -264,7 +271,7 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
       Effect.map((layers) => ({
         pageId: page.pageId,
         layers,
-        text: page.text.map((block, blockIndex) => {
+        text: pageText(page).map((block, blockIndex) => {
           const edited =
             edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
           return {
@@ -385,7 +392,7 @@ export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
   const page = book.manifest.pages.find((candidate) => candidate.pageId === input.pageId);
-  const block = page?.text[input.blockIndex];
+  const block = page && pageText(page)[input.blockIndex];
   if (!page || !block) return yield* new NotFound({ entity: "text block", id: `${input.pageId}/${input.blockIndex}` });
   const key = and(
     eq(schema.bookTextEdit.bookId, input.bookId),

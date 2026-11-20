@@ -1,6 +1,6 @@
 // The book format: what an author publishes, stored as `story_version.manifest`. Format 2 (D29) gives roles a set of
-// ages and draws bases and parts per age and face type; stored format 1 manifests are upgraded when decoded
-// (upgradeFormat1). See docs/plan.md, "Book format (v1)". Browser-safe: the page component reads it.
+// ages and draws bases and parts per age and face type; format 3 places text in frames (D54). Stored manifests of
+// earlier formats are upgraded when decoded (upgradeFormat1, upgradeFormat2). See docs/plan.md, "Book format (v1)". Browser-safe: the page component reads it.
 //
 // The manifest holds only what the author made. A family's choices (who fills
 // each character slot, text edits) live on their book and are applied when a
@@ -204,28 +204,51 @@ export type FigureLayer = typeof FigureLayer.Type;
 export const IllustrationLayer = Schema.Union([ArtLayer, FigureLayer]);
 export type IllustrationLayer = typeof IllustrationLayer.Type;
 
-/**
- * The closed set of page layouts BookPage knows. The illustration covers the whole
- * page including bleed ("full-bleed-art/...") or the left half ("art-left/...").
- */
-export const PageLayout = Schema.Literals([
-  "full-bleed-art/text-bottom",
-  "full-bleed-art/text-top",
-  "art-left/text-right",
-]);
-export type PageLayout = typeof PageLayout.Type;
+/** Where a page's illustration sits: the whole page including bleed, or its left half. */
+export const ArtArea = Schema.Literals(["full-bleed", "left-half"]);
+export type ArtArea = typeof ArtArea.Type;
 
+/** One paragraph of a text frame, in one of the story's text styles. */
 export const TextBlock = Schema.Struct({
   style: TextStyleName,
-  /** Human-written text with `{{slot.field}}` tokens, see text.ts. */
+  /** Human-written text with `{{slot.field}}` tokens, see text.ts. Line breaks typed in it are kept. */
   content: Schema.String,
 });
 export type TextBlock = typeof TextBlock.Type;
 
+/** A rectangle on the trim, in inches from its top-left corner. */
+export const TrimBox = Schema.Struct({
+  xIn: Inches,
+  yIn: Inches,
+  widthIn: Inches.check(Schema.isGreaterThan(0)),
+  heightIn: Inches.check(Schema.isGreaterThan(0)),
+});
+export type TrimBox = typeof TrimBox.Type;
+
+/**
+ * A place for text on a page (format 3): a box inside the safe area holding paragraphs, laid out top to bottom like
+ * one column. The text keeps to one edge of the box (`valign`), so a family's longer names grow it away from that
+ * edge; text that doesn't fit runs past the box, and the editors say so.
+ */
+export const TextFrame = Schema.Struct({
+  /** Stable within the page; the editor names new frames t1, t2, ... */
+  frameId: Id,
+  box: TrimBox,
+  valign: Schema.Literals(["top", "middle", "bottom"]),
+  /** A light panel behind the text, as wide as the box and as tall as the text, so it reads over busy art. */
+  panel: Schema.Boolean,
+  paragraphs: Schema.Array(TextBlock),
+});
+export type TextFrame = typeof TextFrame.Type;
+
 export const Page = Schema.Struct({
   pageId: Id,
-  layout: PageLayout,
-  text: Schema.Array(TextBlock),
+  art: ArtArea,
+  /**
+   * The page's text, in reading order. Frames may overlap; a later frame draws on top. A family's text edits address
+   * the page's paragraphs in this order (pageText).
+   */
+  frames: Schema.Array(TextFrame),
   illustration: Schema.Struct({
     /** Bottom to top. Art layers are the illustrator's files and never change; character layers are filled per family. */
     layers: Schema.Array(IllustrationLayer),
@@ -242,7 +265,11 @@ export const Palette = Schema.Array(
 ).check(Schema.isMinLength(2));
 export type Palette = typeof Palette.Type;
 
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
+
+/** A page's paragraphs in reading order, frame by frame: what a family's text edits address by index. */
+export const pageText = (page: { readonly frames: ReadonlyArray<{ readonly paragraphs: ReadonlyArray<TextBlock> }> }) =>
+  page.frames.flatMap((frame) => frame.paragraphs);
 
 const duplicates = (values: ReadonlyArray<string>) => values.filter((value, i) => values.indexOf(value) !== i);
 
@@ -327,15 +354,71 @@ export const StoryManifest = StoryDraft.check(
         for (const issue of figureIssues(layer, drawnAges(layer, slot)))
           issues.push({ path: [...path, ...issue.path], issue: issue.issue });
       });
-      page.text.forEach((block, b) => {
-        for (const issue of tokenIssues(block.content, slots))
-          issues.push({ path: ["pages", p, "text", b, "content"], issue });
+      for (const id of new Set(duplicates(page.frames.map((frame) => frame.frameId))))
+        issues.push({ path: ["pages", p, "frames"], issue: `duplicate frameId "${id}"` });
+      page.frames.forEach((frame, f) => {
+        const path = ["pages", p, "frames", f];
+        if (!insideSafeArea(frame.box, manifest.trim))
+          issues.push({ path: [...path, "box"], issue: "the text frame reaches past the safe margin" });
+        if (frame.paragraphs.length === 0)
+          issues.push({ path: [...path, "paragraphs"], issue: "a text frame needs at least one paragraph" });
+        frame.paragraphs.forEach((block, b) => {
+          for (const issue of tokenIssues(block.content, slots))
+            issues.push({ path: [...path, "paragraphs", b, "content"], issue });
+        });
       });
     });
     return issues;
   }),
 );
 export type StoryManifest = typeof StoryManifest.Type;
+
+/** The safe area: where text may go, the trim less its safe margin on every side. */
+export const safeArea = (trim: Trim): TrimBox => ({
+  xIn: trim.safeMarginIn,
+  yIn: trim.safeMarginIn,
+  widthIn: trim.widthIn - 2 * trim.safeMarginIn,
+  heightIn: trim.heightIn - 2 * trim.safeMarginIn,
+});
+
+/** Floating-point slack for edges computed from the trim (a box flush with the safe margin is inside it). */
+const EDGE_SLACK_IN = 1e-9;
+
+const insideSafeArea = (box: TrimBox, trim: Trim) => {
+  const safe = safeArea(trim);
+  return (
+    box.xIn >= safe.xIn - EDGE_SLACK_IN &&
+    box.yIn >= safe.yIn - EDGE_SLACK_IN &&
+    box.xIn + box.widthIn <= safe.xIn + safe.widthIn + EDGE_SLACK_IN &&
+    box.yIn + box.heightIn <= safe.yIn + safe.heightIn + EDGE_SLACK_IN
+  );
+};
+
+/**
+ * Where format 2's three page layouts put text, as a frame: the editor offers them as starting frames, and format 2
+ * pages upgrade to them. "bottom" and "top" fill the safe area on a panel and keep to that edge; "right-half" is the
+ * right half's safe area, centred, with no panel (the art fills the left half).
+ */
+export const presetFrame = (
+  trim: Trim,
+  preset: "bottom" | "top" | "right-half",
+  frameId: string,
+  paragraphs: ReadonlyArray<TextBlock>,
+): TextFrame =>
+  preset === "right-half"
+    ? {
+        frameId,
+        box: {
+          xIn: trim.widthIn / 2 + trim.safeMarginIn,
+          yIn: trim.safeMarginIn,
+          widthIn: trim.widthIn / 2 - 2 * trim.safeMarginIn,
+          heightIn: trim.heightIn - 2 * trim.safeMarginIn,
+        },
+        valign: "middle",
+        panel: false,
+        paragraphs,
+      }
+    : { frameId, box: safeArea(trim), valign: preset, panel: true, paragraphs };
 
 /** The ages a figure draws its role at: its pinned age, or every age the slot accepts. */
 const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> =>
@@ -598,13 +681,49 @@ export const upgradeFormat1 = (input: unknown): unknown => {
   return m;
 };
 
+/** Format 2's page layouts, as the preset frame that holds the page's text and where the art sits. */
+const format2Layouts: Record<string, { readonly preset: "bottom" | "top" | "right-half"; readonly art: ArtArea }> = {
+  "full-bleed-art/text-bottom": { preset: "bottom", art: "full-bleed" },
+  "full-bleed-art/text-top": { preset: "top", art: "full-bleed" },
+  "art-left/text-right": { preset: "right-half", art: "left-half" },
+};
+
+/**
+ * Format 3 replaced each page's layout and its list of paragraphs with text frames. A format 2 page becomes one frame
+ * at its layout's place (presetFrame) holding its paragraphs in order, so it prints as before and a family's text
+ * edits keep their indexes. Format 2 drew a page without text as an empty panel; it now has no frame. Format 2
+ * printed a typed line break as a space, so it becomes one.
+ */
+export const upgradeFormat2 = (input: unknown): unknown => {
+  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 2)
+    return input;
+  // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
+  const m = structuredClone(input) as any;
+  m.formatVersion = 3;
+  for (const page of m.pages ?? []) {
+    const layout = format2Layouts[page.layout];
+    if (!layout || !Array.isArray(page.text) || !m.trim) continue; // Not format 2's shape: the decoder says why.
+    const paragraphs = page.text.map((block: TextBlock) => ({
+      style: block.style,
+      content: typeof block.content === "string" ? block.content.replaceAll("\n", " ") : block.content,
+    }));
+    page.art = layout.art;
+    page.frames = paragraphs.length ? [presetFrame(m.trim, layout.preset, "t1", paragraphs)] : [];
+    delete page.layout;
+    delete page.text;
+  }
+  return m;
+};
+
+const upgrade = (input: unknown) => upgradeFormat2(upgradeFormat1(input));
+
 /** Decodes and validates a manifest of any known format, as the current format; fails with every problem found. */
 export const decodeStoryManifest = (input: unknown) =>
-  Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgradeFormat1(input)));
+  Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgrade(input)));
 
-/** Decodes a draft (D37): the format's shape, upgraded from format 1 like a manifest, without the publishing checks. */
+/** Decodes a draft (D37): the format's shape, upgraded from earlier formats like a manifest, without the publishing checks. */
 export const decodeStoryDraft = (input: unknown) =>
-  Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgradeFormat1(input)));
+  Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgrade(input)));
 
 /** Decodes a stored story version: published ones as manifests, the author's unpublished draft only by its shape. */
 export const decodeStoryVersion = (input: unknown, publishedAt: Date | null) =>

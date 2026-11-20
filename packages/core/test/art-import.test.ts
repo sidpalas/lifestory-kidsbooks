@@ -123,8 +123,8 @@ const adult = (features?: "features:soft") => ({
 describe("applyImport", () => {
   const page: Page = {
     pageId: "p01",
-    layout: "full-bleed-art/text-bottom",
-    text: [],
+    art: "full-bleed",
+    frames: [],
     illustration: {
       layers: [
         { kind: "art", asset: "old-plate.jpg" },

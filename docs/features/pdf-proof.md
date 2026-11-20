@@ -32,8 +32,10 @@ Opens an existing book of the story, or makes one from the preview's chosen fami
 - **pixels**: each editor page (full Chromium at 192 dpi with thumbnail scaling undone) against the PDF page
   (`pdftoppm`), both downscaled to 96 dpi; fails above 10% of pixels off by more than 5%. Measured: 1.1–1.5% on
   the Moon Picnic, 3.1–4.8% on the painted Paper Boat (resampled edges).
-- **line breaks** and **word positions**: each word's line and left edge in the editor DOM against
-  `pdftotext -bbox`; fails above 0.5 pt. Measured 0.01 pt; without `geometricPrecision` (c9a06f1) it measures 5.11 pt and fails.
+- **line breaks** and **word positions**: each word's line, left edge, and top in the editor DOM (every text frame,
+  D54) against `pdftotext -bbox`, paired in reading order; fails above 0.5 pt across or 1 pt down from the median
+  offset of the word's font size. Measured 0.01 pt across and 0.22–0.43 pt down; without `geometricPrecision`
+  (c9a06f1) it measures 5.11 pt across and fails, and a frame printed 2 pt low measures 2.22 pt and fails.
 
 - **delete**: deletes the proof with its Delete button (confirming), then checks it's no longer listed and its
   download is 404.

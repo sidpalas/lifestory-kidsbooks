@@ -234,8 +234,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     the name and falling back to it when a member has none; Sid, 2026-11-19), and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
     `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. Pronouns don't fix verb agreement
     ("they are" against "she is"), so authors write around it, as in past tense.
-  - **Layouts** (closed set): `full-bleed-art/text-bottom`, `full-bleed-art/text-top` (text on a light panel so it
-    reads over any art), and `art-left/text-right`. Figure boxes are thousandths of the illustration area.
+  - **Layouts** (closed set, format 2; replaced by text frames in format 3, D54): `full-bleed-art/text-bottom`,
+    `full-bleed-art/text-top` (text on a light panel so it reads over any art), and `art-left/text-right`. Figure boxes are thousandths of the illustration area.
   - **Validation** checks references across the manifest (slots, page IDs, fonts, tokens, boxes, look options,
     asset paths that stay inside the version's folder) and reports every problem with its path, so it can serve as the upload validator.
   - **Placeholder art is SVG**, at 1 unit = 0.01 in, so it's small, diffable, and sharp at any print resolution.
@@ -265,8 +265,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Story assets** under `/api/files/stories/<storyId>/v<n>/` follow the story's read rule: published story and
   version, or the caller is the author. File responses carry `Content-Security-Policy: sandbox` and `nosniff`,
   because stored SVGs (and later author uploads) could contain scripts.
-- **Reopen if:** an author needs a layout or text style outside the closed sets, or pronoun tokens prove too
-  limiting for real stories (then per-pronoun text variants).
+- **Reopen if:** an author needs a text style outside the closed set, or pronoun tokens prove too limiting for real
+  stories (then per-pronoun text variants). Layouts were reopened and replaced by text frames (D54).
 
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
 
@@ -831,6 +831,37 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   version is republished for a retirement (a republish only drops dead parts). A retired ID is never reused.
 - **Reopen if:** a retired option has no sensible replacement (then a book asks for a stand-in, like an unsupported
   option), or stubble returns with art that survives the cut-out: give it a new ID.
+
+### D54. Book format 3: a page's text is a list of text frames placed in inches — Decided (Sid, 2026-11-20) / Made
+
+- **Why (Sid):** "lay out stories exactly how we want them", with "multiple text boxes in different locations" that
+  an author moves around. Format 2 placed one panel of paragraphs by one of three layouts (D24), dropped typed line
+  breaks, and had no position or size per block. Sid weighed three shapes: optional boxes on format 2's blocks (A),
+  a `free` layout (B), and frames (C). He chose C for the best design going forward over backward compatibility.
+- **How:** a page has `art` (`full-bleed` or `left-half`) and `frames`, in reading order. A frame has a `frameId`, a
+  `box` (`xIn`, `yIn`, `widthIn`, `heightIn` from the trim's top-left), `valign` (top, middle, bottom: the edge the
+  text keeps to as a family's names make it longer), `panel`, and `paragraphs` (format 2's blocks). BookPage draws
+  each frame at its box with one panel as tall as its text; lines break where text was typed (`pre-line`) and where
+  they run out of room. Publishing rejects a frame past the safe margin, a frame without paragraphs, and duplicate
+  frame IDs. A family's edits still address a page's paragraphs by index, now counted across its frames in reading
+  order (`pageText`), so `book_text_edit`, proofs and the database don't change.
+- **Format 2 upgrades when read** (`upgradeFormat2`, like format 1): each layout becomes one frame at its old text
+  area (`presetFrame`: the safe area keeping to the bottom or top on a panel, or the right half's safe area, centred,
+  without one) holding the page's paragraphs. Stored rows aren't rewritten. Inches, not thousandths, so the upgrade
+  is exact. Measured 2026-11-20: proofs of both published samples (9 pages, all three layouts) with format 3 have
+  word boxes identical to `main`'s (`pdftotext -bbox`, 85 and 122 words) and 0 pixels off by more than 5%. Format 2
+  printed a typed break as a space, so the upgrade turns breaks into spaces.
+- **Authoring:** the Pages tab lists frames with inch fields, anchoring, panel and their paragraphs, and adds frames
+  from presets (format 2's layouts, or a small frame to place). On the preview a frame drags to move, its 8 handles
+  resize it, and focused it moves with the arrow keys (0.01 in, Shift 0.1 in; Alt resizes). Everything stays in the
+  safe area. Both editors warn when text runs past its frame; proofs still print, since a long name in one family
+  shouldn't block their book.
+- **Checked:** `verify proof` reads words from frames and also compares each word's top with the median offset of
+  its size across the book (limit 1 pt: the screen places lines on half CSS pixels; a frame printed 2 pt off fails).
+  A two-frame page with a family edit printed with 88 words on the same lines, Δx 0.01 pt, Δy 0.43 pt.
+- **Not now:** rotation (an optional frame field later, without a new format version; pdftotext splits rotated
+  words, so the word check would measure frames unrotated), inline bold and italic, per-frame text style overrides.
+- **Reopen if:** a real story needs text flowing from one frame into the next, or text along a path.
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 

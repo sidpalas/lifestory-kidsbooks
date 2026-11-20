@@ -18,11 +18,12 @@ import {
   type LookOption,
   lookVocabulary,
   type Page,
-  PageLayout,
   PronounSet,
   resolvePageText,
   type StoryDraft,
   StoryNotPublishable,
+  type TextBlock,
+  type TextFrame,
   type TextStyle,
   tokenIssues,
   unwrapResult,
@@ -56,6 +57,7 @@ import { CastingTab } from "./casting";
 import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
 import { FigureEditor, type Generation } from "./figure-editor";
 import { ReviewTab } from "./review";
+import { FRAME_PRESETS, FrameFields, type FramePreset, newFrame, nextFrameId, TextFrameOverlay } from "./text-frames";
 
 type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
 
@@ -67,12 +69,6 @@ const tabs = [
   { id: "pages", label: "Pages" },
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
-
-const layoutLabels: Record<PageLayout, string> = {
-  "full-bleed-art/text-bottom": "Full-bleed art, text at the bottom",
-  "full-bleed-art/text-top": "Full-bleed art, text at the top",
-  "art-left/text-right": "Art on the left, text on the right",
-};
 
 const PRONOUN_FIELDS = ["name", "title", "they", "them", "their", "theirs", "themself"] as const;
 
@@ -90,6 +86,8 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   const [issues, setIssues] = useState<ReadonlyArray<string> | null>(null);
   const [tab, setTab] = useState<Tab>(initial.casting.length ? "casting" : "story");
   const [selected, setSelected] = useState(initial.draft.pages[0]?.pageId ?? "");
+  /** Text frames of the selected page whose text runs past them in the preview. */
+  const [overflowing, setOverflowing] = useState<ReadonlyArray<number>>([]);
   const files: DraftFiles = { storyId: view.story.id, version: view.version };
   const change: Change = (edit) => {
     setDraft((current) => edit(current));
@@ -205,12 +203,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
       ...d,
       pages: [
         ...d.pages,
-        {
-          pageId,
-          layout: "full-bleed-art/text-bottom",
-          text: [{ style: "body", content: "" }],
-          illustration: { layers: [] },
-        },
+        { pageId, art: "full-bleed", frames: [newFrame(d.trim, "bottom", "t1")], illustration: { layers: [] } },
       ],
     }));
     setSelected(pageId);
@@ -365,7 +358,14 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         )}
         {tab === "roles" && <RolesTab draft={draft} change={change} />}
         {tab === "pages" && page && (
-          <PageTab files={files} draft={draft} page={page} change={change} generationFor={generationFor} />
+          <PageTab
+            files={files}
+            draft={draft}
+            page={page}
+            change={change}
+            generationFor={generationFor}
+            overflowing={overflowing}
+          />
         )}
         {tab === "pages" && !page && (
           <Button className="self-start" onClick={addPage}>
@@ -435,7 +435,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
           </Button>
         </div>
         {page && (
-          <div className="w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="draft-preview">
+          <div className="relative w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="draft-preview">
             <ScaledPage trim={draft.trim} scale={0.55}>
               <BookPage
                 manifest={draft}
@@ -449,8 +449,29 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
                 )}
                 cast={cast}
                 guides
+                onOverflow={setOverflowing}
               />
             </ScaledPage>
+            <TextFrameOverlay
+              trim={draft.trim}
+              frames={page.frames}
+              overflowing={overflowing}
+              onChange={(frame, box) =>
+                change((d) => ({
+                  ...d,
+                  pages: d.pages.map((p) =>
+                    p.pageId === page.pageId
+                      ? { ...p, frames: p.frames.map((x, i) => (i === frame ? { ...x, box } : x)) }
+                      : p,
+                  ),
+                }))
+              }
+              onOpen={(frame) => {
+                setTab("pages");
+                const first = page.frames.slice(0, frame).reduce((n, x) => n + x.paragraphs.length, 0);
+                requestAnimationFrame(() => document.getElementById(`text-block-${first + 1}`)?.focus());
+              }}
+            />
           </div>
         )}
         <p className="max-w-md text-xs text-muted-foreground">
@@ -936,12 +957,14 @@ function PageTab({
   page,
   change,
   generationFor,
+  overflowing,
 }: {
   files: DraftFiles;
   draft: StoryDraft;
   page: Page;
   change: Change;
   generationFor: (pageId: string, slotId: string) => Generation;
+  overflowing: ReadonlyArray<number>;
 }) {
   const index = draft.pages.indexOf(page);
   const slotIds = new Set(draft.characterSlots.map((slot) => slot.slotId));
@@ -972,18 +995,15 @@ function PageTab({
           Page {index + 1} <span className="text-xs font-normal text-muted-foreground">({page.pageId})</span>
         </h3>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Layout
+          Art
           <NativeSelect
-            aria-label="Layout"
+            aria-label="Art"
             className="h-8"
-            value={page.layout}
-            onChange={(event) => setPage((p) => ({ ...p, layout: event.target.value as PageLayout }))}
+            value={page.art}
+            onChange={(event) => setPage((p) => ({ ...p, art: event.target.value as Page["art"] }))}
           >
-            {PageLayout.literals.map((layout) => (
-              <option key={layout} value={layout}>
-                {layoutLabels[layout]}
-              </option>
-            ))}
+            <option value="full-bleed">Fills the page</option>
+            <option value="left-half">Left half</option>
           </NativeSelect>
         </label>
         <Button size="sm" variant="outline" onClick={() => movePage(index - 1)} disabled={index === 0}>
@@ -1006,68 +1026,137 @@ function PageTab({
         </Button>
       </div>
 
-      <section className="flex flex-col gap-2" aria-label="Text">
+      <section className="flex flex-col gap-3" aria-label="Text">
         <h3 className="font-semibold">Text</h3>
-        {page.text.map((block, b) => {
-          const problems = tokenIssues(block.content, slotIds);
+        {page.frames.map((frame, f) => {
+          // Paragraphs are numbered across the page in reading order, as a family's text editor numbers them.
+          const first = page.frames.slice(0, f).reduce((n, x) => n + x.paragraphs.length, 0);
+          const setFrame = (edit: (frame: TextFrame) => TextFrame) =>
+            setPage((p) => ({ ...p, frames: p.frames.map((x, i) => (i === f ? edit(x) : x)) }));
+          const setParagraphs = (edit: (paragraphs: ReadonlyArray<TextBlock>) => ReadonlyArray<TextBlock>) =>
+            setFrame((x) => ({ ...x, paragraphs: edit(x.paragraphs) }));
+          const moveFrame = (to: number) =>
+            setPage((p) => {
+              if (to < 0 || to >= p.frames.length) return p;
+              const next = [...p.frames];
+              [next[f], next[to]] = [next[to]!, next[f]!];
+              return { ...p, frames: next };
+            });
           return (
-            <div key={b} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <NativeSelect
-                  aria-label={`Style of text block ${b + 1}`}
-                  className="h-7 text-xs"
-                  value={block.style}
-                  onChange={(event) =>
-                    setPage((p) => ({
-                      ...p,
-                      text: p.text.map((t, i) =>
-                        i === b ? { ...t, style: event.target.value as "title" | "body" } : t,
-                      ),
-                    }))
-                  }
-                >
-                  <option value="title">Title</option>
-                  <option value="body">Body</option>
-                </NativeSelect>
+            <fieldset
+              key={frame.frameId}
+              className="flex flex-col gap-3 rounded-md border p-3"
+              data-testid={`text-frame-fields-${f + 1}`}
+            >
+              <legend className="px-1 text-sm font-semibold">Text frame {f + 1}</legend>
+              <div className="flex flex-wrap items-center gap-1">
+                {overflowing.includes(f) && (
+                  <p role="alert" className="mr-2 text-xs text-destructive">
+                    The text runs past this frame with the preview's names. Make the frame bigger or the text shorter:
+                    longer names in a family's book need room too.
+                  </p>
+                )}
+                <span className="flex-1" />
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => moveFrame(f - 1)} disabled={f === 0}>
+                  Read earlier
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7"
-                  onClick={() => setPage((p) => ({ ...p, text: p.text.filter((_t, i) => i !== b) }))}
+                  onClick={() => moveFrame(f + 1)}
+                  disabled={f === page.frames.length - 1}
                 >
-                  Remove
+                  Read later
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7"
+                  onClick={() => setPage((p) => ({ ...p, frames: p.frames.filter((_x, i) => i !== f) }))}
+                >
+                  Remove frame
                 </Button>
               </div>
-              <textarea
-                aria-label={`Text block ${b + 1}`}
-                className="min-h-20 rounded-md border px-3 py-2 font-serif text-sm"
-                value={block.content}
-                onChange={(event) =>
-                  setPage((p) => ({
-                    ...p,
-                    text: p.text.map((t, i) => (i === b ? { ...t, content: event.target.value } : t)),
-                  }))
+              <FrameFields trim={draft.trim} frame={frame} index={f} onChange={(next) => setFrame(() => next)} />
+              {frame.paragraphs.map((block, b) => {
+                const n = first + b + 1;
+                const problems = tokenIssues(block.content, slotIds);
+                return (
+                  <div key={b} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <NativeSelect
+                        aria-label={`Style of text block ${n}`}
+                        className="h-7 text-xs"
+                        value={block.style}
+                        onChange={(event) =>
+                          setParagraphs((ps) =>
+                            ps.map((t, i) => (i === b ? { ...t, style: event.target.value as "title" | "body" } : t)),
+                          )
+                        }
+                      >
+                        <option value="title">Title</option>
+                        <option value="body">Body</option>
+                      </NativeSelect>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7"
+                        onClick={() => setParagraphs((ps) => ps.filter((_t, i) => i !== b))}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <textarea
+                      id={`text-block-${n}`}
+                      aria-label={`Text block ${n}`}
+                      className="min-h-20 rounded-md border px-3 py-2 font-serif text-sm"
+                      value={block.content}
+                      onChange={(event) =>
+                        setParagraphs((ps) => ps.map((t, i) => (i === b ? { ...t, content: event.target.value } : t)))
+                      }
+                    />
+                    {problems.map((problem) => (
+                      <p key={problem} role="alert" className="text-xs text-destructive">
+                        {problem}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })}
+              <Button
+                size="sm"
+                variant="outline"
+                className="self-start"
+                onClick={() =>
+                  setFrame((x) => ({ ...x, paragraphs: [...x.paragraphs, { style: "body", content: "" }] }))
                 }
-              />
-              {problems.map((problem) => (
-                <p key={problem} role="alert" className="text-xs text-destructive">
-                  {problem}
-                </p>
-              ))}
-            </div>
+              >
+                Add a paragraph
+              </Button>
+            </fieldset>
           );
         })}
-        <Button
-          size="sm"
-          variant="outline"
-          className="self-start"
-          onClick={() => setPage((p) => ({ ...p, text: [...p.text, { style: "body", content: "" }] }))}
-        >
-          Add a paragraph
-        </Button>
+        <div className="flex flex-wrap items-center gap-1 text-xs">
+          <span className="mr-1 font-medium">Add a text frame:</span>
+          {(Object.keys(FRAME_PRESETS) as ReadonlyArray<FramePreset>).map((preset) => (
+            <Button
+              key={preset}
+              size="sm"
+              variant="outline"
+              className="h-7"
+              onClick={() =>
+                setPage((p) => ({ ...p, frames: [...p.frames, newFrame(draft.trim, preset, nextFrameId(p.frames))] }))
+              }
+            >
+              {FRAME_PRESETS[preset]}
+            </Button>
+          ))}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Write {"{{role.name}}"}, {"{{role.title}}"}, or a pronoun such as {"{{role.they}}"} where the family's names
-          go; the Roles tab lists each role's tokens.
+          Drag a frame on the page to move it, drag its edges to resize it, or click it and use the arrow keys (Shift
+          moves 0.1 in, Alt resizes). Line breaks you type are kept. Write {"{{role.name}}"}, {"{{role.title}}"}, or a
+          pronoun such as {"{{role.they}}"} where the family's names go; the Roles tab lists each role's tokens.
         </p>
       </section>
 

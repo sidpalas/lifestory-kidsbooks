@@ -172,7 +172,7 @@ export function CastingTab({
         if (index === -1) {
           let n = pages.length + 1;
           while (pages.some((p) => p.pageId === `p${n}`)) n++;
-          pages.push({ pageId: `p${n}`, layout: "full-bleed-art/text-bottom", text: [], illustration: { layers: [] } });
+          pages.push({ pageId: `p${n}`, art: "full-bleed", frames: [], illustration: { layers: [] } });
           index = pages.length - 1;
         }
         const pageId = pages[index]!.pageId;

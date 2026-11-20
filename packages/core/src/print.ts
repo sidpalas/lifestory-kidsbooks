@@ -77,12 +77,14 @@ export const printPdf = (url: string, readFile: (key: string) => Effect.Effect<S
 
 /**
  * Flattens every page's transparency for print (D35): with the words hidden, each page is captured at ART_PPI as one
- * opaque JPEG (the paper colour, every illustration layer, and the text panel, composited by Chromium exactly as on
+ * opaque JPEG (the paper colour, every illustration layer, and the text panels, composited by Chromium exactly as on
  * screen), which then replaces those layers under the words. The PDF gets one opaque image per page and live text in
  * the story's embedded fonts, with nothing transparent left to flatten.
  */
 const flattenArt = async (page: import("playwright-core").Page) => {
-  const hideWords = await page.addStyleTag({ content: "[data-testid=page-text] p { visibility: hidden !important; }" });
+  const hideWords = await page.addStyleTag({
+    content: "[data-testid=text-frame] p { visibility: hidden !important; }",
+  });
   const sheets = await page.locator("[data-testid=book-page]").all();
   const rules: string[] = [];
   for (const sheet of sheets) {

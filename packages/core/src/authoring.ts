@@ -14,6 +14,8 @@ import { Effect, Schema, SchemaIssue } from "effect";
 import type { SessionUser } from "./auth.ts";
 import {
   decodeStoryDraft,
+  FORMAT_VERSION,
+  presetFrame,
   decodeStoryManifest,
   uncoveredOptions,
   exampleCast,
@@ -182,10 +184,12 @@ const starterPalettes: StoryDraft["palettes"] = {
   },
 };
 
+/** Lulu's bleed and 0.5 in safe margin, which publishing requires (D35). */
+const STARTER_TRIM = { widthIn: 8.5, heightIn: 8.5, bleedIn: 0.125, safeMarginIn: 0.5 };
+
 const starterDraft = (title: string): StoryDraft => ({
-  formatVersion: 2,
-  // Lulu's bleed and 0.5 in safe margin, which publishing requires (D35).
-  trim: { widthIn: 8.5, heightIn: 8.5, bleedIn: 0.125, safeMarginIn: 0.5 },
+  formatVersion: FORMAT_VERSION,
+  trim: STARTER_TRIM,
   fonts: [],
   // No font yet: the author uploads one and picks it, and the check says so until then.
   textStyles: {
@@ -198,8 +202,8 @@ const starterDraft = (title: string): StoryDraft => ({
   pages: [
     {
       pageId: "p01",
-      layout: "full-bleed-art/text-bottom",
-      text: [{ style: "title", content: title }],
+      art: "full-bleed",
+      frames: [presetFrame(STARTER_TRIM, "bottom", "t1", [{ style: "title", content: title }])],
       illustration: { layers: [] },
     },
   ],

@@ -46,6 +46,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
 ### Stories and books
 
 - [story-looks](story-looks.md): a story's figures on every skin and hair colour. `verify looks`.
+- [text-frames](text-frames.md): text placed in frames the author drags, resizes, and types positions for (D54).
+  `verify e2e -- authoring`, `verify proof`.
 - [page-previews](page-previews.md): pages fit phones and desktop in the book editor, story page, and draft
   preview, keeping their shape. `verify layout`.
 - Personalized book, look change on every page, text editor: covered by `e2e -- milestone1 books`; no map file yet.

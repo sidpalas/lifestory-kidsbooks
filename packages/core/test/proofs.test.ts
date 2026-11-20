@@ -3,12 +3,14 @@ import { readFileSync } from "node:fs";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { exampleCast, StoryManifest } from "../src/book-format/index.ts";
+import { exampleCast, StoryManifest, upgradeFormat2 } from "../src/book-format/index.ts";
 import { countPdfPages } from "../src/print.ts";
 import { proofPageText } from "../src/proofs.ts";
 
 const manifest = Schema.decodeUnknownSync(StoryManifest)(
-  JSON.parse(readFileSync(new URL("../../../fixtures/stories/moon-picnic/manifest.json", import.meta.url), "utf8")),
+  upgradeFormat2(
+    JSON.parse(readFileSync(new URL("../../../fixtures/stories/moon-picnic/manifest.json", import.meta.url), "utf8")),
+  ),
 );
 
 describe("proofPageText", () => {

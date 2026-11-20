@@ -16,6 +16,8 @@ import {
   manifestAssets,
   resolvePageText,
   resolveText,
+  safeArea,
+  upgradeFormat2,
   StoryDraft,
   StoryManifest,
   staticFontIssues,
@@ -34,10 +36,10 @@ const published = JSON.parse(readFileSync(new URL("manifest.json", fixture), "ut
 /** The palettes the sample's published version gained since (D41): `additions/1.json` adds red hair. */
 const redHair = JSON.parse(readFileSync(new URL("additions/1.json", fixture), "utf8"));
 /** The sample as books draw it today: its published version with its additions' palettes. */
-const sample = {
+const sample = upgradeFormat2({
   ...published,
   palettes: { ...published.palettes, hairColour: { ...published.palettes.hairColour, ...redHair.palettes.hairColour } },
-};
+}) as typeof published;
 
 /** When the sample stories were published: before the D43 hairstyles and facial hair joined the vocabulary. */
 const publishedAt = new Date("2026-11-19T19:00:00Z");
@@ -70,7 +72,7 @@ describe("StoryManifest", () => {
   it("accepts the watercolour sample, whose raster figures cover the vocabulary with approved parts", () => {
     const dir = new URL("../../../fixtures/stories/paper-boat/", import.meta.url);
     const stored = Schema.decodeUnknownSync(StoryManifest)(
-      JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")),
+      upgradeFormat2(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8"))),
     );
     const manifest = Effect.runSync(
       mergeAdditions(
@@ -88,7 +90,7 @@ describe("StoryManifest", () => {
   });
 
   it("rejects a format version it doesn't know", () => {
-    expect(errorOf(variant((m) => (m.formatVersion = 3)))).toContain("formatVersion");
+    expect(errorOf(variant((m) => (m.formatVersion = 4)))).toContain("formatVersion");
   });
 
   it.each([
@@ -99,15 +101,19 @@ describe("StoryManifest", () => {
     ],
     [
       "a token for an undeclared slot",
-      (m: any) => (m.pages[0].text[1].content = "{{dog.name}} barked."),
+      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{dog.name}} barked."),
       'unknown slot "dog"',
     ],
     [
       "a token with an unknown field",
-      (m: any) => (m.pages[0].text[1].content = "{{hero.age}} years"),
+      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{hero.age}} years"),
       'unknown field "age"',
     ],
-    ["a malformed token", (m: any) => (m.pages[0].text[1].content = "{{hero name}} waved"), "malformed token"],
+    [
+      "a malformed token",
+      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{hero name}} waved"),
+      "malformed token",
+    ],
     ["a duplicate page", (m: any) => (m.pages[1].pageId = "p01"), 'duplicate pageId "p01"'],
     ["a duplicate slot", (m: any) => (m.characterSlots[1].slotId = "hero"), 'duplicate slotId "hero"'],
     [
@@ -182,6 +188,22 @@ describe("StoryManifest", () => {
     ],
     ["a part order missing an axis", (m: any) => (m.partOrder = ["hair"]), "must list each of hair, glasses once"],
     ["a safe margin wider than the page", (m: any) => (m.trim.safeMarginIn = 4.25), "no room for text"],
+    [
+      "a text frame a hundredth of an inch past the left safe margin",
+      (m: any) => (m.pages[0].frames[0].box = { xIn: 0.49, yIn: 1, widthIn: 3, heightIn: 2 }),
+      "the text frame reaches past the safe margin",
+    ],
+    [
+      "a text frame a hundredth of an inch past the bottom safe margin",
+      (m: any) => (m.pages[0].frames[0].box = { xIn: 1, yIn: 6, widthIn: 3, heightIn: 2.01 }),
+      "the text frame reaches past the safe margin",
+    ],
+    ["a text frame without paragraphs", (m: any) => (m.pages[0].frames[0].paragraphs = []), "at least one paragraph"],
+    [
+      "two text frames with one ID",
+      (m: any) => m.pages[0].frames.push(structuredClone(m.pages[0].frames[0])),
+      'duplicate frameId "t1"',
+    ],
     ["a story without pages", (m: any) => (m.pages = []), "a story needs at least one page"],
     ["a page without layers", (m: any) => (m.pages[1].illustration.layers = []), "a page needs at least one layer"],
     [
@@ -194,13 +216,89 @@ describe("StoryManifest", () => {
   });
 });
 
+/** A format 2 page with no art. */
+const format2Page = (layout: string, text: unknown[]) => ({
+  pageId: "p01",
+  layout,
+  text,
+  illustration: { layers: [] },
+});
+
+describe("text frames", () => {
+  it("places a frame anywhere inside the safe area, flush with its edges, next to other frames", () => {
+    const manifest = Schema.decodeUnknownSync(StoryManifest)(
+      variant((m) => {
+        m.pages[0].frames.push({
+          frameId: "t2",
+          box: { xIn: 0.5, yIn: 0.5, widthIn: 7.5, heightIn: 7.5 },
+          valign: "middle",
+          panel: false,
+          paragraphs: [{ style: "body", content: "{{hero.name}} again.\nAnd again." }],
+        });
+      }),
+    );
+    expect(manifest.pages[0]!.frames.map((frame) => frame.frameId)).toEqual(["t1", "t2"]);
+    expect(safeArea(manifest.trim)).toEqual({ xIn: 0.5, yIn: 0.5, widthIn: 7.5, heightIn: 7.5 });
+    // A family's edits address paragraphs across frames in reading order.
+    expect(resolvePageText(manifest.pages[0]!, exampleCast(manifest)).map((block) => block.text)).toEqual([
+      "The Moon Picnic",
+      expect.any(String),
+      "Mia again.\nAnd again.",
+    ]);
+  });
+
+  it("upgrades each format 2 layout to one frame at its old text area, holding the page's paragraphs in order", () => {
+    const trim = { widthIn: 8.5, heightIn: 8.5, bleedIn: 0.125, safeMarginIn: 0.5 };
+    const upgraded = upgradeFormat2({
+      formatVersion: 2,
+      trim,
+      pages: [
+        format2Page("full-bleed-art/text-bottom", [
+          { style: "title", content: "A" },
+          { style: "body", content: "One\ntwo" },
+        ]),
+        format2Page("full-bleed-art/text-top", [{ style: "body", content: "B" }]),
+        format2Page("art-left/text-right", [{ style: "body", content: "C" }]),
+        format2Page("full-bleed-art/text-bottom", []),
+      ],
+    }) as any;
+    expect(upgraded.formatVersion).toBe(3);
+    const safe = { xIn: 0.5, yIn: 0.5, widthIn: 7.5, heightIn: 7.5 };
+    expect(upgraded.pages[0]).toEqual({
+      pageId: "p01",
+      art: "full-bleed",
+      illustration: { layers: [] },
+      frames: [
+        {
+          frameId: "t1",
+          box: safe,
+          valign: "bottom",
+          panel: true,
+          // Format 2 printed a typed break as a space; frames keep breaks, so the upgrade makes it one.
+          paragraphs: [
+            { style: "title", content: "A" },
+            { style: "body", content: "One two" },
+          ],
+        },
+      ],
+    });
+    expect(upgraded.pages[1].frames[0]).toMatchObject({ box: safe, valign: "top", panel: true });
+    expect(upgraded.pages[2]).toMatchObject({
+      art: "left-half",
+      frames: [{ box: { xIn: 4.75, yIn: 0.5, widthIn: 3.25, heightIn: 7.5 }, valign: "middle", panel: false }],
+    });
+    expect(upgraded.pages[3].frames).toEqual([]);
+    expect(upgradeFormat2(upgraded)).toBe(upgraded);
+  });
+});
+
 describe("StoryDraft", () => {
   // An author's draft (D37) is the format's shape only, so work in progress saves; publishing decodes it as a StoryManifest.
   it("accepts what publishing rejects: an empty page, a figure with no bases, a token naming no role", () => {
     const draft = variant((m) => {
       m.pages[0].illustration.layers[1].bases = [];
       m.pages[1].illustration.layers = [];
-      m.pages[2].text[0].content = "{{friend.name}}";
+      m.pages[2].frames[0].paragraphs[0].content = "{{friend.name}}";
     });
     expect(Result.isSuccess(Schema.decodeUnknownResult(StoryDraft)(draft))).toBe(true);
     expect(errorOf(draft)).toContain('unknown slot "friend"');
@@ -208,7 +306,7 @@ describe("StoryDraft", () => {
 
   it("still rejects what isn't the format's shape", () => {
     expect(
-      Result.isFailure(Schema.decodeUnknownResult(StoryDraft)(variant((m) => (m.pages[0].layout = "two-column")))),
+      Result.isFailure(Schema.decodeUnknownResult(StoryDraft)(variant((m) => (m.pages[0].art = "two-column")))),
     ).toBe(true);
   });
 });
@@ -717,7 +815,7 @@ describe("story fonts for print (D27)", () => {
 });
 
 describe("story additions (D41)", () => {
-  const stored = decoded(published);
+  const stored = decoded(upgradeFormat2(published));
   const hero: Look = { ...childLook("face:round", "hair:curly"), hairColour: "hair-colour:red" };
 
   it("adds red hair to the published sample without a new version, and a book's stand-in gives way to it", () => {
