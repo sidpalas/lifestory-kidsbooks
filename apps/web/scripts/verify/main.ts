@@ -8,6 +8,7 @@
 import { parseArgs } from "node:util";
 import { commands, type ConfigName } from "./commands.ts";
 import { e2e } from "./e2e.ts";
+import { layout } from "./layout.ts";
 import { looks } from "./looks.ts";
 import { picker } from "./picker.ts";
 import { proof } from "./proof.ts";
@@ -25,7 +26,7 @@ Options:
                            image: production images built from this checkout, against local Postgres and SeaweedFS
                            live: ${"https://lifestory.devopsdirective.com"} as the agent family (D38)
   --port <n>               dev: 3000 (default); image: 3200. Every process in the run uses this one origin.
-  --story <slug>           proof, looks: the story (default the-moon-picnic)
+  --story <slug>           proof, looks, layout: the story (default the-moon-picnic)
   --as <email>             dev, image: sign in as another seeded account (default parent@lifestory.dev)
   --url <origin>           live: another origin
   --no-build               image: reuse the last built images
@@ -82,6 +83,7 @@ try {
     if (name === "picker") await picker(stack, report);
     if (name === "proof") await proof(stack, report, { story: values.story });
     if (name === "looks") await looks(stack, report, { story: values.story });
+    if (name === "layout") await layout(stack, report, { story: values.story });
     if (name === "up") {
       console.log(`\nUp: ${stack.origin}, signed-in account ${stack.who}. Ctrl-C stops what this run started.`);
       await new Promise((resolve) => process.once("SIGINT", resolve));

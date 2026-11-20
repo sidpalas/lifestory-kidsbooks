@@ -118,6 +118,29 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await imagesLoaded(page);
   await evidence(page, "book-editor");
 
+  // On a 320 px phone every preview shrinks to fit, as a whole square page (still 840 px laid out inside), and none
+  // overlaps another or makes the page scroll sideways. Fixed scales once put the thumbnails on top of each other.
+  await page.setViewportSize({ width: 320, height: 800 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const boxes = await page.getByTestId("book-page").evaluateAll((sheets) =>
+    sheets.map((sheet) => {
+      const box = sheet.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, layoutWidth: (sheet as HTMLElement).offsetWidth };
+    }),
+  );
+  expect(boxes).toHaveLength(7);
+  for (const [i, box] of boxes.entries()) {
+    expect(box.layoutWidth).toBe(840);
+    expect(box.right).toBeLessThanOrEqual(320);
+    expect(box.right - box.left).toBeCloseTo(box.bottom - box.top, 0);
+    for (const other of boxes.slice(i + 1)) {
+      const overlaps = Math.min(box.right, other.right) - Math.max(box.left, other.left) > 1 && Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top) > 1;
+      expect(overlaps).toBe(false);
+    }
+  }
+  await evidence(page, "book-editor-320");
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   // A PDF proof of this book: its cast and text as they are now, rendered by the worker (D27).
   const proofs = page.getByRole("region", { name: "PDF proofs" });
   await proofs.getByRole("button", { name: "Make a PDF proof" }).click();

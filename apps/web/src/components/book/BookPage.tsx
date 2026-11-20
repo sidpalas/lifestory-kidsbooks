@@ -3,6 +3,7 @@
 // the same physical units (inches and points), and the same font files.
 import type { CastMember, FontFile, Page, PlacedRect, ResolvedTextBlock, StoryManifest } from "@lifestory/core/contracts";
 import type * as React from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const inch = (n: number) => `${n}in`;
 
@@ -177,12 +178,27 @@ function Guide({ inset, color, testId }: { inset: number; color: string; testId:
   );
 }
 
-/** Shows a page at `scale` on screen. The page inside keeps its physical size, so layout is identical to print. */
+/**
+ * Shows a page at `scale` on screen, or smaller when its container is narrower, keeping the page's shape. The page
+ * inside keeps its physical size, so layout is identical to print.
+ */
 export function ScaledPage({ trim, scale, children }: { trim: StoryManifest["trim"]; scale: number; children: React.ReactNode }) {
   const { widthIn, heightIn } = pageSizeIn(trim);
+  const box = useRef<HTMLDivElement>(null);
+  const [fitted, setFitted] = useState(scale);
+  useLayoutEffect(() => {
+    const element = box.current!;
+    // 96 CSS px to the inch.
+    const observer = new ResizeObserver(() => setFitted(element.clientWidth / (widthIn * 96)));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [widthIn]);
   return (
-    <div style={{ width: `calc(${inch(widthIn)} * ${scale})`, height: `calc(${inch(heightIn)} * ${scale})`, overflow: "hidden" }}>
-      <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: inch(widthIn) }}>{children}</div>
+    <div ref={box} style={{ position: "relative", overflow: "hidden" }}>
+      {/* Sizes the box: up to the page at `scale`, down to its container's width. As a replaced element with a
+          percentage max-width it asks for no minimum width, so narrow grid cells and flex rows can shrink it. */}
+      <svg aria-hidden viewBox={`0 0 ${widthIn} ${heightIn}`} style={{ display: "block", width: `calc(${inch(widthIn)} * ${scale})`, maxWidth: "100%", height: "auto" }} />
+      <div style={{ position: "absolute", left: 0, top: 0, transform: `scale(${fitted})`, transformOrigin: "top left", width: inch(widthIn) }}>{children}</div>
     </div>
   );
 }

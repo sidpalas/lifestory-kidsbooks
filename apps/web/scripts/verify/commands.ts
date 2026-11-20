@@ -17,5 +17,6 @@ export const commands: ReadonlyArray<CommandInfo> = [
   { name: "picker", summary: "Character picker: age, curated look, one feature at a time; the portrait follows each choice", configs: ["dev", "image", "live"], writes: false },
   { name: "proof", summary: "PDF proof of a family book: the worker renders it, it is print-ready, and every page matches the editor by pixels and line positions", configs: ["dev", "image", "live"], writes: true },
   { name: "looks", summary: "A story's figures on the lightest and darkest skin with every hair colour, as a contact sheet", configs: ["dev", "image", "live"], writes: false },
+  { name: "layout", summary: "Page previews in the book editor, story page, and draft preview at 320, 390, and 1280 px: page shape kept, no overlap, cropping, or sideways scroll", configs: ["dev", "image", "live"], writes: true },
   { name: "e2e", summary: "Playwright e2e on one consistent port, sampling peak memory against the orb's 3 GiB cap", configs: ["dev"], writes: true },
 ];

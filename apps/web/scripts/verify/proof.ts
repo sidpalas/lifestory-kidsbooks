@@ -111,10 +111,11 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
     // The editor's pages at full size: undo thumbnail scaling so each page is 8.75 in = 840 CSS px.
     await page.evaluate(() => {
       for (const sheet of document.querySelectorAll<HTMLElement>("[data-testid=book-page]")) {
+        // ScaledPage: a box sized by an svg, and the page scaled inside it, positioned over the svg.
         const inner = sheet.parentElement!;
         inner.style.transform = "none";
-        inner.parentElement!.style.width = "auto";
-        inner.parentElement!.style.height = "auto";
+        inner.style.position = "static";
+        inner.parentElement!.querySelector("svg")!.style.display = "none";
         // At full size a page overflows its two-column cell and the next page covers it: one column instead.
         const list = sheet.closest("ol");
         if (list) list.style.display = "block";

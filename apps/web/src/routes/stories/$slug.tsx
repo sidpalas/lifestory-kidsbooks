@@ -1,7 +1,7 @@
 import { type Look, type LookOverride, NotAuthenticated, NotFound, resolvePageText, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter, useRouterState } from "@tanstack/react-router";
 import { Schema } from "effect";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { BookLookPicker } from "~/components/book-look";
 import { LookPicker } from "~/components/look-picker";
@@ -32,21 +32,11 @@ const orNone = <T extends object>(record: T) => (Object.keys(record).length > 0 
 
 type Choice = { cast: Record<string, string>; looks: Record<string, Look>; changes: Record<string, LookOverride> };
 
-// Half size is 420 px wide for an 8.5 in page, wider than a phone; a phone gets 0.4.
-const NARROW = "(max-width: 480px)";
-const subscribeNarrow = (change: () => void) => {
-  const query = window.matchMedia(NARROW);
-  query.addEventListener("change", change);
-  return () => query.removeEventListener("change", change);
-};
-const usePageScale = () => (useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW).matches, () => false) ? 0.4 : 0.5);
-
 function StoryPreview() {
   const { story, version, manifest, roles, cast, pages, characters, canEdit, books } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const router = useRouter();
   const updating = useRouterState({ select: (state) => state.isLoading });
-  const pageScale = usePageScale();
   // A click before React hydrates would be lost, so the controls wait for it.
   const hydrated = useHydrated();
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
@@ -175,7 +165,7 @@ function StoryPreview() {
           {manifest.pages.map((page, i) => (
             <li key={page.pageId} className="flex flex-col gap-2">
               <div className="w-fit max-w-full overflow-hidden rounded-sm shadow-md ring-1 ring-black/10">
-                <ScaledPage trim={manifest.trim} scale={pageScale}>
+                <ScaledPage trim={manifest.trim} scale={0.5}>
                   <BookPage
                     manifest={manifest}
                     page={page}
