@@ -86,19 +86,29 @@ function MenuSheet({ shell, studio }: { shell: Shell; studio: boolean }) {
   const row = "flex min-h-11 w-full items-center gap-3 px-5 py-2 text-left text-sm hover:bg-accent";
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-11"
+      {/* The initial says "your account" and the arrow says it opens; the outline makes it read as a button. */}
+      <button
+        type="button"
+        className="relative flex h-9 items-center gap-1 rounded-full border bg-background py-0.5 pr-2 pl-0.5 shadow-xs after:absolute after:-inset-1.5 hover:bg-accent"
         aria-label="Menu"
         aria-haspopup="dialog"
         disabled={!hydrated}
         onClick={() => sheet.current?.showModal()}
       >
-        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-          <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+        <span aria-hidden className="grid size-7 place-items-center rounded-full bg-accent text-sm font-semibold">
+          {shell.user.name.trim().charAt(0).toUpperCase() || "?"}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          className="size-4 text-muted-foreground"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden
+        >
+          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </Button>
+      </button>
       <dialog
         ref={sheet}
         aria-label="Menu"
@@ -238,7 +248,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background py-1 pr-1 pl-4 md:hidden">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background py-1 pr-2 pl-4 md:hidden">
           <Link to="/" className="font-semibold">
             Lifestory
           </Link>

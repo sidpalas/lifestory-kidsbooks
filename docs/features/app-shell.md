@@ -16,7 +16,7 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 - Viewers see the same places without edit actions; "Family settings" reads "Family". Studio only for authors and
   the operator. Admin only for the operator: its loader lists authors, which the server refuses with `Forbidden` for
   anyone else, so the page is not found; inviting a family and granting or removing authors check the role again.
-  On phones the top bar holds the logo, the family name, and a Menu button; its sheet holds who's signed in, the
+  On phones the top bar holds the logo, the family name, and a Menu button (the account's initial and a down arrow in an outlined pill); its sheet holds who's signed in, the
   family switcher (past one family), Studio, Admin, and Sign out, each only for whom it applies.
   Story and book pages are outside the shell.
 

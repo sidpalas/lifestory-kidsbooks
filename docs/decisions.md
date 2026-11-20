@@ -747,7 +747,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   to Admin (`/admin`, Sid, 2026-11-20), a page in the shell linked under Studio for the operator only, with Families
   ("Invite a new family") and Authors (who can write stories). Its server functions check the operator role; others
   get not found. On phones (Sid chose the Menu sheet over a More tab and an avatar menu, 2026-11-20) the top bar
-  keeps the logo, the family name, and one Menu button whose sheet, opening from the bottom, holds who's signed in,
+  keeps the logo, the family name, and one Menu button, the account's initial and a down arrow in an outlined pill (a hamburger read as a
+  second navigation, a bare initial as a picture), whose sheet, opening from the bottom, holds who's signed in,
   the family switcher, Studio, Admin, and Sign out; the five tabs stay the family's places.
 - **Story and book pages stay full width** without the shell, so their pages have room.
 - **Reopen if:** families find the sidebar heavy for a handful of stories (the bookshelf layout was the runner-up),
