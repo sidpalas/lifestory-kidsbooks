@@ -124,7 +124,7 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await page.getByLabel("Name").fill(child);
   await page.getByLabel("Pronouns").selectOption("she/her");
   await page.getByRole("button", { name: "Young child", exact: true }).click();
-  await page.getByRole("button", { name: "Curly black hair", exact: true }).click();
+  await page.getByRole("button", { name: "Curly hair", exact: true }).click();
   await page.getByRole("button", { name: "Add to the family" }).click();
   await expect(page.getByTestId("characters")).toContainText(child);
   await page.goto("/stories");

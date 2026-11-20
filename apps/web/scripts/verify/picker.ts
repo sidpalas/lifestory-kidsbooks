@@ -1,5 +1,5 @@
 // verify picker: docs/features/character-picker.md. Drives /characters/new as a parent does: name and pronouns, an
-// age, a curated look, then one feature at a time, and checks the portrait (/api/portrait) follows every choice and
+// age, then one feature at a time, and checks the portrait (/api/portrait) follows every choice and
 // loads. It never presses "Add to the family", so it writes nothing.
 import { writeFileSync } from "node:fs";
 import { imagesSettled, signedIn } from "./browser.ts";
@@ -22,11 +22,12 @@ export const picker = async (stack: Stack, report: Report) => {
       // The form starts at Young child, so go to another age and back: both must redraw the portrait.
       ["age older", () => page.getByRole("button", { name: "Older child", exact: true }).click(), "Older child"],
       ["age young", () => page.getByRole("button", { name: "Young child", exact: true }).click(), "Young child"],
-      ["curated look", () => page.getByRole("button", { name: "Curly black hair", exact: true }).click(), "Young child, round face, brown skin, curly black hair"],
-      ["hairstyle", () => page.getByRole("button", { name: "Long hair" }).click(), "Young child, round face, brown skin, long black hair"],
-      ["hair colour", () => page.getByRole("button", { name: "Red hair colour" }).click(), "Young child, round face, brown skin, long red hair"],
-      ["skin", () => page.getByRole("button", { name: "Very light skin" }).click(), "Young child, round face, very light skin, long red hair"],
-      ["glasses", () => page.getByRole("button", { name: "Round glasses" }).click(), "Young child, round face, very light skin, long red hair, glasses"],
+      // Then down the steps in order (D50); each changes only its own axis.
+      ["skin", () => page.getByRole("button", { name: "Very light skin" }).click(), "Young child, round face, very light skin, curly black hair"],
+      ["face", () => page.getByRole("button", { name: "Oval face" }).click(), "Young child, oval face, very light skin, curly black hair"],
+      ["hairstyle", () => page.getByRole("button", { name: "Long hair" }).click(), "Young child, oval face, very light skin, long black hair"],
+      ["hair colour", () => page.getByRole("button", { name: "Red hair colour" }).click(), "Young child, oval face, very light skin, long red hair"],
+      ["glasses", () => page.getByRole("button", { name: "Round glasses" }).click(), "Young child, oval face, very light skin, long red hair, glasses"],
     ];
     const portraits: string[] = [];
     for (const [name, act, expected] of steps) {

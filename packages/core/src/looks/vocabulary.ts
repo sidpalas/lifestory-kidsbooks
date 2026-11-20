@@ -244,22 +244,8 @@ export const optionLabel = (id: string): string => {
   return id;
 };
 
-/** Where the picker starts: a few complete looks per age, refined one axis at a time. */
-export const curatedLooks: ReadonlyArray<{ readonly id: string; readonly label: string; readonly look: Look }> = [
-  { id: "baby-a", label: "Brown skin, black hair", look: { age: "baby", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "baby-b", label: "Light skin, blonde hair", look: { age: "baby", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "toddler-a", label: "Curly brown hair", look: { age: "toddler", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "toddler-b", label: "Short black hair", look: { age: "toddler", features: "features:defined", face: "face:oval", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "young-child-a", label: "Curly black hair", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "young-child-b", label: "Long blonde hair", look: { age: "young-child", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:long", hairColour: "hair-colour:blonde", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "young-child-c", label: "Short brown hair, glasses", look: { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s3", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
-  { id: "older-child-a", label: "Long black hair", look: { age: "older-child", features: "features:defined", face: "face:oval", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "older-child-b", label: "Short brown hair, glasses", look: { age: "older-child", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:short", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
-  { id: "teen-a", label: "Curly black hair", look: { age: "teen", features: "features:defined", face: "face:oval", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "teen-b", label: "Long brown hair, glasses", look: { age: "teen", features: "features:soft", face: "face:round", skin: "skin:s2", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:round", facialHair: "facial-hair:none" } },
-  { id: "adult-a", label: "Long brown hair", look: { age: "adult", features: "features:soft", face: "face:oval", skin: "skin:s3", hair: "hair:long", hairColour: "hair-colour:brown", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "adult-b", label: "Curly black hair", look: { age: "adult", features: "features:defined", face: "face:round", skin: "skin:s5", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-  { id: "adult-c", label: "Short blonde hair, glasses", look: { age: "adult", features: "features:defined", face: "face:oval", skin: "skin:s1", hair: "hair:short", hairColour: "hair-colour:blonde", glasses: "glasses:round", facialHair: "facial-hair:none" } },
-  { id: "older-adult-a", label: "Short grey hair, glasses", look: { age: "older-adult", features: "features:defined", face: "face:round", skin: "skin:s2", hair: "hair:short", hairColour: "hair-colour:grey", glasses: "glasses:round", facialHair: "facial-hair:none" } },
-  { id: "older-adult-b", label: "Long grey hair", look: { age: "older-adult", features: "features:soft", face: "face:oval", skin: "skin:s4", hair: "hair:long", hairColour: "hair-colour:grey", glasses: "glasses:none", facialHair: "facial-hair:none" } },
-];
+/**
+ * Where the picker starts for a new character: one complete look, so the preview is never empty. The parent then
+ * changes one axis at a time; there are no whole-look presets, which reset edits made further down (D50).
+ */
+export const defaultLook: Look = { age: "young-child", features: "features:defined", face: "face:round", skin: "skin:s4", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:none", facialHair: "facial-hair:none" };

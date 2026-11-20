@@ -195,8 +195,8 @@ and the book either disables that story for the character or keeps a story-speci
 supported options, which the parent picks. The author's story list shows what each published version can't draw yet,
 and making a book warns before casting someone it can't draw.
 
-- **Picker** (milestone 1, item 2): the parent picks the character's age first (D29), then starts from one of a few
-  curated looks of that age (full option sets) and changes one axis at a time with a live preview: a story-independent portrait composed with the same
+- **Picker** (milestone 1, item 2): the parent picks the character's age first (D29), then changes one axis at a time
+  in a fixed order (skin tone, face, features, hairstyle, hair colour, facial hair, extras; D50) with a live preview: a story-independent portrait composed with the same
   pipeline as the pages (D28), each option shown as a thumbnail of the character with it. No photos and no matching
   from photos (D26).
 - **Bases:** one per face type at each age a role accepts, each a separate illustrator-approved base with its own
@@ -372,7 +372,7 @@ Pull requests (or reviewed local branches, as Sid prefers) in this order, each w
 
 1. Book format Schema, `story_version`, seeded sample story with placeholder art, `BookPage` and the print route.
 2. Families and invites (sign up by invite, roles, viewer read-only), family-scoped file access.
-3. Characters and the look picker: the look vocabulary, curated looks, one feature at a time, live preview.
+3. Characters and the look picker: the look vocabulary, one feature at a time in order (D50), live preview.
 4. Personalization: cast slots, recolour and its cache, pages composed from approved parts, a look change shown on
    every page.
 5. Editor text editing; PDF proof task, download, and approval (D32, with how long proofs are kept).

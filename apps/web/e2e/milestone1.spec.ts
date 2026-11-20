@@ -94,13 +94,12 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await gran.goto("/family");
   await expect(gran.getByTestId("family-panel")).toContainText("You're a viewer");
 
-  // 3. The owner adds two family members in the picker: an age, a curated look of that age, then one feature at a
-  // time, with the portrait following each choice.
+  // 3. The owner adds two family members in the picker: an age, then one feature at a time, with the portrait
+  // following each choice.
   await owner.goto("/characters/new");
   await owner.getByLabel("Name").fill(child);
   await owner.getByLabel("Pronouns").selectOption("she/her");
   await owner.getByRole("button", { name: "Young child", exact: true }).click();
-  await owner.getByRole("button", { name: "Curly black hair", exact: true }).click();
   const preview = owner.getByTestId("look-preview");
   const curly = await preview.getAttribute("src");
   await owner.getByRole("button", { name: "Long hair" }).click();
@@ -117,7 +116,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByLabel("Pronouns").selectOption("he/him");
   await owner.getByLabel(/What the kids call them/).fill("Dad");
   await owner.getByRole("button", { name: "Adult", exact: true }).click();
-  await owner.getByRole("button", { name: "Short blonde hair, glasses", exact: true }).click();
+  for (const name of ["Very light skin", "Oval face", "Short hair", "Blonde hair colour", "Round glasses"]) await owner.getByRole("button", { name, exact: true }).click();
   await owner.getByRole("button", { name: "Add to the family" }).click();
   await expect(owner.getByTestId("characters")).toContainText(grownup);
 

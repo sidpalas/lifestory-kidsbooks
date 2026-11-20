@@ -216,7 +216,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.getByLabel("Name").fill(child);
   await author.getByLabel("Pronouns").selectOption("she/her");
   await author.getByRole("button", { name: "Young child", exact: true }).click();
-  await author.getByRole("button", { name: "Curly black hair", exact: true }).click();
+  await author.getByRole("button", { name: "Curly hair", exact: true }).click();
   await author.getByRole("button", { name: "Add to the family" }).click();
   await expect(author.getByTestId("characters")).toContainText(child);
 

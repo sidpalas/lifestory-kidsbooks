@@ -33,7 +33,7 @@ If one of these turns out to be wrong, tell me the evidence and what you'd do in
 The first version is invite-only: my family and families I invite. Build this vertical slice:
 
 1. Sign up by invite (a new account comes with its own family), and invite another member with a view-only role.
-2. Add family members as characters by picking their look in a picker: start from a few curated looks, then refine one feature at a time, with a live preview. Characters belong to the family.
+2. Add family members as characters by picking their look in a picker: choose their age, then one feature at a time in a fixed order (skin tone, face, hair, extras), with a live preview (D50 replaced starting from curated looks). Characters belong to the family.
 3. A seeded sample book with human-written text and layered illustrations that have slots for characters, and a small set of approved variant parts for each role (a few base faces, skin tones, hairstyles, hair colours, glasses). Use placeholder art. Define the first version of the book format that this needs.
 4. Personalize the book: choose which family member fills each character slot and see every page composed from the approved parts. A change to a character's look applies on every page right away.
 5. Edit a page's text in the editor, with the page shown as it will print.

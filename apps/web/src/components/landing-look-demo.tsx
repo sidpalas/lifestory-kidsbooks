@@ -2,7 +2,7 @@
 // ages, drawing every portrait by stacking static layers from public/marketing/looks (looks-demo-layers.ts) instead
 // of /api/portrait. Nothing leaves the browser: no session, no server function, nothing saved.
 // The landing loads this module only when a visitor asks for it.
-import { curatedLooks, type Look } from "@lifestory/core/contracts";
+import { defaultLook, type Look } from "@lifestory/core/contracts";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { describeLook, LookPicker, type Portrait } from "~/components/look-picker";
@@ -19,7 +19,7 @@ const StaticPortrait: Portrait = ({ look, alt, width, height, className, testId 
 );
 
 export default function LandingLookDemo() {
-  const [look, setLook] = useState<Look>(curatedLooks.find((curated) => curated.look.age === "young-child")!.look);
+  const [look, setLook] = useState<Look>(defaultLook);
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-dashed p-4 sm:p-6" data-testid="look-demo">
       <p className="text-sm">

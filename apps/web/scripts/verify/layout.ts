@@ -56,7 +56,6 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
           await page.goto("/characters/new");
           await page.getByLabel("Name").fill(`Layout ${age}`);
           await page.getByRole("button", { name: age, exact: true }).click();
-          await page.getByRole("group", { name: /Start from a look/ }).getByRole("button").first().click();
           await page.getByRole("button", { name: "Add to the family" }).click();
           await page.getByTestId("characters").waitFor();
         }

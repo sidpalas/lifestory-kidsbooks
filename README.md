@@ -11,7 +11,7 @@ This is a demo codebase: an open-source, realistic product used to test backgrou
 
 1. The operator invites a new family; the invitee sets a password and owns a one-person family. An owner invites a
    parent or a view-only member (emails go to `/__dev/mailbox` in development).
-2. Family members become characters in a picker: an age, a curated look, then one feature at a time with a live
+2. Family members become characters in a picker: an age, then one feature at a time in order with a live
    portrait.
 3. The seeded sample stories "The Moon Picnic" (book format v2, placeholder art, approved variant parts per role) and
    "The Paper Boat" (the same format with watercolour raster art).

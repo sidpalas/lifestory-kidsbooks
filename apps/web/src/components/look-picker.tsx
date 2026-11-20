@@ -1,10 +1,11 @@
-// The look picker (brief, milestone 1 item 2; D26, D29): pick the character's age first, start from a curated look
-// of that age, then change one feature at a time. Features an age has no parts for (a baby's hairstyle, a toddler's
-// glasses) aren't offered, and features (softer or defined, D40) only from teen up.
+// The look picker (brief, milestone 1 item 2; D26, D29, D50): age first, then one feature at a time in a fixed
+// order (skin tone, face, features, hairstyle, hair colour, facial hair, extras), each choice changing only its own
+// axis, so working down the list never undoes what's above or below. Features an age has no parts for (a baby's
+// hairstyle, a toddler's glasses) aren't offered, and features (softer or defined, D40) only from teen up.
 // Every choice is shown on the story-independent portrait (/api/portrait), composed on the server with the same
 // parts-and-recolour pipeline as book pages; each story then draws the same option IDs with its own parts.
 // The signed-out landing demo passes `portrait` to draw from static layers instead (landing-look-demo.tsx).
-import { ageLabel, ageOptions, curatedLooks, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
+import { ageLabel, ageOptions, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { cn } from "~/lib/utils";
 
@@ -86,8 +87,8 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
 }
 
 /**
- * Pronouns order the hairstyles, and the curated looks by their hairstyle, so the likelier ones come first. They never
- * hide an option: a boy may have long hair and a girl short (D29).
+ * Pronouns order the hairstyles, so the likelier ones come first. They never hide an option: a boy may have long hair
+ * and a girl short (D29).
  */
 const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
   "she/her": ["hair:long", "hair:ponytail", "hair:braids", "hair:curly", "hair:bun", "hair:afro", "hair:locs", "hair:short", "hair:buzz"],
@@ -103,12 +104,6 @@ export const withPronounFeatures = (look: Look, pronouns: PronounSet): Look => (
 
 export const orderedHairstyles = (pronouns: PronounSet) =>
   lookVocabulary.hair.toSorted((a, b) => hairOrder[pronouns].indexOf(a.id) - hairOrder[pronouns].indexOf(b.id));
-export const orderedCuratedLooks = (age: Look["age"], pronouns: PronounSet) =>
-  curatedLooks
-    .filter((curated) => curated.look.age === age)
-    .toSorted((a, b) => hairOrder[pronouns].indexOf(a.look.hair) - hairOrder[pronouns].indexOf(b.look.hair));
-
-const same = (a: Look, b: Look) => (Object.keys(a) as Array<LookAxis>).every((axis) => a[axis] === b[axis]);
 
 /**
  * A controlled picker: `look` is the current look, `onChange` receives the next one. `ages` limits the ages offered,
@@ -135,10 +130,9 @@ export function LookPicker({
   const Portrait = portrait;
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const offered = <T extends { id: string }>(axis: LookAxis, options: ReadonlyArray<T>) => (offers ? options.filter((option) => offers(axis, option.id)) : options);
-  const fits = (curated: { look: Look }) => !offers || (Object.keys(curated.look) as Array<LookAxis>).every((axis) => axis === "age" || offers(axis, curated.look[axis]));
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
-  const shown: ReadonlyArray<string> = ["Age", "Start from a look", "face", ...(hasFeatures(look.age) ? ["features"] : []), "skin", ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
+  const shown: ReadonlyArray<string> = ["Age", "skin", "face", ...(hasFeatures(look.age) ? ["features"] : []), ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
   const step = (key: string, title: string) => `${shown.indexOf(key) + 1}. ${title}`;
   // Another age keeps the face, colours, and hairstyle; glasses and facial hair go when the new age doesn't draw them, and growing
   // into an age with features starts from the ones the pronouns suggest.
@@ -171,12 +165,12 @@ export function LookPicker({
             </Choice>
           ))}
         </Step>
-        <Step title={step("Start from a look", "Start from a look")}>
-          {orderedCuratedLooks(look.age, pronouns).filter(fits).map((curated) => (
-              <Choice key={curated.id} pressed={same(curated.look, look)} label={curated.label} disabled={disabled} onClick={() => onChange(curated.look)}>
-                <Thumb portrait={Portrait} look={curated.look} label={curated.label} />
-              </Choice>
-            ))}
+        <Step title={step("skin", axisLabels.skin)}>
+          {offered("skin", lookVocabulary.skin).map((option) => (
+            <Choice key={option.id} round pressed={look.skin === option.id} label={`${option.label} skin`} disabled={disabled} onClick={() => set({ skin: option.id })}>
+              <span className="block size-8" style={{ background: option.swatch }} />
+            </Choice>
+          ))}
         </Step>
         <Step title={step("face", axisLabels.face)}>
           {offered("face", lookVocabulary.face).map((option) => (
@@ -194,13 +188,6 @@ export function LookPicker({
             ))}
           </Step>
         )}
-        <Step title={step("skin", axisLabels.skin)}>
-          {offered("skin", lookVocabulary.skin).map((option) => (
-            <Choice key={option.id} round pressed={look.skin === option.id} label={`${option.label} skin`} disabled={disabled} onClick={() => set({ skin: option.id })}>
-              <span className="block size-8" style={{ background: option.swatch }} />
-            </Choice>
-          ))}
-        </Step>
         {drawn.includes("hair") && (
           <Step title={step("hair", axisLabels.hair)}>
             {offered("hair", orderedHairstyles(pronouns)).map((option) => (

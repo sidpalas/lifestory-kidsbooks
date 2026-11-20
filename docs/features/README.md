@@ -38,7 +38,7 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - Sign in, invitations, set password, viewer role: covered by `e2e -- families milestone1`; no map file yet.
 
 ### Characters
-- [character-picker](character-picker.md): age, curated look, one feature at a time, live portrait. `verify picker`.
+- [character-picker](character-picker.md): age, then one feature at a time in order, live portrait. `verify picker`.
 
 ### Stories and books
 - [story-looks](story-looks.md): a story's figures on every skin and hair colour. `verify looks`.

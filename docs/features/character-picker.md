@@ -2,8 +2,9 @@
 
 ## What it is
 
-A parent adds a family member as a character: name, pronouns, an age, a curated look of that age, then one feature at
-a time (face, features from teen up, skin, hairstyle, hair colour, glasses, facial hair from adult up). A
+A parent adds a family member as a character: name, pronouns, an age, then one feature at a time in a fixed order
+(skin tone, face, features from teen up, hairstyle, hair colour, facial hair from adult up, extras/glasses). Each
+choice changes only its own axis; there are no whole-look presets (D50). New characters start from `defaultLook`. A
 story-independent portrait (`/api/portrait?<look>`, D28) follows every choice, and the summary under it names the look.
 
 Signed-out visitors can try the same picker on the landing page ("Try it: build a child"): Baby, Toddler, and Young
@@ -28,8 +29,8 @@ its code loads only when the button is pressed.
 
 `mise run verify -- picker [--config dev|image|live]`
 
-Starts from Young child, goes to Older child and back, picks "Curly black hair", then Long hair, Red hair colour, Very
-light skin, Round glasses. Checks after each step: the summary text, the portrait URL changed, and the portrait
+Starts from Young child, goes to Older child and back, then Very light skin, Oval face, Long hair, Red hair colour,
+Round glasses. Checks after each step: the summary text, the portrait URL changed, and the portrait
 image decoded; then every option thumbnail loaded and every `/api/portrait` URL answered `image/png`. It never
 presses "Add to the family", so it writes nothing. Evidence: `picker-<n>-<step>.png` per step, `picker-final.png`,
 `portraits.txt`.
@@ -45,5 +46,5 @@ layers are `/marketing/looks/` files that loaded, that there's no save button, a
   existed answers 404 for them until restarted.
 
 - The form opens at Young child, so clicking Young child first changes nothing: the age step goes away and back.
-- Pronouns order hairstyles and curated looks, never filter them (D29); button names are stable, positions aren't.
+- Pronouns order hairstyles, never filter them (D29); button names are stable, positions aren't.
 - Teen and up add a Features step, adult and up a Facial hair step; a viewer gets no picker at all.

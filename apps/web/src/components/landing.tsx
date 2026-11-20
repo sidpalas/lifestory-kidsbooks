@@ -121,7 +121,7 @@ export function Landing() {
               hairstyles, skin tones, and hair colours in the same style. The illustrator approves every option, so each
               person in your family can look like themselves on every page.
             </p>
-            <p className="text-muted-foreground">Start from a look, then change one thing at a time with a live preview.</p>
+            <p className="text-muted-foreground">Pick their age, then skin, face, and hair one at a time, with a live preview.</p>
             {!trying && (
               <Button variant="outline" className="self-start" disabled={!hydrated} onClick={() => setTrying(true)}>
                 Try it: build a child

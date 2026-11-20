@@ -14,7 +14,7 @@ export interface CommandInfo {
 export const commands: ReadonlyArray<CommandInfo> = [
   { name: "doctor", summary: "Check the configuration is worth driving: infra, migrations, web, workers, and the print origin they use", configs: ["dev", "image", "live"], writes: false },
   { name: "up", summary: "Start the configuration (web and worker on one origin) and keep it running until Ctrl-C, for driving by hand", configs: ["dev", "image"], writes: false },
-  { name: "picker", summary: "Character picker: age, curated look, one feature at a time; the portrait follows each choice", configs: ["dev", "image", "live"], writes: false },
+  { name: "picker", summary: "Character picker: age, then one feature at a time in order; the portrait follows each choice", configs: ["dev", "image", "live"], writes: false },
   { name: "proof", summary: "PDF proof of a family book: the worker renders it, it is print-ready, and every page matches the editor by pixels and line positions", configs: ["dev", "image", "live"], writes: true },
   { name: "looks", summary: "A story's figures on the lightest and darkest skin with every hair colour, as a contact sheet", configs: ["dev", "image", "live"], writes: false },
   { name: "layout", summary: "Page previews in the book editor, story page, and draft preview at 320, 390, and 1280 px: page shape kept, no overlap, cropping, or sideways scroll", configs: ["dev", "image", "live"], writes: true },

@@ -278,7 +278,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   (hands in front of the face) and a head zone, plus skin and hair palettes. Authoring tooling generates each shape
   option in place on the base (with a turnaround sheet per option for consistency), cuts it out by comparison with the
   base inside the head zone, and splits it by region. Skin and hair colour are a version-pinned recolour, not AI. The
-  picker starts from a few curated looks and refines one feature at a time.
+  picker starts from a few curated looks and refines one feature at a time. (Curated looks replaced by an ordered
+  sequence of single choices, D50.)
 - **Looks are shared across stories (Sid, 2026-11-19):** a family's members each have a name, an optional title ("Dad", "Nana"), pronouns and a look,
   and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
   and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role accepts some ages
@@ -453,8 +454,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   draws that age whatever the character's own. `partAxesAt(age)` says which parts an age has: a baby none, a toddler
   hair only. An override never sets an age. A character whose age a role doesn't accept leaves that role's pictures
   and the editor asks for someone else (D28), the same when a character's age changes later.
-- **Pronouns order, never filter (Sid, 2026-11-19):** the picker lists the hairstyles, and the starting looks by
-  their hairstyle, likelier first for the chosen pronouns (`she/her`: long first; `he/him`: short first; `they/them`:
+- **Pronouns order, never filter (Sid, 2026-11-19):** the picker lists the hairstyles (and, until D50 removed them,
+  the starting looks by their hairstyle), likelier first for the chosen pronouns (`she/her`: long first; `he/him`: short first; `they/them`:
   vocabulary order). Every option stays offered: pronouns don't decide how someone looks.
 - **Bases from the illustrator's samples (amends D26):** authoring tooling may generate bases for other ages from a
   few illustrator-drawn sample characters; every generated base and part still needs the illustrator's approval
@@ -474,8 +475,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   younger bases read neutral, so children have none. Looks saved before the axis decode as defined, which is what
   their bases showed. A story's bases and parts carry an optional `features`; absent means defined.
 - **Defaults from pronouns (Sid):** she/her suggests softer, he/him defined, they/them keeps what's chosen. Applied
-  when pronouns change and when a look grows into a teen age; one click changes it. Curated teen and adult looks come
-  in both.
+  when pronouns change and when a look grows into a teen age; one click changes it. Curated teen and adult looks came
+  in both until D50 removed curated looks.
 - **A story without softer features draws the defined base (Made; Sid can veto):** softer features refine likeness,
   so instead of leaving the character out (D28's rule for options a story can't draw), the figure falls back to the
   defined base of the same face type. Publishing requires the defined bases as before, and a softer base, when drawn,
@@ -704,6 +705,21 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   Sid's call.
 - **Reopen if:** authors need a hard delete, families should be told a story they have was archived, or archiving
   should also stop new proofs of existing books.
+
+### D50. The picker is one ordered sequence of single choices; no whole-look presets — Decided (Sid, 2026-11-20) / Made
+- **Why (Sid):** "Start from a look" was confusing: picking one replaced every axis, so a parent working down the
+  steps lost what they'd already chosen below it, and after one tweak no preset showed as chosen. This replaces D26's
+  "starts from a few curated looks".
+- **What:** Age → Skin tone → Face → Features (teen and up) → Hairstyle → Hair colour → Facial hair (adult and up) →
+  Extras (glasses, young child and up), numbered, skipping steps the age doesn't draw. Skin tone comes early because
+  every thumbnail is drawn on the current look; hair colour sits with hairstyle (a baby gets colour only). Each choice
+  changes only its own axis; age keeps everything else, as before. A new character (and the landing demo) starts
+  from one `defaultLook`, so the preview is never empty. The per-book picker keeps "Use <name>'s saved look" as its
+  only whole-look reset. The same picker serves the character form, a story's try-a-look, the per-book picker, and
+  the landing demo.
+- **Not changed (yet):** changing to an age without glasses or facial hair still clears them, so teen → toddler →
+  teen loses the glasses. The renderer already ignores axes an age doesn't draw, so the picker could keep them.
+- **Reopen if:** parents testing it want a quick start again (then offer it before step 2, not mid-sequence).
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family

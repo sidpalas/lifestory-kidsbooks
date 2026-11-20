@@ -13,13 +13,12 @@ const evidence = async (page: Page, name: string) => {
 const imagesLoaded = (page: Page) =>
   expect.poll(() => page.evaluate(() => [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).length), { timeout: 30_000 }).toBe(0);
 
-const addCharacter = async (page: Page, name: string, age: string, start: string, hairColour?: string) => {
+const addCharacter = async (page: Page, name: string, age: string, choices: ReadonlyArray<string>) => {
   await page.goto("/characters/new");
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Pronouns").selectOption("she/her");
   await page.getByRole("button", { name: age, exact: true }).click();
-  await page.getByRole("button", { name: start, exact: true }).click();
-  if (hairColour) await page.getByRole("button", { name: `${hairColour} hair colour` }).click();
+  for (const choice of choices) await page.getByRole("button", { name: choice, exact: true }).click();
   await page.getByRole("button", { name: "Add to the family" }).click();
   await expect(page.getByTestId("characters")).toContainText(name);
 };
@@ -30,8 +29,8 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
   const child = `Rosie ${id}`;
   const grownup = `Fern ${id}`;
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
-  await addCharacter(page, child, "Young child", "Long blonde hair", "Red");
-  await addCharacter(page, grownup, "Adult", "Long brown hair", "Red");
+  await addCharacter(page, child, "Young child", ["Very light skin", "Oval face", "Long hair", "Red hair colour"]);
+  await addCharacter(page, grownup, "Adult", ["Medium skin", "Oval face", "Long hair", "Red hair colour"]);
 
   for (const [slug, version, name] of [["the-paper-boat", 6, "paper-boat"], ["the-moon-picnic", 5, "moon-picnic"]] as const) {
     await page.goto(`/stories/${slug}`);

@@ -1,5 +1,5 @@
 // Adding or changing a family member: name, what the children call them, pronouns, and a look from the picker. Viewers see it read-only.
-import { type Character, curatedLooks, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
+import { type Character, defaultLook, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { LookPicker, withPronounFeatures } from "~/components/look-picker";
@@ -18,7 +18,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
   const [name, setName] = useState(character?.name ?? "");
   const [title, setTitle] = useState(character?.title ?? "");
   const [pronouns, setPronouns] = useState<PronounSet>(character?.pronouns ?? "she/her");
-  const [look, setLook] = useState<Look>(character?.look ?? curatedLooks.find((curated) => curated.look.age === "young-child")!.look);
+  const [look, setLook] = useState<Look>(character?.look ?? defaultLook);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const locked = !hydrated || !canEdit;
