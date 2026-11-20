@@ -63,7 +63,7 @@ export function Landing() {
             <div className="grid grid-cols-2 gap-3">
               <img
                 src="/marketing/paper-boat-family-1.webp"
-                alt="The Paper Boat, page 1: a boy with glasses and his mum walk to the pond"
+                alt="The Paper Boat, page 1: a fair-skinned boy with glasses points to the pond beside his mum, who has long brown hair"
                 width={640}
                 height={640}
                 fetchPriority="high"
@@ -71,7 +71,7 @@ export function Landing() {
               />
               <img
                 src="/marketing/paper-boat-family-2.webp"
-                alt="The same page drawn with a girl with long black hair and a grandmother with long grey hair"
+                alt="The same page drawn with a dark-skinned girl with black braids and her grandmother with long grey hair"
                 width={640}
                 height={640}
                 fetchPriority="high"
@@ -131,7 +131,7 @@ export function Landing() {
           </div>
           <img
             src="/marketing/moon-picnic.webp"
-            alt="The Moon Picnic: a girl and her grandpa have a picnic on the Moon"
+            alt="The Moon Picnic: a brown-skinned girl and her grandpa have a picnic on the Moon"
             width={720}
             height={720}
             loading="lazy"
