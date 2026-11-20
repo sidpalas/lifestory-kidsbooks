@@ -5,6 +5,7 @@
 import { ageLabel, BookExists, type BookSummary, type Character, type CharacterSlot, type LookAxis, type LookOverride, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { lookPickerId, lookToggleId } from "~/components/book-look";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -16,6 +17,10 @@ export const agesLabel = (slot: CharacterSlot) => slot.ages.map((age) => ageLabe
 
 /** The select's value for trying looks on the example character. */
 export const EXAMPLE = "example";
+
+/** The IDs of the picker for trying looks on a role's example, and of the button that shows and hides it. */
+export const tryPickerId = (slotId: string) => `try-picker-${slotId}`;
+export const tryToggleId = (slotId: string) => `try-toggle-${slotId}`;
 
 const missingLabel = (role: PreviewRole) => role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ");
 
@@ -29,6 +34,7 @@ export function StoryCast({
   canEdit,
   selected,
   trying,
+  onTry,
   onSelect,
   changes,
   styling,
@@ -47,14 +53,15 @@ export function StoryCast({
   canEdit: boolean;
   /** What each role's select shows: a character ID, or EXAMPLE. Runs ahead of `roles` while pages recompose. */
   selected: (slotId: string) => string;
-  /** Whether the looks picker for the role's example is open. */
+  /** Whether the looks picker for the role's example is open, and showing or hiding it. */
   trying: (slotId: string) => boolean;
+  onTry: (slotId: string, open: boolean) => void;
   onSelect: (slotId: string, value: string) => void;
   /** How the book will draw each role's family member differently from their saved look (D46), not saved yet. */
   changes: (slotId: string) => LookOverride;
-  /** Whether the role's "look in this book" picker is open, and opening it. */
+  /** Whether the role's "look in this book" picker is open, and showing or hiding it. */
   styling: (slotId: string) => boolean;
-  onStyle: (slotId: string) => void;
+  onStyle: (slotId: string, open: boolean) => void;
   updating: boolean;
 }) {
   const router = useRouter();
@@ -150,13 +157,18 @@ export function StoryCast({
                     <p className="text-muted-foreground text-xs">
                       {fits(slot).length === 0 ? `Nobody in your family is a ${agesLabel(slot)} yet. ` : ""}
                       {slot.example.name} comes with the story.{" "}
-                      {trying(slot.slotId) ? (
-                        "Looks you try below show on the pages and aren't saved."
-                      ) : (
-                        <button type="button" className="underline" disabled={!hydrated} onClick={() => onSelect(slot.slotId, EXAMPLE)}>
-                          Try looks on {slot.example.name}
-                        </button>
-                      )}
+                      {trying(slot.slotId) && "Looks you try below show on the pages and aren't saved. "}
+                      <button
+                        type="button"
+                        id={tryToggleId(slot.slotId)}
+                        className="underline"
+                        aria-expanded={trying(slot.slotId)}
+                        aria-controls={trying(slot.slotId) ? tryPickerId(slot.slotId) : undefined}
+                        disabled={!hydrated}
+                        onClick={() => onTry(slot.slotId, !trying(slot.slotId))}
+                      >
+                        {trying(slot.slotId) ? "Hide look options" : `Try looks on ${slot.example.name}`}
+                      </button>
                       {fits(slot).length === 0 && canEdit && (
                         <>
                           {" "}
@@ -172,11 +184,17 @@ export function StoryCast({
                         {Object.keys(changes(slot.slotId)).length > 0
                           ? `Drawn with a look for this book only, not ${character.name}'s saved one.`
                           : `Drawn with ${character.name}'s saved look.`}{" "}
-                        {!styling(slot.slotId) && (
-                          <button type="button" className="underline" disabled={!hydrated} onClick={() => onStyle(slot.slotId)}>
-                            Change look for this book
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          id={lookToggleId(slot.slotId)}
+                          className="underline"
+                          aria-expanded={styling(slot.slotId)}
+                          aria-controls={styling(slot.slotId) ? lookPickerId(slot.slotId) : undefined}
+                          disabled={!hydrated}
+                          onClick={() => onStyle(slot.slotId, !styling(slot.slotId))}
+                        >
+                          {styling(slot.slotId) ? "Hide look options" : "Change look for this book"}
+                        </button>
                       </p>
                     )
                   )}

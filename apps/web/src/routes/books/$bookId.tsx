@@ -22,7 +22,7 @@ import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
-import { BookLookPicker } from "~/components/book-look";
+import { BookLookPicker, focusById, lookPickerId, lookToggleId } from "~/components/book-look";
 import { confirmDeleteBook } from "~/components/family-library";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { agesLabel } from "~/components/make-book";
@@ -73,8 +73,11 @@ function BookEditor() {
   const navigate = Route.useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [savingLook, setSavingLook] = useState(false);
-  // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page.
+  // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page. Every choice
+  // is saved as it's made, so hiding a picker keeps the book's look.
   const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(view.roles.filter((role) => Object.keys(role.changes).length > 0).map((role) => role.slotId)));
+  const style = (slotId: string, open: boolean) =>
+    setStyling((current) => (open ? new Set([...current, slotId]) : new Set([...current].filter((id) => id !== slotId))));
   const { manifest, story, version } = view;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const pageIndex = Math.max(0, manifest.pages.findIndex((page) => page.pageId === selected));
@@ -147,7 +150,7 @@ function BookEditor() {
               onCast={(characterId) => run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))}
               onOverride={(override) => run(() => setLookOverrideFn({ data: { bookId: view.book.id, slotId: slot.slotId, override } }))}
               styling={styling.has(slot.slotId)}
-              onStyle={() => setStyling((open) => new Set([...open, slot.slotId]))}
+              onStyle={(open) => style(slot.slotId, open)}
             />
           ) : null;
         })}
@@ -182,7 +185,11 @@ function BookEditor() {
                   setSavingLook(false);
                 }
               }}
-              note="Every page of this book redraws with it."
+              onClose={() => {
+                style(slot.slotId, false);
+                focusById(lookToggleId(slot.slotId));
+              }}
+              note="Each choice is saved to this book as you make it, and every page redraws with it; hiding these options keeps it."
             />
           )
         );
@@ -368,7 +375,7 @@ function RoleCard({
   onCast: (characterId: string) => void;
   onOverride: (override: Partial<Look>) => void;
   styling: boolean;
-  onStyle: () => void;
+  onStyle: (open: boolean) => void;
 }) {
   const character = characters.find((candidate) => candidate.id === role.characterId);
   const fits = characters.filter((candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId);
@@ -393,9 +400,16 @@ function RoleCard({
           ) : (
             <span>{role.member.name}</span>
           )}
-          {character && canEdit && !styling && (
-            <button type="button" className="text-muted-foreground text-xs underline" onClick={onStyle}>
-              Change look for this book
+          {character && canEdit && (
+            <button
+              type="button"
+              id={lookToggleId(role.slotId)}
+              className="text-muted-foreground text-xs underline"
+              aria-expanded={styling}
+              aria-controls={styling ? lookPickerId(role.slotId) : undefined}
+              onClick={() => onStyle(!styling)}
+            >
+              {styling ? "Hide look options" : "Change look for this book"}
             </button>
           )}
           {character && (

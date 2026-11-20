@@ -3,10 +3,9 @@ import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter, useR
 import { Schema } from "effect";
 import { useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
-import { BookLookPicker } from "~/components/book-look";
+import { BookLookPicker, focusById, lookToggleId, PickerCard } from "~/components/book-look";
 import { LookPicker } from "~/components/look-picker";
-import { EXAMPLE, StoryCast } from "~/components/make-book";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { EXAMPLE, StoryCast, tryPickerId, tryToggleId } from "~/components/make-book";
 import { getStoryPreviewFn, PreviewChoice, StoryPreviewResult } from "~/server/functions";
 
 // A story's pages with the family in its roles: each role's family member drawn with their saved look, or the
@@ -26,6 +25,10 @@ export const Route = createFileRoute("/stories/$slug")({
   },
   component: StoryPreview,
 });
+
+/** The set with `id` in it or not. */
+const toggled = (set: ReadonlySet<string>, id: string, has: boolean): ReadonlySet<string> =>
+  has ? new Set([...set, id]) : new Set([...set].filter((other) => other !== id));
 
 /** An empty record stays out of the URL. */
 const orNone = <T extends object>(record: T) => (Object.keys(record).length > 0 ? record : undefined);
@@ -48,8 +51,10 @@ function StoryPreview() {
   // the controls; the ref lets changes arriving faster than renders build on each other.
   const search = Route.useSearch();
   const [choice, setChoice] = useState<Choice>({ cast: { ...search.cast }, looks: { ...search.looks }, changes: { ...search.changes } });
-  // Which roles' "look in this book" pickers are open; a role with changes opens with the page.
+  // Which roles' "look in this book" pickers are open; a role with changes opens with the page. Hiding a picker keeps
+  // its changes, like hiding the picker of looks tried on an example keeps that look.
   const [styling, setStyling] = useState<ReadonlySet<string>>(() => new Set(Object.keys(search.changes ?? {})));
+  const [tryHidden, setTryHidden] = useState<ReadonlySet<string>>(() => new Set());
   const latest = useRef(choice);
   const roleOf = (slotId: string) => roles.find((role) => role.slotId === slotId)!;
   const selected = (slotId: string) =>
@@ -63,7 +68,8 @@ function StoryPreview() {
   };
   // Another member (or the example) drops the role's look changes: they were for the person picked before.
   const onSelect = (slotId: string, value: string) => {
-    setStyling((open) => new Set([...open].filter((id) => id !== slotId)));
+    setStyling((open) => toggled(open, slotId, false));
+    setTryHidden((hidden) => toggled(hidden, slotId, false));
     update(({ cast: chosen, looks, changes }) => {
       const { [slotId]: _, ...otherLooks } = looks;
       const { [slotId]: __, ...otherChanges } = changes;
@@ -80,7 +86,13 @@ function StoryPreview() {
   const tryLook = (slotId: string, look: Look) => update((current) => ({ ...current, looks: { ...current.looks, [slotId]: look } }));
 
   const shown = slots.map((slot) => cast[slot.slotId]!.name).join(" and ");
-  const trying = slots.filter((slot) => choice.looks[slot.slotId]);
+  const tryingOpen = (slotId: string) => choice.looks[slotId] !== undefined && !tryHidden.has(slotId);
+  // Showing the example's picker again keeps the look tried before; the first time, it starts from the story's look.
+  const onTry = (slotId: string, open: boolean) => {
+    if (open && !choice.looks[slotId]) onSelect(slotId, EXAMPLE);
+    else setTryHidden((hidden) => toggled(hidden, slotId, !open));
+  };
+  const trying = slots.filter((slot) => tryingOpen(slot.slotId));
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
@@ -104,11 +116,12 @@ function StoryPreview() {
         books={books}
         canEdit={canEdit}
         selected={selected}
-        trying={(slotId) => choice.looks[slotId] !== undefined}
+        trying={tryingOpen}
+        onTry={onTry}
         onSelect={onSelect}
         changes={(slotId) => choice.changes[slotId] ?? {}}
         styling={(slotId) => styling.has(slotId)}
-        onStyle={(slotId) => setStyling((open) => new Set([...open, slotId]))}
+        onStyle={(slotId, open) => setStyling((current) => toggled(current, slotId, open))}
         updating={updating}
       />
 
@@ -125,8 +138,16 @@ function StoryPreview() {
               character={character}
               changes={choice.changes[slot.slotId] ?? {}}
               onChange={(changes) => setChanges(slot.slotId, changes)}
+              onClose={() => {
+                setStyling((current) => toggled(current, slot.slotId, false));
+                focusById(lookToggleId(slot.slotId));
+              }}
               disabled={!hydrated}
-              note={canEdit ? "The pages below show it now; making the book keeps it." : "The pages below show it; nothing is saved."}
+              note={
+                canEdit
+                  ? "The pages below show it now, and making the book keeps it; hiding these options keeps it too."
+                  : "The pages below show it; nothing is saved. Hiding these options keeps the preview."
+              }
             />
           )
         );
@@ -135,22 +156,20 @@ function StoryPreview() {
       {trying.map((slot) => {
         const look = choice.looks[slot.slotId]!;
         return (
-          <Card key={slot.slotId} data-testid={`try-${slot.slotId}`}>
-            <CardHeader>
-              <CardTitle>
-                <h2>
-                  Trying looks on {slot.example.name}, {slot.label.toLowerCase()}
-                </h2>
-              </CardTitle>
-              <CardDescription>
-                {slot.example.name} is the story's example character, not someone in your family. Nothing here is saved; to put someone in your book,
-                choose them above.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LookPicker look={look} pronouns={slot.example.pronouns} ages={slot.ages} disabled={!hydrated} onChange={(next) => tryLook(slot.slotId, next)} />
-            </CardContent>
-          </Card>
+          <PickerCard
+            key={slot.slotId}
+            id={tryPickerId(slot.slotId)}
+            testId={`try-${slot.slotId}`}
+            title={`Trying looks on ${slot.example.name}, ${slot.label.toLowerCase()}`}
+            description={`${slot.example.name} is the story's example character, not someone in your family. Nothing here is saved; hiding these options keeps the look on the pages. To put someone in your book, choose them above.`}
+            closeLabel={`Done: hide look options for ${slot.example.name}`}
+            onClose={() => {
+              onTry(slot.slotId, false);
+              focusById(tryToggleId(slot.slotId));
+            }}
+          >
+            <LookPicker look={look} pronouns={slot.example.pronouns} ages={slot.ages} disabled={!hydrated} onChange={(next) => tryLook(slot.slotId, next)} />
+          </PickerCard>
         );
       })}
 

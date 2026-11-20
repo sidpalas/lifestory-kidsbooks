@@ -272,6 +272,25 @@ test("a parent styles a family member for one book before making it, without cha
   const styled = await sources();
   expect(styled).toHaveLength(before.length);
 
+  // The options hide by keyboard and come back as they were: Escape inside them, then Enter on the role's button.
+  // Hiding keeps the change in the preview (and the URL) for "Make the book".
+  const toggle = page.getByTestId("role-hero").getByRole("button", { name: "Hide look options" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(picker).toContainText("hiding these options keeps it too");
+  await picker.getByRole("button", { name: "Red hair colour" }).focus();
+  await page.keyboard.press("Escape");
+  await expect(picker).toHaveCount(0);
+  const show = page.getByTestId("role-hero").getByRole("button", { name: "Change look for this book" });
+  await expect(show).toBeFocused();
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  await expect(page).toHaveURL(/hair-colour%3Ared|hair-colour:red/);
+  await expect(page.getByTestId("look-note-hero")).toContainText("a look for this book only");
+  await page.keyboard.press("Enter");
+  await expect(picker.getByRole("button", { name: "Red hair colour" })).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: `Done: hide ${child}'s look options` }).click();
+  await expect(picker).toHaveCount(0);
+  expect(await sources()).toEqual(styled);
+
   // Making the book keeps it; her saved look stays blonde.
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
@@ -291,6 +310,14 @@ test("a parent styles a family member for one book before making it, without cha
   await bookPicker.getByRole("button", { name: "Brown hair colour" }).click();
   await expect(page.getByTestId("role-hero").locator("img")).toHaveAttribute("src", /hair-colour%3Abrown/);
   await page.reload();
+  await expect(bookPicker.getByRole("button", { name: "Brown hair colour" })).toHaveAttribute("aria-pressed", "true");
+  // Each choice is already saved, so hiding the options keeps the book's look; showing them again shows it.
+  await expect(bookPicker).toContainText("saved to this book as you make it");
+  await page.getByTestId("role-hero").getByRole("button", { name: "Hide look options" }).click();
+  await expect(bookPicker).toHaveCount(0);
+  await expect(page.getByTestId("look-note-hero")).toBeVisible();
+  await expect(page.getByTestId("role-hero").locator("img")).toHaveAttribute("src", /hair-colour%3Abrown/);
+  await page.getByTestId("role-hero").getByRole("button", { name: "Change look for this book" }).click();
   await expect(bookPicker.getByRole("button", { name: "Brown hair colour" })).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId(`book-look-hero`).getByRole("button", { name: `Use ${child}'s saved look` }).click();
   await expect(page.getByTestId("look-note-hero")).toHaveCount(0);

@@ -95,6 +95,39 @@ test("trying a look on the story's example recomposes every page that shows the 
   await expect(page.getByTestId("try-hero").getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("on a phone, the example's look options hide with a tap and come back as they were", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 740 }, hasTouch: true, isMobile: true });
+  try {
+    const page = await context.newPage();
+    await page.goto(`${newReader()}?returnTo=/stories/the-moon-picnic`);
+    const role = page.getByTestId("role-hero");
+    await role.getByRole("button", { name: "Try looks on Mia" }).tap();
+    const picker = page.getByTestId("try-hero");
+    await picker.getByRole("button", { name: "Round glasses" }).tap();
+    await expect(page).toHaveURL(/glasses%3Around|glasses:round/);
+    await expect(role.getByRole("button", { name: "Hide look options" })).toHaveAttribute("aria-expanded", "true");
+
+    // "Done" sits beside the title on a phone, inside the screen; hiding keeps the look on the pages.
+    const done = picker.getByRole("button", { name: "Done: hide look options for Mia" });
+    const box = (await done.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+    await done.tap();
+    await expect(picker).toHaveCount(0);
+    await expect(page).toHaveURL(/glasses%3Around|glasses:round/);
+    const toggle = role.getByRole("button", { name: "Try looks on Mia" });
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Showing it again keeps the glasses rather than starting over.
+    await toggle.tap();
+    await expect(picker.getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
+    await role.getByRole("button", { name: "Hide look options" }).tap();
+    await expect(picker).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
 test("story assets need a session and a story the user may read", async ({ page, request }) => {
   const asset = "/api/files/stories/story_moon_picnic/v5/pages/p01/background.svg";
   expect((await request.get(asset)).status()).toBe(401);

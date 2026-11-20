@@ -6,6 +6,9 @@ A story draws each family member's look with its own approved parts and palettes
 chooses family members and previews their saved looks immediately. "Change look for this book" opens the character
 builder's visual picker with compatible options; these changes stay in the preview until "Make the book" saves
 them on that book, never on the family member (D46). "Use <name>'s saved look" resets the book's changes.
+Each picker hides with "Hide look options", its "Done" button, or Escape, and focus goes back to the role's button.
+Hiding never saves or discards anything: choices take effect when made (in the URL on the story page, saved to the book
+in the editor), so a hidden picker's look stays on the pages and comes back as it was.
 Alternatively, "Try looks on <name>, the story's example" opens a separate visual picker for reviewing the story's
 art across new parts, palettes, additions (D41), or recolouring changes.
 
