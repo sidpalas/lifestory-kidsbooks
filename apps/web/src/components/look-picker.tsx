@@ -3,6 +3,7 @@
 // glasses) aren't offered, and features (softer or defined, D40) only from teen up.
 // Every choice is shown on the story-independent portrait (/api/portrait), composed on the server with the same
 // parts-and-recolour pipeline as book pages; each story then draws the same option IDs with its own parts.
+// The signed-out landing demo passes `portrait` to draw from static layers instead (landing-look-demo.tsx).
 import { ageLabel, ageOptions, curatedLooks, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { cn } from "~/lib/utils";
@@ -61,10 +62,15 @@ function Choice({
   );
 }
 
-function Thumb({ look, label }: { look: Look; label?: string }) {
+/** Draws a look's portrait at a size; the signed-in picker loads /api/portrait, the landing demo stacks static layers. */
+export type Portrait = (props: { look: Look; alt: string; width: number; height: number; className?: string; testId?: string }) => React.ReactNode;
+
+const ServerPortrait: Portrait = ({ look, testId, ...props }) => <img src={portraitUrl(look)} data-testid={testId} {...props} />;
+
+function Thumb({ look, label, portrait: Portrait }: { look: Look; label?: string; portrait: Portrait }) {
   return (
     <span className="flex flex-col items-center">
-      <img src={portraitUrl(look)} alt="" width={61} height={70} className="block h-[70px] w-[61px] object-cover" />
+      <Portrait look={look} alt="" width={61} height={70} className="block h-[70px] w-[61px] object-cover" />
       {label && <span className="w-[61px] truncate px-0.5 py-1 text-[10px] leading-tight">{label}</span>}
     </span>
   );
@@ -115,6 +121,7 @@ export function LookPicker({
   disabled,
   ages,
   offers,
+  portrait = ServerPortrait,
 }: {
   look: Look;
   pronouns: PronounSet;
@@ -123,7 +130,9 @@ export function LookPicker({
   ages?: ReadonlyArray<Look["age"]>;
   /** Whether to offer `option` for `axis`, such as only what a story draws (D46). Every option by default. */
   offers?: (axis: LookAxis, option: string) => boolean;
+  portrait?: Portrait;
 }) {
+  const Portrait = portrait;
   const set = (change: Partial<Look>) => onChange({ ...look, ...change });
   const offered = <T extends { id: string }>(axis: LookAxis, options: ReadonlyArray<T>) => (offers ? options.filter((option) => offers(axis, option.id)) : options);
   const fits = (curated: { look: Look }) => !offers || (Object.keys(curated.look) as Array<LookAxis>).every((axis) => axis === "age" || offers(axis, curated.look[axis]));
@@ -144,14 +153,7 @@ export function LookPicker({
   return (
     <div className="grid gap-6 md:grid-cols-[244px_minmax(0,1fr)]" data-testid="look-picker">
       <figure className="flex flex-col gap-2">
-        <img
-          src={portraitUrl(look)}
-          alt={describeLook(look)}
-          data-testid="look-preview"
-          width={244}
-          height={280}
-          className="rounded-md shadow-sm ring-1 ring-black/10"
-        />
+        <Portrait look={look} alt={describeLook(look)} testId="look-preview" width={244} height={280} className="rounded-md shadow-sm ring-1 ring-black/10" />
         <figcaption className="text-muted-foreground text-xs" data-testid="look-summary">
           {describeLook(look)}
         </figcaption>
@@ -172,14 +174,14 @@ export function LookPicker({
         <Step title={step("Start from a look", "Start from a look")}>
           {orderedCuratedLooks(look.age, pronouns).filter(fits).map((curated) => (
               <Choice key={curated.id} pressed={same(curated.look, look)} label={curated.label} disabled={disabled} onClick={() => onChange(curated.look)}>
-                <Thumb look={curated.look} label={curated.label} />
+                <Thumb portrait={Portrait} look={curated.look} label={curated.label} />
               </Choice>
             ))}
         </Step>
         <Step title={step("face", axisLabels.face)}>
           {offered("face", lookVocabulary.face).map((option) => (
             <Choice key={option.id} pressed={look.face === option.id} label={option.label} disabled={disabled} onClick={() => set({ face: option.id })}>
-              <Thumb look={{ ...look, face: option.id }} label={option.label} />
+              <Thumb portrait={Portrait} look={{ ...look, face: option.id }} label={option.label} />
             </Choice>
           ))}
         </Step>
@@ -187,7 +189,7 @@ export function LookPicker({
           <Step title={step("features", axisLabels.features)}>
             {offered("features", lookVocabulary.features).map((option) => (
               <Choice key={option.id} pressed={look.features === option.id} label={option.label} disabled={disabled} onClick={() => set({ features: option.id })}>
-                <Thumb look={{ ...look, features: option.id }} label={option.label.replace(" features", "")} />
+                <Thumb portrait={Portrait} look={{ ...look, features: option.id }} label={option.label.replace(" features", "")} />
               </Choice>
             ))}
           </Step>
@@ -203,7 +205,7 @@ export function LookPicker({
           <Step title={step("hair", axisLabels.hair)}>
             {offered("hair", orderedHairstyles(pronouns)).map((option) => (
               <Choice key={option.id} pressed={look.hair === option.id} label={`${option.label} hair`} disabled={disabled} onClick={() => set({ hair: option.id })}>
-                <Thumb look={{ ...look, hair: option.id }} label={option.label} />
+                <Thumb portrait={Portrait} look={{ ...look, hair: option.id }} label={option.label} />
               </Choice>
             ))}
           </Step>
@@ -219,7 +221,7 @@ export function LookPicker({
           <Step title={step("facialHair", axisLabels.facialHair)}>
             {offered("facialHair", lookVocabulary.facialHair).map((option) => (
               <Choice key={option.id} pressed={look.facialHair === option.id} label={option.label} disabled={disabled} onClick={() => set({ facialHair: option.id })}>
-                <Thumb look={{ ...look, facialHair: option.id }} label={option.id === "facial-hair:none" ? "None" : option.label} />
+                <Thumb portrait={Portrait} look={{ ...look, facialHair: option.id }} label={option.id === "facial-hair:none" ? "None" : option.label} />
               </Choice>
             ))}
           </Step>
@@ -228,7 +230,7 @@ export function LookPicker({
           <Step title={step("glasses", axisLabels.glasses)}>
             {offered("glasses", lookVocabulary.glasses).map((option) => (
               <Choice key={option.id} pressed={look.glasses === option.id} label={option.label} disabled={disabled} onClick={() => set({ glasses: option.id })}>
-                <Thumb look={{ ...look, glasses: option.id }} label={option.label} />
+                <Thumb portrait={Portrait} look={{ ...look, glasses: option.id }} label={option.label} />
               </Choice>
             ))}
           </Step>

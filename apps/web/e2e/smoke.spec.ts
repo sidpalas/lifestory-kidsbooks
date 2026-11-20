@@ -21,6 +21,30 @@ test("signed-out visitors get the landing page, with public images and a way to 
   await expect(page.getByText("Lifestory is invite-only.")).toBeVisible();
 });
 
+test("signed-out visitors try the character picker from static layers, with nothing sent to the server", async ({ page }) => {
+  const calls: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_serverFn")) calls.push(url.pathname);
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Try it: build a child" }).click();
+  const demo = page.getByTestId("look-demo");
+  await expect(demo.getByText("Nothing here is saved or sent anywhere.")).toBeVisible();
+  await expect(demo.getByRole("group", { name: "1. Age" }).getByRole("button")).toHaveText(["Young child3–7", "Older child8–12"]);
+  for (const name of ["Braids hair", "Red hair colour", "Older child", "Round glasses"]) await demo.getByRole("button", { name, exact: true }).click();
+  await expect(demo.getByTestId("look-summary")).toHaveText("Older child, round face, brown skin, red braids, glasses");
+  await expect(demo.getByTestId("look-preview")).toHaveAccessibleName("Older child, round face, brown skin, red braids, glasses");
+  const layers = demo.getByTestId("look-preview").locator("img");
+  await expect(layers).toHaveCount(3);
+  for (const layer of await layers.all()) {
+    expect(await layer.getAttribute("src")).toMatch(/^\/marketing\/looks\/older-child-round-/);
+    await expect.poll(() => layer.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await expect(demo.getByRole("button", { name: /save|add to the family/i })).toHaveCount(0);
+  expect(calls).toEqual([]);
+});
+
 test("seeded parent signs in and sees stories from Postgres", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("signed-in-as")).toHaveText("Signed in as Pat Parent (parent@lifestory.dev)");

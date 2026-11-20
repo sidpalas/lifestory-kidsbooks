@@ -1,5 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useHydrated } from "@tanstack/react-router";
+import { lazy, Suspense, useState } from "react";
 import { Button } from "~/components/ui/button";
+
+// The live demo (and the picker it reuses) loads only when a visitor presses "Try it".
+const LandingLookDemo = lazy(() => import("~/components/landing-look-demo"));
 
 // The page signed-out visitors see at /. Its images are marketing copies under public/marketing (served as static
 // files), not story assets: those stay behind sign-in.
@@ -35,6 +39,8 @@ const steps = [
 ];
 
 export function Landing() {
+  const [trying, setTrying] = useState(false);
+  const hydrated = useHydrated();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
@@ -110,6 +116,11 @@ export function Landing() {
               person in your family can look like themselves on every page.
             </p>
             <p className="text-muted-foreground">Start from a look, then change one thing at a time with a live preview.</p>
+            {!trying && (
+              <Button variant="outline" className="self-start" disabled={!hydrated} onClick={() => setTrying(true)}>
+                Try it: build a child
+              </Button>
+            )}
           </div>
           <img
             src="/marketing/character-picker.webp"
@@ -120,6 +131,16 @@ export function Landing() {
             className="w-full rounded-lg border shadow-sm md:order-1"
           />
         </section>
+        {trying && (
+          <section aria-labelledby="try-picker" className="-mt-8 flex scroll-mt-4 flex-col gap-3 sm:-mt-10" ref={(node) => node?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            <h2 id="try-picker" className="text-xl font-semibold">
+              Try the character picker
+            </h2>
+            <Suspense fallback={<p className="text-muted-foreground text-sm">Loading the picker…</p>}>
+              <LandingLookDemo />
+            </Suspense>
+          </section>
+        )}
 
         <section className="grid items-center gap-8 md:grid-cols-2">
           <div className="flex flex-col gap-3 md:order-2">

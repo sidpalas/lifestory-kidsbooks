@@ -53,7 +53,7 @@ export const portraitPalettes: StoryManifest["palettes"] = {
 };
 
 /** Facial hair at the bottom; glasses go under the hair, which falls over their arms. */
-const partOrder: StoryManifest["partOrder"] = ["facialHair", "glasses", "hair"];
+export const portraitPartOrder: StoryManifest["partOrder"] = ["facialHair", "glasses", "hair"];
 
 const atEveryAge = ageOptions.flatMap((age) =>
   faceOptions.flatMap((face) =>
@@ -82,7 +82,7 @@ const require = createRequire(import.meta.url);
 const read = (asset: string) => readFile(require.resolve(`@lifestory/core/portrait/${asset}`));
 
 const render = async (look: Look): Promise<Uint8Array> => {
-  const specs = composeFigure(portraitPalettes, partOrder, portraitFigure, look);
+  const specs = composeFigure(portraitPalettes, portraitPartOrder, portraitFigure, look);
   const layers = await Promise.all(
     specs.map(async (layer) =>
       layer.recolour.length === 0
