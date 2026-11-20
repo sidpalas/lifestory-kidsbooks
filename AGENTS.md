@@ -256,6 +256,9 @@ Production is the Railway project in README "Deploying". Change its services and
 A push to `main` deploys (below); deploy any other way (`railway config apply`, `railway up`, "Run workflow") only
 when asked, and never run `db:seed` or enable `/__dev` against it.
 
+- For production shell access, follow [README "Agent SSH access from an Amp orb"](README.md#agent-ssh-access-from-an-amp-orb): use the bot's personal SSH key from `RAILWAY_SSH_PRIVATE_KEY` and the verified service-instance target. Materialize the key only at runtime, remove it afterward, and keep host-key verification enabled.
+- SSH and Railway API credentials have separate permissions; do not use an available API token as evidence of what the SSH key permits. A connection test does not authorize an import, migration, deploy, settings change, or production data write; obtain approval for the operation being performed.
+
 ### Commits and pushing
 
 Work lands as commits on `main`, without pull requests. Pushing deploys to production once CI passes, so judge a

@@ -122,6 +122,64 @@ for example to redeploy without a push; the next push to `main` replaces it.
 `railway variables --service web --set "BETTER_AUTH_SECRET=$(openssl rand -base64 32)"`. Railway buckets use
 virtual-hosted-style URLs, hence `S3_FORCE_PATH_STYLE=false`.
 
+#### Agent SSH access from an Amp orb
+
+The dedicated Railway user is `sid+bot@devopsdirective.com` (GitHub login `sidpalas-bot`), invited directly to this project with editing access. Its SSH public key belongs in the bot's **personal Account Settings → SSH Keys**, not its workspace's keys. The private key is the Amp **project secret** `RAILWAY_SSH_PRIVATE_KEY`; all this Amp project's orbs can receive it. Never paste it into a thread, commit it, or copy it into `.env`, a setup snapshot, or scratch backups. If a running orb does not have a newly saved secret, run `amp orb restart-processes` before retrying.
+
+Access has two independent paths:
+
+- **SSH key:** execute commands as the container user, access readable environment credentials, files and mounted volumes, and reach databases/storage using the service's credentials. This is production shell access, not an import-only credential. A personal key follows its Railway user's permissions; workspace-owned keys reach every service in that workspace. A project token or `--service` flag does not narrow the key's authority.
+- **Railway API authentication:** `RAILWAY_TOKEN` is scoped to one environment in one project; `RAILWAY_API_TOKEN` or `railway login` authenticates an account/workspace. These credentials authorize supported CLI/API operations such as changing service settings, independently of SSH. Set only one token variable. The bot's editing role does not make its SSH private key an API bearer token. The orb may already have a separate project token; do not attribute its permissions to the SSH key.
+
+Verified on 2026-11-20: the bot's personal key reached production `web`, returned `/app`, and confirmed the importer exists. Neither a normal SSH command nor an explicit login shell had `RAILWAY_API_TOKEN`, `RAILWAY_TOKEN`, or a saved `~/.railway/config.json`. Do not assume SSH supplies API credentials, or claim that changing project settings via the key was tested. The minimum SSH role and denial to other projects have not been tested. Moving this key from the bot's workspace to its personal account resolved an authenticated-but-`No target found` failure.
+
+Use direct OpenSSH for a known service-instance ID; it needs no Railway CLI or API token. The production web service-instance ID verified above is `2f3f3fd6-f58c-480a-a475-fcddf84c364c` (not the service ID). The app's custom domain did not work as an SSH target. This example runs only a harmless marker and file-existence check:
+
+```sh
+set -eu
+umask 077
+: "${RAILWAY_SSH_PRIVATE_KEY:?Missing Amp project secret}"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+keyfile=$(mktemp "$HOME/.ssh/railway_amp_test.XXXXXX")
+trap 'rm -f "$keyfile"' EXIT
+
+# The saved secret may have flattened line breaks. Restore only its wrapping.
+python3 - "$keyfile" <<'PY'
+import base64, os, sys, textwrap
+value = os.environ["RAILWAY_SSH_PRIVATE_KEY"].strip()
+header = "-----BEGIN OPENSSH PRIVATE KEY-----"
+footer = "-----END OPENSSH PRIVATE KEY-----"
+assert value.startswith(header) and value.endswith(footer), "Invalid private-key envelope"
+payload = "".join(value[len(header):-len(footer)].split())
+assert base64.b64decode(payload, validate=True).startswith(b"openssh-key-v1\0"), "Invalid key payload"
+with open(sys.argv[1], "w") as key:
+    key.write(header + "\n" + "\n".join(textwrap.wrap(payload, 70)) + "\n" + footer + "\n")
+PY
+ssh-keygen -y -P '' -f "$keyfile" >/dev/null
+ssh -T -i "$keyfile" \
+  -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 \
+  -o StrictHostKeyChecking=accept-new \
+  -o UserKnownHostsFile="$HOME/.ssh/railway_known_hosts" \
+  2f3f3fd6-f58c-480a-a475-fcddf84c364c@ssh.railway.com \
+  'node --input-type=module' <<'JS'
+import { existsSync } from 'node:fs';
+console.log('AMP_SSH_CONNECTION_OK');
+console.log('cwd=' + process.cwd());
+console.log('importer_present=' + existsSync('packages/core/src/story-import.ts'));
+JS
+```
+
+Run this in a shell without tracing (`set -x`). The temporary key is mode `600` under a mode-`700` directory and is removed on exit. `accept-new` trusts the gateway's host key on first contact and rejects changed keys afterward; never bypass a changed-host-key error. An encrypted key needs a privately unlocked SSH agent; do not put its passphrase into commands or logs.
+
+If the target changes, obtain its **service-instance ID** from the dashboard's Copy Service Instance ID action, or use the separately authenticated CLI: `npm exec --yes --package=@railway/cli@5.74.0 -- railway ssh config --project 932e3e8c-d02f-4a61-b877-64fc48828dd5 --environment production --service web -i <temporary-key-path> --dry-run`. The generated `User` is the target. For `railway ssh` itself, pass `-i` explicitly: automatic key discovery/registration uses account/workspace key APIs, which a project token cannot access. Do not register another key or widen permissions to work around an access failure.
+
+Authorize the operation, not just the connection: a connection test does not authorize an import, migration, deploy, settings change, or production data write. Run only the approved remote command and report its result without dumping environment variables or secrets. Imports use the deployed image's fixtures and credentials, not local unshipped edits; `railway run` runs locally and is not equivalent. Service/variable configuration changes still go through `.railway/railway.ts` and `railway config plan`/`apply`, with approval.
+
+References: [Railway SSH](https://docs.railway.com/cli/ssh), [API token scopes](https://docs.railway.com/integrations/api), [Amp secrets](https://ampcode.com/docs/orbs/handling-secrets).
+
+#### Production operator and story commands
+
 Create the operator account once, after the first deploy (D21). Open a shell in the web container under your own
 Railway login; the command prompts for the password without echoing it, so it needs that interactive terminal:
 
