@@ -140,12 +140,14 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   }, [initial.story.id, draft, looksKey, partsKey]);
 
   // Generated parts (D37) live in story_part, not in the saved manifest: reloading the view picks up their status and
-  // recomposes the pictures with them. Unsaved edits stay as they are.
+  // recomposes the pictures with them. Unsaved edits stay as they are, and so does the revision this editor last loaded
+  // or saved: the draft it holds is that revision's, so a save made elsewhere meanwhile still fails the next save or
+  // publish with DraftChanged instead of being overwritten.
   const refresh = async () => {
     const next = unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: files.storyId } }));
-    setView(next);
-    revision.current = next.revision;
-    return next;
+    const kept = { ...next, revision: revision.current };
+    setView(kept);
+    return kept;
   };
   const generationFor = (pageId: string, slotId: string): Generation => {
     const twice =
