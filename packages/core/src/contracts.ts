@@ -3,12 +3,14 @@
 import { Schema } from "effect";
 import { CastMember, Look, LookOverride, PronounSet, StoryDraft, StoryManifest, TextStyleName } from "./book-format/index.ts";
 import { StoryPart } from "./parts/contract.ts";
+import { Casting } from "./imports/casting-contract.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
 export * from "./rpc.ts";
 export * from "./parts/contract.ts";
 export * from "./imports/contract.ts";
+export * from "./imports/casting-contract.ts";
 
 /** Better Auth's minimum, and what every password form checks before submitting. */
 export const MIN_PASSWORD_LENGTH = 12;
@@ -210,6 +212,7 @@ export const DraftView = Schema.Struct({
   revision: Schema.Number,
   /** As saved, without generated parts; the pictures in `pages` include them. */
   draft: StoryDraft,
+  casting: Casting,
   parts: Schema.Array(StoryPart),
   pages: Schema.Array(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) })),
 });

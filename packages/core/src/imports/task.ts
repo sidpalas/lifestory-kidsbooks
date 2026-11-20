@@ -24,7 +24,7 @@ export const ImportTaskParams = Schema.Struct({ storyId: Schema.String, version:
 export type ImportOutcome = { readonly result: ImportResult } | { readonly storyId: string; readonly error: string };
 
 /** "from 30% to 60% across and 20% to 90% down" for a rect in thousandths of the base, placed in the padded input. */
-const area = (rect: Rect, prepared: { width: number; height: number; padding: { left: number; top: number; paddedWidth: number; paddedHeight: number } }) => {
+export const area = (rect: Rect, prepared: { width: number; height: number; padding: { left: number; top: number; paddedWidth: number; paddedHeight: number } }) => {
   const { padding } = prepared;
   const x = (v: number) => Math.round(((padding.left + (v * prepared.width) / 1000) / padding.paddedWidth) * 100);
   const y = (v: number) => Math.round(((padding.top + (v * prepared.height) / 1000) / padding.paddedHeight) * 100);
@@ -127,7 +127,7 @@ export const importTask = defineTask({
           const { base: _, input: __, ...geometry } = base;
           return geometry;
         }));
-        const edit = yield* generateImage(ctx, "remove", {
+        const edit = source.removed ? { key: key(source.removed), generationId: null } : yield* generateImage(ctx, "remove", {
           key: `import:${ctx.taskID}:remove`,
           prompt: removePrompt(source.description, area(source.box, prepared)),
           width: prepared.inputWidth,
@@ -136,18 +136,27 @@ export const importTask = defineTask({
           outputKey: key(`${folder}/import-${id}-remove-edit`),
         }).pipe(Effect.catchTag("GenerationFailed", (error) => Effect.succeed({ failed: error.message } as const)));
         if ("failed" in edit) return fail(`The image model couldn't remove the character: ${edit.failed}`);
-        generations.push(edit.generationId);
+        if (edit.generationId) generations.push(edit.generationId);
         stage = yield* step(ctx, "separate", Effect.gen(function* () {
           const [page, base, removed] = yield* Effect.all([read(source.asset), read(asset("page-base")), ObjectStorage.use((s) => s.get(edit.key)).pipe(Effect.orDie)]);
-          const separated = yield* Effect.promise(() => separateFlat(page, { ...prepared, base }, removed.body, source.box));
+          const separated = yield* Effect.promise(() => separateFlat(page, { ...prepared, base }, removed.body, source.box, source.removalBox));
           if ("error" in separated) return { error: separated.error ?? "" };
           yield* write(asset("plate", "jpg"), separated.plate, "image/jpeg");
           yield* write(asset("colour"), separated.figure);
-          return { plate: asset("plate", "jpg"), foreground: null, box: separated.box, figure: asset("colour"), hair: null, overlay: null, occluder: null, notes: [] };
+          return { plate: source.plate ?? asset("plate", "jpg"), foreground: null, box: separated.box, figure: asset("colour"), hair: null, overlay: null, occluder: null, notes: [] };
         }));
       }
       if ("error" in stage) return fail(stage.error);
       const separated = stage;
+      // Casting's head is in page coordinates; extraction may tighten the figure box. Convert only after that crop.
+      let hairZone = request.kind === "page" ? request.hairZone : [0, 0, 1000, 400] as Rect;
+      if (request.kind === "page" && request.source.kind === "flat" && request.source.head && separated.box) {
+        const b = separated.box;
+        const h = request.source.head;
+        const x = (v: number) => Math.max(0, Math.min(1000, Math.round((v - b[0]) * 1000 / (b[2] - b[0]))));
+        const y = (v: number) => Math.max(0, Math.min(1000, Math.round((v - b[1]) * 1000 / (b[3] - b[1]))));
+        hairZone = [x(h[0] - 30), y(h[1] - 30), x(h[2] + 30), y(h[3] + 50)];
+      }
 
       // 2. The bald figure: drawn bald, the author's hair layer as the part, or the hair taken off against a bald edit.
       let colourFigure = separated.figure;
@@ -173,7 +182,7 @@ export const importTask = defineTask({
           }));
           const edit = yield* generateImage(ctx, "bald", {
             key: `import:${ctx.taskID}:bald`,
-            prompt: baldPrompt(area(request.hairZone, prepared)),
+            prompt: baldPrompt(area(hairZone, prepared)),
             width: prepared.inputWidth,
             height: prepared.inputHeight,
             references: [key(asset("figure-input"))],
@@ -181,7 +190,7 @@ export const importTask = defineTask({
           }).pipe(Effect.catchTag("GenerationFailed", (error) => Effect.succeed({ failed: error.message } as const)));
           if ("failed" in edit) return fail(`The image model couldn't take the hair off: ${edit.failed}`);
           generations.push(edit.generationId);
-          const zone = request.hairZone;
+          const zone = hairZone;
           const taken = yield* step(ctx, "take-off-hair", Effect.gen(function* () {
             const [figure, base, bald] = yield* Effect.all([read(separated.figure), read(asset("figure-base")), ObjectStorage.use((s) => s.get(edit.key)).pipe(Effect.orDie)]);
             const out = yield* Effect.promise(() => takeOffHair(figure, { ...prepared, base }, bald.body, zone));

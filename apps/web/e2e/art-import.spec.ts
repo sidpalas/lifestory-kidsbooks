@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 // Importing art made outside the app into a story draft: a layered PSD (plate, the girl drawn bald, her hair on its own
 // layer, a hidden sketch) becomes the page's plate and her figure with its skin mask, overlay, and curly hair as a part;
@@ -21,7 +21,7 @@ const save = async (page: Page) => {
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByTestId("draft-state")).toContainText("Saved");
 };
-const setRect = async (page: Page, label: string, rect: readonly [number, number, number, number]) => {
+const setRect = async (page: Page | Locator, label: string, rect: readonly [number, number, number, number]) => {
   for (const [i, side] of (["left", "top", "right", "bottom"] as const).entries()) await page.getByLabel(`${label} ${side}`, { exact: true }).fill(String(rect[i]));
 };
 
@@ -174,5 +174,128 @@ test("art import: a flat page is separated into its plate and the figure", async
   await imagesLoaded(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await evidence(page, "flat-3-page", false);
+
+  // Review by option rather than by coordinate-heavy part cards. A rejected take's reason survives reload,
+  // and its replacement is a fresh candidate, not an inherited approval.
+  await save(page);
+  await page.getByRole("tab", { name: "Review", exact: true }).click();
+  await page.getByRole("button", { name: "Plan missing parts" }).click();
+  await expect(page.getByTestId("part-plan")).toContainText("9 missing parts");
+  await page.getByRole("button", { name: "Generate next round" }).click();
+  await page.getByLabel("Review option").selectOption("hair:short");
+  let candidate = page.getByTestId("review-candidate");
+  await expect(candidate).toHaveAttribute("data-status", "pending_review", { timeout: 180_000 });
+  await candidate.getByRole("button", { name: "Approve candidate", exact: true }).click();
+  await expect(candidate).toHaveAttribute("data-status", "approved");
+  await candidate.getByRole("textbox", { name: /Flag reason/ }).fill("Keep the fringe clear of the eyes");
+  await candidate.getByRole("button", { name: "Flag for redo" }).click();
+  await expect(candidate).toHaveAttribute("data-status", "rejected");
+  await page.reload();
+  await page.getByRole("tab", { name: "Review", exact: true }).click();
+  await page.getByLabel("Review option").selectOption("hair:short");
+  candidate = page.getByTestId("review-candidate");
+  await expect(candidate.getByRole("textbox", { name: /Flag reason/ })).toHaveValue("Keep the fringe clear of the eyes");
+  await page.getByRole("button", { name: /^Redo 1 flagged/ }).click();
+  await expect(candidate).toHaveAttribute("data-status", "pending_review", { timeout: 180_000 });
+  await expect(candidate).toContainText("Previous flag: Keep the fringe clear of the eyes");
+  await expect(candidate.getByRole("button", { name: "Approve candidate", exact: true })).toBeEnabled();
+  await candidate.getByRole("button", { name: "On the page" }).click();
+  const context = page.getByRole("dialog", { name: "Review on the page" });
+  await expect.poll(() => context.getByTestId("illustration").locator("img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+  await imagesLoaded(page);
+  await evidence(page, "review-page-context", false);
+  await context.getByRole("button", { name: "Back to sheet" }).click();
+  await page.getByRole("button", { name: "Approve 1 reviewed, unflagged candidates" }).click();
+  await expect(candidate).toHaveAttribute("data-status", "approved");
+  await imagesLoaded(page);
+  await evidence(page, "review-redo-approved", false);
   await page.context().close();
+});
+
+test("casting: corrections persist, approval gates extraction, and two figures share one plate", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const page = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage();
+  try {
+    await startStory(page, `Casting ${Date.now().toString(36)}`);
+    await page.getByRole("tab", { name: "Roles", exact: true }).click();
+    await page.getByRole("button", { name: "Add a role" }).click();
+    await save(page);
+    await page.getByRole("tab", { name: "Casting", exact: true }).click();
+    const sharp = (await import("sharp")).default;
+    const picture = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#f8f4ec"/><circle cx="200" cy="200" r="65" fill="#c98e60"/><rect x="140" y="265" width="120" height="225" fill="#2662ae"/><circle cx="600" cy="180" r="55" fill="#e0a77e"/><rect x="550" y="235" width="100" height="200" fill="#c84444"/></svg>`)).png().toBuffer();
+    const rotated = await sharp(picture).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+    await page.getByLabel("Book page pictures").setInputFiles([
+      { name: "two-people.png", mimeType: "image/png", buffer: picture },
+      { name: "rotated-page.jpg", mimeType: "image/jpeg", buffer: rotated },
+    ]);
+    await expect(page.getByTestId("cast-page")).toHaveCount(2);
+    const castPage = page.getByTestId("cast-page").first();
+    await expect.poll(() => page.getByRole("img", { name: "Source art for p2", exact: true }).evaluate((image) => [(image as HTMLImageElement).naturalWidth, (image as HTMLImageElement).naturalHeight])).toEqual([600, 800]);
+    // Both pages suggest at once; their results save through one queue, so neither fails the draft's revision check.
+    await page.getByRole("button", { name: /^Suggest characters on 2 new pages/ }).click();
+    for (const cast of await page.getByTestId("cast-page").all()) {
+      await expect(cast.getByLabel("Cast description")).not.toHaveValue("", { timeout: 30_000 });
+      await expect(cast).toContainText("Suggested by fake");
+    }
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Suggest characters on/ })).toHaveCount(0);
+    await page.reload();
+    for (const cast of await page.getByTestId("cast-page").all()) await expect(cast.getByLabel("Cast description")).not.toHaveValue("");
+    await expect(castPage.getByRole("button", { name: /^Extract characters/ })).toBeDisabled();
+    await castPage.getByRole("button", { name: "Add a missed character" }).click();
+    await castPage.getByRole("button", { name: "3", exact: true }).click();
+    await castPage.getByLabel("Ignore this person").check();
+    await castPage.getByRole("button", { name: "1", exact: true }).click();
+    await castPage.getByLabel("Cast description").fill("the bald child in blue on the left");
+    await castPage.getByLabel("Cast hair").selectOption("");
+    await castPage.getByText("Details: exact boundaries").click();
+    await setRect(castPage, "Cast figure box", [140, 200, 360, 850]);
+    await setRect(castPage, "Cast head box", [150, 200, 350, 450]);
+    await castPage.getByRole("button", { name: "2", exact: true }).click();
+    await castPage.getByLabel("Cast description").fill("the bald child in red on the right");
+    await castPage.getByLabel("Cast hair").selectOption("");
+    await setRect(castPage, "Cast figure box", [660, 190, 840, 760]);
+    await setRect(castPage, "Cast head box", [660, 190, 840, 400]);
+    await setRect(castPage, "Cast figure box", [300, 190, 840, 760]);
+    await castPage.getByRole("button", { name: "Approve casting", exact: true }).click();
+    await castPage.getByRole("button", { name: /^Extract characters/ }).click();
+    await expect(page.getByRole("alert")).toContainText("Overlapping figure boxes need the manual layered import");
+    await setRect(castPage, "Cast figure box", [660, 190, 840, 760]);
+    // Switching tabs must not discard unsaved box/identity edits.
+    await page.getByRole("tab", { name: "Roles", exact: true }).click();
+    await page.getByRole("tab", { name: "Casting", exact: true }).click();
+    await castPage.getByRole("button", { name: "2", exact: true }).click();
+    await expect(castPage.getByLabel("Cast description")).toHaveValue("the bald child in red on the right");
+    await castPage.getByRole("button", { name: "Approve casting", exact: true }).click();
+    await expect(castPage).toContainText("Casting approved");
+    await page.reload();
+    await expect(castPage).toContainText("Casting approved");
+    // Any correction invalidates the casting gate, but does not auto-extract or auto-approve pixels.
+    await castPage.getByLabel("Cast description").fill("the bald child in blue");
+    await expect(castPage.getByRole("button", { name: /^Extract characters/ })).toBeDisabled();
+    await castPage.getByRole("button", { name: "Approve casting", exact: true }).click();
+    await castPage.getByRole("button", { name: /^Extract characters/ }).click();
+    const extraction = page.getByTestId("cast-extraction");
+    await expect(extraction).toBeVisible({ timeout: 180_000 });
+    await imagesLoaded(page);
+    const plates = await extraction.getByRole("img", { name: "Shared background", exact: true }).evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src));
+    expect(plates).toHaveLength(2);
+    expect(plates[0]).toBe(plates[1]);
+    const figureUrl = await extraction.getByRole("img", { name: "Light skin", exact: true }).first().getAttribute("src");
+    const figureBytes = await (await page.request.get(figureUrl!)).body();
+    const figurePixels = await sharp(figureBytes).ensureAlpha().raw().toBuffer();
+    expect(figurePixels[3]).toBe(0); // Scene reconstruction must not paste paper-coloured rectangles over the plate.
+    const plateBytes = await (await page.request.get(plates[0]!)).body();
+    const plate = await sharp(plateBytes).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (const [x, y] of [[200, 200], [600, 180]] as const) {
+      const offset = (y * plate.info.width + x) * 3;
+      expect([...plate.data.subarray(offset, offset + 3)].every((channel) => channel > 225)).toBe(true);
+    }
+    await evidence(page, "casting-extraction");
+    await extraction.getByRole("button", { name: "Approve extraction and use these bases" }).click();
+    await expect(castPage).toContainText("Extraction approved");
+    await page.getByRole("tab", { name: "Pages", exact: true }).click();
+    await expect(page.getByTestId("layer")).toHaveCount(3);
+    await expect(page.getByTestId("layer").first()).toHaveAttribute("data-kind", "art");
+  } finally { await page.context().close(); }
 });

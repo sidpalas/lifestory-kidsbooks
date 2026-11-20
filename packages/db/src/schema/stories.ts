@@ -44,6 +44,8 @@ export const storyVersion = pgTable(
     version: integer("version").notNull(),
     /** Validated by StoryManifest on the way in and decoded on the way out. */
     manifest: jsonb("manifest").notNull(),
+    /** Draft-only source pages, proposed casting and extraction review. Not used when composing books. */
+    casting: jsonb("casting").notNull().default([]),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     revision: integer("revision").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

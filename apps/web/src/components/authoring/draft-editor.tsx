@@ -6,6 +6,7 @@ import {
   type Age,
   ageOptions,
   type CastMember,
+  type Casting,
   type Character,
   type CharacterSlot,
   DraftChanged,
@@ -51,10 +52,14 @@ import {
 import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
 import { ArtImport } from "./art-import";
 import { FigureEditor, type Generation } from "./figure-editor";
+import { CastingTab } from "./casting";
+import { ReviewTab } from "./review";
 
 type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
 
 const tabs = [
+  { id: "casting", label: "Casting" },
+  { id: "review", label: "Review" },
   { id: "story", label: "Story and type" },
   { id: "roles", label: "Roles" },
   { id: "pages", label: "Pages" },
@@ -72,6 +77,8 @@ const PRONOUN_FIELDS = ["name", "title", "they", "them", "their", "theirs", "the
 export function DraftEditor({ initial, characters }: { initial: DraftView; characters: ReadonlyArray<Character> }) {
   const router = useRouter();
   const [view, setView] = useState(initial);
+  const revision = useRef(initial.revision);
+  const [casting, setCasting] = useState<Casting>(initial.casting);
   const [draft, setDraft] = useState<StoryDraft>(initial.draft);
   const [title, setTitle] = useState(initial.story.title);
   const [summary, setSummary] = useState(initial.story.summary);
@@ -79,7 +86,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ readonly error: boolean; readonly text: string } | null>(null);
   const [issues, setIssues] = useState<ReadonlyArray<string> | null>(null);
-  const [tab, setTab] = useState<Tab>("story");
+  const [tab, setTab] = useState<Tab>(initial.casting.length ? "casting" : "story");
   const [selected, setSelected] = useState(initial.draft.pages[0]?.pageId ?? "");
   const files: DraftFiles = { storyId: view.story.id, version: view.version };
   const change: Change = (edit) => {
@@ -123,6 +130,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   const refresh = async () => {
     const next = unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: files.storyId } }));
     setView(next);
+    revision.current = next.revision;
     return next;
   };
   const generationFor = (pageId: string, slotId: string): Generation => {
@@ -169,15 +177,18 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
     setTab("pages");
   };
 
-  const save = async () => {
+  const persist = async (nextDraft: StoryDraft, nextCasting: Casting) => {
     setBusy(true);
     setStatus(null);
     try {
-      const next = unwrapResult(SaveDraftResult)(await saveDraftFn({ data: { storyId: files.storyId, revision: view.revision, draft, title, summary } }));
+      const next = unwrapResult(SaveDraftResult)(await saveDraftFn({ data: { storyId: files.storyId, revision: revision.current, draft: nextDraft, casting: nextCasting, title, summary } }));
+      revision.current = next.revision;
       setView(next);
       setDraft(next.draft);
+      setCasting(next.casting);
       setDirty(false);
       setStatus({ error: false, text: "Saved." });
+      return true;
     } catch (cause) {
       setStatus({
         error: true,
@@ -186,6 +197,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             ? "This draft changed somewhere else (another tab, or generated parts). Reload the page to see it; edits here aren't saved."
             : `Couldn't save: ${message(cause)}`,
       });
+      return false;
     } finally {
       setBusy(false);
     }
@@ -218,16 +230,17 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+    <div className={`grid gap-6 ${tab === "casting" || tab === "review" ? "" : "lg:grid-cols-[minmax(0,1fr)_auto]"}`}>
       <StoryFonts fonts={draft.fonts} assetUrl={(asset) => draftFileUrl(files.storyId, files.version, asset)} />
       <div className="flex min-w-0 flex-col gap-4">
         <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-2">
-          <div role="tablist" className="flex gap-1">
+          <div role="tablist" className="flex flex-wrap gap-1">
             {tabs.map((candidate) => (
               <Button
                 key={candidate.id}
                 role="tab"
                 aria-selected={tab === candidate.id}
+                disabled={busy}
                 size="sm"
                 variant={tab === candidate.id ? "default" : "outline"}
                 onClick={() => setTab(candidate.id)}
@@ -240,7 +253,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
           <span className="text-muted-foreground text-xs" data-testid="draft-state">
             {dirty ? "Unsaved changes" : `Saved · revision ${view.revision}`}
           </span>
-          <Button size="sm" onClick={() => void save()} disabled={busy || !dirty}>
+          <Button size="sm" onClick={() => void persist(draft, casting)} disabled={busy || !dirty}>
             Save draft
           </Button>
         </div>
@@ -251,6 +264,8 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         )}
 
         {tab === "story" && <StoryTab files={files} draft={draft} change={change} title={title} summary={summary} setTitle={(t) => { setTitle(t); setDirty(true); }} setSummary={(s) => { setSummary(s); setDirty(true); }} />}
+        {tab === "casting" && <CastingTab files={files} draft={draft} casting={casting} onChange={(next) => { setCasting(next); setDirty(true); setIssues(null); }} persist={persist} />}
+        {tab === "review" && <ReviewTab files={files} draft={draft} parts={view.parts} dirty={dirty} refresh={refresh} persist={(next) => persist(next, casting)} />}
         {tab === "roles" && <RolesTab draft={draft} change={change} />}
         {tab === "pages" && page && <PageTab files={files} draft={draft} page={page} change={change} generationFor={generationFor} />}
         {tab === "pages" && !page && (
@@ -293,7 +308,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         </section>
       </div>
 
-      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="Page preview">
+      <aside className={`${tab === "casting" || tab === "review" ? "hidden" : "flex"} flex-col gap-3 lg:sticky lg:top-4 lg:self-start`} aria-label="Page preview">
         <div className="flex flex-wrap gap-1" role="tablist" aria-label="Pages">
           {draft.pages.map((candidate, i) => (
             <Button

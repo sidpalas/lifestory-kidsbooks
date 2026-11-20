@@ -9,6 +9,7 @@ import { Mailer } from "./mailer.ts";
 import { ModalImageProvider } from "./providers/modal.ts";
 import { OpenAIImageProvider } from "./providers/openai.ts";
 import { ObjectStorage } from "./storage.ts";
+import { CastingProvider } from "./imports/casting-provider.ts";
 
 /**
  * IMAGE_PROVIDER picks the provider: `fake` (the default; development, tests, CI), `openai` (the primary for part
@@ -26,6 +27,7 @@ const ImageProviderLayer = Layer.unwrap(
  * build one ManagedRuntime from this layer and run all their Effects through it.
  */
 export const ServerLayer = ImageProviderLayer.pipe(
+  Layer.provideMerge(CastingProvider.layer),
   Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer)),
   Layer.provideMerge(Mailer.layer),
   Layer.provideMerge(Database.layer),

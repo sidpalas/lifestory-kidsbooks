@@ -220,12 +220,20 @@ export interface Prepared {
  * removed (D30's provider; matting as in D36, with the edit as the known background). The plate keeps the page's own
  * pixels everywhere but under the character, where the edit fills in; the figure is unmixed against that fill.
  */
-export const separateFlat = async (page: Uint8Array, prepared: Prepared & { readonly base: Uint8Array }, edit: Uint8Array, box: Rect) => {
+export const separateFlat = async (page: Uint8Array, prepared: Prepared & { readonly base: Uint8Array }, edit: Uint8Array, box: Rect, removalBox?: Rect) => {
   const original = await toRgb(sharp(prepared.base));
   const { width, height } = original;
   const zoneRect: Rect = [Math.max(0, box[0] - 15), Math.max(0, box[1] - 15), Math.min(1000, box[2] + 15), Math.min(1000, box[3] + 15)];
   const zone = rectToPixels(zoneRect, width, height);
-  const aligned = alignTo(original, await unpadEdit(edit, prepared.padding, width, height), zone);
+  const alignmentBox: Rect = removalBox ? [Math.max(0, removalBox[0] - 15), Math.max(0, removalBox[1] - 15), Math.min(1000, removalBox[2] + 15), Math.min(1000, removalBox[3] + 15)] : zoneRect;
+  const aligned = alignTo(original, await unpadEdit(edit, prepared.padding, width, height), rectToPixels(alignmentBox, width, height));
+  // A shared edit removed other people too. They are not unchanged calibration pixels, and must not become
+  // part of this figure's cut-out. Match outside the whole cast, then restore the original outside this zone.
+  if (removalBox) for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if (x >= zone[0] && x < zone[2] && y >= zone[1] && y < zone[3]) continue;
+    const p = (y * width + x) * 3;
+    aligned.data.set(original.data.subarray(p, p + 3), p);
+  }
   const cut = cutOutPart(aligned, original, zone);
   const alpha = fillFigureHoles(cut.alpha, width, height);
 
@@ -379,10 +387,10 @@ export interface ReviewFigure {
   readonly skinMask: Uint8Array;
   readonly overlay: Uint8Array | null;
   readonly parts: ReadonlyArray<{ readonly png: Uint8Array; readonly at: Rect; readonly palette: "skin" | "hairColour" | "none" }>;
-  readonly occluder: { readonly asset: Uint8Array; readonly skinMask: Uint8Array } | null;
+  readonly occluder: { readonly asset: Uint8Array; readonly skinMask?: Uint8Array } | null;
 }
 
-/** The figure as a book composes it (composeFigure's order) for one skin and hair colour, on paper. */
+/** The figure as a book composes it, on transparency so the same review can be placed back into its scene. */
 export const composeForReview = async (figure: ReviewFigure, look: { readonly skin: Palette; readonly hair: Palette }, width: number, height: number) => {
   const sized = async (png: Uint8Array, rect: Rect = [0, 0, 1000, 1000]) => {
     const [x0, y0, x1, y1] = rectToPixels(rect, width, height);
@@ -396,9 +404,9 @@ export const composeForReview = async (figure: ReviewFigure, look: { readonly sk
         sized(part.palette === "none" ? part.png : await recolour(part.png, [{ palette: part.palette === "skin" ? look.skin : look.hair }]), part.at),
       ),
     )),
-    ...(figure.occluder ? [await sized(await recolour(figure.occluder.asset, [{ mask: figure.occluder.skinMask, palette: look.skin }]))] : []),
+    ...(figure.occluder ? [await sized(figure.occluder.skinMask ? await recolour(figure.occluder.asset, [{ mask: figure.occluder.skinMask, palette: look.skin }]) : figure.occluder.asset)] : []),
   ];
-  const png = await sharp({ create: { width, height, channels: 3, background: PAPER } }).composite(layers).png().toBuffer();
+  const png = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(layers).png().toBuffer();
   return new Uint8Array(png);
 };
 

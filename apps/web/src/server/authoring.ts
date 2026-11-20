@@ -3,6 +3,8 @@
 // (routes/api/authoring/stories.$storyId.assets.ts), since they carry bytes.
 import {
   ArtImportRequest,
+  Casting,
+  CastingStatus,
   AuthoredStory,
   DraftChanged,
   DraftView,
@@ -21,6 +23,8 @@ import {
 } from "@lifestory/core/contracts";
 import {
   artImportStatus,
+  requestCasting,
+  castingStatus,
   Auth,
   canAuthor,
   requestArtImport,
@@ -31,6 +35,8 @@ import {
   listAuthoredStories,
   listAuthors,
   listDraftParts,
+  draftPartPlan,
+  draftUploadReview,
   previewDraft,
   requestDraftParts,
   reviewDraftPart,
@@ -83,7 +89,7 @@ export const SaveDraftResult = ResultSchema(DraftView, Schema.Union([NotAuthenti
 export const saveDraftFn = createServerFn({ method: "POST" })
   .validator(
     Schema.toStandardSchemaV1(
-      Schema.Struct({ storyId: Schema.String, revision: Schema.Number, draft: StoryDraft, title: Text(120), summary: Schema.Trim.check(Schema.isMaxLength(500)) }),
+      Schema.Struct({ storyId: Schema.String, revision: Schema.Number, draft: StoryDraft, casting: Schema.optionalKey(Casting), title: Text(120), summary: Schema.Trim.check(Schema.isMaxLength(500)) }),
     ),
   )
   .handler(({ data }) => runEffect(SaveDraftResult, currentUser.pipe(Effect.flatMap((user) => saveDraft(user, data.storyId, data)))));
@@ -150,6 +156,16 @@ export const DraftPartResult = ResultSchema(StoryPart, PartFailures);
 
 const { storyVersionId: _, ...requestFields } = PartRequest.fields;
 
+export const DraftPartPlanResult = ResultSchema(Schema.Struct({ requests: Schema.Array(Schema.Struct(requestFields)), blocked: Schema.Array(Schema.String), estimateUsd: Schema.Number }), DraftFailures);
+export const draftPartPlanFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(StoryId))
+  .handler(({ data }) => runEffect(DraftPartPlanResult, currentUser.pipe(Effect.flatMap((user) => draftPartPlan(user, data.storyId)))));
+
+export const UploadReviewResult = ResultSchema(Schema.Struct({ light: Schema.String, dark: Schema.String }), DraftFailures);
+export const draftUploadReviewFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, pageId: Schema.String, slotId: Schema.String, asset: Schema.String })))
+  .handler(({ data }) => runEffect(UploadReviewResult, currentUser.pipe(Effect.flatMap((user) => draftUploadReview(user, data.storyId, data.pageId, data.slotId, data.asset)))));
+
 export const DraftPartsRequestResult = ResultSchema(Schema.Array(StoryPart), PartFailures);
 
 /** Parts of one figure, generated together: one tiled edit per option for up to four of its bases (D44). */
@@ -164,9 +180,9 @@ export const requestDraftPartsFn = createServerFn({ method: "POST" })
   );
 
 export const reviewDraftPartFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, partId: Schema.String, decision: PartDecision })))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, partId: Schema.String, decision: PartDecision, reason: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(500))) })))
   .handler(({ data }) =>
-    runEffect(DraftPartResult, currentUser.pipe(Effect.flatMap((user) => reviewDraftPart(user, data.storyId, data.partId, data.decision)))),
+    runEffect(DraftPartResult, currentUser.pipe(Effect.flatMap((user) => reviewDraftPart(user, data.storyId, data.partId, data.decision, data.reason)))),
   );
 
 export const DraftPartsResult = ResultSchema(Schema.Array(StoryPart), DraftFailures);
@@ -179,8 +195,8 @@ export const PreviewDraftResult = ResultSchema(DraftView.fields.pages, DraftFail
 
 /** The editor's live preview of unsaved changes, optionally with family members' looks in roles; saves nothing. */
 export const previewDraftFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, draft: StoryDraft, looks: Schema.Record(Schema.String, Look) })))
-  .handler(({ data }) => runEffect(PreviewDraftResult, currentUser.pipe(Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft, data.looks)))));
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, draft: StoryDraft, looks: Schema.Record(Schema.String, Look), candidateId: Schema.optionalKey(Schema.String) })))
+  .handler(({ data }) => runEffect(PreviewDraftResult, currentUser.pipe(Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft, data.looks, data.candidateId)))));
 
 // Importing art made outside the app: start an import of uploaded art, and follow it.
 export const ArtImportStartResult = ResultSchema(Schema.Struct({ taskId: Schema.String }), PartFailures);
@@ -194,3 +210,12 @@ export const ArtImportStatusResult = ResultSchema(ImportStatus, DraftFailures);
 export const artImportStatusFn = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, taskId: Schema.String })))
   .handler(({ data }) => runEffect(ArtImportStatusResult, currentUser.pipe(Effect.flatMap((user) => artImportStatus(user, data.storyId, data.taskId)))));
+
+export const requestCastingFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, pageId: Schema.String, mode: Schema.Literals(["detect", "extract"]), requestId: Text(80) })))
+  .handler(({ data }) => runEffect(ArtImportStartResult, currentUser.pipe(Effect.flatMap((user) => requestCasting(user, data.storyId, data.pageId, data.mode, data.requestId)))));
+
+export const CastingStatusResult = ResultSchema(CastingStatus, DraftFailures);
+export const castingStatusFn = createServerFn({ method: "GET" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, taskId: Schema.String })))
+  .handler(({ data }) => runEffect(CastingStatusResult, currentUser.pipe(Effect.flatMap((user) => castingStatus(user, data.storyId, data.taskId)))));

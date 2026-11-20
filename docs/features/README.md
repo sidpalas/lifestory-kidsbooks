@@ -48,6 +48,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - [pdf-proof](pdf-proof.md): print-ready PDF proof that matches the editor. `verify proof`.
 
 ### Authoring (operator and authors)
+- [authoring-casting](authoring-casting.md): source page upload, editable casting, approved extraction and a shared
+  plate for multiple characters. `verify e2e -- art-import`.
 - [authoring-parts](authoring-parts.md): tiled part generation, head-only sharing, consistency references and
   mirrored figures (D44). `verify e2e -- parts authoring`.
 - Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.

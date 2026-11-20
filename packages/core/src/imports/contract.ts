@@ -24,6 +24,11 @@ export const ImportSource = Schema.Union([
     box: Rect,
     /** Who to remove, in words the model understands, such as "the little girl in the yellow raincoat". */
     description: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+    /** A cast-page extraction shares one removal edit and one final plate across every figure. */
+    removed: Schema.optionalKey(Schema.String),
+    plate: Schema.optionalKey(Schema.String),
+    removalBox: Schema.optionalKey(Rect),
+    head: Schema.optionalKey(Rect),
   }),
 ]);
 export type ImportSource = typeof ImportSource.Type;

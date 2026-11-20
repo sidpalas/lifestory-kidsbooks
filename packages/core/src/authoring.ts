@@ -18,6 +18,7 @@ import {
   isVariableFont,
   manifestAssets,
   type Page,
+  type FigureLayer,
   type StoryDraft,
   storyAssetKey,
   staticFontIssues,
@@ -38,6 +39,12 @@ import { withStoredAdditions } from "./stories.ts";
 import { type ArtImportRequest, ImportResult, type ImportStatus } from "./imports/contract.ts";
 import { importTask } from "./imports/task.ts";
 import { Jobs } from "./jobs.ts";
+import { Casting, CastingOutcome } from "./imports/casting-contract.ts";
+import { castingTask } from "./imports/casting-task.ts";
+import { DEFAULT_FEATURES, HEAD_ONLY_OPTIONS, NO_PART_OPTIONS, hasFeatures, lookVocabulary, partAxesAt, sameAppearance } from "./looks/vocabulary.ts";
+import { rasterize } from "./looks/recolour.ts";
+import { byLightness, headTop } from "./parts/images.ts";
+import { composeForReview } from "./imports/images.ts";
 
 // ---- Who may author ------------------------------------------------------------
 
@@ -192,7 +199,7 @@ const ownedDraft = Effect.fn("authoring.ownedDraft")(function* (user: SessionUse
   if (!story) return yield* new NotFound({ entity: "story", id: storyId });
   const [draft] = yield* Database.query((db) =>
     db
-      .select({ id: schema.storyVersion.id, version: schema.storyVersion.version, revision: schema.storyVersion.revision, manifest: schema.storyVersion.manifest })
+      .select({ id: schema.storyVersion.id, version: schema.storyVersion.version, revision: schema.storyVersion.revision, manifest: schema.storyVersion.manifest, casting: schema.storyVersion.casting })
       .from(schema.storyVersion)
       .where(and(eq(schema.storyVersion.storyId, storyId), isNull(schema.storyVersion.publishedAt))),
   );
@@ -264,7 +271,7 @@ const draftPagePreview = (storyId: string, version: number, draft: StoryDraft, p
 const draftView = Effect.fn("authoring.draftView")(function* (
   user: SessionUser,
   story: typeof schema.story.$inferSelect,
-  draft: { readonly id: string; readonly version: number; readonly revision: number; readonly manifest: unknown },
+  draft: { readonly id: string; readonly version: number; readonly revision: number; readonly manifest: unknown; readonly casting?: unknown },
 ) {
   const manifest = yield* decodeDraft(draft.manifest);
   const parts = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
@@ -276,6 +283,7 @@ const draftView = Effect.fn("authoring.draftView")(function* (
     version: draft.version,
     revision: draft.revision,
     draft: manifest,
+    casting: Schema.decodeUnknownSync(Casting)(draft.casting ?? []),
     parts,
     pages,
   };
@@ -291,10 +299,14 @@ export const previewDraft = Effect.fn("authoring.previewDraft")(function* (
   storyId: string,
   manifest: StoryDraft,
   looks: Readonly<Record<string, Look>> = {},
+  candidateId?: string,
 ) {
   const { story, draft } = yield* draftOf(user, storyId);
   const parts = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
-  const merged = withGeneratedParts(withoutGeneratedParts(manifest, parts), parts);
+  const candidate = parts.find((p) => p.id === candidateId);
+  // Context review must show the selected take, not an older approved take of the same option.
+  const candidates = candidate ? parts.filter((p) => p.id === candidate.id || p.pageId !== candidate.pageId || p.slotId !== candidate.slotId || p.option !== candidate.option || !sameAppearance({ ...p, features: p.features ?? undefined }, candidate.age, candidate.face, candidate.features ?? DEFAULT_FEATURES)) : parts;
+  const merged = withGeneratedParts(withoutGeneratedParts(manifest, parts), candidates.map((p) => p.id === candidate?.id ? { ...p, status: "pending_review" as const } : p));
   return yield* Effect.forEach(merged.pages, (page) => draftPagePreview(story.id, draft.version, merged, page, looks), { concurrency: 2 });
 });
 
@@ -329,7 +341,7 @@ export const storyVersions = Effect.fn("authoring.storyVersions")(function* (use
 export const saveDraft = Effect.fn("authoring.saveDraft")(function* (
   user: SessionUser,
   storyId: string,
-  input: { readonly revision: number; readonly draft: StoryDraft; readonly title: string; readonly summary: string },
+  input: { readonly revision: number; readonly draft: StoryDraft; readonly title: string; readonly summary: string; readonly casting?: Casting },
 ) {
   const { story, draft } = yield* draftOf(user, storyId);
   const generated = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
@@ -337,9 +349,9 @@ export const saveDraft = Effect.fn("authoring.saveDraft")(function* (
     db.transaction(async (tx) => {
       const rows = await tx
         .update(schema.storyVersion)
-        .set({ manifest: withoutGeneratedParts(input.draft, generated), revision: sql`${schema.storyVersion.revision} + 1` })
+        .set({ manifest: withoutGeneratedParts(input.draft, generated), ...(input.casting ? { casting: input.casting } : {}), revision: sql`${schema.storyVersion.revision} + 1` })
         .where(and(eq(schema.storyVersion.id, draft.id), eq(schema.storyVersion.revision, input.revision), isNull(schema.storyVersion.publishedAt)))
-        .returning({ id: schema.storyVersion.id, version: schema.storyVersion.version, revision: schema.storyVersion.revision, manifest: schema.storyVersion.manifest });
+        .returning({ id: schema.storyVersion.id, version: schema.storyVersion.version, revision: schema.storyVersion.revision, manifest: schema.storyVersion.manifest, casting: schema.storyVersion.casting });
       if (rows.length > 0 && (input.title !== story.title || input.summary !== story.summary)) {
         await tx.update(schema.story).set({ title: input.title, summary: input.summary }).where(eq(schema.story.id, storyId));
       }
@@ -370,17 +382,84 @@ export const requestDraftParts = Effect.fn("authoring.requestParts")(function* (
 });
 
 /** The author's review of a generated part of the draft: approve or reject (reviewPart). */
-export const reviewDraftPart = Effect.fn("authoring.reviewPart")(function* (user: SessionUser, storyId: string, partId: string, decision: PartDecision) {
+export const reviewDraftPart = Effect.fn("authoring.reviewPart")(function* (user: SessionUser, storyId: string, partId: string, decision: PartDecision, reason?: string) {
   const { draft } = yield* draftOf(user, storyId);
   const part = yield* getPart(user.id, partId);
   if (part.storyVersionId !== draft.id) return yield* new NotFound({ entity: "part", id: partId });
-  return yield* reviewPart(user.id, partId, decision);
+  return yield* reviewPart(user.id, partId, decision, reason);
 });
 
 /** The draft's generated parts, for watching them generate. */
 export const listDraftParts = Effect.fn("authoring.listParts")(function* (user: SessionUser, storyId: string) {
   const { draft } = yield* draftOf(user, storyId);
   return yield* listParts(user.id, draft.id);
+});
+
+/** A saved-draft plan, before any paid edits. Only existing, author-accepted bases are used. */
+export const draftPartPlan = Effect.fn("authoring.partPlan")(function* (user: SessionUser, storyId: string) {
+  const { draft } = yield* draftOf(user, storyId);
+  const manifest = yield* decodeDraft(draft.manifest);
+  const generated = yield* listParts(user.id, draft.id).pipe(Effect.orDie);
+  const merged = withGeneratedParts(manifest, generated);
+  const requests: Array<Omit<PartRequest, "storyVersionId">> = [];
+  const blocked: string[] = [];
+  for (const page of merged.pages) for (const figure of page.illustration.layers) {
+    if (figure.kind !== "figure" || figure.showsHead === false) continue;
+    if (page.illustration.layers.filter((f) => f.kind === "figure" && f.slotId === figure.slotId).length !== 1) { blocked.push(`${page.pageId}/${figure.slotId}: repeated role; use Details.`); continue; }
+    for (const base of figure.bases) {
+      const features = hasFeatures(base.age) ? base.features ?? DEFAULT_FEATURES : undefined;
+      const mask = yield* ObjectStorage.use((s) => s.get(storyAssetKey(storyId, draft.version, base.skinMask))).pipe(Effect.orDie);
+      const top = yield* Effect.promise(async () => {
+        const meta = await (await rasterize(mask.body)).metadata();
+        const y = await headTop(mask.body, meta.width!, meta.height!, [0, 0, meta.width!, meta.height!]);
+        return Math.round(y * 1000 / meta.height!);
+      });
+      for (const axis of partAxesAt(base.age)) for (const option of lookVocabulary[axis]) {
+        if (NO_PART_OPTIONS.has(option.id)) continue;
+        if (figure.parts.some((p) => sameAppearance(p, base.age, base.face, features) && p.axis === axis && p.option === option.id)) continue;
+        if (base.features === "features:soft" && HEAD_ONLY_OPTIONS.has(option.id) && figure.bases.some((b) => sameAppearance(b, base.age, base.face, DEFAULT_FEATURES))) continue;
+        const attempts = generated.filter((p) => p.pageId === page.pageId && p.slotId === figure.slotId && sameAppearance({ ...p, features: p.features ?? undefined }, base.age, base.face, features) && p.option === option.id);
+        if (attempts.some((p) => p.status === "generating") || attempts.at(-1)?.status === "rejected") continue;
+        requests.push({ pageId: page.pageId, slotId: figure.slotId, age: base.age, face: base.face,
+          ...(hasFeatures(base.age) ? { features: base.features ?? DEFAULT_FEATURES } : {}), axis, option: option.id,
+          zone: [0, Math.max(0, top - 150), 1000, Math.min(1000, top + (HEAD_ONLY_OPTIONS.has(option.id) ? 450 : 850))],
+          seed: Math.max(0, ...attempts.map((p) => p.seed)) + 1,
+        });
+      }
+    }
+    if (!figure.bases.length) blocked.push(`${page.pageId}/${figure.slotId}: approve an extracted base first.`);
+  }
+  return { requests, blocked, estimateUsd: Math.round(requests.length * 0.049 * 100) / 100 };
+});
+
+/** Uploaded parts get the same light/dark review as generated ones, cached under the story version. */
+export const draftUploadReview = Effect.fn("authoring.uploadReview")(function* (user: SessionUser, storyId: string, pageId: string, slotId: string, asset: string) {
+  const { draft } = yield* draftOf(user, storyId);
+  const manifest = yield* decodeDraft(draft.manifest);
+  const figure = manifest.pages.find((p) => p.pageId === pageId)?.illustration.layers.find((f): f is FigureLayer => f.kind === "figure" && f.slotId === slotId);
+  const part = figure?.parts.find((p) => p.asset === asset);
+  const base = figure?.bases.find((b) => part && sameAppearance(b, part.age, part.face, hasFeatures(part.age) ? part.features ?? DEFAULT_FEATURES : undefined));
+  if (!figure || !part || !base) return yield* new NotFound({ entity: "uploaded part", id: asset });
+  const parts = figure.parts.filter((p) => sameAppearance(p, part.age, part.face, hasFeatures(part.age) ? part.features ?? DEFAULT_FEATURES : undefined) && p.axis === part.axis && p.option === part.option);
+  const hash = createHash("sha256").update(JSON.stringify(["transparent-v1", base, parts, manifest.palettes])).digest("hex").slice(0, 24);
+  const keys = { light: storyAssetKey(storyId, draft.version, `parts/upload-${hash}/light.png`), dark: storyAssetKey(storyId, draft.version, `parts/upload-${hash}/dark.png`) };
+  const storage = yield* ObjectStorage;
+  const cached = yield* storage.get(keys.dark).pipe(Effect.option);
+  if (cached._tag === "Some") return keys;
+  const read = (path: string) => storage.get(storyAssetKey(storyId, draft.version, path)).pipe(Effect.map((o) => o.body), Effect.orDie);
+  const png = yield* read(base.asset);
+  const shape = yield* Effect.promise(async () => (await rasterize(png)).metadata());
+  const w = Math.min(500, shape.width!); const h = Math.round(shape.height! * w / shape.width!);
+  const inputs = { base: png, skinMask: yield* read(base.skinMask), overlay: base.overlay ? yield* read(base.overlay) : null,
+    occluder: base.occluder ? { asset: yield* read(base.occluder.asset), ...(base.occluder.skinMask ? { skinMask: yield* read(base.occluder.skinMask) } : {}) } : null,
+    parts: yield* Effect.forEach(parts, (p) => read(p.asset).pipe(Effect.map((bytes) => ({ png: bytes, at: p.at, palette: p.palette })))),
+  };
+  const skins = byLightness(manifest.palettes.skin); const hairs = byLightness(manifest.palettes.hairColour);
+  for (const [side, skin, hair] of [["light", skins[0]!, hairs.at(-1)!], ["dark", skins.at(-1)!, hairs[0]!]] as const) {
+    const bytes = yield* Effect.promise(() => composeForReview(inputs, { skin: manifest.palettes.skin[skin]!, hair: manifest.palettes.hairColour[hair]! }, w, h));
+    yield* storage.put(keys[side], bytes, "image/png").pipe(Effect.orDie);
+  }
+  return keys;
 });
 
 // ---- Uploads -------------------------------------------------------------------
@@ -417,9 +496,13 @@ export const uploadDraftAsset = Effect.fn("authoring.uploadAsset")(function* (
     return yield* new InvalidInput({ message: `${input.fileName} is a variable font, which prints badly; upload one static file per weight.` });
   }
   const stem = input.fileName.slice(0, -extension.length).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "file";
-  const hash = createHash("sha256").update(input.body).digest("hex").slice(0, 12);
-  const asset = `${input.folder}/${stem}-${hash}${extension === ".jpeg" ? ".jpg" : extension}`;
-  yield* ObjectStorage.use((storage) => storage.put(storyAssetKey(storyId, draft.version, asset), input.body, type.contentType));
+  // Browser image display honors EXIF orientation; the extraction rasterizer does not. Casting uses one
+  // oriented, metadata-free source so detected boxes, the browser's boxes and extraction share coordinates.
+  const castingSource = input.folder.endsWith("/casting");
+  const body = castingSource ? yield* Effect.tryPromise({ try: async () => (await rasterize(input.body)).rotate().png().toBuffer(), catch: () => new InvalidInput({ message: "Couldn't read this page image. Upload a PNG, JPEG or WebP image." }) }) : input.body;
+  const hash = createHash("sha256").update(body).digest("hex").slice(0, 12);
+  const asset = `${input.folder}/${stem}-${hash}${castingSource ? ".png" : extension === ".jpeg" ? ".jpg" : extension}`;
+  yield* ObjectStorage.use((storage) => storage.put(storyAssetKey(storyId, draft.version, asset), body, castingSource ? "image/png" : type.contentType));
   return { asset };
 });
 
@@ -552,7 +635,7 @@ export const requestArtImport = Effect.fn("authoring.requestImport")(function* (
   const { draft } = yield* draftOf(user, storyId);
   if (!ID.test(request.pageId) || !ID.test(request.slotId)) return yield* new InvalidInput({ message: "Pick a page and a role." });
   const assets =
-    request.kind === "derive" ? [request.from] : request.source.kind === "flat" ? [request.source.asset] : request.source.layers.map((layer) => layer.asset);
+    request.kind === "derive" ? [request.from] : request.source.kind === "flat" ? [request.source.asset, ...[request.source.removed, request.source.plate].filter((s): s is string => !!s)] : request.source.layers.map((layer) => layer.asset);
   if (assets.some((asset) => !IMPORT_ASSET.test(asset))) return yield* new InvalidInput({ message: "Upload the art to this draft first." });
   const key = createHash("sha256").update(JSON.stringify([draft.id, request])).digest("hex").slice(0, 32);
   const { taskId } = yield* Jobs.use((jobs) =>
@@ -575,4 +658,37 @@ export const artImportStatus = Effect.fn("authoring.importStatus")(function* (us
   return "result" in outcome
     ? ({ taskId, state: "done", result: outcome.result, error: null } satisfies ImportStatus)
     : ({ taskId, state: "failed", result: null, error: outcome.error } satisfies ImportStatus);
+});
+
+/** Runs only saved casting, so editing a box requires another save and approval before extraction. */
+export const requestCasting = Effect.fn("authoring.casting")(function* (user: SessionUser, storyId: string, pageId: string, mode: "detect" | "extract", requestId: string) {
+  const { draft } = yield* draftOf(user, storyId);
+  const casting = Schema.decodeUnknownSync(Casting)(draft.casting);
+  const page = casting.find((p) => p.pageId === pageId);
+  const manifest = yield* decodeDraft(draft.manifest);
+  if (!page || !ID.test(page.pageId) || !manifest.pages.some((p) => p.pageId === pageId) || !IMPORT_ASSET.test(page.asset)) return yield* new InvalidInput({ message: "Save an uploaded source page first." });
+  if (!manifest.characterSlots.length) return yield* new InvalidInput({ message: "Add the story's roles first." });
+  if (mode === "extract") {
+    const selected = page.figures.filter((f) => !f.ignored);
+    if (!page.approved || !selected.length) return yield* new InvalidInput({ message: "Approve casting before extracting characters." });
+    if (new Set(selected.map((f) => f.slotId)).size !== selected.length) return yield* new InvalidInput({ message: "A role can appear once per page in this slice. Ignore duplicates or use the manual editor." });
+    for (const f of selected) {
+      const role = manifest.characterSlots.find((r) => r.slotId === f.slotId);
+      if (!role || !role.ages.includes(f.age) || !f.description.trim()) return yield* new InvalidInput({ message: "Assign every selected character a role, an accepted age, and a description." });
+      if (f.hair !== null && (f.head[0] < f.box[0] || f.head[1] < f.box[1] || f.head[2] > f.box[2] || f.head[3] > f.box[3])) return yield* new InvalidInput({ message: "Keep each head box inside its whole-figure box before extraction." });
+      if (selected.some((other) => other.id !== f.id && Math.min(f.box[2], other.box[2]) > Math.max(f.box[0], other.box[0]) && Math.min(f.box[3], other.box[3]) > Math.max(f.box[1], other.box[1]))) return yield* new InvalidInput({ message: "Overlapping figure boxes need the manual layered import in Pages in this slice. Correct the boxes if the people are separate." });
+    }
+  }
+  const hash = createHash("sha256").update(JSON.stringify([draft.id, page.asset, page.figures, manifest.characterSlots, mode, requestId])).digest("hex");
+  return yield* Jobs.use((jobs) => jobs.spawn(castingTask, { storyId, version: draft.version, page, roles: manifest.characterSlots, mode }, { idempotencyKey: `casting:${hash}` })).pipe(Effect.orDie);
+});
+
+export const castingStatus = Effect.fn("authoring.castingStatus")(function* (user: SessionUser, storyId: string, taskId: string) {
+  yield* draftOf(user, storyId);
+  const task = yield* Jobs.use((j) => j.status(taskId)).pipe(Effect.mapError(() => new NotFound({ entity: "casting", id: taskId })));
+  if (task.state === "failed" || task.state === "cancelled") return { state: "failed" as const, outcome: null, error: "Casting stopped. You can correct boxes manually or try again." };
+  if (task.state !== "completed") return { state: "working" as const, outcome: null, error: null };
+  const outcome = yield* Schema.decodeUnknownEffect(CastingOutcome)(task.result).pipe(Effect.orDie);
+  if (outcome.storyId !== storyId) return yield* new NotFound({ entity: "casting", id: taskId });
+  return { state: outcome.error ? "failed" as const : "done" as const, outcome, error: outcome.error };
 });

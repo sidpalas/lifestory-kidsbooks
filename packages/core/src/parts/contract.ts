@@ -64,6 +64,7 @@ export const StoryPart = Schema.Struct({
   error: Schema.NullOr(Schema.String),
   reviewedBy: Schema.NullOr(Schema.String),
   reviewedAt: Schema.NullOr(Schema.String),
+  reviewReason: Schema.NullOr(Schema.String),
   createdAt: Schema.String,
 });
 export type StoryPart = typeof StoryPart.Type;

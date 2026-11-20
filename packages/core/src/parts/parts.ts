@@ -170,6 +170,7 @@ const partView = (row: PartRow, storyId: string, version: number, generation: { 
     error: row.error,
     reviewedBy: row.reviewedBy,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    reviewReason: row.reviewReason,
     createdAt: row.createdAt.toISOString(),
   };
 };
@@ -353,7 +354,7 @@ export const listParts = Effect.fn("parts.list")(function* (userId: string, stor
  * The illustrator's review: approve or reject a generated part. A decision can change while the version is a draft;
  * once it's published its parts are fixed. Fails with InvalidInput for a part still generating or failed.
  */
-export const reviewPart = Effect.fn("parts.review")(function* (userId: string, partId: string, decision: PartDecision) {
+export const reviewPart = Effect.fn("parts.review")(function* (userId: string, partId: string, decision: PartDecision, reason?: string) {
   const part = yield* getPart(userId, partId);
   const version = yield* authoredVersion(userId, part.storyVersionId);
   if (version.publishedAt) return yield* new InvalidInput({ message: "this version is published; its parts can't change" });
@@ -362,7 +363,7 @@ export const reviewPart = Effect.fn("parts.review")(function* (userId: string, p
   yield* Database.query((db) =>
     db
       .update(schema.storyPart)
-      .set({ status: decision === "approve" ? "approved" : "rejected", reviewedBy: userId, reviewedAt: new Date() })
+      .set({ status: decision === "approve" ? "approved" : "rejected", reviewedBy: userId, reviewedAt: new Date(), reviewReason: decision === "reject" ? reason ?? null : null })
       .where(eq(schema.storyPart.id, partId)),
   );
   return yield* getPart(userId, partId);
