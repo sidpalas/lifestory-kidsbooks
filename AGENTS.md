@@ -24,7 +24,8 @@ evidence and a proposal, don't switch on your own.
 
 Tool versions (Node, pnpm) are pinned in `mise.toml`, and every command is a mise task: `mise tasks` lists them,
 `mise run <task>` runs one with `.env` loaded and `node_modules/.bin` on `PATH`. In an orb, `mise`, `node`, and
-`pnpm` are already on `PATH`. Run `mise run check` and `mise run test:e2e` before handing work back.
+`pnpm` are already on `PATH`. Before handing work back, run `mise run check`, plus `mise run test:e2e` for any change
+to app behaviour; docs-only and other small changes that can't affect a running app need only `check`.
 Times measured on an `a1.small` orb.
 
 <!-- oxfmt-ignore -->
@@ -252,8 +253,32 @@ and trusts `http://localhost:$PORT` too, so curl and Playwright on localhost wor
 
 Production is the Railway project in README "Deploying". Change its services and variables in `.railway/railway.ts`
 (`railway config plan`, then `apply`), never in the dashboard or with `railway.json`/`railway.toml` (deprecated).
-Deploy only when asked, and never run `db:seed` or enable `/__dev` against it.
+A push to `main` deploys (below); deploy any other way (`railway config apply`, `railway up`, "Run workflow") only
+when asked, and never run `db:seed` or enable `/__dev` against it.
 
-### Commits
+### Commits and pushing
 
-Never push to `main` without the operator's explicit approval in the thread.
+Work lands as commits on `main`, without pull requests. Pushing deploys to production once CI passes, so judge a
+change by what it could do to the live site and its data, not by its size.
+
+Sid gives standing approval, for this repository only, to commit and push routine, low-risk work to `main` once it
+is verified as above (`mise run check` alone is enough for docs-only and other small changes that can't affect a
+running app): bug fixes, small features, UI and copy changes, tests, docs, and refactors that keep behaviour.
+Don't ask again for those; say what you pushed in your report, then watch CI and the deploy (`deploy:check`) and fix
+or revert a failure you caused.
+
+Stop and ask Sid for review before pushing when a change is a one-way door or a mistake would be costly to undo:
+
+- a migration that drops, rewrites, or backfills existing data, or anything else that destroys production data or
+  files;
+- auth, sessions, roles and permissions, or access to children's and families' data and photos;
+- a stored format or commitment others depend on (book format, story versions, object keys, approved proofs and
+  their PDFs), or a public interface such as URLs, webhooks, or emails sent to real people;
+- new recurring vendor costs or real-provider spend beyond a few dollars, new dependencies of consequence, or
+  changes to Railway services and variables;
+- a large or cross-cutting change, a change to a decision in `docs/decisions.md`, or one your checks couldn't cover.
+
+These are prompts for judgment, not automatic blockers: an additive migration or a fix inside one of these areas
+that your tests cover can ship like any other change; ask when you're unsure. This approval covers committing and
+pushing code here and the deploy that follows; it doesn't approve other external actions (production database
+writes, `railway config apply`, spending, messaging people), which still need a request in the thread.
