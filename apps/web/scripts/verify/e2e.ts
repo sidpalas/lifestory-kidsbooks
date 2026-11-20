@@ -4,7 +4,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type { Report } from "./report.ts";
-import { checkPrintOrigin, readHealth, repoRoot } from "./stack.ts";
+import { liveWorkerBeats, readHealth, repoRoot } from "./stack.ts";
 
 const CGROUP = "/sys/fs/cgroup/amp.slice/amp-workload.slice";
 const GiB = 1024 ** 3;
@@ -34,8 +34,23 @@ export const e2e = async (report: Report, options: { port: number; ci: boolean; 
   const webUp = (await readHealth(origin)) !== null;
   if (options.ci && webUp) report.check("port", false, `CI=1 starts a fresh web app, but :${port} is taken (the web service?): add --port 3100`, { fatal: true });
   report.check("port", true, `${webUp ? "reusing the web app on" : "Playwright starts a web app on"} ${origin}; its worker prints from there (PRINT_APP_URL)`);
-  // Our own worker doesn't exist yet: every live worker is someone else's.
-  await checkPrintOrigin("dev", origin, [], report);
+  // Our own worker doesn't exist yet: every live worker is someone else's, and would take the tests' tasks with its
+  // own IMAGE_PROVIDER and print origin (Playwright's global setup refuses too; this says so before anything starts).
+  // A worker that just stopped may not have deleted its heartbeat (`node --watch` under systemd dies mid-shutdown):
+  // wait until its beat goes stale, but fail as soon as another beat shows it is alive.
+  let others = liveWorkerBeats();
+  const seen = new Map(others.map((worker) => [worker.id, worker.beatAt]));
+  for (const deadline = Date.now() + 40_000; others.length > 0 && Date.now() < deadline; others = liveWorkerBeats()) {
+    if (others.some((worker) => seen.has(worker.id) && seen.get(worker.id) !== worker.beatAt)) break;
+    for (const worker of others) if (!seen.has(worker.id)) seen.set(worker.id, worker.beatAt);
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  report.check(
+    "other workers",
+    others.length === 0,
+    others.length === 0 ? "none share the database" : `${others.length} (${others.map((worker) => worker.version).join(", ")}) share the database and would take the tests' tasks: amp orb service stop worker`,
+    { fatal: others.length > 0 },
+  );
   report.check("agent-browser", !running("agent-browser"), running("agent-browser") ? "agent-browser is running; agent-browser close first (AGENTS.md, \"Orb size\": not measured alongside)" : "closed", { fatal: running("agent-browser") });
 
   const measure = existsSync(`${CGROUP}/memory.stat`);

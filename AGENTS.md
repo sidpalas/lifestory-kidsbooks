@@ -29,11 +29,11 @@ Times measured on an `a1.small` orb.
 | Command | What | Time |
 | --- | --- | --- |
 | `mise run check` | `typecheck`, `lint`, and `test` in parallel | ~18–24 s |
-| `mise run typecheck` | `tsc` (TypeScript 7) over every package | ~15 s |
+| `mise run typecheck` | `tsc` (TypeScript 7) over every package, one checker each (`--checkers 1`: half the memory, no slower) | ~7–15 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`); most of it is importing modules | ~12 s |
 | `mise run verify -- <command>` | Drive the real app and keep evidence (`docs/features`): `picker` ~20 s, `proof` ~30 s, `looks` ~25 s in dev; `--config image` first builds both images, minutes on `a1.small` (`--no-build` reuses them) | see each |
-| `mise run test:e2e` | Playwright end-to-end tests (25; one worker under 6 GB of memory); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `art-import.spec.ts` imports a PSD and a flat page (D42; with `IMAGE_PROVIDER=openai` it runs on real edits, ~US$0.47), `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker | ~2.8–3.6 min for all on `a1.small` (`CI=1`, cold Vite cache), ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run test:e2e` | Playwright end-to-end tests (28; one test worker where the memory cap is under 6 GiB); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `art-import.spec.ts` imports a PSD and a flat page (D42; with `IMAGE_PROVIDER=openai` it runs on real edits, ~US$0.47), `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker, and refuses to run while any other worker beats on the database (the `worker` service, a preview worker with real providers): `amp orb service stop worker` first | 28 tests (`CI=1`, cold Vite cache): 5.5 min on `a1.medium`, 7.2 min capped to 2 CPUs and 3 GiB (2026-11-20; 21 tests took 3.4–3.6 min on `a1.small`); ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~13 s warm, most of it `db:seed`; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1–2 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~4–7 s |
@@ -68,36 +68,53 @@ cap after any big run, and `memory.peak` can't be reset on the orb's kernel (6.1
 while sleep 1; do awk '/^(anon|shmem|kernel) /{s+=$2} END{print s/2^20 " MiB"}' /sys/fs/cgroup/amp.slice/amp-workload.slice/memory.stat; done
 ```
 
-Measured 2026-11-19, full `CI=1 mise run test:e2e` runs (21 tests, one Playwright worker, cold Vite cache, ~3 min).
-Memory in GiB (1 GiB = 1024 MiB); the per-process rows are approximate:
+Measured 2026-11-20 on `a1.medium` with the workload slice set to a small-equivalent 3 GiB and 2 CPUs
+(`sudo systemctl set-property --runtime amp-workload.slice MemoryMax=3G CPUQuota=200%`; restore with 6G and `CPUQuota=`),
+full suite (28 tests, one Playwright worker, cold Vite cache). Memory in GiB (1 GiB = 1024 MiB) from the sampler
+above; the per-process rows are PSS at the peak, approximate:
 
-| | Before | After |
+| | Before (`4086b47`, no cap) | After (3 GiB / 2 CPU cap) |
 | --- | --- | --- |
-| Peak (anon + shmem + kernel in the cap) | 3 GiB: killed ~70 s in | **2.14–2.59 GiB** over 7 runs (0.4–0.86 GiB to spare) |
-| Same run next to the `web` and `worker` services (`mise run test:e2e`, reuses `web`) | — | **2.46–2.58 GiB** over 2 runs (~0.4 GiB to spare), 21 passed |
-| Web dev server (`vite dev`) | 1.21 | 0.76 |
-| SeaweedFS | 0.29–0.34 | 0.17 |
-| Playwright runner + its test worker | 0.50 | 0.40 |
-| Test browser / worker's print Chromium / worker | — | ~0.47 / ~0.33–0.41 / ~0.37 |
+| `CI=1` e2e peak (anon + shmem + kernel) | **2.96 GiB**: 0.04 GiB short of a1.small's cap; field runs 2.72–2.92 GiB and OOM kills | **2.58–2.70 GiB**, 28 passed, no retries, 7.2 min (2 CPUs); after `656e789`, **2.56–2.63 GiB**, 32 passed, 8.4 min |
+| e2e next to the `web` service (reused; `worker` stopped) | killed in the field next to both services | **2.47–2.52 GiB**, 28 passed, 6.5 min; verify waited out the stopped worker's beat |
+| `mise run check` during a 40-part round, with both services up | killed 3 times in the field | **2.08 GiB**, check 49 s, 40 parts done |
+| Web dev server (`vite dev`) | 1.12 | 0.86 |
+| Test browser / Playwright runner + test worker | 0.70 / 0.47 | 0.70 / 0.38 |
+| Worker / its print Chromium | 0.47 / 0.20 | 0.21 / 0.30 |
+| Worker after a 40-part round (RSS high-water mark, alone) | 0.79–0.89 GB | 0.58–0.63 GB |
+| `tsc -p apps/web` | 1.24 GB | 0.66 GB |
 
 What took the memory, and what keeps it down now (don't undo these without measuring):
+- **glibc heap fragmentation from sharp** (worker and web server: recolouring, part cut-outs, imports): Node's V8 heap
+  stayed at 50–200 MB through a 40-part round while RSS reached 0.9 GB, and it didn't come back. `mise.toml` sets
+  `MALLOC_MMAP_THRESHOLD_=131072` for every task, so large buffers are mmapped and returned when freed. Not it: the
+  worker's task concurrency (1, 2, and 4 peaked alike), `--max-old-space-size` (the heap isn't what grows),
+  `VIPS_CONCURRENCY=1`; `MALLOC_ARENA_MAX=2` and jemalloc helped less.
+- **TypeScript 7's four checkers per project**, each with its own copy of the program's types: `typecheck` passes
+  `--checkers 1` (TypeScript 7 is already the native, low-memory compiler; there's no lighter full type checker).
+- **Two Playwright workers on a1.medium-sized RAM under a 3 GiB cap**: `os.totalmem()` reports the machine, not the
+  cap, so `playwright.config.ts` reads the cgroup's `memory.max` to pick one worker.
 - **Vite pre-bundling inside the dev server**: its dependency scan followed server functions into `@lifestory/core`
   and pre-bundled playwright-core, sharp, pg, and the S3 SDK for the browser, on the first page view, inside the
   server, which kept ~0.5 GB for good. `vite.config.ts` excludes `@lifestory/core` from `optimizeDeps`, and `dev:web`
   runs `vite optimize` in its own short-lived process first.
 - **Contexts the specs never closed** (`browser.newContext()` lives as long as the test browser, i.e. the whole run):
-  `milestone1.spec.ts` and `authoring.spec.ts` close theirs. Close any context you open.
+  close any context you open.
 - **`@lifestory/core` in the Playwright runner** (~0.2 GB, held for the run because the runner imports every spec to
   list tests): specs that need it `await import("@lifestory/core")` inside the test.
 - **SeaweedFS**: `GOMEMLIMIT` in `compose.yaml`.
+- **A second worker next to the suite** (the `worker` service, a preview worker): 0.2–0.9 GB more, and it takes the
+  tests' tasks with its own provider (one run billed 10 OpenAI edits that way). The e2e global setup refuses to start
+  while another worker beats; a worker deletes its heartbeat when it stops.
 - Not the cause: sharp's cache and concurrency (turning both off changed a 4-layer recolour by <10 MB) and Postgres
   (~0.05 GB).
 
-`playwright.config.ts` runs one test worker on machines under 6 GB; two workers' proof renders don't fit.
+`playwright.config.ts` runs one test worker where the cap is under 6 GiB; two workers' proof renders don't fit.
 
-- **`a1.small`**: docs, edits, `mise run check`, and the whole e2e suite (`CI=1` included, also next to the running
-  services) in one run. Run e2e and `mise run check` one after the other, not in parallel, and close agent-browser
-  (`agent-browser close`) before running e2e: neither was measured alongside it.
+- **`a1.small`**: docs, edits, `mise run check` (also during a part round next to both services), and the whole e2e
+  suite (`CI=1`, or next to the `web` service) in one run, with ~0.3 GiB to spare at the e2e peak. Run e2e and
+  `mise run check` one after the other, not in parallel, and close agent-browser (`agent-browser close`) before
+  running e2e: neither was measured alongside it.
 - **`a1.medium`** (4 vCPU, 8 GB): anything that runs the full stack plus browsers and checks at once, such as UI
   verification while e2e or typecheck runs.
 - An orb can't be resized while it runs. To verify on a bigger machine, start a new thread with a larger size;

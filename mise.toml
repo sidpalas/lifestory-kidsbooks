@@ -13,6 +13,11 @@ pnpm = "12.0.0"
 _.file = ".env"
 # Workspace binaries (tsc, oxlint, vitest, playwright) for task commands.
 _.path = ["{{config_root}}/node_modules/.bin"]
+# glibc serves allocations of 128 KiB and up (sharp's pixel buffers, Node's large Buffers) with mmap, returned to the
+# OS when freed, instead of heap arenas that fragment and stay resident. A 40-part round on the worker peaked at
+# 0.79–0.89 GB RSS without it, 0.58–0.63 GB with it, in the same time (AGENTS.md, "Orb size"). Without the setting,
+# glibc raises the threshold by itself up to 32 MiB after the first large free, which is what kept the memory.
+MALLOC_MMAP_THRESHOLD_ = "131072"
 
 # ---- Setup and infrastructure -------------------------------------------------
 
@@ -74,7 +79,9 @@ run = ["mise run infra:up", "mise run db:migrate", "mise run db:seed", "mise run
 
 [tasks.typecheck]
 description = "TypeScript over every package"
-run = "tsc -p packages/db && tsc -p packages/core && tsc -p apps/worker && tsc -p apps/web"
+# One checker per project, not TypeScript 7's default of four, each with its own copy of the checker's state: apps/web
+# peaks at 0.66 GB instead of 1.2 GB, and the whole task took 7.4 s instead of 8.9 s on 4 vCPU (AGENTS.md, "Orb size").
+run = "tsc -p packages/db --checkers 1 && tsc -p packages/core --checkers 1 && tsc -p apps/worker --checkers 1 && tsc -p apps/web --checkers 1"
 
 [tasks.lint]
 description = "oxlint; warnings fail"

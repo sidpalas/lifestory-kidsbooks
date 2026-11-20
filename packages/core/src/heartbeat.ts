@@ -1,7 +1,7 @@
 // Worker liveness for /api/health and the post-deploy check: each worker process upserts a row every
 // HEARTBEAT_INTERVAL_MS with the commit it runs; health lists the workers that beat recently.
 import { schema } from "@lifestory/db";
-import { desc, gt, lt, sql } from "drizzle-orm";
+import { desc, eq, gt, lt, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { AppConfig } from "./config.ts";
 import { Database } from "./database.ts";
@@ -20,6 +20,11 @@ export const beatWorker = Effect.fn("worker.beat")(function* (id: string) {
       .onConflictDoUpdate({ target: schema.workerHeartbeat.id, set: { beatAt: sql`now()` } });
     await db.delete(schema.workerHeartbeat).where(lt(schema.workerHeartbeat.beatAt, sql`now() - interval '1 day'`));
   });
+});
+
+/** Forgets worker process `id` as it stops, so health and the e2e guard (apps/web/e2e/global-setup.ts) stop counting it at once. */
+export const forgetWorker = Effect.fn("worker.forget")(function* (id: string) {
+  yield* Database.query((db) => db.delete(schema.workerHeartbeat).where(eq(schema.workerHeartbeat.id, id)));
 });
 
 /** Workers that beat within the last 90 seconds, most recent first. */

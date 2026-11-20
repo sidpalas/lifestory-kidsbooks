@@ -19,7 +19,9 @@ The CLI: `mise run verify -- <command> [--config dev|image|live]`. `mise run ver
 Every run uses **one origin**: the web app it drives and the worker that prints proofs from it. `doctor` (run first by
 every command) fails before driving when another worker sharing the database would print from an origin where nothing
 answers, when `.env` sets `PORT`, `PRINT_APP_URL`, or `BETTER_AUTH_URL`, or when the image config shares the database
-with a dev worker. Stop the orb's worker with `amp orb service stop worker` when it says so.
+with a dev worker. `e2e` (and Playwright itself, in its global setup) fails when any other worker beats on the
+database: it would take the tests' tasks with its own `IMAGE_PROVIDER` and print origin, so a preview worker on real
+providers would bill the tests' edits. Stop the orb's worker with `amp orb service stop worker` when it says so.
 
 ## Evidence
 
@@ -57,4 +59,4 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.
 
 ### Whole suite
-- `verify e2e [--ci] [-- <spec>]`: Playwright on one port with peak memory against the orb's 3 GiB cap.
+- `verify e2e [--ci] [-- <spec>]`: Playwright on one port with peak memory against the orb's cap (3 GiB on a1.small); fails first when another worker shares the database.

@@ -144,6 +144,16 @@ export const liveWorkerVersions = () =>
     .split("\n")
     .filter(Boolean);
 
+/** The same workers with their IDs and last beats, to tell a live worker (its beat advances) from a stopped one. */
+export const liveWorkerBeats = () =>
+  psql("select id, coalesce(version, 'none'), beat_at from worker_heartbeat where beat_at > now() - interval '35 seconds'")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [id, version, beatAt] = line.split("|") as [string, string, string];
+      return { id, version, beatAt };
+    });
+
 /** After stopping a worker this run started, drop its heartbeat so the next run doesn't count it. */
 const forgetWorker = (version: string) => void psql(`delete from worker_heartbeat where version = '${version.replace(/'/g, "")}'`);
 

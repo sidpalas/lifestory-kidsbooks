@@ -62,7 +62,8 @@ mise run test:e2e   # Playwright; needs the stack's Postgres and SeaweedFS runni
 mise run test:e2e -- milestone1   # only the walk through the whole milestone 1 slice
 ```
 
-`test:e2e` starts its own worker, and a web app unless one is already on :3000. Set `E2E_SCREENSHOTS=<dir>` to keep
+`test:e2e` starts its own worker, and a web app unless one is already on :3000. It refuses to start while another
+worker beats on the same database, since that worker would take the tests' tasks with its own provider and origin. Set `E2E_SCREENSHOTS=<dir>` to keep
 screenshots of the picker and the editor and the downloaded proof PDF.
 
 CI (`.github/workflows/ci.yml`) runs the same mise tasks.

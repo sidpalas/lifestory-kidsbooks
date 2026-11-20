@@ -2,6 +2,7 @@
 // through the shared server runtime.
 import {
   beatWorker,
+  forgetWorker,
   HEARTBEAT_INTERVAL_MS,
   Jobs,
   makeServerRuntime,
@@ -53,6 +54,9 @@ const shutdown = async (signal: string) => {
   console.log(`worker stopping (${signal})`);
   clearInterval(sweepTimer);
   clearInterval(beatTimer);
+  // First, while the process surely lives (under `node --watch`, systemd kills it once the watcher exits): a stopped
+  // worker stops counting at once, and the e2e tests refuse to run next to another worker (e2e/global-setup.ts).
+  await runtime.runPromise(forgetWorker(workerID)).catch((error) => console.error("worker heartbeat cleanup failed", error));
   await worker.close();
   await runtime.dispose();
   process.exit(0);
