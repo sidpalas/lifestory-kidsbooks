@@ -75,7 +75,7 @@ above; the per-process rows are PSS at the peak, approximate:
 
 | | Before (`4086b47`, no cap) | After (3 GiB / 2 CPU cap) |
 | --- | --- | --- |
-| `CI=1` e2e peak (anon + shmem + kernel) | **2.96 GiB**: 0.04 GiB short of a1.small's cap; field runs 2.72–2.92 GiB and OOM kills | **2.58–2.70 GiB**, 28 passed, no retries, 7.2 min (2 CPUs); after `656e789`, **2.56–2.63 GiB**, 32 passed, 8.4 min |
+| `CI=1` e2e peak (anon + shmem + kernel) | **2.96 GiB**: 0.04 GiB short of a1.small's cap; field runs 2.72–2.92 GiB and OOM kills | **2.58–2.70 GiB**, 28 passed, no retries, 7.2 min (2 CPUs); after `656e789`, **2.56–2.63 GiB**, 32 passed, 8.4 min; on a real `a1.small` at `5372474` (`verify -- e2e --ci`), **2.58 GiB**, 32 passed, no retries, 0 OOM kills, 9.0 min |
 | e2e next to the `web` service (reused; `worker` stopped) | killed in the field next to both services | **2.47–2.52 GiB**, 28 passed, 6.5 min; verify waited out the stopped worker's beat |
 | `mise run check` during a 40-part round, with both services up | killed 3 times in the field | **2.08 GiB**, check 49 s, 40 parts done |
 | Web dev server (`vite dev`) | 1.12 | 0.86 |
@@ -111,12 +111,12 @@ What took the memory, and what keeps it down now (don't undo these without measu
 
 `playwright.config.ts` runs one test worker where the cap is under 6 GiB; two workers' proof renders don't fit.
 
-- **`a1.small`**: docs, edits, `mise run check` (also during a part round next to both services), and the whole e2e
-  suite (`CI=1`, or next to the `web` service) in one run, with ~0.3 GiB to spare at the e2e peak. Run e2e and
-  `mise run check` one after the other, not in parallel, and close agent-browser (`agent-browser close`) before
-  running e2e: neither was measured alongside it.
-- **`a1.medium`** (4 vCPU, 8 GB): anything that runs the full stack plus browsers and checks at once, such as UI
-  verification while e2e or typecheck runs.
+- **`a1.small`** (the project default): docs, edits, `mise run check` (also during a part round next to both
+  services), and the whole e2e suite (`CI=1`, or next to the `web` service) in one run, with ~0.4 GiB to spare at
+  the e2e peak. Run e2e and `mise run check` one after the other, not in parallel, and close agent-browser
+  (`agent-browser close`) before running e2e: neither was measured alongside it.
+- **`a1.medium`** (4 vCPU, 8 GB): use it at your discretion for larger tasks, such as anything that runs the full
+  stack plus browsers and checks at once (UI verification while e2e or typecheck runs) or needs a second worker.
 - An orb can't be resized while it runs. To verify on a bigger machine, start a new thread with a larger size;
   it starts from the base branch, so push the work to a branch first.
 
