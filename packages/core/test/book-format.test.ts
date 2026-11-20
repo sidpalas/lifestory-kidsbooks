@@ -65,8 +65,10 @@ describe("StoryManifest", () => {
     const stored = Schema.decodeUnknownSync(StoryManifest)(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8")));
     const manifest = Effect.runSync(mergeAdditions(stored, [1, 2].map((revision) => JSON.parse(readFileSync(new URL(`additions/${revision}.json`, dir), "utf8")))));
     expect(unapprovedParts(manifest)).toEqual([]);
-    // Revision 2 completes D43 on every pose, not only the options that predate the version.
-    expect(uncoveredOptions(manifest)).toEqual([]);
+    // Revision 2 completes D43 on every pose, not only the options that predate the version. D51's young hairstyles
+    // came later, for the young-child hero only (bald needs no part), and wait for an addition (D41).
+    expect(uncoveredOptions(manifest)).toEqual(["hair:wispy", "hair:soft-curls", "hair:sprout", "hair:puffs"]);
+    expect(vocabularyGaps(manifest, new Date("2026-11-20T00:00:00Z"))).toEqual([]);
     expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
     expect(manifestAssets(manifest).filter((asset) => !existsSync(new URL(asset, dir)))).toEqual([]);
   });
@@ -91,12 +93,20 @@ describe("StoryManifest", () => {
     ["a base for an age the role doesn't accept", (m: any) => (m.pages[0].illustration.layers[1].bases[0].age = "adult"), `the figure doesn't draw "adult"`],
     ["a base for another age than the figure's pinned one", (m: any) => (m.pages[0].illustration.layers[1].age = "toddler"), `the figure doesn't draw "young-child"`],
     [
-      "a hairstyle part at an age that has none",
+      "a glasses part at an age that has none",
       (m: any) => {
         m.characterSlots[0].ages.push("baby");
-        m.pages[0].illustration.layers[1].parts[0].age = "baby";
+        m.pages[0].illustration.layers[1].parts.find((part: any) => part.axis === "glasses").age = "baby";
       },
-      `"baby" has no hair parts`,
+      `"baby" has no glasses parts`,
+    ],
+    [
+      "a hairstyle part at an age that doesn't offer it",
+      (m: any) => {
+        m.characterSlots[0].ages.push("baby");
+        Object.assign(m.pages[0].illustration.layers[1].parts.find((part: any) => part.option === "hair:short"), { age: "baby" });
+      },
+      `"hair:short" isn't offered at "baby"`,
     ],
     ["a part for an option outside the vocabulary", (m: any) => (m.pages[0].illustration.layers[1].parts[0].option = "hair:mohawk"), `"hair:mohawk" is not a hair option`],
     ["a part for an option with nothing to draw", (m: any) => (m.pages[0].illustration.layers[1].parts.find((part: any) => part.axis === "glasses").option = "glasses:none"), `"glasses:none" is not a glasses option with a drawing`],
@@ -201,6 +211,24 @@ const grownup = (manifest: StoryManifest, look: Look) =>
     .map((layer) => layer.asset)
     .filter((asset) => asset.includes("grownup") || asset.startsWith("soft/"));
 
+/** The sample with p02 drawing the hero as a baby, with baby hair parts for `hairParts` (D51). */
+const babyAt = (hairParts: ReadonlyArray<string>) =>
+  decoded(
+    variant((m) => {
+      const p01 = m.pages[0].illustration.layers.find((layer: any) => layer.slotId === "hero");
+      const hero = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "hero");
+      m.characterSlots[0].ages.push("baby");
+      hero.age = "baby";
+      hero.bases = p01.bases.filter((base: any) => base.age === "young-child").map((base: any) => ({ ...base, age: "baby" }));
+      const long = p01.parts.filter((part: any) => part.age === "young-child" && part.option === "hair:long");
+      hero.parts = hairParts.flatMap((option) => long.map((part: any) => ({ ...part, age: "baby", option })));
+    }),
+  );
+const heroAssets = (manifest: StoryManifest, look: Look) =>
+  composeIllustration(manifest, manifest.pages[1]!, { hero: { name: "Ada", pronouns: "she/her", look } })
+    .map((layer) => layer.asset)
+    .filter((asset) => asset.includes("/hero/"));
+
 describe("looks against a story (D26, D29)", () => {
   it("reports exactly the axis a story can't draw, and only for the age and face missing its part", () => {
     const manifest = missingLongOval();
@@ -304,6 +332,23 @@ describe("looks against a story (D26, D29)", () => {
       // The toddler base and hairstyle, and no glasses although the look has them.
       expect(hero).toEqual(["pages/p01/hero/base-child-2.svg", "pages/p01/hero/child-2-long.svg"]);
     }
+  });
+
+  it("draws a baby bald in a story drawn before babies had hair, and a pinned age's nearest hairstyle (D51)", () => {
+    // p02 draws the hero as a baby. Without baby hair parts (a version from before D51) every look draws bald, as it
+    // did; with them, a young child with short hair is drawn with wispy hair, the nearest a baby has.
+    const before = babyAt([]);
+    // (p01 draws the hero at their own age, where wispy has no part, so only p02 is checked for it.)
+    for (const hair of ["hair:short", "hair:none"] as const) expect(unsupportedOptions(before, "hero", childLook("face:oval", hair))).toEqual([]);
+    for (const hair of ["hair:wispy", "hair:short", "hair:none"] as const) {
+      expect(heroAssets(before, childLook("face:oval", hair))).toEqual(["pages/p01/hero/base-child-2.svg"]);
+    }
+    const after = babyAt(["hair:wispy", "hair:soft-curls"]);
+    expect(heroAssets(after, childLook("face:oval", "hair:short"))).toEqual(["pages/p01/hero/base-child-2.svg", "pages/p01/hero/child-2-long.svg"]);
+    expect(heroAssets(after, childLook("face:oval", "hair:none"))).toEqual(["pages/p01/hero/base-child-2.svg"]);
+    // A version published since must draw every hairstyle a baby has; one it lacks is reported, the bald one never.
+    expect(uncoveredOptions(after).filter((option) => option.startsWith("hair:"))).not.toContain("hair:none");
+    expect(vocabularyGaps(babyAt(["hair:wispy"]), new Date("2026-12-01T00:00:00Z"))).toContain('p02/hero: no part for "hair:soft-curls" on "baby/face:oval"');
   });
 
   it("reads a stored format 1 manifest as the format 2 version that draws the same", () => {

@@ -52,6 +52,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     expect(steps).toEqual(["1. Age", "2. Skin tone", "3. Face", "4. Hairstyle", "5. Hair colour", "6. Extras"]);
     const preview = page.getByTestId("look-preview");
     const before = await preview.getAttribute("src");
+    const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
     // A toddler has no glasses parts, so the picker doesn't offer them; back to a young child, it does, and the
     // glasses chosen before come back (D50).
     await page.getByRole("button", { name: "Round glasses" }).click();
@@ -59,17 +60,23 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     await expect(page.getByRole("group", { name: /Hairstyle/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Round glasses" })).toHaveCount(0);
     await expect(page.getByTestId("look-summary")).toHaveText("Toddler, round face, brown skin, curly black hair");
+    // Babies and toddlers see hairstyles in the order hair grows in, whatever the pronouns (D51).
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Bald", "Wispy hair", "Soft curls hair", "Top knot hair", "Puffs hair", "Short hair", "Curly hair", "Buzz cut hair", "Afro hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair", "Locs hair"]);
     await page.getByRole("button", { name: "Young child", exact: true }).click();
     await expect(page.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, curly black hair, glasses");
     await expect(page.getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
-    // Pronouns order the hairstyles, likelier first, and never hide one (D29).
-    const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Afro hair", "Locs hair", "Short hair", "Buzz cut hair"]);
+    // Pronouns order the hairstyles, likelier first, and never hide one (D29). The young hairstyles come last, after the ones the pronouns suggest (D51).
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Afro hair", "Locs hair", "Short hair", "Buzz cut hair", "Puffs hair", "Top knot hair", "Soft curls hair", "Wispy hair", "Bald"]);
     await page.getByLabel("Pronouns").selectOption("he/him");
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Buzz cut hair", "Curly hair", "Afro hair", "Locs hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair"]);
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Buzz cut hair", "Curly hair", "Afro hair", "Locs hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair", "Puffs hair", "Top knot hair", "Soft curls hair", "Wispy hair", "Bald"]);
     await page.getByLabel("Pronouns").selectOption("she/her");
     await page.getByRole("button", { name: "Long hair" }).click();
     await page.getByRole("button", { name: "Brown hair colour" }).click();
+    // A baby has no long hair: the nearest a baby has is wispy, and long hair comes back with an age that has it (D51).
+    await page.getByRole("button", { name: "Baby", exact: true }).click();
+    await expect(page.getByTestId("look-summary")).toHaveText("Baby, round face, brown skin, wispy brown hair");
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Bald", "Wispy hair", "Soft curls hair"]);
+    await page.getByRole("button", { name: "Young child", exact: true }).click();
     await page.getByRole("button", { name: "Round glasses" }).click();
     await expect(page.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, long brown hair, glasses");
     expect(await preview.getAttribute("src")).not.toBe(before);

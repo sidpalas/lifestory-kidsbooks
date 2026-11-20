@@ -1,7 +1,7 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
 import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
-import { drawnFeatures, fullPartOrder, type Look, NO_PART_OPTIONS, partAxesAt, sameAppearance } from "./vocabulary.ts";
+import { drawnFeatures, figurePartAxes, fullPartOrder, hairAt, type Look, NO_PART_OPTIONS, sameAppearance } from "./vocabulary.ts";
 
 /** [x0, y0, x1, y1] in thousandths of the illustration area. */
 export type PlacedRect = readonly [number, number, number, number];
@@ -32,7 +32,8 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
 /**
  * One figure for `look`, bottom to top: its base face (skin and brows recoloured), its overlay as drawn, the look's parts in `partOrder`,
  * then the occluder (its skin recoloured too). Drawn at the figure's pinned age, else the look's own (D29); part
- * axes that don't exist at that age (a baby's hairstyle) are left out. A figure with `flip` is all mirrored within its box (D44).
+ * axes that don't exist at that age (a toddler's glasses) are left out, and so is a baby's hairstyle in a story
+ * drawn before babies had one (D51). A figure with `flip` is all mirrored within its box (D44).
  * Story pages and the picker's portrait both compose with this.
  * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
  */
@@ -54,8 +55,9 @@ export const composeFigure = (
     layer.showsHead === false
       ? []
       : fullPartOrder(layer.partOrder ?? partOrder).flatMap((axis) => {
-          const option = look[axis];
-          if (NO_PART_OPTIONS.has(option) || !partAxesAt(age).includes(axis)) return [];
+          // A page may pin an age the look doesn't have, which may not offer its hairstyle (D29, D51).
+          const option = axis === "hair" ? hairAt(age, look.hair) : look[axis];
+          if (NO_PART_OPTIONS.has(option) || !figurePartAxes(layer.parts, age).includes(axis)) return [];
           const drawn = layer.parts.filter((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option);
           if (drawn.length === 0) throw new Error(`${layer.slotId}: no part for "${option}" on "${age}/${look.face}"`);
           return drawn.map((part) => ({

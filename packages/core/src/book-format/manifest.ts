@@ -22,6 +22,10 @@ import {
   Look,
   NO_PART_OPTIONS,
   PartAxis,
+  figurePartAxes,
+  hairAt,
+  offeredAt,
+  optionsAt,
   partAxesAt,
   requiredAt,
   sameAppearance,
@@ -336,9 +340,10 @@ const figureIssues = (figure: FigureLayer, ages: ReadonlyArray<Age>): ReadonlyAr
     if (!ages.includes(part.age)) issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
     else if (part.features && !hasFeatures(part.age)) issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
     else if (!partAxesAt(part.age).includes(part.axis)) issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
-    if (!lookVocabulary[part.axis].some((option) => option.id === part.option) || NO_PART_OPTIONS.has(part.option)) {
+    const known = lookVocabulary[part.axis].find((option) => option.id === part.option);
+    if (!known || NO_PART_OPTIONS.has(part.option)) {
       issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" is not a ${part.axis} option with a drawing` });
-    }
+    } else if (!offeredAt(known, part.age)) issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" isn't offered at "${part.age}"` });
   });
   return issues;
 };
@@ -383,7 +388,7 @@ const coverageGaps = (manifest: StoryManifest, publishedAt?: Date): ReadonlyArra
             if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) gaps.push({ text: `${page.pageId}/${layer.slotId}: no base for "${at}"` });
             if (layer.showsHead === false) continue;
             for (const axis of partAxesAt(age)) {
-              for (const option of lookVocabulary[axis]) {
+              for (const option of optionsAt(axis, age)) {
                 if (NO_PART_OPTIONS.has(option.id) || !required(option)) continue;
                 if (!layer.parts.some((part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id)) {
                   gaps.push({ text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`, option: option.id });
@@ -421,8 +426,8 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
         continue; // Parts are drawn per face, so with an unsupported face only the face is the problem.
       }
       if (layer.showsHead === false) continue;
-      for (const axis of partAxesAt(age)) {
-        const option = look[axis];
+      for (const axis of figurePartAxes(layer.parts, age)) {
+        const option = axis === "hair" ? hairAt(age, look.hair) : look[axis];
         if (NO_PART_OPTIONS.has(option)) continue;
         if (!layer.parts.some((part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option)) unsupported.add(axis);
       }

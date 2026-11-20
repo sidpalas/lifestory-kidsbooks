@@ -13,7 +13,7 @@ const id = (option: string) => option.slice(option.indexOf(":") + 1);
 
 /**
  * The look's layer files, bottom to top, as composeFigure stacks the portrait: the base, glasses, then the hair over
- * them, leaving out parts the age doesn't draw (a baby's hairstyle, a toddler's glasses).
+ * them, leaving out parts the age doesn't draw (a toddler's glasses) and a bald head's hair.
  */
 export const demoLayers = (look: Look): ReadonlyArray<string> => {
   const at = `${look.age}-${id(look.face)}`;
@@ -21,6 +21,6 @@ export const demoLayers = (look: Look): ReadonlyArray<string> => {
   return [
     `${at}-skin-${id(look.skin)}.webp`,
     ...(drawn.includes("glasses") && look.glasses !== "glasses:none" ? [`${at}-glasses-${id(look.glasses)}.webp`] : []),
-    ...(drawn.includes("hair") ? [`${at}-hair-${id(look.hair)}-${id(look.hairColour)}.webp`] : []),
+    ...(drawn.includes("hair") && look.hair !== "hair:none" ? [`${at}-hair-${id(look.hair)}-${id(look.hairColour)}.webp`] : []),
   ];
 };

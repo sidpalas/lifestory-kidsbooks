@@ -41,7 +41,7 @@ import { importTask } from "./imports/task.ts";
 import { Jobs } from "./jobs.ts";
 import { Casting, CastingOutcome } from "./imports/casting-contract.ts";
 import { castingTask } from "./imports/casting-task.ts";
-import { DEFAULT_FEATURES, HEAD_ONLY_OPTIONS, NO_PART_OPTIONS, hasFeatures, lookVocabulary, partAxesAt, sameAppearance } from "./looks/vocabulary.ts";
+import { DEFAULT_FEATURES, HEAD_ONLY_OPTIONS, NO_PART_OPTIONS, hasFeatures, optionsAt, partAxesAt, sameAppearance } from "./looks/vocabulary.ts";
 import { rasterize } from "./looks/recolour.ts";
 import { byLightness, headTop } from "./parts/images.ts";
 import { composeForReview } from "./imports/images.ts";
@@ -414,7 +414,7 @@ export const draftPartPlan = Effect.fn("authoring.partPlan")(function* (user: Se
         const y = await headTop(mask.body, meta.width!, meta.height!, [0, 0, meta.width!, meta.height!]);
         return Math.round(y * 1000 / meta.height!);
       });
-      for (const axis of partAxesAt(base.age)) for (const option of lookVocabulary[axis]) {
+      for (const axis of partAxesAt(base.age)) for (const option of optionsAt(axis, base.age)) {
         if (NO_PART_OPTIONS.has(option.id)) continue;
         if (figure.parts.some((p) => sameAppearance(p, base.age, base.face, features) && p.axis === axis && p.option === option.id)) continue;
         if (base.features === "features:soft" && HEAD_ONLY_OPTIONS.has(option.id) && figure.bases.some((b) => sameAppearance(b, base.age, base.face, DEFAULT_FEATURES))) continue;

@@ -10,6 +10,8 @@ import {
   type CharacterSlot,
   faceOptions,
   hairOptions,
+  NO_PART_OPTIONS,
+  offeredAt,
   type ImportResult,
   type ImportSource,
   type ImportStatus,
@@ -319,7 +321,7 @@ export function ArtImport({
             <label className="flex flex-col gap-1 font-medium">
               The hair drawn is
               <NativeSelect aria-label="Drawn hair" className="h-8" value={hair} onChange={(event) => setHair(event.target.value)}>
-                {hairOptions.map((option) => (
+                {hairOptions.filter((option) => offeredAt(option, age) && !NO_PART_OPTIONS.has(option.id)).map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}: keep it as that part
                   </option>

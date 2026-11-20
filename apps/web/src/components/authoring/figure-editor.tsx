@@ -15,9 +15,9 @@ import {
   hasFeatures,
   type FigureLayer,
   type LookOption,
-  lookVocabulary,
   HEAD_ONLY_OPTIONS,
   NO_PART_OPTIONS,
+  optionsAt,
   type Part,
   partAxesAt,
   type PartDecision,
@@ -250,7 +250,7 @@ function PartsGrid({
   const drawn = appearancesAt(ages).filter((at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)));
   const cells: ReadonlyArray<PartCell> = drawn.flatMap((appearance) =>
     partAxesAt(appearance.age).flatMap((axis) =>
-      (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) => !NO_PART_OPTIONS.has(option.id)).map((option) => ({ ...appearance, axis, option })),
+      (optionsAt(axis, appearance.age) as ReadonlyArray<LookOption>).filter((option) => !NO_PART_OPTIONS.has(option.id)).map((option) => ({ ...appearance, axis, option })),
     ),
   );
   const uploaded = (cell: PartCell) => figure.parts.find((part) => sameCell(cell, part));

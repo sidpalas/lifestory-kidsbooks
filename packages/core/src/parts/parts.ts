@@ -20,6 +20,7 @@ import {
   hasFeatures,
   lookVocabulary,
   NO_PART_OPTIONS,
+  optionsAt,
   otherFeatures,
   partAxesAt,
   type PartAxis,
@@ -82,6 +83,11 @@ const optionWords: Record<string, string> = {
   "hair:afro": "a full, rounded, tightly coiled dark brown afro",
   "hair:locs": "dark brown locs (dreadlocks) of even, rope-like thickness falling to the shoulders",
   "hair:bun": "dark brown hair pulled smoothly up into a round bun on top of the head",
+  // D51: the young hairstyles. Sparse ones ask for distinct dark strands, or the cut-out drops them as noise (D43's stubble).
+  "hair:wispy": "a little fine, sparse, short dark brown baby hair: separate wisps over the crown and the sides of the head, clearly darker than the skin, with the scalp clearly showing between them, and a few slightly longer wisps on top",
+  "hair:soft-curls": "short, sparse, soft dark brown baby curls lying close to the scalp all over the crown and sides of the head, small separate curls clearly darker than the skin, with the scalp showing between them",
+  "hair:sprout": "fine, short dark brown hair gathered into one small top knot tied on top of the head, a little tuft that points upward like a tiny palm tree, with short, thin hair on the sides and back",
+  "hair:puffs": "short dark brown hair parted in the middle and gathered into two small, round, fluffy puffs, one high on each side of the top of the head, the hair between them lying close to the scalp",
   "facial-hair:stubble": "short, dense dark brown stubble on the jaw, chin and upper lip: tiny dark brown dots, clearly darker than the skin, like a five o'clock shadow",
   "facial-hair:moustache": "a neat, medium-thick dark brown moustache",
   "facial-hair:beard": "a full, neatly trimmed dark brown beard and moustache",
@@ -244,8 +250,8 @@ export const requestParts = Effect.fn("parts.request")(function* (userId: string
     if (!partAxesAt(request.age).includes(request.axis)) {
       return yield* new InvalidInput({ message: `${ageOptions.find((age) => age.id === request.age)!.label} figures have no ${request.axis} part` });
     }
-    if (!lookVocabulary[request.axis].some((option) => option.id === request.option) || NO_PART_OPTIONS.has(request.option)) {
-      return yield* new InvalidInput({ message: `"${request.option}" is not a ${request.axis} option with a part` });
+    if (!optionsAt(request.axis, request.age).some((option) => option.id === request.option) || NO_PART_OPTIONS.has(request.option)) {
+      return yield* new InvalidInput({ message: `"${request.option}" is not a ${request.axis} option with a part at ${request.age}` });
     }
     const [x0, y0, x1, y1] = request.zone;
     if ((x1 - x0) * (y1 - y0) < 100 * 100) return yield* new InvalidInput({ message: "the zone is too small to hold a part" });

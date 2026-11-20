@@ -4,6 +4,7 @@ import partsByBase from "../src/looks/portrait/parts.json" with { type: "json" }
 import { rasterize } from "../src/looks/recolour.ts";
 import { coverOutline, CROWN_GAP_LIMIT, crownGap, cutOutPart, paperSilhouette, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
 import { figureCoverage } from "../src/parts/images.ts";
+import { SPARSE_HAIR } from "../src/looks/vocabulary.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
@@ -337,13 +338,14 @@ describe("the picker's portrait hair", () => {
         const { width, height } = info;
         const figure = await figureCoverage(read(`bases/${base}.png`), width, height);
         return Promise.all(
-          Object.values(options).flat().filter((part) => part.palette === "hairColour").map(async (part) => {
+          Object.entries(options).flatMap(([option, layers]) => layers.map((part) => ({ option, ...part }))).filter((part) => part.palette === "hairColour").map(async (part) => {
             const [x0, y0, x1, y1] = part.at.map((v, k) => Math.round((v * (k % 2 === 0 ? width : height)) / 1000)) as [number, number, number, number];
             const layer = await (await rasterize(read(part.asset))).resize(x1 - x0, y1 - y0, { fit: "fill" }).extractChannel(3).raw().toBuffer();
             const alpha = new Float32Array(width * height);
             for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) alpha[y * width + x] = layer[(y - y0) * (x1 - x0) + (x - x0)]! / 255;
             const covered = coverOutline(alpha, new Float32Array(alpha.length * 3), figure, new Uint8Array(mask), width, height).covered;
-            return { part: part.asset, gap: crownGap(alpha, new Uint8Array(mask), width, height), covered };
+            // Sparse hair shows scalp on purpose (D51), so it has no crown gap to fail.
+            return { part: part.asset, gap: SPARSE_HAIR.has(part.option) ? 0 : crownGap(alpha, new Uint8Array(mask), width, height), covered };
           }),
         );
       }),

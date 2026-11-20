@@ -15,10 +15,19 @@ export interface LookOption {
    * version published before then isn't required to draw it.
    */
   readonly addedAt?: string;
+  /**
+   * The ages that offer the option, for options that fit only some bodies (D51: a baby has no braids, a teen no
+   * top knot). Absent: every age that draws its axis. A story draws it, and a look may hold it, only at these ages.
+   */
+  readonly ages?: ReadonlyArray<string>;
 }
 
 /** When the hairstyles from buzz cut to bun and the facial hair axis joined the vocabulary (D43). */
 const D43 = "2026-11-19T19:30:00Z";
+/** When bald and the young hairstyles joined, and babies gained a hairstyle (D51). */
+const D51 = "2026-11-20T12:00:00Z";
+/** Ages that draw the hairstyles a full head of hair needs: everyone but a baby (D51). */
+const FROM_TODDLER = ["toddler", "young-child", "older-child", "teen", "adult", "older-adult"];
 
 /**
  * Character ages (D29): buckets split where the body changes enough that one drawn base can't cover both, or where
@@ -68,17 +77,33 @@ export const skinOptions = [
   { id: "skin:s5", label: "Dark brown", swatch: "#6e4428" },
 ] as const satisfies ReadonlyArray<LookOption>;
 
+/**
+ * Hairstyles. Babies and toddlers have their own (D51, Sid 2026-11-20): bald at every age (the base is drawn bald, so
+ * no part), wispy and soft curls between a bald baby and a full head of hair, and a top knot and puffs for toddlers
+ * and young children. The full-head styles start at toddler.
+ */
 export const hairOptions = [
-  { id: "hair:short", label: "Short" },
-  { id: "hair:curly", label: "Curly" },
-  { id: "hair:long", label: "Long" },
-  { id: "hair:buzz", label: "Buzz cut", addedAt: D43 },
-  { id: "hair:ponytail", label: "Ponytail", addedAt: D43 },
-  { id: "hair:braids", label: "Braids", addedAt: D43 },
-  { id: "hair:afro", label: "Afro", addedAt: D43 },
-  { id: "hair:locs", label: "Locs", addedAt: D43 },
-  { id: "hair:bun", label: "Bun", addedAt: D43 },
+  { id: "hair:short", label: "Short", ages: FROM_TODDLER },
+  { id: "hair:curly", label: "Curly", ages: FROM_TODDLER },
+  { id: "hair:long", label: "Long", ages: FROM_TODDLER },
+  { id: "hair:buzz", label: "Buzz cut", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:ponytail", label: "Ponytail", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:braids", label: "Braids", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:afro", label: "Afro", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:locs", label: "Locs", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:bun", label: "Bun", addedAt: D43, ages: FROM_TODDLER },
+  { id: "hair:none", label: "Bald", addedAt: D51 },
+  { id: "hair:wispy", label: "Wispy", addedAt: D51, ages: ["baby", "toddler", "young-child"] },
+  { id: "hair:soft-curls", label: "Soft curls", addedAt: D51, ages: ["baby", "toddler", "young-child"] },
+  { id: "hair:sprout", label: "Top knot", addedAt: D51, ages: ["toddler", "young-child"] },
+  { id: "hair:puffs", label: "Puffs", addedAt: D51, ages: ["toddler", "young-child"] },
 ] as const satisfies ReadonlyArray<LookOption>;
+
+/**
+ * Sparse hairstyles show scalp on purpose (wispy hair, soft curls, a top knot's thin sides), so the cut-out's
+ * crownGap check, which fails parts that leave scalp showing, doesn't apply to them (D51).
+ */
+export const SPARSE_HAIR: ReadonlySet<string> = new Set(["hair:wispy", "hair:soft-curls", "hair:sprout"]);
 
 export const hairColourOptions = [
   { id: "hair-colour:black", label: "Black", swatch: "#342c2e" },
@@ -102,7 +127,7 @@ export const facialHairOptions = [
 ] as const satisfies ReadonlyArray<LookOption>;
 
 /** Options with no part to draw. */
-export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["glasses:none", "facial-hair:none"]);
+export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["hair:none", "glasses:none", "facial-hair:none"]);
 
 /**
  * Options drawn on the head alone (D44): one drawing per face type fits both features' bases, so a part generated for
@@ -186,9 +211,9 @@ export const fullPartOrder = (order: ReadonlyArray<PartAxis>): ReadonlyArray<Par
   ...order,
 ];
 
-/** Part axes drawn at each age: a baby has no hairstyle part, neither babies nor toddlers wear glasses, and facial hair starts at adult. */
+/** Part axes drawn at each age: neither babies nor toddlers wear glasses, and facial hair starts at adult. */
 const partAxesByAge: Record<Age, ReadonlyArray<PartAxis>> = {
-  baby: [],
+  baby: ["hair"],
   toddler: ["hair"],
   "young-child": ["hair", "glasses"],
   "older-child": ["hair", "glasses"],
@@ -197,6 +222,49 @@ const partAxesByAge: Record<Age, ReadonlyArray<PartAxis>> = {
   "older-adult": ["hair", "glasses", "facialHair"],
 };
 export const partAxesAt = (age: Age): ReadonlyArray<PartAxis> => partAxesByAge[age];
+
+/**
+ * Part axes an age gained after stories were published: a baby's hairstyle (D51). A figure with no part on such an
+ * axis at that age was published before it and draws as it did, without one (bald); a version published since must
+ * draw it (vocabularyGaps), so it always has parts there.
+ */
+const LATER_AGE_AXES: ReadonlyArray<readonly [Age, PartAxis]> = [["baby", "hair"]];
+/** The part axes a figure with `parts` draws at `age`: partAxesAt, less an axis the age gained after the figure was drawn. */
+export const figurePartAxes = (parts: ReadonlyArray<{ readonly age: Age; readonly axis: PartAxis }>, age: Age): ReadonlyArray<PartAxis> =>
+  partAxesAt(age).filter((axis) => !LATER_AGE_AXES.some(([a, x]) => a === age && x === axis) || parts.some((part) => part.age === age && part.axis === axis));
+
+/** Whether `option` is offered at `age` (D51). */
+export const offeredAt = (option: LookOption, age: Age) => option.ages === undefined || option.ages.includes(age);
+
+/** The options of `axis` offered at `age`, in vocabulary order. */
+export const optionsAt = <A extends LookAxis>(axis: A, age: Age): (typeof lookVocabulary)[A] =>
+  (lookVocabulary[axis] as ReadonlyArray<LookOption>).filter((option) => offeredAt(option, age)) as unknown as (typeof lookVocabulary)[A];
+
+/**
+ * The hairstyle a look keeps at `age`: its own where `age` offers it, else the nearest one there, keeping the hair's
+ * texture (D51). Used when a look changes age, and when a page pins an age the character doesn't have (D29).
+ */
+const nearestHair: Record<string, { readonly young: Look["hair"]; readonly older: Look["hair"] }> = {
+  "hair:short": { young: "hair:wispy", older: "hair:short" },
+  "hair:buzz": { young: "hair:wispy", older: "hair:buzz" },
+  "hair:long": { young: "hair:wispy", older: "hair:long" },
+  "hair:ponytail": { young: "hair:wispy", older: "hair:ponytail" },
+  "hair:braids": { young: "hair:wispy", older: "hair:braids" },
+  "hair:bun": { young: "hair:wispy", older: "hair:bun" },
+  "hair:curly": { young: "hair:soft-curls", older: "hair:curly" },
+  "hair:afro": { young: "hair:soft-curls", older: "hair:afro" },
+  "hair:locs": { young: "hair:soft-curls", older: "hair:locs" },
+  "hair:wispy": { young: "hair:wispy", older: "hair:short" },
+  "hair:soft-curls": { young: "hair:soft-curls", older: "hair:curly" },
+  "hair:sprout": { young: "hair:wispy", older: "hair:bun" },
+  "hair:puffs": { young: "hair:soft-curls", older: "hair:bun" },
+};
+export const hairAt = (age: Age, hair: Look["hair"]): Look["hair"] => {
+  const option = hairOptions.find((candidate) => candidate.id === hair)!;
+  if (offeredAt(option, age)) return hair;
+  const nearest = nearestHair[hair]!;
+  return offeredAt(hairOptions.find((candidate) => candidate.id === nearest.young)!, age) ? nearest.young : nearest.older;
+};
 
 /** Whether bases at `age` come in both features. */
 export const hasFeatures = (age: Age) => featureAges.includes(age);

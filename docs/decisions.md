@@ -723,6 +723,37 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   is not saved.
 - **Reopen if:** parents testing it want a quick start again (then offer it before step 2, not mid-sequence).
 
+### D51. Young hair: bald at every age; wispy, soft curls, top knot and puffs for babies to young children — Decided (Sid, 2026-11-20)
+- **Why (Sid):** "0–7 are the most likely hero characters … we don't have anything kind of between infant with no hair
+  and toddler with a full head of hair." Every baby was drawn bald (`partAxesAt("baby")` was empty) while the picker
+  still asked for a hair colour; toddlers had only full-head styles. Research (thread
+  T-01a1f6cc-1614-7455-9bf1-b3c1e843c2ba, artifact "Young characters (0–7)"): Wonderbly's baby characters all have
+  wisps or tufts, and pediatric sources say sparse hair until 1–3 is normal.
+- **What (Sid chose each):** `hair:none` (Bald) at every age, with no part (the base is bald), and the hair colour
+  step hidden while chosen; `hair:wispy` and `hair:soft-curls` at baby, toddler and young child; `hair:sprout`
+  (Top knot) and `hair:puffs` at toddler and young child. Babies have a hairstyle part now, and no full-head style
+  (those start at toddler; thick-haired babies can come later). Babies and toddlers list hairstyles in the order hair
+  grows in, whatever the pronouns; from young child up pronouns order them as before (D29, D43). The
+  picker's single-choice steps (D50) gain this: a hairstyle the new age lacks becomes the nearest one there and comes
+  back with an age that has it, as hidden glasses do. A very short "fuzz"
+  was tried and left out: faint, it doesn't show; strong, it reads as the buzz cut.
+- **Options by age:** a `LookOption` may list `ages`; coverage (`vocabularyGaps`, `uncoveredOptions`), the figure
+  editor's cells, part requests and the picker use only the options an age offers (`optionsAt`). A look that changes
+  age keeps the nearest hairstyle there (`hairAt`: short to wispy, curly to soft curls, and back), and a page that
+  pins another age (D29) draws that nearest one.
+- **Compatibility:** the new options carry `addedAt` (D43), so Moon Picnic and The Paper Boat keep publishing and
+  importing; `/author` lists wispy, soft curls, top knot and puffs as uncovered for their young-child hero until
+  additions draw them (D41). A baby figure without baby hair parts was drawn before D51 and still draws bald
+  (`figurePartAxes`); a version published since must draw every baby hairstyle. Migration `0016_young_hair` sets
+  every saved baby look, book change, stand-in and stored proof cast to `hair:none`, which is what they drew.
+- **Sparse hair shows scalp on purpose:** `SPARSE_HAIR` (wispy, soft curls, top knot) is exempt from the portrait's
+  `crownGap` check; the part prompts ask for distinct strands clearly darker than the skin (D43's stubble lesson).
+- **Portrait art:** 20 parts (each style on every base that offers it), made with the app's part prompt and
+  `cutOutLayer` at twice the stored size, reviewed on the lightest and darkest skin with no retakes, then put
+  through `build-outline.ts`; US$1.05 on OpenAI. Their small skin layers were dropped, as no portrait part has one.
+- **Reopen if:** families with babies born with a full head of hair ask for it (add short and curly at baby, dated),
+  or the sparse styles don't survive an illustrator's story art.
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no

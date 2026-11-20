@@ -1,11 +1,11 @@
 // The look picker (brief, milestone 1 item 2; D26, D29, D50): age first, then one feature at a time in a fixed
 // order (skin tone, face, features, hairstyle, hair colour, facial hair, extras), each choice changing only its own
-// axis, so working down the list never undoes what's above or below. Features an age has no parts for (a baby's
-// hairstyle, a toddler's glasses) aren't offered, and features (softer or defined, D40) only from teen up.
+// axis, so working down the list never undoes what's above or below. Features an age has no parts for (a toddler's
+// glasses) aren't offered, nor hairstyles an age doesn't have (D51), and features (softer or defined, D40) only from teen up.
 // Every choice is shown on the story-independent portrait (/api/portrait), composed on the server with the same
 // parts-and-recolour pipeline as book pages; each story then draws the same option IDs with its own parts.
 // The signed-out landing demo passes `portrait` to draw from static layers instead (landing-look-demo.tsx).
-import { ageLabel, ageOptions, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
+import { ageLabel, ageOptions, hairAt, hasFeatures, type Look, type LookAxis, lookVocabulary, offeredAt, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { useRef } from "react";
 import { cn } from "~/lib/utils";
@@ -21,7 +21,11 @@ export const describeLook = (look: Look) => {
   const drawn = partAxesAt(look.age);
   const [style, colour] = [label("hair").toLowerCase(), label("hairColour").toLowerCase()];
   // "Curly black hair", but "black braids": the newer hairstyles name the hair themselves.
-  const hair = !drawn.includes("hair") ? `${colour} hair` : ["hair:short", "hair:curly", "hair:long"].includes(look.hair) ? `${style} ${colour} hair` : `${colour} ${style}`;
+  const hair =
+    look.hair === "hair:none" ? "bald"
+    : !drawn.includes("hair") ? `${colour} hair`
+    : ["hair:short", "hair:curly", "hair:long", "hair:wispy"].includes(look.hair) ? `${style} ${colour} hair`
+    : `${colour} ${style}`;
   const glasses = drawn.includes("glasses") && look.glasses !== "glasses:none" ? ", glasses" : "";
   const facialHair = drawn.includes("facialHair") && look.facialHair !== "facial-hair:none" ? `, ${label("facialHair").toLowerCase()}` : "";
   const features = hasFeatures(look.age) ? `, ${label("features").toLowerCase()}` : "";
@@ -92,8 +96,8 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
  * and a girl short (D29).
  */
 const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
-  "she/her": ["hair:long", "hair:ponytail", "hair:braids", "hair:curly", "hair:bun", "hair:afro", "hair:locs", "hair:short", "hair:buzz"],
-  "he/him": ["hair:short", "hair:buzz", "hair:curly", "hair:afro", "hair:locs", "hair:long", "hair:ponytail", "hair:braids", "hair:bun"],
+  "she/her": ["hair:long", "hair:ponytail", "hair:braids", "hair:curly", "hair:bun", "hair:afro", "hair:locs", "hair:short", "hair:buzz", "hair:puffs", "hair:sprout", "hair:soft-curls", "hair:wispy", "hair:none"],
+  "he/him": ["hair:short", "hair:buzz", "hair:curly", "hair:afro", "hair:locs", "hair:long", "hair:ponytail", "hair:braids", "hair:bun", "hair:puffs", "hair:sprout", "hair:soft-curls", "hair:wispy", "hair:none"],
   "they/them": lookVocabulary.hair.map((option) => option.id),
 };
 /**
@@ -103,8 +107,16 @@ const hairOrder: Record<PronounSet, ReadonlyArray<Look["hair"]>> = {
 const pronounFeatures: Record<PronounSet, Look["features"] | undefined> = { "she/her": "features:soft", "he/him": "features:defined", "they/them": undefined };
 export const withPronounFeatures = (look: Look, pronouns: PronounSet): Look => ({ ...look, features: pronounFeatures[pronouns] ?? look.features });
 
-export const orderedHairstyles = (pronouns: PronounSet) =>
-  lookVocabulary.hair.toSorted((a, b) => hairOrder[pronouns].indexOf(a.id) - hairOrder[pronouns].indexOf(b.id));
+/**
+ * Babies and toddlers see their hairstyles in the order hair grows in, whatever their pronouns (D51, Sid): bald,
+ * wispy, soft curls, then the fuller styles.
+ */
+const developmentalOrder: ReadonlyArray<Look["hair"]> = ["hair:none", "hair:wispy", "hair:soft-curls", "hair:sprout", "hair:puffs", "hair:short", "hair:curly", "hair:buzz", "hair:afro", "hair:long", "hair:ponytail", "hair:braids", "hair:bun", "hair:locs"];
+const hairOrderAt = (age: Look["age"], pronouns: PronounSet) => (age === "baby" || age === "toddler" ? developmentalOrder : hairOrder[pronouns]);
+
+/** The hairstyles offered at `age` (D51), likelier first. */
+export const orderedHairstyles = (pronouns: PronounSet, age: Look["age"]) =>
+  lookVocabulary.hair.filter((option) => offeredAt(option, age)).toSorted((a, b) => hairOrderAt(age, pronouns).indexOf(a.id) - hairOrderAt(age, pronouns).indexOf(b.id));
 
 /**
  * A controlled picker: `look` is the current look, `onChange` receives the next one. `ages` limits the ages offered,
@@ -133,16 +145,28 @@ export function LookPicker({
   const offered = <T extends { id: string }>(axis: LookAxis, options: ReadonlyArray<T>) => (offers ? options.filter((option) => offers(axis, option.id)) : options);
   const drawn = partAxesAt(look.age);
   // Steps are numbered in order, skipping the ones this age doesn't show.
-  const shown: ReadonlyArray<string> = ["Age", "skin", "face", ...(hasFeatures(look.age) ? ["features"] : []), ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
+  const shown: ReadonlyArray<string> = ["Age", "skin", "face", ...(hasFeatures(look.age) ? ["features"] : []), ...drawn.filter((axis) => axis === "hair"), ...(look.hair === "hair:none" ? [] : ["hairColour"]), ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
   const step = (key: string, title: string) => `${shown.indexOf(key) + 1}. ${title}`;
   // Glasses and facial hair chosen at an age that draws them, kept while another age hides them (D50).
-  const hidden = useRef<Partial<Pick<Look, "glasses" | "facialHair">>>({});
+  const hidden = useRef<Partial<Pick<Look, "glasses" | "facialHair" | "hair">>>({});
   // Another age keeps the face, colours, and hairstyle, and growing into an age with features starts from the ones
   // the pronouns suggest. Glasses and facial hair go to none while the new age doesn't draw them, so the look never
   // holds a choice the parent can't see (a page pinned to an older age would draw it), and come back with an age
   // that draws them.
   const setAge = (age: Look["age"]) => {
     const next: Look = { ...(hasFeatures(age) && !hasFeatures(look.age) ? withPronounFeatures(look, pronouns) : look), age };
+    // A hairstyle the new age doesn't have becomes the nearest one it does (D51: long hair is wispy at baby), and
+    // comes back with an age that has it, as glasses do.
+    const nearest = hairAt(age, look.hair);
+    if (nearest !== look.hair) {
+      // Keep the hairstyle first hidden while the parent hasn't picked another since.
+      const kept = hidden.current.hair && hairAt(look.age, hidden.current.hair) === look.hair ? hidden.current.hair : look.hair;
+      hidden.current = { ...hidden.current, hair: kept };
+      Object.assign(next, { hair: nearest });
+    } else if (hidden.current.hair && hairAt(age, hidden.current.hair) === hidden.current.hair && hairAt(look.age, hidden.current.hair) === look.hair) {
+      Object.assign(next, { hair: hidden.current.hair });
+      hidden.current = { ...hidden.current, hair: undefined };
+    }
     for (const [axis, none] of [["glasses", "glasses:none"], ["facialHair", "facial-hair:none"]] as const) {
       if (!partAxesAt(age).includes(axis)) {
         if (look[axis] !== none) hidden.current = { ...hidden.current, [axis]: look[axis] };
@@ -201,20 +225,22 @@ export function LookPicker({
         )}
         {drawn.includes("hair") && (
           <Step title={step("hair", axisLabels.hair)}>
-            {offered("hair", orderedHairstyles(pronouns)).map((option) => (
-              <Choice key={option.id} pressed={look.hair === option.id} label={`${option.label} hair`} disabled={disabled} onClick={() => set({ hair: option.id })}>
+            {offered("hair", orderedHairstyles(pronouns, look.age)).map((option) => (
+              <Choice key={option.id} pressed={look.hair === option.id} label={option.id === "hair:none" ? option.label : `${option.label} hair`} disabled={disabled} onClick={() => set({ hair: option.id })}>
                 <Thumb portrait={Portrait} look={{ ...look, hair: option.id }} label={option.label} />
               </Choice>
             ))}
           </Step>
         )}
-        <Step title={step("hairColour", axisLabels.hairColour)}>
-          {offered("hairColour", lookVocabulary.hairColour).map((option) => (
-            <Choice key={option.id} round pressed={look.hairColour === option.id} label={`${option.label} hair colour`} disabled={disabled} onClick={() => set({ hairColour: option.id })}>
-              <span className="block size-8" style={{ background: option.swatch }} />
-            </Choice>
-          ))}
-        </Step>
+        {look.hair !== "hair:none" && (
+          <Step title={step("hairColour", axisLabels.hairColour)}>
+            {offered("hairColour", lookVocabulary.hairColour).map((option) => (
+              <Choice key={option.id} round pressed={look.hairColour === option.id} label={`${option.label} hair colour`} disabled={disabled} onClick={() => set({ hairColour: option.id })}>
+                <span className="block size-8" style={{ background: option.swatch }} />
+              </Choice>
+            ))}
+          </Step>
+        )}
         {drawn.includes("facialHair") && (
           <Step title={step("facialHair", axisLabels.facialHair)}>
             {offered("facialHair", lookVocabulary.facialHair).map((option) => (

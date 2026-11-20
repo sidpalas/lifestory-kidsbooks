@@ -200,7 +200,7 @@ and making a book warns before casting someone it can't draw.
   pipeline as the pages (D28), each option shown as a thumbnail of the character with it. No photos and no matching
   from photos (D26).
 - **Bases:** one per face type at each age a role accepts, each a separate illustrator-approved base with its own
-  parts (D29). An age draws only the parts it has (`partAxesAt`: a baby has no hairstyle, a toddler no glasses). Skin
+  parts (D29). An age draws only the parts it has (`partAxesAt`: a toddler has no glasses), and offers only the hairstyles its age has (`optionsAt`, D51). Skin
   tone and hair colour apply to every base.
 
 ## Composing pages

@@ -10,7 +10,7 @@ import sharp from "sharp";
 import { composeFigure, type LayerSpec } from "../../../packages/core/src/looks/compose.ts";
 import { lookPortrait, portraitFigure, portraitPalettes, portraitPartOrder } from "../../../packages/core/src/looks/portrait.ts";
 import { recolour } from "../../../packages/core/src/looks/recolour.ts";
-import { type Look, lookVocabulary } from "../../../packages/core/src/looks/vocabulary.ts";
+import { type Look, lookVocabulary, offeredAt } from "../../../packages/core/src/looks/vocabulary.ts";
 import { demoAges, demoLayers } from "../src/components/looks-demo-layers.ts";
 
 const out = new URL("../public/marketing/looks/", import.meta.url).pathname;
@@ -34,14 +34,14 @@ const base: Look = { age: "young-child", face: "face:round", features: "features
 const looks = demoAges.flatMap((age) =>
   lookVocabulary.face.flatMap((face) =>
     lookVocabulary.skin.flatMap((skin) =>
-      lookVocabulary.hair.flatMap((hair) =>
+      lookVocabulary.hair.filter((hair) => offeredAt(hair, age)).flatMap((hair) =>
         lookVocabulary.hairColour.flatMap((hairColour) => lookVocabulary.glasses.map((glasses): Look => ({ ...base, age, face: face.id, skin: skin.id, hair: hair.id, hairColour: hairColour.id, glasses: glasses.id }))),
       ),
     ),
   ),
 );
 
-// A baby has no hairstyle or glasses and a toddler no glasses, so many looks share one stack: draw each stack once.
+// A bald head has no hair layer and a toddler no glasses, so many looks share one stack: draw each stack once.
 const stacks = new Map(looks.map((look) => [demoLayers(look).join(), look]));
 let checked = 0;
 for (const look of stacks.values()) {

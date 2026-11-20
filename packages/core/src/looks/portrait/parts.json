@@ -631,6 +631,58 @@
    }
   ]
  },
+ "baby-oval": {
+  "hair:soft-curls": [
+   {
+    "asset": "parts/baby-oval-hair-soft-curls.png",
+    "at": [
+     202,
+     98,
+     791,
+     486
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/baby-oval-hair-wispy.png",
+    "at": [
+     204,
+     75,
+     785,
+     490
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
+ "baby-round": {
+  "hair:soft-curls": [
+   {
+    "asset": "parts/baby-round-hair-soft-curls.png",
+    "at": [
+     127,
+     89,
+     855,
+     513
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/baby-round-hair-wispy.png",
+    "at": [
+     131,
+     62,
+     851,
+     511
+    ],
+    "palette": "hairColour"
+   }
+  ]
+ },
  "older-adult-oval": {
   "facial-hair:beard": [
    {
@@ -2092,6 +2144,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:puffs": [
+   {
+    "asset": "parts/toddler-oval-hair-puffs.png",
+    "at": [
+     211,
+     103,
+     779,
+     484
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:short": [
    {
     "asset": "parts/toddler-oval-hair-short.png",
@@ -2100,6 +2164,42 @@
      110,
      765,
      488
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:soft-curls": [
+   {
+    "asset": "parts/toddler-oval-hair-soft-curls.png",
+    "at": [
+     220,
+     116,
+     765,
+     468
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:sprout": [
+   {
+    "asset": "parts/toddler-oval-hair-sprout.png",
+    "at": [
+     225,
+     60,
+     761,
+     484
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/toddler-oval-hair-wispy.png",
+    "at": [
+     225,
+     89,
+     759,
+     349
     ],
     "palette": "hairColour"
    }
@@ -2202,6 +2302,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:puffs": [
+   {
+    "asset": "parts/toddler-round-hair-puffs.png",
+    "at": [
+     196,
+     130,
+     785,
+     520
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:short": [
    {
     "asset": "parts/toddler-round-hair-short.png",
@@ -2210,6 +2322,42 @@
      150,
      783,
      536
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:soft-curls": [
+   {
+    "asset": "parts/toddler-round-hair-soft-curls.png",
+    "at": [
+     196,
+     151,
+     791,
+     506
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:sprout": [
+   {
+    "asset": "parts/toddler-round-hair-sprout.png",
+    "at": [
+     198,
+     87,
+     783,
+     531
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/toddler-round-hair-wispy.png",
+    "at": [
+     190,
+     128,
+     787,
+     504
     ],
     "palette": "hairColour"
    }
@@ -2324,6 +2472,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:puffs": [
+   {
+    "asset": "parts/young-child-oval-hair-puffs.png",
+    "at": [
+     198,
+     78,
+     789,
+     486
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:short": [
    {
     "asset": "parts/young-child-oval-hair-short.png",
@@ -2332,6 +2492,42 @@
      101,
      773,
      492
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:soft-curls": [
+   {
+    "asset": "parts/young-child-oval-hair-soft-curls.png",
+    "at": [
+     217,
+     92,
+     767,
+     468
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:sprout": [
+   {
+    "asset": "parts/young-child-oval-hair-sprout.png",
+    "at": [
+     227,
+     35,
+     765,
+     497
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/young-child-oval-hair-wispy.png",
+    "at": [
+     219,
+     75,
+     769,
+     434
     ],
     "palette": "hairColour"
    }
@@ -2446,6 +2642,18 @@
     "palette": "hairColour"
    }
   ],
+  "hair:puffs": [
+   {
+    "asset": "parts/young-child-round-hair-puffs.png",
+    "at": [
+     186,
+     101,
+     810,
+     518
+    ],
+    "palette": "hairColour"
+   }
+  ],
   "hair:short": [
    {
     "asset": "parts/young-child-round-hair-short.png",
@@ -2454,6 +2662,42 @@
      135,
      800,
      531
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:soft-curls": [
+   {
+    "asset": "parts/young-child-round-hair-soft-curls.png",
+    "at": [
+     189,
+     130,
+     793,
+     490
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:sprout": [
+   {
+    "asset": "parts/young-child-round-hair-sprout.png",
+    "at": [
+     186,
+     69,
+     806,
+     520
+    ],
+    "palette": "hairColour"
+   }
+  ],
+  "hair:wispy": [
+   {
+    "asset": "parts/young-child-round-hair-wispy.png",
+    "at": [
+     192,
+     92,
+     789,
+     372
     ],
     "palette": "hairColour"
    }
