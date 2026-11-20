@@ -31,14 +31,18 @@ test("signed-out visitors try the character picker from static layers, with noth
   await page.getByRole("button", { name: "Try it: build a child" }).click();
   const demo = page.getByTestId("look-demo");
   await expect(demo.getByText("Nothing here is saved or sent anywhere.")).toBeVisible();
-  await expect(demo.getByRole("group", { name: "1. Age" }).getByRole("button")).toHaveText(["Young child3–7", "Older child8–12"]);
-  for (const name of ["Braids hair", "Red hair colour", "Older child", "Round glasses"]) await demo.getByRole("button", { name, exact: true }).click();
-  await expect(demo.getByTestId("look-summary")).toHaveText("Older child, round face, brown skin, red braids, glasses");
-  await expect(demo.getByTestId("look-preview")).toHaveAccessibleName("Older child, round face, brown skin, red braids, glasses");
-  const layers = demo.getByTestId("look-preview").locator("img");
+  await expect(demo.getByRole("group", { name: "1. Age" }).getByRole("button")).toHaveText(["Baby0–1", "Toddler1–3", "Young child3–7"]);
+  const preview = demo.getByTestId("look-preview");
+  const layers = preview.locator("img");
+  // A baby is drawn without a hairstyle: one layer, the base.
+  await demo.getByRole("button", { name: "Baby", exact: true }).click();
+  await expect(layers).toHaveCount(1);
+  for (const name of ["Toddler", "Braids hair", "Red hair colour", "Young child", "Round glasses"]) await demo.getByRole("button", { name, exact: true }).click();
+  await expect(demo.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, red braids, glasses");
+  await expect(preview).toHaveAccessibleName("Young child, round face, brown skin, red braids, glasses");
   await expect(layers).toHaveCount(3);
   for (const layer of await layers.all()) {
-    expect(await layer.getAttribute("src")).toMatch(/^\/marketing\/looks\/older-child-round-/);
+    expect(await layer.getAttribute("src")).toMatch(/^\/marketing\/looks\/young-child-round-/);
     await expect.poll(() => layer.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
   }
   await expect(demo.getByRole("button", { name: /save|add to the family/i })).toHaveCount(0);

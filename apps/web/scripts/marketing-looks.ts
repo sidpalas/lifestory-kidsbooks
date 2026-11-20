@@ -41,15 +41,17 @@ const looks = demoAges.flatMap((age) =>
   ),
 );
 
+// A baby has no hairstyle or glasses and a toddler no glasses, so many looks share one stack: draw each stack once.
+const stacks = new Map(looks.map((look) => [demoLayers(look).join(), look]));
 let checked = 0;
-for (const look of looks) {
+for (const look of stacks.values()) {
   const specs = composeFigure(portraitPalettes, portraitPartOrder, portraitFigure, look);
   const names = demoLayers(look);
   if (names.length !== specs.length) throw new Error(`${JSON.stringify(look)}: ${specs.length} layers, demo names ${names.length}`);
   const { width, height } = await sharp(await art(specs[0]!.asset)).metadata();
   const layers = await Promise.all(specs.map((spec, i) => layerPng(names[i]!, spec, width!, height!)));
   // Spot-check one look in eight against the server's portrait, including the first and last.
-  if (checked++ % 8 === 0 || look === looks.at(-1)) {
+  if (checked++ % 8 === 0 || look === [...stacks.values()].at(-1)) {
     const stacked = await sharp(layers[0]).composite(layers.slice(1).map((input) => ({ input }))).removeAlpha().raw().toBuffer();
     const server = await sharp(await Effect.runPromise(lookPortrait(look))).removeAlpha().raw().toBuffer();
     let worst = 0;
@@ -67,4 +69,4 @@ for (const [name, png] of rendered) {
   bytes += webp.length;
   await writeFile(`${out}${name}`, webp);
 }
-console.log(`${rendered.size} layers, ${(bytes / 2 ** 20).toFixed(1)} MiB, ${looks.length} looks, ${Math.ceil(looks.length / 8)} checked against lookPortrait`);
+console.log(`${rendered.size} layers, ${(bytes / 2 ** 20).toFixed(1)} MiB, ${stacks.size} distinct portraits, ${Math.ceil(stacks.size / 8)} checked against lookPortrait`);

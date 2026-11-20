@@ -6,8 +6,8 @@ A parent adds a family member as a character: name, pronouns, an age, a curated 
 a time (face, features from teen up, skin, hairstyle, hair colour, glasses, facial hair from adult up). A
 story-independent portrait (`/api/portrait?<look>`, D28) follows every choice, and the summary under it names the look.
 
-Signed-out visitors can try the same picker on the landing page ("Try it: build a child"): Young and Older child only,
-labelled Demo, with no name, no save, and no server calls. Its portraits stack static, pre-recoloured layers from
+Signed-out visitors can try the same picker on the landing page ("Try it: build a child"): Baby, Toddler, and Young
+child only (whom picture books are mostly bought for), labelled Demo, with no name, no save, and no server calls. Its portraits stack static, pre-recoloured layers from
 `apps/web/public/marketing/looks/` instead of `/api/portrait` (which needs a session and renders on the server), and
 its code loads only when the button is pressed.
 
@@ -34,9 +34,9 @@ image decoded; then every option thumbnail loaded and every `/api/portrait` URL 
 presses "Add to the family", so it writes nothing. Evidence: `picker-<n>-<step>.png` per step, `picker-final.png`,
 `portraits.txt`.
 
-The landing demo: `verify e2e -- smoke` ("signed-out visitors try the character picker…") picks braids, red, Older
-child, and glasses, checks the summary and that the preview's three layers are `/marketing/looks/` files that loaded,
-that there's no save button, and that no `/api` or server function request was made.
+The landing demo: `verify e2e -- smoke` ("signed-out visitors try the character picker…") checks a baby is one
+layer, then picks Toddler, braids, red, Young child, and glasses, and checks the summary, that the preview's three
+layers are `/marketing/looks/` files that loaded, that there's no save button, and that no `/api` or server function request was made.
 
 ## Gotchas
 
