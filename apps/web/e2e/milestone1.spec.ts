@@ -77,7 +77,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
 
   // 2. The owner invites the grandparent with the view-only role, and she joins with an account of her own.
   const inviteMember = owner.getByRole("form", { name: "Invite a family member" });
-  await inviteMember.getByLabel("Invite someone by email").fill(granEmail);
+  await inviteMember.getByLabel("Email").fill(granEmail);
   await inviteMember.getByLabel("Role").selectOption({ label: "Viewer (read only)" });
   await inviteMember.getByRole("button", { name: "Send invitation" }).click();
   await expect(owner.getByRole("status")).toHaveText(`Invitation sent to ${granEmail}.`);

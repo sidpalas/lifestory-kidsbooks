@@ -18,7 +18,13 @@ export const Route = createFileRoute("/_family/family")({
     const { active } = Route.useLoaderData();
     return (
       <ShellPage title={active?.role === "viewer" ? "Family" : "Family settings"}>
-        {active ? <FamilyPanel family={active} /> : <p className="text-muted-foreground text-sm">You're not in a family yet.</p>}
+        {active ? (
+          <div className="w-full max-w-2xl">
+            <FamilyPanel family={active} />
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">You're not in a family yet.</p>
+        )}
       </ShellPage>
     );
   },

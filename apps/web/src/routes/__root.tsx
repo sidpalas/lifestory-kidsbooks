@@ -6,7 +6,13 @@ import appCss from "~/styles.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
-    meta: [{ charSet: "utf-8" }, { name: "viewport", content: "width=device-width, initial-scale=1" }, { title: "Lifestory" }],
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // Keep iOS Safari from underlining emails (family members, invitations) as links.
+      { name: "format-detection", content: "email=no" },
+      { title: "Lifestory" },
+    ],
     links: [
       // The browser otherwise finds the UI font only after parsing the stylesheet and laying out text, so the first
       // paint used a fallback font (font-display: swap) and then swapped to Nunito.

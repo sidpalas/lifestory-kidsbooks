@@ -31,3 +31,6 @@ invite in Studio.
 - Testids for who's signed in and the family name live only in the desktop sidebar; the phone top bar repeats them
   without testids, so specs stay unambiguous.
 - The shell's data (`getHome`) reloads with each navigation; keep it small.
+- `/family` lists members (`member` rows) and pending invitations (`invitation` rows) apart from the invite form; a
+  member whose name is their email shows it once. On phones the role pill sits under the identity; `families.spec.ts`
+  checks a 320px screen with a long pending email.

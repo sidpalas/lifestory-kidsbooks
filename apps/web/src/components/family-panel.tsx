@@ -58,26 +58,28 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
 
   return (
     <Card data-testid="family-panel">
-      <CardHeader>
+      <CardHeader className="px-4 sm:px-6">
         {renaming ? (
           <form className="flex flex-col gap-2" onSubmit={rename} aria-label="Rename the family">
             <Label htmlFor="family-rename">Family name</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 id="family-rename"
                 name="name"
-                className="min-w-48 flex-1"
+                className="sm:flex-1"
                 defaultValue={family.name}
                 maxLength={FAMILY_NAME_MAX_LENGTH}
                 required
                 autoFocus
               />
-              <Button type="submit" disabled={!hydrated}>
-                Save
-              </Button>
-              <Button type="button" variant="outline" onClick={stopRenaming}>
-                Cancel
-              </Button>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={!hydrated}>
+                  Save
+                </Button>
+                <Button type="button" variant="outline" onClick={stopRenaming}>
+                  Cancel
+                </Button>
+              </div>
             </div>
             {renameError && (
               <p className="text-destructive text-sm" role="alert">
@@ -86,10 +88,12 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
             )}
           </form>
         ) : (
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle data-testid="family-name">{family.name}</CardTitle>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle data-testid="family-name" className="min-w-0 text-xl leading-snug wrap-anywhere">
+              {family.name}
+            </CardTitle>
             {family.canRename && (
-              <Button variant="outline" size="sm" onClick={() => setRenaming(true)} disabled={!hydrated}>
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setRenaming(true)} disabled={!hydrated}>
                 Rename
               </Button>
             )}
@@ -99,48 +103,101 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
           You're {family.role === "viewer" ? "a viewer: you can read this family's books" : `the family's ${family.role}`}.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <ul className="flex flex-col gap-1 text-sm" data-testid="members">
-          {family.members.map((member) => (
-            <li key={member.userId} className="flex justify-between">
-              <span>
-                {member.name} <span className="text-muted-foreground">({member.email})</span>
-              </span>
-              <span>{roleLabel[member.role] ?? member.role}</span>
-            </li>
-          ))}
-          {family.invitations.map((invitation) => (
-            <li key={invitation.id} className="text-muted-foreground flex justify-between">
-              <span>{invitation.email}</span>
-              <span>Invited as {roleLabel[invitation.role] ?? invitation.role}</span>
-            </li>
-          ))}
-        </ul>
-        {family.canInvite && (
-          <form className="flex flex-wrap items-end gap-2" onSubmit={invite} aria-label="Invite a family member">
-            <div className="flex min-w-48 flex-1 flex-col gap-2">
-              <Label htmlFor="invite-email">Invite someone by email</Label>
-              <Input id="invite-email" name="email" type="email" required />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="invite-role">Role</Label>
-              <NativeSelect id="invite-role" name="role" defaultValue="viewer">
-                <option value="viewer">Viewer (read only)</option>
-                <option value="parent">Parent (can edit)</option>
-              </NativeSelect>
-            </div>
-            <Button type="submit" disabled={!hydrated}>
-              Send invitation
-            </Button>
-          </form>
+      <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
+        <section className="flex flex-col gap-2" aria-labelledby="family-members">
+          <h2 id="family-members" className="text-sm font-semibold">
+            Members <span className="text-muted-foreground font-normal">· {family.members.length}</span>
+          </h2>
+          <ul className="divide-y rounded-lg border" data-testid="members">
+            {family.members.map((member) => {
+              // Accounts created from an email alone have the email as their name: show it once.
+              const named = member.name.trim() !== "" && member.name.trim().toLowerCase() !== member.email.toLowerCase();
+              return (
+                <MemberRow
+                  key={member.userId}
+                  testId="member"
+                  primary={named ? member.name : member.email}
+                  secondary={named ? member.email : null}
+                  role={member.role}
+                />
+              );
+            })}
+          </ul>
+        </section>
+        {family.invitations.length > 0 && (
+          <section className="flex flex-col gap-2" aria-labelledby="family-invitations">
+            <h2 id="family-invitations" className="text-sm font-semibold">
+              Pending invitations <span className="text-muted-foreground font-normal">· {family.invitations.length}</span>
+            </h2>
+            <ul className="divide-y rounded-lg border border-dashed" data-testid="invitations">
+              {family.invitations.map((invitation) => (
+                <MemberRow
+                  key={invitation.id}
+                  testId="invitation"
+                  primary={invitation.email}
+                  secondary="Invitation pending"
+                  role={invitation.role}
+                  pending
+                />
+              ))}
+            </ul>
+          </section>
         )}
-        {status && (
-          <p className={status.ok ? "text-sm" : "text-destructive text-sm"} role="status">
-            {status.text}
-          </p>
+        {family.canInvite && (
+          <section className="flex flex-col gap-3 border-t pt-6" aria-labelledby="family-invite">
+            <div className="flex flex-col gap-1">
+              <h2 id="family-invite" className="text-sm font-semibold">
+                Invite someone
+              </h2>
+              <p className="text-muted-foreground text-sm">Parents can make and edit books. Viewers can only read them.</p>
+            </div>
+            <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={invite} aria-label="Invite a family member">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-1">
+                <Label htmlFor="invite-email">Email</Label>
+                <Input id="invite-email" name="email" type="email" autoComplete="off" placeholder="name@example.com" required />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="invite-role">Role</Label>
+                <NativeSelect id="invite-role" name="role" defaultValue="viewer" className="w-full">
+                  <option value="viewer">Viewer (read only)</option>
+                  <option value="parent">Parent (can edit)</option>
+                </NativeSelect>
+              </div>
+              <Button type="submit" className="w-full sm:w-auto" disabled={!hydrated}>
+                Send invitation
+              </Button>
+            </form>
+            {status && (
+              <p className={status.ok ? "text-sm" : "text-destructive text-sm"} role="status">
+                {status.text}
+              </p>
+            )}
+          </section>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** One member or invitation: who (name over email, or the email alone) and their role. The role wraps under the
+ * identity when the row is too narrow for both, instead of squeezing either. */
+function MemberRow({ testId, primary, secondary, role, pending = false }: { testId: string; primary: string; secondary: string | null; role: string; pending?: boolean }) {
+  return (
+    <li data-testid={testId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-3 py-3 sm:px-4">
+      <div className="flex min-w-0 flex-[1_1_16rem] flex-col">
+        <span className="text-sm font-medium wrap-anywhere">{primary}</span>
+        {secondary && <span className="text-muted-foreground text-sm wrap-anywhere">{secondary}</span>}
+      </div>
+      <span
+        className={
+          pending
+            ? "text-muted-foreground rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
+            : "bg-secondary text-secondary-foreground rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
+        }
+      >
+        {roleLabel[role] ?? role}
+      </span>
+    </li>
   );
 }
 
