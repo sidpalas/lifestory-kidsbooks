@@ -736,7 +736,15 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   task (D31) deletes its row 30 days after it was made, then deletes every `families/<id>/proofs/<proofId>.pdf` whose
   row is gone. The list shows each draft's deletion date. 30 days gives a parent time to come back to a proof, while a
   new one takes seconds to make (D27); a draft holds the children's names and looks, so it shouldn't stay forever.
-  The row is written before its render task starts, so a PDF without a row is always one whose proof expired.
+  The row is written before its render task starts, so a PDF without a row is always one whose proof expired or was
+  deleted.
+- **Deleting a draft (Sid: "there is no way for a user to delete a proof"; Made, 2026-11-20):** an owner or parent
+  deletes an unapproved proof, rendering, failed, or ready, from its book's proof list after a confirmation that
+  names its cast and time (`deleteProof`, `packages/core/src/proofs.ts`). The row goes first, then its render task is
+  cancelled and its PDF deleted; a render already mid-step can still write the PDF, and the sweep deletes it like an
+  expired one. A viewer can't (Forbidden); another family's member and an unknown ID get NotFound. An approved proof
+  has no Delete and the server refuses it (an approval that lands first wins): approval stays final, and it goes
+  only with its book (D45) or family.
 - **Rejected:** keeping only the newest unapproved proof per book (a parent comparing two drafts loses one without
   warning); deleting older drafts when one is approved (it surprises a parent who wanted the other); a
   per-proof `expires_at` column (a constant TTL from `created_at` says the same with no backfill).

@@ -1,5 +1,6 @@
 // A book's PDF proofs: make one from the cast and text as they are now, watch it render, download it (D27), and
-// approve one for print. The page passes how to list, request, and approve them.
+// approve one for print. A parent deletes a draft (rendering, failed, or unapproved) after confirming; an approved
+// proof stays (D32). The page passes how to list, request, approve, and delete them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ export function ProofPanel({
   load,
   request: requestProof,
   approve,
+  remove,
   hydrated,
 }: {
   /** Lists the proofs. Must be stable for the same subject (the panel reloads when it changes). */
@@ -23,11 +25,14 @@ export function ProofPanel({
   request: () => Promise<void>;
   /** Approves a ready proof for print. */
   approve: (proofId: string) => Promise<void>;
+  /** Deletes a proof nobody approved, with its PDF. */
+  remove: (proofId: string) => Promise<void>;
   hydrated: boolean;
 }) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const rendering = state?.proofs.some((proof) => proof.status === "rendering") ?? false;
@@ -57,6 +62,26 @@ export function ProofPanel({
       setError(cause instanceof Error && cause.message ? cause.message : "The proof couldn't be approved.");
     } finally {
       setApproving(null);
+    }
+  };
+
+  const deleteProof = async (proof: ProofSummary) => {
+    const made = `${proof.castNames.join(" & ")}, made ${new Date(proof.createdAt).toLocaleString()}`;
+    const sure = window.confirm(
+      proof.status === "rendering"
+        ? `Delete the proof of ${made}? It stops rendering and won't be listed again.`
+        : `Delete the proof of ${made}? Its PDF is deleted too, and it can't be undone.`,
+    );
+    if (!sure) return;
+    setDeleting(proof.id);
+    setError(null);
+    try {
+      await remove(proof.id);
+      setState(await load());
+    } catch (cause) {
+      setError(cause instanceof Error && cause.message ? cause.message : "The proof couldn't be deleted.");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -98,6 +123,7 @@ export function ProofPanel({
               key={proof.id}
               className="flex flex-wrap items-center justify-between gap-2 py-2"
               data-testid="proof"
+              data-proof-id={proof.id}
               data-status={proof.status}
               data-approved={proof.approvedAt ? "true" : "false"}
             >
@@ -118,22 +144,36 @@ export function ProofPanel({
                   )
                 )}
               </span>
-              {proof.status === "ready" ? (
-                <span className="flex flex-wrap items-center gap-3">
-                  <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
-                    Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
-                  </a>
-                  {state.canRequest && !proof.approvedAt && (
-                    <Button size="sm" variant="outline" onClick={() => void approveProof(proof.id)} disabled={!hydrated || approving !== null}>
-                      {approving === proof.id ? "Approving…" : "Approve for print"}
-                    </Button>
-                  )}
-                </span>
-              ) : proof.status === "rendering" ? (
-                <span className="text-muted-foreground">Rendering…</span>
-              ) : (
-                <span className="text-destructive">Failed</span>
-              )}
+              <span className="flex flex-wrap items-center gap-3">
+                {proof.status === "ready" ? (
+                  <>
+                    <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
+                      Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
+                    </a>
+                    {state.canRequest && !proof.approvedAt && (
+                      <Button size="sm" variant="outline" onClick={() => void approveProof(proof.id)} disabled={!hydrated || approving !== null}>
+                        {approving === proof.id ? "Approving…" : "Approve for print"}
+                      </Button>
+                    )}
+                  </>
+                ) : proof.status === "rendering" ? (
+                  <span className="text-muted-foreground">Rendering…</span>
+                ) : (
+                  <span className="text-destructive">Failed</span>
+                )}
+                {state.canRequest && !proof.approvedAt && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Delete proof of ${proof.castNames.join(" & ")}, made ${new Date(proof.createdAt).toLocaleString()}`}
+                    onClick={() => void deleteProof(proof)}
+                    disabled={!hydrated || deleting !== null}
+                  >
+                    {deleting === proof.id ? "Deleting…" : "Delete"}
+                  </Button>
+                )}
+              </span>
             </li>
           ))}
         </ul>

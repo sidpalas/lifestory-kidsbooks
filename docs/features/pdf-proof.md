@@ -5,14 +5,15 @@
 "Make a PDF proof" on a family's book asks the worker (`proof.render`, D27) to print every page with
 headless Chromium from a token-gated print page; the result is the print-ready file (D35): flattened 300 ppi art, live
 text in the story's static fonts, TrimBox and BleedBox. Members download it; on a book an owner or parent approves it
-for print (D32).
+for print, or deletes a draft (rendering, failed, or unapproved) after confirming (D32). An approved proof can't be
+deleted on its own; it goes with its book (D45).
 
 ## Routes and roles
 
 - `/books/<id>` (a family's book): the "PDF proofs" section, below the wrapping page-selector grid (three columns
   on desktop, two on narrow screens). Story previews have no proof panel: make a book first.
 - Download: `/api/files/families/<familyId>/proofs/<proofId>.pdf`; any member of that family, 404 for others.
-- Owner and parent make and approve proofs; a viewer downloads only.
+- Owner and parent make, approve, and delete draft proofs; a viewer downloads only. A deleted proof's download is 404.
 - The worker opens `PRINT_APP_URL/print/proofs/<id>?token=…`; that origin must be the web app the run drives.
 
 ## Seed data
@@ -34,9 +35,12 @@ Opens an existing book of the story, or makes one from the preview's chosen fami
 - **line breaks** and **word positions**: each word's line and left edge in the editor DOM against `pdftotext
   -bbox`; fails above 0.5 pt. Measured 0.01 pt; without `geometricPrecision` (c9a06f1) it measures 5.11 pt and fails.
 
+- **delete**: deletes the proof with its Delete button (confirming), then checks it's no longer listed and its
+  download is 404.
+
 Evidence: `proof.pdf`, `print-ready.json`, `screen-<n>.png`, `pdf-<n>.png`, `diff-<n>.png` (red = differing).
-It writes one proof row and, if needed, a book in the signed-in family (live: the agent family's; unapproved proofs
-expire in 30 days). The family needs a character of each role's accepted age to make a book.
+It deletes the proof it made, and leaves a book, if it made one, in the signed-in family (live: the agent family's); a
+run that stops early leaves its proof, which expires in 30 days. The family needs a character of each role's accepted age to make a book.
 
 ## Gotchas
 

@@ -31,6 +31,8 @@ import { NativeSelect } from "~/components/ui/native-select";
 import {
   ApproveProofResult,
   approveProofFn,
+  DeleteProofResult,
+  deleteProofFn,
   BookProofsResult,
   BookResult,
   EditBookResult,
@@ -64,6 +66,10 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
 
 const approveProof = async (proofId: string) => {
   unwrapResult(ApproveProofResult)(await approveProofFn({ data: { proofId } }));
+};
+
+const deleteProof = async (proofId: string) => {
+  unwrapResult(DeleteProofResult)(await deleteProofFn({ data: { proofId } }));
 };
 
 function BookEditor() {
@@ -243,7 +249,7 @@ function BookEditor() {
         </ol>
       </section>
 
-      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} hydrated />
+      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} remove={deleteProof} hydrated />
     </main>
   );
 }

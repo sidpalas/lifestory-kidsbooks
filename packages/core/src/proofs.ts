@@ -19,7 +19,8 @@ import { Jobs } from "./jobs.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import { resolveIllustration } from "./pages.ts";
 import { withStoredAdditions } from "./stories.ts";
-import { renderProof } from "./tasks/render-proof.ts";
+import { ObjectStorage } from "./storage.ts";
+import { proofObjectKey, renderProof } from "./tasks/render-proof.ts";
 import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
 
 const approver = alias(schema.user, "approver");
@@ -138,6 +139,32 @@ export const approveProof = Effect.fn("proofs.approve")(function* (userId: strin
       .set({ approvedAt: new Date(), approvedBy: userId })
       .where(and(eq(schema.proof.id, proofId), isNull(schema.proof.approvedAt))),
   );
+});
+
+/**
+ * A parent deletes a draft proof (rendering, failed, or ready and unapproved) instead of waiting for it to expire
+ * (D32): its row, its render task if it hasn't finished, and its PDF. Needs a role that edits books. An approved proof
+ * stays: approval is final (D32), and it goes only with its book (D45) or family. If the render was mid-step, the PDF it
+ * writes has no row, and `storage.sweep` deletes it.
+ */
+export const deleteProof = Effect.fn("proofs.delete")(function* (userId: string, proofId: string) {
+  const [row] = yield* Database.query((db) =>
+    db.select({ familyId: schema.proof.familyId }).from(schema.proof).where(eq(schema.proof.id, proofId)),
+  );
+  if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
+  yield* requireFamilyAccess(userId, row.familyId, "edit");
+  // Only while unapproved, so an approval that lands first wins.
+  const [deleted] = yield* Database.query((db) =>
+    db
+      .delete(schema.proof)
+      .where(and(eq(schema.proof.id, proofId), isNull(schema.proof.approvedAt)))
+      .returning({ taskId: schema.proof.taskId }),
+  );
+  if (!deleted) return yield* new InvalidInput({ message: "An approved proof is kept for print and can't be deleted." });
+  // The row is gone, so the proof is deleted for the family; what follows only frees resources sooner, and the sweep
+  // catches whatever a failure here leaves.
+  if (deleted.taskId) yield* Jobs.use((jobs) => jobs.cancel(deleted.taskId!)).pipe(Effect.ignore);
+  yield* ObjectStorage.use((storage) => storage.delete(proofObjectKey(row.familyId, proofId))).pipe(Effect.ignore);
 });
 
 /** A page's text with the proof's edits applied, tokens resolved: what BookPage prints. */

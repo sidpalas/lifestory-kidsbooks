@@ -61,6 +61,7 @@ export const fakeJobs = (events: Map<string, JsonValue> = new Map()) =>
     client: undefined as never,
     spawn: () => Effect.die("fakeJobs: spawn is not supported"),
     status: () => Effect.die("fakeJobs: status is not supported"),
+    cancel: () => Effect.die("fakeJobs: cancel is not supported"),
     emit: (eventName, payload) => Effect.sync(() => void (events.has(eventName) || events.set(eventName, payload))),
   });
 

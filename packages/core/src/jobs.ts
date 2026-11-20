@@ -48,6 +48,8 @@ export class Jobs extends Context.Service<
     }, JobError>;
     /** Emits an Absurd event, waking tasks that await it. First emit wins, so repeats are harmless. */
     readonly emit: (eventName: string, payload: JsonValue) => Effect.Effect<void>;
+    /** Stops a task that hasn't finished; a finished one stays as it is. A run already in a step finishes that step. */
+    readonly cancel: (taskId: string) => Effect.Effect<void, JobError>;
   }
 >()("@lifestory/core/Jobs") {
   static readonly queue = "default";
@@ -82,6 +84,7 @@ export class Jobs extends Context.Service<
             ),
           ),
         emit: (eventName, payload) => Effect.promise(() => client.emitEvent(eventName, payload, Jobs.queue)),
+        cancel: (taskId) => Effect.tryPromise({ try: () => client.cancelTask(taskId, Jobs.queue), catch: fail }),
       };
     }),
   );

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { ServerServices } from "@lifestory/core";
-import type { Effect } from "effect";
+import { Effect } from "effect";
 
 // Chromium writes page dictionaries and font names uncompressed, so the PDF's structure can be read from its bytes.
 const pdfFacts = (pdf: Buffer) => {
@@ -80,5 +80,96 @@ test("the print page needs the worker's print token, not a session", async ({ pa
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   for (const query of ["", "?token=forged.signature"]) {
     expect((await page.request.get(`/print/proofs/proof_does-not-matter${query}`)).status()).toBe(404);
+  }
+});
+
+test("a parent deletes draft proofs, rendering, failed, or ready, but not an approved one; viewers and outsiders can't", async ({ page, browser }) => {
+  test.setTimeout(180_000);
+  // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
+  const core = await import("@lifestory/core");
+  const runtime = core.makeServerRuntime();
+  const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
+  // "ok", or the tag of the typed error the call fails with.
+  const outcome = <A, E>(effect: Effect.Effect<A, E, ServerServices>) =>
+    run(effect.pipe(Effect.match({ onSuccess: () => "ok", onFailure: (error) => (error as { _tag: string })._tag })));
+  const proofRow = async (id: string) => {
+    const result = await run(core.Database.use(({ pool }) => Effect.promise(() => pool.query("select task_id from proof where id = $1", [id]))));
+    return result.rows[0] as { task_id: string } | undefined;
+  };
+  try {
+    const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    const look = { face: "face:round", features: "features:defined", skin: "skin:s3", hair: "hair:curly", hairColour: "hair-colour:black", glasses: "glasses:round", facialHair: "facial-hair:none" } as const;
+    const [parent, family] = ["user_parent", "org_example_family"];
+    const hero = await run(core.createCharacter(parent, family, { name: `Nell ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
+    const grown = await run(core.createCharacter(parent, family, { name: `Abe ${suffix}`, title: "Dad", pronouns: "he/him", look: { ...look, age: "adult" } }));
+    const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
+    const { id: bookId } = await run(core.createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing }));
+
+    // Rendering: deleting it right after the request removes the row and cancels the render, which takes seconds.
+    const rendering = await run(core.requestBookProof(parent, bookId));
+    const renderTask = (await proofRow(rendering.id))!.task_id;
+    expect(await outcome(core.deleteProof(parent, rendering.id))).toBe("ok");
+    expect(await proofRow(rendering.id)).toBeUndefined();
+    expect((await run(core.Jobs.use((jobs) => jobs.status(renderTask)))).state).toBe("cancelled");
+
+    // Failed: a proof whose render stopped. Then two that render: one to approve, one to delete as a draft.
+    const failed = await run(core.requestBookProof(parent, bookId));
+    const failedTask = (await proofRow(failed.id))!.task_id;
+    await run(core.Jobs.use((jobs) => jobs.cancel(failedTask)));
+    const approved = await run(core.requestBookProof(parent, bookId));
+    const draft = await run(core.requestBookProof(parent, bookId));
+
+    await page.goto(`/__dev/log-me-in/parent@lifestory.dev?returnTo=/books/${bookId}`);
+    const row = (id: string) => page.getByTestId("proof").and(page.locator(`[data-proof-id="${id}"]`));
+    // The panel loads its list after the page; on a cold dev server that takes a while.
+    await expect(page.getByRole("button", { name: "Make a PDF proof" })).toBeVisible({ timeout: 30_000 });
+    await expect(row(failed.id)).toHaveAttribute("data-status", "failed");
+    for (const id of [approved.id, draft.id]) await expect(row(id)).toHaveAttribute("data-status", "ready", { timeout: 90_000 });
+    await run(core.approveProof(parent, approved.id));
+    await page.reload();
+    await expect(row(approved.id)).toHaveAttribute("data-approved", "true");
+
+    // The server decides, whatever the page shows: a viewer may not, another family's member and an unknown proof
+    // find nothing, and an approved proof is kept for print (D32).
+    expect(await outcome(core.deleteProof("user_grandparent", draft.id))).toBe("Forbidden");
+    expect(await outcome(core.deleteProof("user_operator", draft.id))).toBe("NotFound");
+    expect(await outcome(core.deleteProof(parent, "proof_does-not-exist"))).toBe("NotFound");
+    expect(await outcome(core.deleteProof(parent, approved.id))).toBe("InvalidInput");
+
+    // The viewer sees the proofs and no Delete; the parent sees none on the approved proof.
+    const viewer = await browser.newPage();
+    await viewer.goto(`/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/books/${bookId}`);
+    await expect(viewer.getByTestId("proof")).toHaveCount(3, { timeout: 30_000 });
+    await expect(viewer.getByRole("button", { name: /^Delete proof/ })).toHaveCount(0);
+    await viewer.close();
+    await expect(row(approved.id).getByRole("button", { name: /^Delete proof/ })).toHaveCount(0);
+
+    // A ready draft: the confirmation names it; cancelling keeps it, confirming deletes it and its PDF.
+    const href = (await row(draft.id).getByRole("link", { name: /Download PDF/ }).getAttribute("href"))!;
+    expect((await page.request.get(href)).status()).toBe(200);
+    const cancel = page.waitForEvent("dialog").then(async (dialog) => {
+      expect(dialog.message()).toMatch(new RegExp(`^Delete the proof of Nell ${suffix} & Abe ${suffix}, made .*Its PDF is deleted too`));
+      await dialog.dismiss();
+    });
+    await row(draft.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await cancel;
+    await expect(row(draft.id)).toHaveCount(1);
+    const confirm = page.waitForEvent("dialog").then((dialog) => dialog.accept());
+    await row(draft.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await confirm;
+    await expect(row(draft.id)).toHaveCount(0);
+    expect(await proofRow(draft.id)).toBeUndefined();
+    expect((await page.request.get(href)).status()).toBe(404);
+
+    // The failed one goes the same way; the approved proof stays, still downloadable.
+    const confirmFailed = page.waitForEvent("dialog").then((dialog) => dialog.accept());
+    await row(failed.id).getByRole("button", { name: /^Delete proof of/ }).click();
+    await confirmFailed;
+    await expect(page.getByTestId("proof")).toHaveCount(1);
+    await page.reload();
+    await expect(page.getByTestId("proof")).toHaveCount(1);
+    await expect(row(approved.id)).toHaveAttribute("data-approved", "true");
+  } finally {
+    await runtime.dispose();
   }
 });

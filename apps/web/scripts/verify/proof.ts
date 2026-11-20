@@ -3,7 +3,8 @@
 //   print-ready   checkPrintReady against Lulu's requirements (D35)
 //   pixels        each editor page (full Chromium) against the same PDF page (pdftoppm), both at 96 dpi
 //   words         each word's left edge and line in the editor against pdftotext's word boxes
-// It writes one proof row, and a book if needed, in the signed-in account's family (on live, the agent family's, D38).
+// then deletes the proof from the book page and checks its PDF is gone. It leaves a book, if it made one, in the
+// signed-in account's family (on live, the agent family's, D38); a failed run can leave its proof (it expires, D32).
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import sharp from "sharp";
@@ -83,6 +84,7 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
     const sheets = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
     await sheets.first().waitFor();
     const pageCount = await sheets.count();
+    const bookPath = new URL(page.url()).pathname;
     report.check("route", true, `${new URL(page.url()).pathname} of ${options.story} as ${stack.who}: ${pageCount} pages`);
 
     // Request a proof the way a parent does, then wait for the worker.
@@ -170,6 +172,16 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
     report.check("pixels", worstShare <= MAX_DIFF_SHARE, `worst page ${(worstShare * 100).toFixed(2)}% of pixels off by >5% (limit ${MAX_DIFF_SHARE * 100}%); ${pixelRows.join(", ")}`);
     report.check("line breaks", lineMismatches.length === 0, lineMismatches.length ? lineMismatches.slice(0, 3).join("; ") : `${screenWords.flat().length} words on the same lines on screen and in print`);
     report.check("word positions", worstShift <= MAX_WORD_SHIFT_PT, `max |Δx| ${worstShift.toFixed(2)} pt (limit ${MAX_WORD_SHIFT_PT} pt)`);
+
+    // Delete the proof the way a parent does, so a run leaves no draft behind: it leaves the list and its PDF.
+    await page.goto(bookPath);
+    const made = page.getByTestId("proof").filter({ has: page.locator(`a[href="${href}"]`) });
+    page.once("dialog", (dialog) => void dialog.accept());
+    await made.getByRole("button", { name: /^Delete proof of/ }).click();
+    await made.waitFor({ state: "detached", timeout: 15_000 }).catch(() => undefined);
+    const gone = (await made.count()) === 0;
+    const after = (await page.request.get(href)).status();
+    report.check("delete", gone && after === 404, `listed after delete: ${!gone}; ${href} → ${after}`);
   } finally {
     await session.close();
   }
