@@ -18,7 +18,11 @@ const { values } = parseArgs({
   },
 });
 const origin = new URL(values.url).origin;
-const sha = values.sha ?? execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+// The full hash, which /api/health reports: a short --sha compared as is would never match, and the live commit
+// would read as a newer one that superseded it.
+const sha = execFileSync("git", ["rev-parse", "--verify", `${values.sha ?? "HEAD"}^{commit}`], {
+  encoding: "utf8",
+}).trim();
 const deadline = Date.now() + Number(values["wait-minutes"]) * 60_000;
 const journal = JSON.parse(
   readFileSync(new URL("../../../packages/db/migrations/meta/_journal.json", import.meta.url), "utf8"),
