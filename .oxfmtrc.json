@@ -1,6 +1,11 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 120,
+  "sortImports": true,
+  "sortTailwindcss": {
+    "stylesheet": "./apps/web/src/styles.css",
+    "functions": ["cn", "cva", "clsx"]
+  },
   "ignorePatterns": [
     "pnpm-lock.yaml",
     "apps/web/src/routeTree.gen.ts",
@@ -11,7 +16,9 @@
   "overrides": [
     {
       "files": ["**/*.md"],
-      "options": { "embeddedLanguageFormatting": "off" }
+      "options": {
+        "embeddedLanguageFormatting": "off"
+      }
     }
   ]
 }

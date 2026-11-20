@@ -1083,9 +1083,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   - It formats every file type here, including TOML (`mise.toml`), which Prettier doesn't. It ran in 0.3 s on this
     repository; Prettier 3.10.1 took 7 s.
   - It has built-in Tailwind class sorting, import sorting, and `package.json` key sorting, which Prettier needs
-    plugins for. Only `package.json` sorting is on (its default); the other two can reorder code that runs
-    differently (`tailwind-merge` keeps the last of two conflicting classes; imports run in order), so they wait for a
-    change of their own, checked with the e2e suite.
+    plugins for. All three are on. Imports are grouped (Node built-ins, packages, then relative) and sorted;
+    side-effect imports keep their place (`sortSideEffects` is off), since they run in order. Tailwind classes are
+    sorted in `className` and in calls to `cn`, `cva`, and `clsx`, against `apps/web/src/styles.css`. Turning both on
+    was its own commit: every changed file differed only in order, and no class string resolved differently under
+    `tailwind-merge`, which keeps the last of two conflicting classes.
   - Against it: it is 0.x (beta since 2026-02-24), so an upgrade can change output. The exact pin means an upgrade
     happens only on purpose, in its own commit with what it reformats.
   - Prettier 3.10.1: the stable reference, but about 20× slower here, no TOML, and its known inconsistencies stay.

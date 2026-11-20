@@ -228,7 +228,8 @@ oxfmt (`.oxfmtrc.json`, D53) formats every tracked TS, TSX, JS, JSON, CSS, Markd
 `mise run format` before committing. Its `ignorePatterns` list the tracked files other tools write (the lockfile,
 TanStack's `routeTree.gen.ts`, drizzle-kit's migrations, the story directories under `fixtures/stories`, and the
 portrait `parts.json`): change their generator, not the file. A file a script writes that oxfmt would rewrite
-differently goes on that list too. Code blocks in Markdown stay as written. A Markdown table with a row wider than
+differently goes on that list too. It also sorts imports (side-effect imports stay put) and Tailwind classes
+(in `className` and `cn`/`cva`/`clsx` calls). Code blocks in Markdown stay as written. A Markdown table with a row wider than
 120 columns gets `<!-- oxfmt-ignore -->` on the line before it: aligning it would pad every cell to its column's
 widest one, which more than doubled this file. Python under `modal/` and
 `fixtures/art-sources` isn't formatted. Upgrading oxfmt (0.x, so output can change between versions) goes in its own
