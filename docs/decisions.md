@@ -618,7 +618,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   longer makes them; `requestStoryProof` and `listStoryProofs` are gone.
 - **Viewers** preview with their family's members and try looks (nothing is saved), and get no "Make the book".
 - **Books the family made are listed on the story page**, so a parent opens the one they made instead of making it
-  again; "Make the book" makes another.
+  again; since D47, the page sends them to it instead of silently making another.
 - **Deleting a book (Sid: "there's no way to delete a book"; Made, Sid can veto):** a parent or owner deletes a book
   from Our books or its page, after a confirmation that names it. Its cast, text edits, and proofs go with it,
   approved proofs too: no print order references a proof yet, so D32's "kept as long as the family" has nothing to
@@ -646,6 +646,24 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   book editor the same picker saves each change to the book, and "Use <name>'s saved look" clears it.
 - **Reopen if:** families want a book look to follow later edits of the same axis in the saved look (today the book's
   choice wins for that axis), or want to save a book's look back to the character.
+
+### D47. A family with a book of a story is sent to it; another copy is made only on purpose — Made (2026-11-20)
+- **Why (Sid):** "if someone clicks 'Make the book' they would not want to create a new copy of it. Perhaps if an
+  instance of a book already exists in the family, we should warn the user about that and take them to the existing
+  one rather than creating a new one with no mention of the existing one."
+- **What:** when the active family has a book of the story, of any version, the story page says so above the roles and
+  lists each one (with "made from version n" when it pins an older version). With one book, "Open our book" is
+  the main action; with several, the page names none of them for you, and each is a link. "Make the book" becomes an outline
+  "Make another copy", which says the existing books stay as they are. Opening a book never applies the story page's
+  cast or book-only looks (D46) to it.
+- **On the server:** `createBook` takes `existing`, the books the page listed, and makes a book only if the family
+  has no other book of the story; otherwise it fails with `BookExists` and changes nothing, and the page reloads its
+  list. It checks under a Postgres advisory lock per family and story, so a double click, a second tab, or two parents
+  at once make one book, not two.
+- **Not a ban:** multiple copies stay possible and existing duplicates and their data are untouched; there's no
+  unique constraint. A book of an older version is still "a book of this story": a newer version doesn't
+  upgrade it, and "Make another copy" makes one of the newest version.
+- **Reopen if:** families want to move a book to a newer version, or Sid wants one book per story enforced.
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family

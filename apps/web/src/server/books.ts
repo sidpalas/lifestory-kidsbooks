@@ -1,6 +1,7 @@
 // Characters and personalized books. The domain logic and every family role check are in @lifestory/core
 // (characters.ts, books.ts); these adapt requests to it.
 import {
+  BookExists,
   BookSummary,
   BookView,
   Character,
@@ -114,13 +115,19 @@ export const saveCharacterFn = createServerFn({ method: "POST" })
 
 export const CreateBookResult = ResultSchema(
   Schema.Struct({ id: Schema.String }),
-  Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]),
+  Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput, BookExists]),
 );
 
 export const createBookFn = createServerFn({ method: "POST" })
   .validator(
     Schema.toStandardSchemaV1(
-      Schema.Struct({ slug: Schema.String, cast: Schema.Record(Schema.String, Schema.String), looks: Schema.optional(Schema.Record(Schema.String, LookOverride)) }),
+      Schema.Struct({
+        slug: Schema.String,
+        cast: Schema.Record(Schema.String, Schema.String),
+        looks: Schema.optional(Schema.Record(Schema.String, LookOverride)),
+        /** The family's books of this story the person saw and chose to make another copy next to. */
+        existing: Schema.optional(Schema.Array(Schema.String)),
+      }),
     ),
   )
   .handler(({ data }) =>

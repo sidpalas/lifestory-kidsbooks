@@ -41,7 +41,8 @@ test("a red-haired child is drawn with red hair in books of both sample stories,
     await make.getByLabel(/grown-up/i).selectOption({ label: grownup });
     // The story can draw red now, so making the book warns about nothing.
     await expect(page.getByTestId(/^cast-warning-/)).toHaveCount(0);
-    await page.getByRole("button", { name: "Make the book" }).click();
+    // Another copy when an earlier test or run made one of this story (D47).
+    await page.getByRole("button", { name: /^(Make the book|Make another copy)$/ }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     await imagesLoaded(page);
     // Nobody is left out of the pictures, and no stand-in is asked for.

@@ -107,6 +107,7 @@ function StoryPreview() {
 
       <StoryCast
         slug={slug}
+        version={version}
         slots={slots}
         roles={roles}
         characters={characters}

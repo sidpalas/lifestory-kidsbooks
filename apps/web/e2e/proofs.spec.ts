@@ -14,7 +14,7 @@ const pdfFacts = (pdf: Buffer) => {
 test("a parent makes a print-ready PDF proof of a book, and only the family downloads it", async ({ page, browser, request }) => {
   // A book of the sample story with two new family members, made directly (books.spec.ts makes one in the UI).
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
-  const { createBook, createCharacter, makeServerRuntime } = await import("@lifestory/core");
+  const { createBook, createCharacter, listBooks, makeServerRuntime } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -24,7 +24,9 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
     const [parent, family] = ["user_parent", "org_example_family"];
     const hero = await run(createCharacter(parent, family, { name: `Ivy ${suffix}`, title: null, pronouns: "she/her", look: { ...look, age: "young-child" } }));
     const grown = await run(createCharacter(parent, family, { name: `Ray ${suffix}`, title: "Dad", pronouns: "he/him", look: { ...look, age: "adult" } }));
-    ({ id: bookId } = await run(createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id } })));
+    // Another copy next to the family's books of the story from earlier tests and runs (D47).
+    const existing = (await run(listBooks(parent, family))).books.map((book) => book.id);
+    ({ id: bookId } = await run(createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing })));
   } finally {
     await runtime.dispose();
   }

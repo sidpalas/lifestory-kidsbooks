@@ -2,7 +2,7 @@
 // right away; then make the book. A role can instead try looks on the story's example character, which is a preview
 // only and never touches the family. A role accepts some character ages (D29), so only family members of those ages
 // are offered, and a look the story can't draw yet is left out of the pictures with a warning (D28, D41).
-import { ageLabel, type BookSummary, type Character, type CharacterSlot, type LookAxis, type LookOverride, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
+import { ageLabel, BookExists, type BookSummary, type Character, type CharacterSlot, type LookAxis, type LookOverride, type PreviewRole, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
@@ -21,6 +21,7 @@ const missingLabel = (role: PreviewRole) => role.unsupported.map((axis) => axisL
 
 export function StoryCast({
   slug,
+  version,
   slots,
   roles,
   characters,
@@ -35,11 +36,13 @@ export function StoryCast({
   updating,
 }: {
   slug: string;
+  /** The story version the page shows, which a new book would pin. */
+  version: number;
   slots: ReadonlyArray<CharacterSlot>;
   /** Who the pages show now. */
   roles: ReadonlyArray<PreviewRole>;
   characters: ReadonlyArray<Character>;
-  /** The family's books of this story already made. */
+  /** The family's books of this story already made, newest first. */
   books: ReadonlyArray<BookSummary>;
   canEdit: boolean;
   /** What each role's select shows: a character ID, or EXAMPLE. Runs ahead of `roles` while pages recompose. */
@@ -67,13 +70,18 @@ export function StoryCast({
     try {
       const cast = Object.fromEntries(slots.map((slot) => [slot.slotId, selected(slot.slotId)]));
       const looks = Object.fromEntries(slots.map((slot) => [slot.slotId, changes(slot.slotId)]));
-      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast, looks } }));
+      // The books this page lists: the server makes the book only if the family has no other (D47).
+      const existing = books.map((book) => book.id);
+      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast, looks, existing } }));
       await router.navigate({ to: "/books/$bookId", params: { bookId: id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setMaking(false);
+      // Made in another tab or by another parent since this page loaded: list it.
+      if (cause instanceof BookExists) await router.invalidate();
     }
   };
+  const [only] = books.length === 1 ? books : [];
 
   return (
     <Card>
@@ -89,18 +97,26 @@ export function StoryCast({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {books.length > 0 && (
-          <div className="rounded-md bg-muted/50 p-3 text-sm" data-testid="story-books">
-            <p className="font-medium">Your {books.length === 1 ? "book" : "books"} of this story</p>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="story-books" role="status">
+            <p className="font-medium">
+              {books.length === 1 ? "Your family already has a book of this story" : `Your family already has ${books.length} books of this story`}
+            </p>
             <ul className="mt-1 flex flex-col gap-0.5">
               {books.map((book) => (
                 <li key={book.id}>
                   <Link to="/books/$bookId" params={{ bookId: book.id }} className="underline">
                     {book.title} with {book.cast}
                   </Link>
+                  {book.version !== version && <span className="text-muted-foreground"> · made from version {book.version}</span>}
                 </li>
               ))}
             </ul>
-            {canEdit && <p className="text-muted-foreground mt-1 text-xs">Open one to edit its text and print it, or make another below.</p>}
+            {canEdit && (
+              <p className="text-muted-foreground mt-1 text-xs">
+                {books.length === 1 ? "Open it" : "Choose one to open"} to change who's in it, edit its text, and print it. Opening it keeps its cast and
+                looks as they are; the choices below aren't applied to it.
+              </p>
+            )}
           </div>
         )}
         <ul className="grid gap-3 md:grid-cols-2" aria-label="Roles">
@@ -182,18 +198,37 @@ export function StoryCast({
             );
           })}
         </ul>
-        {canEdit && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
-              Make the book
-            </Button>
-            <p className="text-muted-foreground text-xs">
-              {everyoneFromFamily
-                ? "Makes a new book with this cast. Next you can edit its text and print a proof."
-                : "Choose someone from your family for every part to make the book."}
-            </p>
-          </div>
-        )}
+        {canEdit &&
+          (books.length === 0 ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
+                Make the book
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                {everyoneFromFamily
+                  ? "Makes a new book with this cast. Next you can edit its text and print a proof."
+                  : "Choose someone from your family for every part to make the book."}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              {only && (
+                <Button asChild>
+                  <Link to="/books/$bookId" params={{ bookId: only.id }}>
+                    Open our book
+                  </Link>
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
+                Make another copy
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                {everyoneFromFamily
+                  ? `Makes a separate book with this cast; ${books.length === 1 ? "your book stays" : "your books stay"} as ${books.length === 1 ? "it is" : "they are"}.`
+                  : "Choose someone from your family for every part to make another copy."}
+              </p>
+            </div>
+          ))}
         {error && (
           <p className="text-destructive text-sm" role="alert">
             {error}

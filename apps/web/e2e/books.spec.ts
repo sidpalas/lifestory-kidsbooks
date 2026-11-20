@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { Effect, Exit } from "effect";
 
 // Characters, personalized books, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
 // "The Example Family"; the seeded grandparent is a viewer in it. Names are unique per run.
@@ -23,6 +24,12 @@ const addCharacter = async (page: Page, name: string, pronouns: string, age: str
   await page.getByRole("button", { name: "Add to the family" }).click();
   await expect(page.getByTestId("characters")).toContainText(name);
 };
+
+/**
+ * "Make the book", or "Make another copy" when the family already has a book of the story (D47): the seeded parent's
+ * family keeps the books earlier tests and runs made.
+ */
+const makeBook = (page: Page) => page.getByRole("button", { name: /^(Make the book|Make another copy)$/ });
 
 /** The image URLs of every page in the editor's page list, per page. */
 const pageSources = (page: Page) =>
@@ -85,7 +92,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await imagesLoaded(page);
   await expect.poll(() => preview.locator("img").count()).toBe(45);
   await expect(page.getByTestId(/^try-/)).toHaveCount(0);
-  await page.getByRole("button", { name: "Make the book" }).click();
+  await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = page.url();
 
@@ -165,7 +172,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   const make = page.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
   await make.getByLabel(/A grown-up/).selectOption({ label: `Lee ${id}` });
-  await page.getByRole("button", { name: "Make the book" }).click();
+  await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = new URL(page.url()).pathname;
 
@@ -183,7 +190,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   // The viewer previews the story with the family but can't make or delete books.
   await viewer.goto("/stories/the-moon-picnic");
   await expect(viewer.getByTestId("story-books")).toContainText(child);
-  await expect(viewer.getByRole("button", { name: "Make the book" })).toHaveCount(0);
+  await expect(makeBook(viewer)).toHaveCount(0);
   await viewer.goto(bookUrl);
   await expect(viewer.getByRole("button", { name: "Delete this book" })).toHaveCount(0);
   await viewer.goto("/");
@@ -223,7 +230,7 @@ test("a parent styles a family member for one book before making it, without cha
   await roles.getByLabel(/A grown-up/).selectOption({ label: `Ash ${id}` });
   const preview = page.getByRole("region", { name: "Pages" }).getByTestId("book-page");
   await expect(page.getByTestId("pages-heading")).toHaveText(`The pages with ${child} and Ash ${id}`);
-  await expect(page.getByRole("button", { name: "Make the book" })).toBeEnabled();
+  await expect(makeBook(page)).toBeEnabled();
   await imagesLoaded(page);
   const sources = () => preview.locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")!));
   const before = await sources();
@@ -242,7 +249,7 @@ test("a parent styles a family member for one book before making it, without cha
   expect(styled).toHaveLength(before.length);
 
   // Making the book keeps it; her saved look stays blonde.
-  await page.getByRole("button", { name: "Make the book" }).click();
+  await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = page.url();
   await expect(page.getByTestId("look-note-hero")).toBeVisible();
@@ -263,4 +270,95 @@ test("a parent styles a family member for one book before making it, without cha
   await expect(bookPicker.getByRole("button", { name: "Brown hair colour" })).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId(`book-look-hero`).getByRole("button", { name: `Use ${child}'s saved look` }).click();
   await expect(page.getByTestId("look-note-hero")).toHaveCount(0);
+});
+
+test("a family with a book of the story is sent to it instead of silently making another, and copies are made only on purpose", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const id = unique();
+  const email = `copies-${id}@lifestory.dev`;
+  const child = `Pip ${id}`;
+  const grownup = `Mo ${id}`;
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    // A new account comes with its own family, which has no books yet.
+    await page.goto(`/__dev/log-me-in/${email}?returnTo=/`);
+    await addCharacter(page, child, "she/her", "Young child", "Curly black hair");
+    await addCharacter(page, grownup, "he/him", "Adult", "Short blonde hair, glasses");
+    await page.goto("/stories/the-moon-picnic");
+    const roles = page.getByRole("list", { name: "Roles" });
+    await roles.getByLabel(/The child/).selectOption({ label: child });
+    await roles.getByLabel(/A grown-up/).selectOption({ label: grownup });
+    await expect(page).toHaveURL(/cast=/);
+    await expect(page.getByTestId("story-books")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Make the book" })).toBeEnabled();
+    const storyUrl = page.url();
+
+    // A second tab still shows the page from before the book existed.
+    const stale = await context.newPage();
+    await stale.goto(storyUrl);
+    await expect(stale.getByRole("button", { name: "Make the book" })).toBeEnabled();
+
+    await page.getByRole("button", { name: "Make the book" }).click();
+    await expect(page).toHaveURL(/\/books\/book_/);
+    const bookPath = new URL(page.url()).pathname;
+
+    // The stale tab's "Make the book" makes nothing: it says why and lists the book that exists now.
+    await stale.getByRole("button", { name: "Make the book" }).click();
+    await expect(stale.getByRole("alert")).toHaveText("Your family already has a book of The Moon Picnic, so no new one was made.");
+    await expect(stale.getByTestId("story-books")).toContainText("Your family already has a book of this story");
+    await expect(stale.getByRole("link", { name: "Open our book" })).toHaveAttribute("href", bookPath);
+    await expect(stale.getByRole("button", { name: "Make the book" })).toHaveCount(0);
+    await stale.close();
+
+    // Back on the story page, styling the child for a book and opening the existing one leaves that book as it was.
+    await page.goto(storyUrl);
+    await expect(page.getByTestId("story-books")).toContainText(`The Moon Picnic with ${grownup}, ${child}`);
+    await page.getByTestId("role-hero").getByRole("button", { name: "Change look for this book" }).click();
+    await page.getByTestId("book-look-hero").getByRole("button", { name: "Red hair colour" }).click();
+    await expect(page).toHaveURL(/hair-colour%3Ared|hair-colour:red/);
+    await evidence(page, "story-has-book");
+    await page.getByRole("link", { name: "Open our book" }).click();
+    await expect(page).toHaveURL(new RegExp(`${bookPath}$`));
+    await expect(page.getByRole("region", { name: "All pages" }).getByTestId("book-page")).toHaveCount(6);
+    await expect(page.getByTestId("look-note-hero")).toHaveCount(0);
+
+    // Two requests at once that both saw only that book make one more copy, not two. Imported here (AGENTS.md,
+    // "Orb size").
+    const { createBook, Database, makeServerRuntime } = await import("@lifestory/core");
+    const runtime = makeServerRuntime();
+    const cast = JSON.parse(new URL(storyUrl).searchParams.get("cast")!) as Record<string, string>;
+    const {
+      rows: [owner],
+    } = await runtime.runPromise(
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool.query<{ userId: string; familyId: string }>(
+            `select u.id as "userId", m.organization_id as "familyId" from "user" u join member m on m.user_id = u.id where u.email = $1`,
+            [email],
+          ),
+        ),
+      ),
+    );
+    const bookId = bookPath.split("/").at(-1)!;
+    const attempts = await Promise.all(
+      [0, 1].map(() => runtime.runPromise(Effect.exit(createBook(owner!.userId, owner!.familyId, { slug: "the-moon-picnic", cast, existing: [bookId] })))),
+    );
+    expect(attempts.filter(Exit.isSuccess)).toHaveLength(1);
+    expect(JSON.stringify(attempts.find(Exit.isFailure))).toContain("BookExists");
+    await runtime.dispose();
+
+    // With several books the page doesn't pick one: each is listed, and another copy is made only on purpose.
+    await page.goto(storyUrl);
+    await expect(page.getByTestId("story-books")).toContainText("Your family already has 2 books of this story");
+    await expect(page.getByTestId("story-books").getByRole("link")).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Open our book" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Make another copy" }).click();
+    await expect(page).toHaveURL(/\/books\/book_/);
+    expect(new URL(page.url()).pathname).not.toBe(bookPath);
+    await page.goto("/");
+    await expect(page.getByTestId("books").getByRole("button", { name: /^Delete The Moon Picnic/ })).toHaveCount(3);
+  } finally {
+    await context.close();
+  }
 });

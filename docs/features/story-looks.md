@@ -14,6 +14,9 @@ art across new parts, palettes, additions (D41), or recolouring changes.
 - `/stories/<slug>`: role selects choose family members or the story's example. Visual pickers show each option as
   a portrait or colour swatch. Cast, example looks and book-only changes live in the URL; nothing is saved yet.
 - Any signed-in member can preview a published story; only owners and parents can make a book.
+- A family that already has a book of the story sees it listed with "Open our book" (one book) or a link to each
+  (several), and makes a new one only with "Make another copy" (D47); the server refuses a book the page didn't
+  know about, so a stale tab or double click makes nothing extra.
 - `/books/<id>`: owners and parents can change the book-only look, reset it, or edit the separate saved family look.
   Viewers read the book without editing.
 

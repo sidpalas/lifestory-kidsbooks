@@ -3,7 +3,7 @@
 // from those and the characters' current looks every time they're shown, so a look change applies to every page of
 // every book at once, and nothing is rendered or invalidated (D26: no AI, no GPU when a book is made).
 import { schema } from "@lifestory/db";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 import {
   type CastMember,
@@ -17,7 +17,7 @@ import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
 import { Character as CharacterSchema } from "./contracts.ts";
 import { Database } from "./database.ts";
-import { InvalidInput, NotFound } from "./errors.ts";
+import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import { resolveIllustration } from "./pages.ts";
@@ -81,7 +81,14 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
   const access = yield* requireFamilyAccess(userId, familyId, "read");
   const rows = yield* Database.query((db) =>
     db
-      .select({ id: schema.book.id, title: schema.book.title, storySlug: schema.story.slug, storyTitle: schema.story.title, name: schema.character.name })
+      .select({
+        id: schema.book.id,
+        title: schema.book.title,
+        storySlug: schema.story.slug,
+        storyTitle: schema.story.title,
+        version: schema.storyVersion.version,
+        name: schema.character.name,
+      })
       .from(schema.book)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
       .innerJoin(schema.story, eq(schema.story.id, schema.storyVersion.storyId))
@@ -90,9 +97,10 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
       .where(eq(schema.book.familyId, familyId))
       .orderBy(asc(schema.book.createdAt), asc(schema.bookCast.slotId)),
   );
-  const books = new Map<string, { id: string; title: string; storySlug: string; storyTitle: string; names: Array<string> }>();
+  const books = new Map<string, { id: string; title: string; storySlug: string; storyTitle: string; version: number; names: Array<string> }>();
   for (const row of rows) {
-    const book = books.get(row.id) ?? { id: row.id, title: row.title, storySlug: row.storySlug, storyTitle: row.storyTitle, names: [] };
+    const { name: _, ...summary } = row;
+    const book = books.get(row.id) ?? { ...summary, names: [] };
     if (row.name) book.names.push(row.name);
     books.set(row.id, book);
   }
@@ -104,7 +112,10 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
 
 /**
  * Starts a family's book of the newest version of a story the user may read, with a character in every role.
- * Fails with InvalidInput when a role is empty or its character is another age than the role.
+ * Fails with InvalidInput when a role is empty or its character is another age than the role, and with BookExists
+ * when the family has a book of the story, of any version, that isn't in `existing`: a person makes another copy only
+ * after seeing every one the family has. Checked under a lock per family and story, so a double click or a second tab
+ * makes one book, not two. Existing books are never changed.
  */
 export const createBook = Effect.fn("books.create")(function* (
   userId: string,
@@ -114,20 +125,38 @@ export const createBook = Effect.fn("books.create")(function* (
     readonly cast: Readonly<Record<string, string>>;
     /** Per role, how this book draws its character differently from their saved look (D46). */
     readonly looks?: Readonly<Record<string, LookOverride>>;
+    /** The family's books of this story the person saw and chose to make another copy next to. */
+    readonly existing?: ReadonlyArray<string>;
   },
 ) {
   yield* requireFamilyAccess(userId, familyId, "edit");
   const { story, storyVersionId, manifest } = yield* readableStoryVersion(userId, input.slug);
   yield* checkCast(manifest, familyId, input.cast, input.looks);
   const id = `book_${crypto.randomUUID()}`;
-  yield* Database.query((db) =>
+  const unseen = yield* Database.query((db) =>
     db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`book:${familyId}:${story.id}`}, 0))`);
+      const books = await tx
+        .select({ id: schema.book.id })
+        .from(schema.book)
+        .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
+        .where(and(eq(schema.book.familyId, familyId), eq(schema.storyVersion.storyId, story.id)))
+        .orderBy(desc(schema.book.createdAt));
+      const bookIds = books.map((book) => book.id);
+      if (bookIds.some((bookId) => !input.existing?.includes(bookId))) return bookIds;
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
       await tx.insert(schema.bookCast).values(
         Object.entries(input.cast).map(([slotId, characterId]) => ({ bookId: id, slotId, characterId, lookChanges: lookChangesOrNull(input.looks?.[slotId]) })),
       );
+      return null;
     }),
   );
+  if (unseen) {
+    return yield* new BookExists({
+      message: `Your family already has ${unseen.length === 1 ? "a book" : `${unseen.length} books`} of ${story.title}, so no new one was made.`,
+      bookIds: unseen,
+    });
+  }
   return { id };
 });
 

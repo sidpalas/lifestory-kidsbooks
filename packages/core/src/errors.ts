@@ -53,6 +53,15 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInp
   message: Schema.String,
 }) {}
 
+/**
+ * The family already has a book of this story that the person didn't choose to make another next to, so no new one
+ * was made; `bookIds` are the family's books of it, newest first.
+ */
+export class BookExists extends Schema.TaggedError<BookExists>()("BookExists", {
+  message: Schema.String,
+  bookIds: Schema.Array(Schema.String),
+}) {}
+
 /** A story draft that fails the book format's checks for publishing; each issue names where it is. */
 export class StoryNotPublishable extends Schema.TaggedError<StoryNotPublishable>()("StoryNotPublishable", {
   issues: Schema.Array(Schema.String),
