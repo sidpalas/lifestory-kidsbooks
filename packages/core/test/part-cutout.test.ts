@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import partsByBase from "../src/looks/portrait/parts.json" with { type: "json" };
 import { rasterize } from "../src/looks/recolour.ts";
-import { coverOutline, CROWN_GAP_LIMIT, crownGap, cutOutPart, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
+import { coverOutline, CROWN_GAP_LIMIT, crownGap, cutOutPart, paperSilhouette, type PixelRect, type Rgb } from "../src/parts/cutout.ts";
+import { figureCoverage } from "../src/parts/images.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
@@ -218,6 +220,43 @@ describe("coverOutline", () => {
   });
 });
 
+describe("coverOutline on a base drawn on paper", () => {
+  // The picker's portraits (D28): an opaque base on textured paper, the head drawn with an ink line 6 px wide at
+  // 560 px. The matte left the ink half covered under the hair (alpha 0.3, dark notches under a light colour), and a
+  // stubble's dots sit on the chin, against the jaw's ink.
+  const width = 488, height = 560, r = 150, ink = 6;
+  const at = (p: number) => [p % width, Math.floor(p / width)] as const;
+  const d = (p: number) => Math.hypot(at(p)[0] - 244, at(p)[1] - 300);
+  const pixels = [...Array(width * height).keys()];
+  const image = new Float32Array(width * height * 3);
+  const mask = new Uint8Array(width * height);
+  const alpha = new Float32Array(width * height);
+  for (const p of pixels) {
+    const [x, y] = at(p);
+    const paper = [0.99, 0.91, 0.73].map((v, c) => v - 0.012 * Math.abs(Math.sin(x / 3 + y / 7 + c)));
+    image.set(d(p) < r - ink ? [0.88, 0.66, 0.45] : d(p) < r ? [0.35, 0.2, 0.08] : paper, p * 3);
+    mask[p] = d(p) < r - ink ? 255 : 0;
+    if (y < 220) alpha[p] = d(p) < r - ink ? 1 : d(p) < r ? 0.3 : 0;
+    if (y > 400 && d(p) < r - 1 && x % 6 < 2 && y % 6 < 2) alpha[p] = 1;
+  }
+  const figure = paperSilhouette({ width, height, data: image });
+  const result = coverOutline(alpha, new Float32Array(width * height * 3).fill(0.4), figure, mask, width, height);
+  const ring = (p: number) => d(p) >= r - ink && d(p) < r - 1;
+
+  it("finds the head's silhouette on the paper", () => {
+    expect(pixels.filter((p) => d(p) > r + 1 && figure[p]! >= 0.02)).toEqual([]);
+    expect(pixels.filter((p) => d(p) < r - 1 && figure[p]! < 1)).toEqual([]);
+  });
+
+  it("covers the ink under the hair, and not beside the face or under a stubble's dots", () => {
+    const above = pixels.filter((p) => ring(p) && at(p)[1] < 200);
+    expect(above.length).toBeGreaterThan(300);
+    expect(above.filter((p) => result.alpha[p]! < 0.99)).toEqual([]);
+    expect(pixels.filter((p) => ring(p) && at(p)[1] > 240 && result.alpha[p]! !== alpha[p])).toEqual([]);
+    expect(coverOutline(result.alpha, result.colour, figure, mask, width, height).covered).toBe(0);
+  });
+});
+
 describe("the sample stories' hair", () => {
   // Every hair part, published or added (D41), on each base it is drawn on, as composeFigure places it.
   /**
@@ -283,4 +322,35 @@ describe("the sample stories' hair", () => {
     // The known ones still fail, so the check catches them (and a redrawn one leaves the list).
     expect(gaps.filter(({ part, gap }) => gap > CROWN_GAP_LIMIT && known.has(part)).map(({ part }) => part).toSorted()).toEqual([...known].toSorted());
   }, 30_000);
+});
+
+describe("the picker's portrait hair", () => {
+  // Every hair and facial hair part of the portrait (D28) on its own base, drawn on paper (no alpha): its silhouette
+  // is the paper the border reaches (figureCoverage), as cutOutLayer finds it for a new part.
+  const dir = new URL("../src/looks/portrait/", import.meta.url);
+  const read = (asset: string) => new Uint8Array(readFileSync(new URL(asset, dir)));
+
+  it("covers the scalp up to the head's ink outline", async () => {
+    const found = await Promise.all(
+      Object.entries(partsByBase as Record<string, Record<string, ReadonlyArray<{ asset: string; at: ReadonlyArray<number>; palette: string }>>>).map(async ([base, options]) => {
+        const { data: mask, info } = await (await rasterize(read(`bases/${base}-skin.png`))).extractChannel(3).raw().toBuffer({ resolveWithObject: true });
+        const { width, height } = info;
+        const figure = await figureCoverage(read(`bases/${base}.png`), width, height);
+        return Promise.all(
+          Object.values(options).flat().filter((part) => part.palette === "hairColour").map(async (part) => {
+            const [x0, y0, x1, y1] = part.at.map((v, k) => Math.round((v * (k % 2 === 0 ? width : height)) / 1000)) as [number, number, number, number];
+            const layer = await (await rasterize(read(part.asset))).resize(x1 - x0, y1 - y0, { fit: "fill" }).extractChannel(3).raw().toBuffer();
+            const alpha = new Float32Array(width * height);
+            for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) alpha[y * width + x] = layer[(y - y0) * (x1 - x0) + (x - x0)]! / 255;
+            const covered = coverOutline(alpha, new Float32Array(alpha.length * 3), figure, new Uint8Array(mask), width, height).covered;
+            return { part: part.asset, gap: crownGap(alpha, new Uint8Array(mask), width, height), covered };
+          }),
+        );
+      }),
+    );
+    const parts = found.flat();
+    expect(parts.length).toBeGreaterThan(150);
+    expect(parts.filter(({ gap }) => gap > CROWN_GAP_LIMIT).map(({ part, gap }) => `${part}: ${gap}`)).toEqual([]);
+    expect(parts.filter(({ covered }) => covered > 0).map(({ part, covered }) => `${part}: ${covered}`)).toEqual([]);
+  }, 60_000);
 });

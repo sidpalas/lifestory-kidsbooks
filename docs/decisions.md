@@ -427,6 +427,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   and cut out like story parts (D36) and reviewed on the lightest and darkest skin; two were retaken (a redrawn
   chin line, an eyebrow on a lens). Stored at 488 × 560 (the picker shows 244 × 280), parts cropped to their pixels
   and listed in `portrait/parts.json`. US$3.78 in all (4 samples, 20 base edits, 48 part edits).
+- **Hair reaches the ink outline (2026-11-20, Sid's request):** the matte left the bases' thick ink outline half
+  covered under the hair, as dark notches around a light buzz cut and flecks under long hair. The book parts' rule
+  (`coverOutline`, Paper Boat v6) now measures each base's outline width and finds the silhouette of a base drawn on
+  paper; `fixtures/art-sources/portrait/build-outline.ts` re-cut the stored parts with it (no new edits). No part
+  leaves scalp above it (`crownGap` at most 8.1, under the limit of 9), so none was redrawn.
 - **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
   its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
   character's own option is unsupported, so a later look change back to a supported option takes effect again. A role

@@ -14,7 +14,9 @@ story-independent portrait (`/api/portrait?<look>`, D28) follows every choice, a
 ## Seed data
 
 - `parent@lifestory.dev` owns "The Example Family"; `grandparent@lifestory.dev` is its viewer.
-- Look vocabulary: `packages/core/src/looks/vocabulary.ts`; portrait art: `packages/core/src/looks/portrait/`.
+- Look vocabulary: `packages/core/src/looks/vocabulary.ts`; portrait art: `packages/core/src/looks/portrait/`. Its hair
+  and facial hair reach the head's ink outline (`fixtures/art-sources/portrait/build-outline.ts`, the shared
+  `coverOutline`); `part-cutout.test.ts` holds every portrait part to that and to `CROWN_GAP_LIMIT`.
 
 ## Verify
 

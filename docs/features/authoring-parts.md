@@ -51,7 +51,10 @@ actual-page composition and explicit bulk approval.
   smaller than the bald head: retake it with a note asking the hair to cover the scalp's whole outline. The editor
   doesn't show the metric yet; it is stored with the part. A hairline, ears and translucent strands aren't counted.
   The other cause, hair stopping at the head's pencil outline (as dark as the hair, so the matte can't see it), the
-  cut-out fixes itself with `coverOutline` and records `outlineCovered`.
+  cut-out fixes itself with `coverOutline` and records `outlineCovered`. It measures the outline's width on the base
+  (a thick ink line, as the picker's portraits draw, shows as dark notches and flecks under a light hair colour),
+  extends only solid hair (not stubble dots), and takes the silhouette from the base's alpha, or from the paper
+  around it when the base has none (`figureCoverage`).
 - Scrolling never approves artwork. Bulk approval includes only pending candidates whose two review images loaded
   and whose card entered the viewport in this sheet session; a fresh take has a fresh identity. This is a guard
   against unseen work, not evidence that a person inspected it. The illustrator still explicitly approves.

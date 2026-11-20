@@ -581,16 +581,21 @@ export const crownGap = (alpha: Float32Array, skinMask: Uint8Array, width: numbe
  * reaches the hair within twice the outline's width: it lies between the hair and the paper. A forehead below a
  * hairline, a temple or an ear has the silhouette beside it and hair above, and stays skin. Its colour is the hair's
  * nearby. A short run of skin above the hair in its column, near the silhouette, is covered too (hair tips
- * stopping short of the crown). Repeated until nothing changes, so a part
+ * stopping short of the crown). The outline's width is the base's own (the distance from its silhouette to its skin):
+ * the picker's portraits draw a thick ink line, and the matte leaves it half covered under the hair, as dark notches
+ * around a light buzz cut and flecks under long hair (2026-11-20). Hair is extended only from solid pieces, so a
+ * stubble's dots or a wisp don't smear into a band along the jaw. Repeated until nothing changes, so a part
  * it has covered has nothing left to cover. Returns new arrays and
  * the number of pixels it raised.
  */
 export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: Float32Array, skinMask: Uint8Array, width: number, height: number) => {
-  // The pencil outline is 2–3 px at 1024 px; a wider gap is the drawing's own (a temple, a hairline), not the matte's.
-  const radius = Math.max(2, Math.round((4 * Math.max(width, height)) / 1024));
+  // A pencil outline is 2–3 px at 1024 px (Paper Boat), an ink one as thick as the base draws it (the picker's
+  // portraits: ~10 px at 1024), measured below; a wider gap is the drawing's own (a temple, a hairline), not the matte's.
+  const scaled = Math.max(2, Math.round((4 * Math.max(width, height)) / 1024));
+  const thickest = Math.round(Math.max(width, height) / 50);
   const outAlpha = Float32Array.from(alpha);
   const outColour = Float32Array.from(colour);
-  const bounds = alphaBounds(alpha.map((a) => (a >= 0.5 ? a : 0)), width, height, 3 * radius);
+  const bounds = alphaBounds(alpha.map((a) => (a >= 0.5 ? a : 0)), width, height, 3 * Math.max(scaled, thickest));
   if (!bounds) return { alpha: outAlpha, colour: outColour, covered: 0 };
   const [bx0, by0, bx1, by1] = bounds;
   const cropWidth = bx1 - bx0, cropHeight = by1 - by0;
@@ -600,9 +605,27 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
     return out;
   };
   const outside = cropMask((p) => figure[p]! < 0.02);
-  // Within the outline's width of the silhouette (inside or on it), and near the skin (its antialiased edge too).
+  // The outline's width: the median distance from the silhouette to the skin, where the skin is that close.
+  const toSkin = distanceSquared(cropMask((p) => skinMask[p]! >= 128), cropWidth, cropHeight);
+  const widths: Array<number> = [];
+  for (let c = 0; c < outside.length; c++) {
+    const x = c % cropWidth;
+    const edge = !outside[c] && ((x > 0 && outside[c - 1]) || (x < cropWidth - 1 && outside[c + 1]) || outside[c - cropWidth] || outside[c + cropWidth]);
+    if (edge && toSkin[c]! <= thickest * thickest) widths.push(Math.sqrt(toSkin[c]!));
+  }
+  const outline = widths.length === 0 ? 0 : Math.round(widths.toSorted((a, b) => a - b)[widths.length >> 1]!);
+  const radius = Math.max(scaled, outline + 1);
+  // Within the outline's width of the silhouette (inside or on it), and of the skin (its antialiased edge too).
   const nearOutside = dilate(outside, cropWidth, cropHeight, radius);
-  const nearSkin = dilate(cropMask((p) => skinMask[p]! >= 128), cropWidth, cropHeight, 2);
+  const nearSkin = Uint8Array.from(toSkin, (d) => (d <= Math.max(2, outline) ** 2 ? 1 : 0));
+  // Hair the band is extended from is solid: a piece at least a few outline widths across, not a stubble's dots or a
+  // stray wisp, which would smear into a solid band along the jaw or the crown.
+  let solid = new Uint8Array(width * height);
+  const findSolid = () => {
+    solid = new Uint8Array(width * height);
+    for (const piece of components(cropMask((p) => outAlpha[p]! >= 0.5), cropWidth, cropHeight))
+      if (piece.length >= 36 * radius * radius) for (const c of piece) solid[(by0 + Math.floor(c / cropWidth)) * width + bx0 + (c % cropWidth)] = 1;
+  };
   let covered = 0;
   const crown = dilate(outside, cropWidth, cropHeight, 3 * radius);
   // Skin above the hair near the crown is never a hairline (crownGap's runs): in each column, a run of bare skin
@@ -623,10 +646,11 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
           }
           continue;
         }
-        if (start >= 0 && outAlpha[p]! >= 0.5 && y - start <= 3 * radius) {
+        if (start >= 0 && solid[p] && y - start <= 3 * radius) {
           for (let k = start; k < y; k++) {
             const q = k * width + x;
             outAlpha[q] = figure[q]!;
+            solid[q] = 1;
             for (let c = 0; c < 3; c++) outColour[q * 3 + c] = outColour[p * 3 + c]!;
             covered++;
             found = true;
@@ -638,6 +662,7 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
     return found;
   };
   for (let changed = true; changed; ) {
+    findSolid();
     changed = crownPass();
     const add: Array<number> = [];
     for (let y = by0; y < by1; y++) {
@@ -666,7 +691,7 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
         let hair = -1;
         for (let k = 1; k <= 2 * radius && hair < 0; k++) {
           const nx = Math.round(x - (ox / length) * k), ny = Math.round(y - (oy / length) * k);
-          if (nx >= 0 && ny >= 0 && nx < width && ny < height && outAlpha[ny * width + nx]! >= 0.5) hair = ny * width + nx;
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height && solid[ny * width + nx]) hair = ny * width + nx;
         }
         if (hair < 0) continue;
         if (count === 0) {
@@ -679,12 +704,47 @@ export const coverOutline = (alpha: Float32Array, colour: Float32Array, figure: 
     for (let i = 0; i < add.length; i += 5) {
       const p = add[i]!;
       outAlpha[p] = add[i + 1]!;
+      solid[p] = 1;
       for (let k = 0; k < 3; k++) outColour[p * 3 + k] = add[i + 2 + k]!;
       covered++;
       changed = true;
     }
   }
   return { alpha: outAlpha, colour: outColour, covered };
+};
+
+const PAPER_TEXTURE = 0.03;
+const PAPER_NEAR = 0.08;
+
+/**
+ * The figure's coverage (0..1) in a base drawn on paper with no transparency (the picker's portrait bases, D28): the
+ * paper is the border's median colour, and the pixels like it that the border reaches without crossing the figure
+ * are outside it, ramping up to the figure's ink over the anti-aliased edge. Paper enclosed by the figure (between an
+ * arm and the body) stays the figure's; coverOutline only looks near skin, so that costs nothing.
+ */
+export const paperSilhouette = (image: Rgb) => {
+  const { width, height, data } = image;
+  const n = width * height;
+  const border: Array<number> = [];
+  for (let x = 0; x < width; x++) border.push(x, (height - 1) * width + x);
+  for (let y = 1; y < height - 1; y++) border.push(y * width, y * width + width - 1);
+  const median = [0, 1, 2].map((c) => border.map((p) => data[p * 3 + c]!).toSorted((a, b) => a - b)[border.length >> 1]!);
+  const d = new Float32Array(n);
+  for (let p = 0; p < n; p++) d[p] = Math.max(...[0, 1, 2].map((c) => Math.abs(data[p * 3 + c]! - median[c]!)));
+  // Paper's own texture stays within ~0.03 of its median; the figure's ink and skin are far from it.
+  const reached = new Uint8Array(n);
+  const stack = border.filter((p) => d[p]! < PAPER_NEAR);
+  for (const p of stack) reached[p] = 1;
+  while (stack.length > 0) {
+    const p = stack.pop()!;
+    const x = p % width;
+    for (const q of [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width]) {
+      if (q < 0 || q >= n || reached[q] || d[q]! >= PAPER_NEAR) continue;
+      reached[q] = 1;
+      stack.push(q);
+    }
+  }
+  return Float32Array.from(d, (v, p) => (reached[p] ? clamp01((v - PAPER_TEXTURE) / (PAPER_NEAR - PAPER_TEXTURE)) : 1));
 };
 
 /** The bounding box of the pixels with alpha, grown by `pad` and clipped; null when there are none. */

@@ -4,7 +4,7 @@
 import sharp, { type Sharp } from "sharp";
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
-import { alphaBounds, coverOutline, crownGap, cutOutPart, type CutOutMetrics, findShift, neutralize, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
+import { alphaBounds, coverOutline, crownGap, cutOutPart, type CutOutMetrics, findShift, neutralize, paperSilhouette, type PixelRect, type Rgb, shiftImage, skinPixels } from "./cutout.ts";
 
 /** The cut-out runs at most at this size; provider outputs are 1536 px at most, so more adds nothing. */
 const WORKING_SIZE = 1536;
@@ -156,6 +156,17 @@ export const cutOutLayer = async (
  */
 export type CutOutOptions = { readonly neutral: true; readonly figure: Uint8Array } | { readonly neutral: false };
 
+/**
+ * The figure's coverage (0..1) at `width` × `height`, the silhouette coverOutline extends hair to: the base's own
+ * alpha, or where the base has none (drawn on paper, like the picker's portrait bases), the paper the border reaches.
+ */
+export const figureCoverage = async (figure: Uint8Array, width: number, height: number) => {
+  const rgba = await (await rasterize(figure)).resize(width, height, { fit: "fill" }).raw().toBuffer();
+  const alpha = Float32Array.from({ length: width * height }, (_, p) => rgba[p * 4 + 3]! / 255);
+  if (alpha.some((a) => a < 1)) return alpha;
+  return paperSilhouette({ width, height, data: Float32Array.from({ length: width * height * 3 }, (_, i) => rgba[Math.floor(i / 3) * 4 + (i % 3)]! / 255) });
+};
+
 /** A cut-out split by region into the part and any skin drawn in it (cutOutLayer). */
 const splitLayers = async <M extends CutOutMetrics>(
   base: Rgb,
@@ -171,8 +182,8 @@ const splitLayers = async <M extends CutOutMetrics>(
   const skinAlpha = options.neutral ? alpha.map((a, p) => (skin[p] ? a : 0)) : new Float32Array(alpha.length);
   const cut = alpha.map((a, p) => (skin[p] ? 0 : a));
   // Hair reaches the head's outline, which the matte leaves out (coverOutline).
-  const figure = options.neutral ? await (await rasterize(options.figure)).resize(width, height, { fit: "fill" }).extractChannel(3).raw().toBuffer() : null;
-  const outline = figure ? coverOutline(cut, colour, Float32Array.from(figure, (v) => v / 255), new Uint8Array(mask), width, height) : null;
+  const figure = options.neutral ? await figureCoverage(options.figure, width, height) : null;
+  const outline = figure ? coverOutline(cut, colour, figure, new Uint8Array(mask), width, height) : null;
   const partAlpha = outline?.alpha ?? cut;
   const partColour = outline?.colour ?? colour;
   const layers = await Promise.all([
