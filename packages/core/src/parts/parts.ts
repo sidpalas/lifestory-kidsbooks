@@ -411,24 +411,36 @@ export const PartTaskParams = Schema.Union([
   Schema.Struct({ partId: Schema.String }),
 ]);
 
-/** One part, with its files and cost. A part whose task gave up after its retries reads as failed. */
+/** One part, with its files and cost, as `withEndedTasks` reads it. */
 export const getPart = Effect.fn("parts.get")(function* (userId: string, partId: string) {
   const [row] = yield* Database.query((db) =>
     db.select().from(schema.storyPart).where(eq(schema.storyPart.id, partId)),
   );
   if (!row) return yield* new NotFound({ entity: "part", id: partId });
   const version = yield* authoredVersion(userId, row.storyVersionId);
-  let current = row;
-  if (row.status === "generating" && row.taskId) {
-    const task = yield* Jobs.use((jobs) => jobs.status(row.taskId!)).pipe(Effect.option);
-    if (task._tag === "Some" && (task.value.state === "failed" || task.value.state === "cancelled")) {
-      current = { ...row, status: "failed", error: row.error ?? `the generation task ${task.value.state}` };
-    }
-  }
-  return partView(current, version.storyId, version.version, yield* generationOf(row.generationId));
+  const [current] = yield* withEndedTasks([row]);
+  return partView(current!, version.storyId, version.version, yield* generationOf(row.generationId));
 });
 
-/** Every part of a draft or published story version, oldest first. */
+/**
+ * Parts as the author sees them: one still "generating" whose task gave up after its retries, or was cancelled, reads
+ * as failed, since no step of that task wrote it. Looks up each such task once (a tiled edit's parts share one).
+ */
+const withEndedTasks = Effect.fnUntraced(function* (rows: ReadonlyArray<PartRow>) {
+  const taskIds = new Set(rows.flatMap((row) => (row.status === "generating" && row.taskId ? [row.taskId] : [])));
+  const ended = new Map<string, string>();
+  for (const taskId of taskIds) {
+    const task = yield* Jobs.use((jobs) => jobs.status(taskId)).pipe(Effect.option);
+    if (task._tag === "Some" && (task.value.state === "failed" || task.value.state === "cancelled"))
+      ended.set(taskId, task.value.state);
+  }
+  return rows.map((row): PartRow => {
+    const state = row.status === "generating" && row.taskId ? ended.get(row.taskId) : undefined;
+    return state ? { ...row, status: "failed", error: row.error ?? `the generation task ${state}` } : row;
+  });
+});
+
+/** Every part of a draft or published story version, oldest first, as `withEndedTasks` reads them. */
 export const listParts = Effect.fn("parts.list")(function* (userId: string, storyVersionId: string) {
   const version = yield* authoredVersion(userId, storyVersionId);
   const rows = yield* Database.query((db) =>
@@ -446,7 +458,8 @@ export const listParts = Effect.fn("parts.list")(function* (userId: string, stor
       .where(eq(schema.storyPart.storyVersionId, storyVersionId))
       .orderBy(asc(schema.storyPart.createdAt), asc(schema.storyPart.id)),
   );
-  return rows.map(({ part, generation }) => partView(part, version.storyId, version.version, generation));
+  const parts = yield* withEndedTasks(rows.map((row) => row.part));
+  return rows.map(({ generation }, i) => partView(parts[i]!, version.storyId, version.version, generation));
 });
 
 /**

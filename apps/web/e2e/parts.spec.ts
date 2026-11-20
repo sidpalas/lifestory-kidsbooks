@@ -24,8 +24,11 @@ test("an author generates a part, reviews it on light and dark skin, and approve
     decodeStoryManifest,
     getPart,
     importStoryVersion,
+    Jobs,
+    listParts,
     makeServerRuntime,
     requestParts,
+    renderProof,
     reviewPart,
     withApprovedParts,
   } = await import("@lifestory/core");
@@ -189,6 +192,29 @@ test("an author generates a part, reviews it on light and dark skin, and approve
       expect(largePart.metrics).toMatchObject({ tile: { of: 2 }, reference: "p01/hero/young-child/face:round" });
       expect(largePart.layers.some((l) => l.palette === "hairColour")).toBe(true);
     }
+
+    // A part whose task gave up reads as failed in the draft's list too, not "generating" forever. Here its row points
+    // at a task that can never succeed (a proof that doesn't exist), cancelled.
+    const stuck = large[0]!;
+    const { taskId } = await run(
+      Jobs.use((jobs) =>
+        jobs.spawn(renderProof, { proofId: `proof_none-${suffix}` }, { idempotencyKey: `e2e-parts-doomed:${suffix}` }),
+      ),
+    );
+    await run(Jobs.use((jobs) => jobs.cancel(taskId)));
+    await run(
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool.query("update story_part set status = 'generating', task_id = $1 where id = $2", [taskId, stuck.id]),
+        ),
+      ),
+    );
+    const listed = (await run(listParts(operator, storyVersionId))).find((p) => p.id === stuck.id);
+    expect(listed).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/^the generation task (cancelled|failed)$/),
+    });
+    expect((await run(getPart(operator, stuck.id))).status).toBe("failed");
   } finally {
     await runtime.dispose();
   }
