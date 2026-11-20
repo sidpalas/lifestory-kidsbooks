@@ -30,6 +30,8 @@ step "Toolchain (mise install)"
 mise trust --quiet mise.toml
 mise install
 node -v && pnpm -v
+# git blame skips mechanical commits such as the oxfmt reformat (D53).
+git config blame.ignoreRevsFile .git-blame-ignore-revs
 done_step
 
 step "Docker and Compose"

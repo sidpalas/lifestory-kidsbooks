@@ -232,7 +232,8 @@ differently goes on that list too. Code blocks in Markdown stay as written. A Ma
 120 columns gets `<!-- oxfmt-ignore -->` on the line before it: aligning it would pad every cell to its column's
 widest one, which more than doubled this file. Python under `modal/` and
 `fixtures/art-sources` isn't formatted. Upgrading oxfmt (0.x, so output can change between versions) goes in its own
-commit with the files it reformats.
+commit with the files it reformats; add a purely mechanical commit like that to `.git-blame-ignore-revs` after it
+lands, so `git blame` (configured by `.agents/setup`) and GitHub skip it.
 
 ### Dependencies
 
