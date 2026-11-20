@@ -158,8 +158,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Blonde hair colour" }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns home; opening the book sooner can read the look from before the save.
-  await expect(page).toHaveURL(/\/$/);
+  // Saving returns to Characters; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/characters$/);
   await page.goto(bookUrl);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(page);
@@ -175,8 +175,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Adult", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns home; opening the book sooner can read the look from before the save.
-  await expect(page).toHaveURL(/\/$/);
+  // Saving returns to Characters; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/characters$/);
   await page.goto(bookUrl);
   await expect(page.getByTestId("role-hero").getByRole("status")).toContainText("Choose someone else for the child");
   await imagesLoaded(page);
@@ -205,7 +205,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(viewer.getByText("you're a viewer")).toBeVisible();
   await expect(viewer.getByRole("button", { name: /Save text/ })).toHaveCount(0);
   await expect(viewer.getByRole("textbox", { name: "Text block 1" })).toHaveAttribute("readonly", "");
-  await viewer.goto("/");
+  await viewer.goto("/characters");
   await expect(viewer.getByTestId("characters")).toContainText(child);
   await expect(viewer.getByRole("link", { name: "Add someone" })).toHaveCount(0);
   await viewer.getByRole("link", { name: new RegExp(child) }).click();
@@ -216,7 +216,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(makeBook(viewer)).toHaveCount(0);
   await viewer.goto(bookUrl);
   await expect(viewer.getByRole("button", { name: "Delete this book" })).toHaveCount(0);
-  await viewer.goto("/");
+  await viewer.goto("/books");
   await expect(viewer.getByTestId("books")).toContainText(child);
   await expect(viewer.getByRole("button", { name: /^Delete/ })).toHaveCount(0);
   await viewer.close();
@@ -224,7 +224,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   // The story page lists the book; the parent deletes it from "Our books" after confirming, and it's gone everywhere.
   await page.goto("/stories/the-moon-picnic");
   await expect(page.getByTestId("story-books").getByRole("link", { name: new RegExp(child) })).toHaveAttribute("href", bookUrl);
-  await page.goto("/");
+  await page.goto("/books");
   const remove = page.getByRole("button", { name: new RegExp(`^Delete The Moon Picnic with .*${child}`) });
   const cancel = page.waitForEvent("dialog").then((dialog) => dialog.dismiss());
   await remove.click();
@@ -234,6 +234,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   await remove.click();
   await confirm;
   await expect(remove).toHaveCount(0);
+  await page.goto("/characters");
   await expect(page.getByTestId("characters")).toContainText(child);
   await page.goto(bookUrl);
   await expect(page.getByText(/not found/i)).toBeVisible();
@@ -281,7 +282,7 @@ test("a parent styles a family member for one book before making it, without cha
   expect((await pageSources(page)).flat().filter((src) => src!.includes("/recoloured/")).toSorted()).toEqual(
     styled.filter((src) => src.includes("/recoloured/")).toSorted(),
   );
-  await page.goto("/");
+  await page.goto("/characters");
   await expect(page.getByTestId("characters").getByRole("link", { name: new RegExp(child) }).locator("img")).toHaveAttribute("src", /hair-colour%3Ablonde/);
 
   // Back to her saved look in the book.
@@ -334,6 +335,11 @@ test("a family with a book of the story is sent to it instead of silently making
     await expect(stale.getByRole("button", { name: "Make the book" })).toHaveCount(0);
     await stale.close();
 
+    // Home sends the family to that book too: the story's card opens it instead of offering another (D48).
+    await page.goto("/");
+    const moonCard = page.getByTestId("stories").getByRole("listitem").filter({ hasText: "The Moon Picnic" });
+    await expect(moonCard.getByRole("link", { name: "Open our book" })).toHaveAttribute("href", bookPath);
+
     // Back on the story page, styling the child for a book and opening the existing one leaves that book as it was.
     await page.goto(storyUrl);
     await expect(page.getByTestId("story-books")).toContainText(`The Moon Picnic with ${grownup}, ${child}`);
@@ -378,8 +384,14 @@ test("a family with a book of the story is sent to it instead of silently making
     await expect(page.getByRole("link", { name: "Open our book" })).toHaveCount(0);
     await page.getByRole("button", { name: "Make another copy" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
-    expect(new URL(page.url()).pathname).not.toBe(bookPath);
+    const newest = new URL(page.url()).pathname;
+    expect(newest).not.toBe(bookPath);
+    // Home picks up the newest book, and the story's card leaves the choice to the story page.
     await page.goto("/");
+    await expect(page.getByRole("region", { name: "Pick up where you left off" }).getByRole("link").first()).toHaveAttribute("href", newest);
+    await expect(moonCard.getByRole("link", { name: "Our 3 books" })).toHaveAttribute("href", "/stories/the-moon-picnic");
+    await expect(moonCard.getByRole("link", { name: "Open our book" })).toHaveCount(0);
+    await page.goto("/books");
     await expect(page.getByTestId("books").getByRole("button", { name: /^Delete The Moon Picnic/ })).toHaveCount(3);
   } finally {
     await context.close();

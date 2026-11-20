@@ -3,6 +3,7 @@
 import { Forbidden, NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { StudioBar } from "~/components/app-shell";
 import { DraftEditor } from "~/components/authoring/draft-editor";
 import { message } from "~/components/authoring/fields";
 import { Button } from "~/components/ui/button";
@@ -48,6 +49,8 @@ function AuthorStory() {
     }
   };
   return (
+    <>
+    <StudioBar />
     <main className="mx-auto flex max-w-[1500px] flex-col gap-4 p-6">
       <header className="flex flex-col gap-1">
         <Link to="/author" className="text-muted-foreground text-sm hover:underline">
@@ -80,5 +83,6 @@ function AuthorStory() {
         </section>
       )}
     </main>
+    </>
   );
 }

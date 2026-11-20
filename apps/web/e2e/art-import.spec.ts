@@ -127,6 +127,7 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
   await page.getByRole("button", { name: "Curly black hair", exact: true }).click();
   await page.getByRole("button", { name: "Add to the family" }).click();
   await expect(page.getByTestId("characters")).toContainText(child);
+  await page.goto("/stories");
   await page.getByTestId("stories").getByRole("link", { name: title }).click();
   const make = page.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });

@@ -7,6 +7,7 @@ import {
   ResultSchema,
   StoryManifest,
   StorySummary,
+  FamilyMembership,
   BookSummary,
   Character,
   PreviewRole,
@@ -19,7 +20,6 @@ import {
   getStoryPreview,
   listBooks,
   listCharacters,
-  listPublishedStories,
   printableProof,
 } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
@@ -28,11 +28,14 @@ import { Effect, Schema } from "effect";
 import { runEffect } from "./runtime.ts";
 
 // Result schemas are shared with the client, which decodes with unwrapResult.
+/** What the app shell around every family page shows: who's signed in, their families, and whether they author. */
 export const HomeResult = ResultSchema(
   Schema.Struct({
     user: Schema.Struct({ name: Schema.String, email: Schema.String }),
-    stories: Schema.Array(StorySummary),
+    families: Schema.Array(FamilyMembership),
+    active: Schema.NullOr(FamilyMembership),
     canAuthor: Schema.Boolean,
+    isOperator: Schema.Boolean,
   }),
   NotAuthenticated,
 );
@@ -54,8 +57,14 @@ export const getHome = createServerFn({ method: "GET" }).handler(() =>
     HomeResult,
     Effect.gen(function* () {
       const user = yield* currentUser;
-      const stories = yield* listPublishedStories();
-      return { user: { name: user.name, email: user.email }, stories, canAuthor: yield* canAuthor(user) };
+      const { families, active } = yield* activeFamily(user);
+      return {
+        user: { name: user.name, email: user.email },
+        families,
+        active: active && { id: active.id, name: active.name, role: active.role },
+        canAuthor: yield* canAuthor(user),
+        isOperator: user.role === "admin",
+      };
     }),
   ),
 );

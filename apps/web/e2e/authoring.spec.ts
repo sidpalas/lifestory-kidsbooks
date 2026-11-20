@@ -220,6 +220,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.getByRole("button", { name: "Add to the family" }).click();
   await expect(author.getByTestId("characters")).toContainText(child);
 
+  await author.goto("/stories");
   await author.getByTestId("stories").getByRole("link", { name: title }).click();
   const make = author.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });

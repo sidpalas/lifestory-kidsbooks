@@ -56,7 +56,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   // 1. Sign up by invite: the operator invites a new family; the invitee sets a password from the emailed link and
   // arrives as the owner of their own family.
   const operator = await personPage(browser);
-  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/author");
   const inviteFamily = operator.getByRole("form", { name: "Invite a new family" });
   await inviteFamily.getByLabel("Name").fill("Robin");
   await inviteFamily.getByLabel("Email").fill(ownerEmail);
@@ -72,6 +72,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByRole("button", { name: "Set password and sign in" }).click();
   await expect(owner.getByTestId("signed-in-as")).toHaveText(`Signed in as Robin (${ownerEmail})`);
   await expect(owner.getByTestId("families")).toHaveText("Robin's family");
+  await owner.goto("/family");
   await expect(owner.getByTestId("members")).toContainText("Owner");
 
   // 2. The owner invites the grandparent with the view-only role, and she joins with an account of her own.
@@ -90,6 +91,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await gran.getByLabel("Repeat the password").fill(PASSWORD);
   await gran.getByRole("button", { name: "Create account and join" }).click();
   await expect(gran.getByTestId("families")).toHaveText("Robin's family");
+  await gran.goto("/family");
   await expect(gran.getByTestId("family-panel")).toContainText("You're a viewer");
 
   // 3. The owner adds two family members in the picker: an age, a curated look of that age, then one feature at a
@@ -137,8 +139,8 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await owner.getByRole("button", { name: "Blonde hair colour" }).click();
   await owner.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns home; opening the book sooner can read the look from before the save.
-  await expect(owner).toHaveURL(/\/$/);
+  // Saving returns to Characters; opening the book sooner can read the look from before the save.
+  await expect(owner).toHaveURL(/\/characters$/);
   await owner.goto(bookPath);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(owner);

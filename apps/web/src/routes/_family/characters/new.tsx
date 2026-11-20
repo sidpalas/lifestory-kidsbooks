@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { CharacterForm } from "~/components/character-form";
 import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 
-export const Route = createFileRoute("/characters/new")({
+export const Route = createFileRoute("/_family/characters/new")({
   loader: async () => {
     try {
       return unwrapResult(FamilyLibraryResult)(await getFamilyLibrary());

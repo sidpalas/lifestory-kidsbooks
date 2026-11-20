@@ -28,7 +28,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
     setSaving(true);
     try {
       unwrapResult(SaveCharacterResult)(await saveCharacterFn({ data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } } }));
-      await router.navigate({ to: "/" });
+      await router.navigate({ to: "/characters" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setSaving(false);
@@ -36,9 +36,9 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
   };
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-      <Link to="/" className="text-muted-foreground text-sm hover:underline">
-        ← Home
+    <main className="flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
+      <Link to="/characters" className="text-muted-foreground text-sm hover:underline">
+        ← Characters
       </Link>
       <h1 className="text-2xl font-semibold">{character ? character.name : "Add a family member"}</h1>
       {!canEdit && <p className="text-muted-foreground text-sm">You're a viewer in this family, so you can see characters but not change them.</p>}

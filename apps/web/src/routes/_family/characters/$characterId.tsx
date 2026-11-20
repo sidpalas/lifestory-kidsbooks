@@ -3,7 +3,7 @@ import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { CharacterForm } from "~/components/character-form";
 import { CharacterResult, getCharacterFn } from "~/server/books";
 
-export const Route = createFileRoute("/characters/$characterId")({
+export const Route = createFileRoute("/_family/characters/$characterId")({
   loader: async ({ params }) => {
     try {
       return unwrapResult(CharacterResult)(await getCharacterFn({ data: { characterId: params.characterId } }));

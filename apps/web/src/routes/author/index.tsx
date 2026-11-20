@@ -2,7 +2,9 @@
 import { Forbidden, NotAuthenticated, NotFound, optionLabel, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { StudioBar } from "~/components/app-shell";
 import { message } from "~/components/authoring/fields";
+import { InviteFamilyCard } from "~/components/family-panel";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -42,13 +44,10 @@ const slugify = (title: string) =>
 function AuthoringHome() {
   const { canAuthor, isOperator, stories, authors } = Route.useLoaderData();
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-      <header className="flex flex-col gap-1">
-        <Link to="/" className="text-muted-foreground text-sm hover:underline">
-          ← Home
-        </Link>
-        <h1 className="text-2xl font-semibold">Write stories</h1>
-      </header>
+    <>
+    <StudioBar />
+    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
+      <h1 className="text-2xl font-semibold">Write stories</h1>
       {canAuthor ? (
         <>
           <NewStory />
@@ -91,7 +90,9 @@ function AuthoringHome() {
         </p>
       )}
       {isOperator && <Authors authors={authors} />}
+      {isOperator && <InviteFamilyCard />}
     </main>
+    </>
   );
 }
 

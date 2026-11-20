@@ -665,6 +665,25 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   upgrade it, and "Make another copy" makes one of the newest version.
 - **Reopen if:** families want to move a book to a newer version, or Sid wants one book per story enforced.
 
+### D48. The app is a sidebar shell; Home opens on the next step, then the last book, then stories; Studio is apart — Decided (Sid, 2026-11-20) / Made
+- **Why (Sid):** "an app dashboard with a left sidebar that would have things like family settings, family characters,
+  our books". The old home was one page of cards: the family panel and invite form first, stories last, and the
+  operator's cards styled like family content. Five layouts were compared (sidebar, bookshelf, three tabs, next
+  step, family first); Sid chose the sidebar and kept the next-step card "at the top of the homepage during user
+  onboarding, basically until they have added a character and made at least one book".
+- **What:** the sidebar lists Home, Stories, Our books, Characters, and Family settings ("Family" for viewers), with
+  the family switcher (only past one family, D3) at the top and who's signed in at the foot. Pages:
+  `/` (Home), `/stories`, `/books`, `/characters` (and its new and edit pages), `/family` (name, members,
+  invitations). Below `md` the sidebar becomes a top bar and five bottom tabs. Home shows the next-step card to
+  parents and owners while the family has no character or no book, then "Pick up where you left off" (the newest
+  book), then the stories; a story the family already has one book of offers "Open our book" instead of "Make a book",
+  and one with several ("Our 2 books") opens the story page, which lists them (D47).
+- **Studio:** authors and the operator get a "Studio" link under the sidebar; `/author` and its story pages carry a
+  dark "Lifestory Studio" bar with "Back to family", and the operator's "Invite a new family" moved there.
+- **Story and book pages stay full width** without the shell, so their pages have room.
+- **Reopen if:** families find the sidebar heavy for a handful of stories (the bookshelf layout was the runner-up),
+  or orders and a marketplace need a different top level.
+
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no

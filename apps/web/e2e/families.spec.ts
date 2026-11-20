@@ -41,7 +41,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   const granEmail = `gran-${id}@example.com`;
 
   // The operator invites a family: the account and its family exist from now on.
-  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/author");
   const inviteFamily = page.getByRole("form", { name: "Invite a new family" });
   await inviteFamily.getByLabel("Name").fill("Robin");
   await inviteFamily.getByLabel("Email").fill(ownerEmail);
@@ -59,6 +59,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   await page.getByRole("button", { name: "Set password and sign in" }).click();
   await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Robin (${ownerEmail})`);
   await expect(page.getByTestId("families")).toHaveText("Robin's family");
+  await page.goto("/family");
   await expect(page.getByTestId("members")).toContainText("Owner");
 
   // The link works once.
@@ -66,7 +67,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   await expect(page.getByText("This link has expired")).toBeVisible();
 
   // The owner invites a grandparent with the view-only role.
-  await page.goto("/");
+  await page.goto("/family");
   await inviteMember(page, granEmail, "Viewer (read only)");
   await expect(page.getByTestId("members")).toContainText(`${granEmail}Invited as Viewer (read only)`);
   await signOut(page);
@@ -81,6 +82,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   await page.getByRole("button", { name: "Create account and join" }).click();
   await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Gran (${granEmail})`);
   await expect(page.getByTestId("families")).toHaveText("Robin's family");
+  await page.goto("/family");
   await expect(page.getByTestId("family-panel")).toContainText("You're a viewer: you can read this family's books");
   await expect(page.getByRole("form", { name: "Invite a family member" })).toHaveCount(0);
 
@@ -95,6 +97,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   // The owner signs in again with the password they chose.
   await signOut(page);
   await signInWithPassword(page, ownerEmail);
+  await page.goto("/family");
   await expect(page.getByTestId("members")).toContainText(`Gran (${granEmail})Viewer (read only)`);
 });
 
@@ -109,6 +112,7 @@ test("an existing user accepts an invitation into a second family and switches b
   await signOut(page);
   await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
   await expect(page.getByTestId("families")).toHaveText(`alex-${id}'s family`);
+  await page.goto("/family");
   await inviteMember(page, friendEmail, "Parent (can edit)");
   await signOut(page);
 
@@ -119,6 +123,7 @@ test("an existing user accepts an invitation into a second family and switches b
   await page.getByRole("button", { name: "Accept invitation" }).click();
   const switcher = page.getByRole("combobox", { name: "Family" });
   await expect(switcher.locator("option:checked")).toHaveText(`alex-${id}'s family`);
+  await page.goto("/family");
   await expect(page.getByTestId("family-panel")).toContainText("You're the family's parent");
   await expect(page.getByTestId("members")).toContainText(`alex-${id} (${ownerEmail})Owner`);
 
@@ -142,7 +147,7 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await page.goto(`/__dev/log-me-in/${viewerEmail}?returnTo=/`);
   await signOut(page);
 
-  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
+  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/family`);
   await expect(page.getByTestId("families")).toHaveText(`rio-${id}'s family`);
 
   // A blank name is refused before it's sent; the saved name is trimmed.
@@ -172,6 +177,7 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await expect(page.getByText(`Join ${newName}`)).toBeVisible();
   await page.getByRole("button", { name: "Accept invitation" }).click();
   await expect(page.getByRole("combobox", { name: "Family" }).locator("option:checked")).toHaveText(newName);
+  await page.goto("/family");
   await expect(page.getByTestId("family-name")).toHaveText(newName);
   await expect(page.getByTestId("family-panel")).toContainText("You're a viewer");
   await expect(page.getByRole("button", { name: "Rename" })).toHaveCount(0);
@@ -182,9 +188,12 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await expect(page.getByTestId("family-name")).toHaveText(newName);
 });
 
-test("only the operator sees the new-family invite", async ({ page }) => {
+test("only the operator sees Studio and the new-family invite", async ({ page }) => {
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
-  await expect(page.getByTestId("family-panel")).toBeVisible();
+  await expect(page.getByTestId("signed-in-as")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Studio" })).toHaveCount(0);
+  await page.goto("/author");
+  await expect(page.getByTestId("not-an-author")).toBeVisible();
   await expect(page.getByTestId("invite-family")).toHaveCount(0);
 });
 

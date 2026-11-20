@@ -31,6 +31,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
 ## Features
 
 ### Accounts and families
+- [app-shell](app-shell.md): sidebar, Home's next step, Stories, Our books, Characters, Family settings, Studio.
+  `verify e2e -- smoke families books`.
 - Sign in, invitations, set password, viewer role: covered by `e2e -- families milestone1`; no map file yet.
 
 ### Characters

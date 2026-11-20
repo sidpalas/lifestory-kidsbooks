@@ -1,26 +1,18 @@
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, Link, useHydrated, useRouter } from "@tanstack/react-router";
-import { Button } from "~/components/ui/button";
-import { FamilyLibrary } from "~/components/family-library";
-import { FamilyPanel, InviteFamilyCard } from "~/components/family-panel";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppShell, ShellPage } from "~/components/app-shell";
+import { StoryList } from "~/components/family-library";
 import { Landing, landingHead } from "~/components/landing";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { NativeSelect } from "~/components/ui/native-select";
-import { signOut, SignOutResult } from "~/server/accounts";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
-import { FamiliesResult, getFamilies, switchFamilyFn, SwitchFamilyResult } from "~/server/families";
 import { getHome, getLanding, HomeResult, LandingResult } from "~/server/functions";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
     try {
-      const [home, families, library] = await Promise.all([getHome(), getFamilies(), getFamilyLibrary()]);
-      return {
-        signedIn: true as const,
-        ...unwrapResult(HomeResult)(home),
-        ...unwrapResult(FamiliesResult)(families),
-        library: unwrapResult(FamilyLibraryResult)(library),
-      };
+      const [home, library] = await Promise.all([getHome(), getFamilyLibrary()]);
+      return { signedIn: true as const, shell: unwrapResult(HomeResult)(home), library: unwrapResult(FamilyLibraryResult)(library) };
     } catch (error) {
       // Signed-out visitors get the landing page instead of the app home.
       if (error instanceof NotAuthenticated) return { signedIn: false as const, ...unwrapResult(LandingResult)(await getLanding()) };
@@ -35,93 +27,84 @@ function Index() {
   return Route.useLoaderData().signedIn ? <Home /> : <Landing />;
 }
 
+// Home (D48): while a family is getting started, the next step first; then the book they made last, then stories.
 function Home() {
   const data = Route.useLoaderData();
   if (!data.signedIn) throw new Error("Home renders only for signed-in visitors");
-  const { user, families, stories, active, isOperator, library, canAuthor } = data;
-  const router = useRouter();
-  // The server-rendered button does nothing until React hydrates, so keep it disabled until then.
-  const hydrated = useHydrated();
-
-  const switchTo = async (familyId: string) => {
-    unwrapResult(SwitchFamilyResult)(await switchFamilyFn({ data: { familyId } }));
-    await router.invalidate();
-  };
-
-  const leave = async () => {
-    unwrapResult(SignOutResult)(await signOut());
-    await router.navigate({ to: "/sign-in" });
-  };
-
+  const { shell, library } = data;
+  const { characters, books, stories, canEdit } = library;
+  const latest = books[0]; // The library lists books newest first.
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Lifestory</h1>
-        <div className="flex flex-col items-end gap-1 text-right text-sm">
-          <p className="text-muted-foreground" data-testid="signed-in-as">
-            Signed in as {user.name} ({user.email})
-          </p>
-          {/* The switcher appears once someone is in more than one family (D3: say little about families until then). */}
-          {families.length > 1 ? (
-            <NativeSelect
-              aria-label="Family"
-              value={active?.id}
-              disabled={!hydrated}
-              onChange={(event) => void switchTo(event.target.value)}
-            >
-              {families.map((family) => (
-                <option key={family.id} value={family.id}>
-                  {family.name}
-                </option>
-              ))}
-            </NativeSelect>
-          ) : (
-            <p className="font-medium" data-testid="families">
-              {active?.name ?? "Not in a family yet"}
-            </p>
-          )}
-          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => void leave()} disabled={!hydrated}>
-            Sign out
-          </Button>
-        </div>
-      </header>
-
-      {active && <FamilyPanel family={active} />}
-      <FamilyLibrary characters={library.characters} books={library.books} canEdit={library.canEdit} />
-      {isOperator && <InviteFamilyCard />}
-      {(canAuthor || isOperator) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Write stories</CardTitle>
-            <CardDescription>Author a story: pages, art, roles, and text, published as a version families can make books of.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link to="/author" className="font-medium hover:underline">
-              Open your stories →
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Stories</CardTitle>
-          <CardDescription>Published stories you can make into a book with your family.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="flex flex-col gap-3" data-testid="stories">
-            {stories.map((story) => (
-              <li key={story.id} className="rounded-md border p-3">
-                <Link to="/stories/$slug" params={{ slug: story.slug }} className="font-medium hover:underline">
-                  {story.title}
+    <AppShell shell={shell}>
+      <ShellPage title="Home">
+        {canEdit && (characters.length === 0 || books.length === 0) && <NextStep hasFamily={characters.length > 0} />}
+        {latest && (
+          <section className="flex flex-col gap-3" aria-labelledby="latest-book">
+            <h2 id="latest-book" className="text-lg font-semibold">
+              Pick up where you left off
+            </h2>
+            <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+              <div className="min-w-0">
+                <Link to="/books/$bookId" params={{ bookId: latest.id }} className="font-semibold hover:underline">
+                  {latest.title}
                 </Link>
-                <p className="text-muted-foreground text-sm">{story.summary}</p>
-                <p className="text-muted-foreground mt-1 text-xs">by {story.authorName}</p>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </main>
+                <p className="text-muted-foreground text-sm">With {latest.cast}</p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/books/$bookId" params={{ bookId: latest.id }}>
+                  {canEdit ? "Edit words and print" : "Read"}
+                </Link>
+              </Button>
+            </div>
+          </section>
+        )}
+        <section className="flex flex-col gap-3" aria-labelledby="home-stories">
+          <h2 id="home-stories" className="text-lg font-semibold">
+            {canEdit ? "Make a book" : "Stories"}
+          </h2>
+          <StoryList stories={stories} books={books} canEdit={canEdit} />
+        </section>
+      </ShellPage>
+    </AppShell>
+  );
+}
+
+/** Getting started, shown until the family has someone in it and a book (Sid, D48). */
+function NextStep({ hasFamily }: { hasFamily: boolean }) {
+  const steps = ["Add your family", "Make your first book", "Check the words and print a proof"];
+  const current = hasFamily ? 1 : 0;
+  return (
+    <section className="bg-card flex flex-col gap-4 rounded-lg border p-5" aria-labelledby="next-step" data-testid="next-step">
+      <div className="flex flex-col gap-1">
+        <p className="text-muted-foreground text-sm">Next step</p>
+        <h2 id="next-step" className="text-xl font-semibold">
+          {hasFamily ? "Choose a story and make your first book" : "Add your first family member"}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {hasFamily
+            ? "Pick who plays each part, and every page is drawn with them."
+            : "Choose how they look: age, face, skin tone, hair, and glasses. No photos needed."}
+        </p>
+      </div>
+      <ol className="grid grid-cols-3 gap-2 text-xs">
+        {steps.map((step, index) => (
+          <li
+            key={step}
+            aria-current={index === current ? "step" : undefined}
+            className={cn(
+              "border-t-4 pt-2",
+              index < current && "border-primary",
+              index === current && "border-primary text-primary font-semibold",
+              index > current && "text-muted-foreground border-border",
+            )}
+          >
+            {index < current ? `${step} · done` : step}
+          </li>
+        ))}
+      </ol>
+      <Button asChild className="self-start">
+        {hasFamily ? <Link to="/stories">Choose a story</Link> : <Link to="/characters/new">Add someone</Link>}
+      </Button>
+    </section>
   );
 }
