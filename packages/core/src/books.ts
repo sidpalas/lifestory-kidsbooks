@@ -16,7 +16,7 @@ import { requireFamilyAccess } from "./families.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
-import { createProof, proofSummaries } from "./proofs.ts";
+import { createProof, proofSummaries, releaseDeletedProof } from "./proofs.ts";
 import { readableStoryVersion, withStoredAdditions } from "./stories.ts";
 
 const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
@@ -452,16 +452,22 @@ export const listBookProofs = Effect.fn("books.listProofs")(function* (userId: s
 });
 
 /**
- * Deletes a book for a role that edits books: its cast and text edits (cascaded), and its proofs, approved or not.
- * No print orders exist yet to keep an approved proof for (D32); the `storage.sweep` task deletes the PDFs whose proof
- * row is gone. The family's characters stay.
+ * Deletes a book for a role that edits books: its cast, text edits, and proofs, approved or not (all cascaded), then
+ * cancels the proofs' renders and deletes their PDFs. No print orders exist yet to keep an approved proof for (D32).
+ * A proof requested while the book is deleted goes with it too; the `storage.sweep` task deletes any PDF left behind,
+ * and none is served without its proof. The family's characters stay.
  */
 export const deleteBook = Effect.fn("books.delete")(function* (userId: string, bookId: string) {
   yield* bookFor(userId, bookId, "edit");
-  yield* Database.query((db) =>
+  const proofs = yield* Database.query((db) =>
     db.transaction(async (tx) => {
-      await tx.delete(schema.proof).where(eq(schema.proof.bookId, bookId));
+      const deleted = await tx
+        .delete(schema.proof)
+        .where(eq(schema.proof.bookId, bookId))
+        .returning({ id: schema.proof.id, familyId: schema.proof.familyId, taskId: schema.proof.taskId });
       await tx.delete(schema.book).where(eq(schema.book.id, bookId));
+      return deleted;
     }),
   );
+  yield* Effect.forEach(proofs, releaseDeletedProof, { discard: true });
 });

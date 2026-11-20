@@ -16,8 +16,11 @@ export const proof = pgTable(
     familyId: text("family_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    /** The book it was made from; null for a proof of a story preview. A proof outlives its book. */
-    bookId: text("book_id").references(() => book.id, { onDelete: "set null" }),
+    /**
+     * The book it was made from; null for an older proof of a story preview. A book's proofs are deleted with it
+     * (D45), including one requested while the book is being deleted.
+     */
+    bookId: text("book_id").references(() => book.id, { onDelete: "cascade" }),
     storyVersionId: text("story_version_id")
       .notNull()
       .references(() => storyVersion.id, { onDelete: "restrict" }),

@@ -167,10 +167,8 @@ export const deleteProof = Effect.fn("proofs.delete")(function* (userId: string,
     db.delete(schema.proof).where(eq(schema.proof.id, proofId)).returning({ taskId: schema.proof.taskId }),
   );
   if (!deleted) return; // Deleted by someone else meanwhile.
-  // The row is gone, so the proof is deleted for the family; what follows only frees resources sooner, and the sweep
-  // catches whatever a failure here leaves.
-  if (deleted.taskId) yield* Jobs.use((jobs) => jobs.cancel(deleted.taskId!)).pipe(Effect.ignore);
-  yield* ObjectStorage.use((storage) => storage.delete(proofObjectKey(row.familyId, proofId))).pipe(Effect.ignore);
+  // The row is gone, so the proof is deleted for the family; what follows only frees resources sooner.
+  yield* releaseDeletedProof({ id: proofId, familyId: row.familyId, taskId: deleted.taskId });
 });
 
 /** A page's text with the proof's edits applied, tokens resolved: what BookPage prints. */
@@ -224,10 +222,32 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
 // families/<familyId>/proofs/<proofId>.pdf, as written by the render task.
 const PROOF_KEY = /^families\/([^/]+)\/proofs\/([^/]+)\.pdf$/;
 
-/** Whether `userId` may download the object at `key` under `families/`: any member of that family may read it. */
+/**
+ * Whether `userId` may download the object at `key` under `families/`: a proof's PDF, while its proof exists, for any
+ * member of that family. A PDF whose proof was deleted is gone for the family even before the sweep removes it (D32).
+ */
 export const canReadFamilyFile = Effect.fn("proofs.canReadFamilyFile")(function* (userId: string, key: string) {
   const match = PROOF_KEY.exec(key);
   if (!match || key.includes("..")) return false;
-  const role = yield* memberRole(userId, match[1]!);
+  const [familyId, proofId] = [match[1]!, match[2]!];
+  const [proof] = yield* Database.query((db) =>
+    db
+      .select({ id: schema.proof.id })
+      .from(schema.proof)
+      .where(and(eq(schema.proof.id, proofId), eq(schema.proof.familyId, familyId))),
+  );
+  if (!proof) return false;
+  const role = yield* memberRole(userId, familyId);
   return role !== null && roleCan(role, { book: ["read"] });
 });
+
+/** Frees what a deleted proof held: cancels its render and deletes its PDF. Best-effort; the sweep catches the rest. */
+export const releaseDeletedProof = (proof: {
+  readonly id: string;
+  readonly familyId: string;
+  readonly taskId: string | null;
+}) =>
+  Effect.gen(function* () {
+    if (proof.taskId) yield* Jobs.use((jobs) => jobs.cancel(proof.taskId!)).pipe(Effect.ignore);
+    yield* ObjectStorage.use((storage) => storage.delete(proofObjectKey(proof.familyId, proof.id))).pipe(Effect.ignore);
+  });

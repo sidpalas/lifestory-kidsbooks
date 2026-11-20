@@ -265,3 +265,87 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
     await runtime.dispose();
   }
 });
+
+test("deleting a book deletes its proofs' PDFs, and no PDF is served without its proof", async ({ page }) => {
+  test.setTimeout(150_000);
+  // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
+  const core = await import("@lifestory/core");
+  const runtime = core.makeServerRuntime();
+  const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
+  const stored = (key: string) =>
+    run(
+      core.ObjectStorage.use((storage) => storage.get(key)).pipe(
+        Effect.match({ onSuccess: () => true, onFailure: () => false }),
+      ),
+    );
+  try {
+    const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    const look = {
+      face: "face:round",
+      features: "features:defined",
+      skin: "skin:s3",
+      hair: "hair:curly",
+      hairColour: "hair-colour:black",
+      glasses: "glasses:none",
+      facialHair: "facial-hair:none",
+    } as const;
+    const [parent, family] = ["user_parent", "org_example_family"];
+    const hero = await run(
+      core.createCharacter(parent, family, {
+        name: `Wren ${suffix}`,
+        title: null,
+        pronouns: "she/her",
+        look: { ...look, age: "young-child" },
+      }),
+    );
+    const grown = await run(
+      core.createCharacter(parent, family, {
+        name: `Otto ${suffix}`,
+        title: "Dad",
+        pronouns: "he/him",
+        look: { ...look, age: "adult" },
+      }),
+    );
+    const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
+    const { id: bookId } = await run(
+      core.createBook(parent, family, {
+        slug: "the-moon-picnic",
+        cast: { hero: hero.id, grownup: grown.id },
+        existing,
+      }),
+    );
+    const proof = await run(core.requestBookProof(parent, bookId));
+    let objectKey = "";
+    await expect
+      .poll(
+        async () => {
+          const ready = (await run(core.listBookProofs(parent, bookId))).proofs.find((p) => p.id === proof.id);
+          objectKey = ready?.objectKey ?? "";
+          return ready?.status;
+        },
+        { timeout: 90_000 },
+      )
+      .toBe("ready");
+    await run(core.approveProof(parent, proof.id));
+
+    await page.goto("/__dev/log-me-in/grandparent@lifestory.dev?returnTo=/");
+    const href = `/api/files/${objectKey}`;
+    // A viewer of the family downloads it while the proof exists.
+    expect((await page.request.get(href)).status()).toBe(200);
+
+    // A PDF under the family with no proof row (one a render wrote after its proof was deleted) isn't served.
+    const orphan = `families/${family}/proofs/proof_orphan-${suffix}.pdf`;
+    await run(
+      core.ObjectStorage.use((storage) => storage.put(orphan, new Uint8Array([37, 80, 68, 70]), "application/pdf")),
+    );
+    expect((await page.request.get(`/api/files/${orphan}`)).status()).toBe(404);
+    await run(core.ObjectStorage.use((storage) => storage.delete(orphan)));
+
+    // Deleting the book deletes its approved proof and the PDF itself, not just the row.
+    await run(core.deleteBook(parent, bookId));
+    expect(await stored(objectKey)).toBe(false);
+    expect((await page.request.get(href)).status()).toBe(404);
+  } finally {
+    await runtime.dispose();
+  }
+});

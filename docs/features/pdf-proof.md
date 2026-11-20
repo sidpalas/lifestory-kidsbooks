@@ -12,7 +12,8 @@ for print, or deletes any proof after confirming, an approved one with a stronge
 - `/books/<id>` (a family's book): the "PDF proofs" section, below the wrapping page-selector grid (three columns
   on desktop, two on narrow screens). Story previews have no proof panel: make a book first.
 - Download: `/api/files/families/<familyId>/proofs/<proofId>.pdf`; any member of that family, 404 for others.
-- Owner and editor make, approve, and delete proofs; a viewer downloads only. A deleted proof's download is 404.
+- Owner and editor make, approve, and delete proofs; a viewer downloads only. A deleted proof's download is 404, and so is
+  any PDF whose proof row is gone. Deleting a book deletes its proofs (cascaded) and their PDFs.
 - The worker opens `PRINT_APP_URL/print/proofs/<id>?token=…`; that origin must be the web app the run drives.
 
 ## Seed data
