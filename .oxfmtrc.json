@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "apps/web/src/routeTree.gen.ts",
+    "packages/db/migrations/**",
+    "fixtures/stories/**",
+    "packages/core/src/looks/portrait/parts.json"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.md"],
+      "options": { "embeddedLanguageFormatting": "off" }
+    }
+  ]
+}

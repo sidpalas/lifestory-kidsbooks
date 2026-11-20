@@ -106,6 +106,7 @@ The Schema in `packages/core/src/book-format/manifest.ts` is the authoritative f
 Better Auth owns `user`, `session`, `account`, `verification`, `organization` (= family), `member` (role
 `owner`/`parent`/`viewer`), and `invitation`. Milestone 1 adds (all IDs are text; timestamps omitted):
 
+<!-- oxfmt-ignore -->
 | Table | Owner | Key columns | Notes |
 | --- | --- | --- | --- |
 | `story` (exists) | author (`user`) | `author_id`, `slug`, `status` | Never owned by a family. |
@@ -161,6 +162,7 @@ everywhere ("keep exactly the same face … change nothing else"), one seed per 
 
 **Result (2026-11-19; full write-up, images and scripts in thread T-01a1f149-95e2-74f7-9818-59d430153d86):**
 
+<!-- oxfmt-ignore -->
 | Provider and model | Faces kept: Klein-drawn / other styles | US$ per part (measured) | Seconds | Terms on inputs |
 | --- | --- | --- | --- | --- |
 | **OpenAI `gpt-image-2.6-sunburst`** (primary) | 13/13 / 12/12 | 0.049 | ~18 | No training; 30-day abuse retention; customer owns output |

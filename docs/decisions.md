@@ -45,8 +45,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   re-run admin-granting code on every boot.
 - **How:** `node packages/core/src/operator-create.ts --email <email> [--name <name>]`, run once inside the deployed
   web container (any host's one-off run or shell, for example `railway ssh`; nothing host-specific). Production
-  images have no mise, so the command is a plain Node entry point like `migrate.ts`; `mise run operator:create --
-  --email <email>` wraps it locally. It reads the password from a prompt, never from the environment
+  images have no mise, so the command is a plain Node entry point like `migrate.ts`;
+  `mise run operator:create -- --email <email>` wraps it locally. It reads the password from a prompt, never from the environment
   or arguments, creates the user with role `admin` (or promotes an existing user), and creates their one-person
   family through the same account-plus-family path as the operator's new-family invite (plan.md, "Invites and
   families"). Running it again changes nothing, and deploys never run it. The development seed
@@ -129,6 +129,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   `devopsdirective.com`).
 - **Compared (pricing pages, 2026-11-19):**
 
+  <!-- oxfmt-ignore -->
   | | Resend | Postmark | Amazon SES |
   | --- | --- | --- | --- |
   | Price at our volume | Free: 3,000 a month, 100 a day, forever | Free: 100 a month; Basic $15/mo for 10,000 | No free tier for new accounts; $0.10–0.16 per 1,000 (cents a month) |
@@ -391,8 +392,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   have it). Its images and fonts load from `/api/files/<key>` like the editor's, and Chromium answers those requests
   straight from object storage, so the PDF uses the same objects, recoloured layers included, without the worker
   holding a session.
-- **Only books make proofs (D45):** `createProof({ familyId, bookId, storyVersionId, content: { cast, textEdits },
-  requestedBy })` (`packages/core/src/proofs.ts`) takes a book's cast as drawn and its text edits and sets `book_id`.
+- **Only books make proofs (D45):**
+  `createProof({ familyId, bookId, storyVersionId, content: { cast, textEdits }, requestedBy })` (`packages/core/src/proofs.ts`) takes a book's cast as drawn and its text edits and sets `book_id`.
   Proofs made from the story page before D45 have no `book_id`; they stay listed nowhere and expire as drafts (D32).
   Approval belongs to a book's proof (D32).
 - **Chromium only in the worker image:** `playwright-core` is a dependency of `@lifestory/core` but loads on first
@@ -1016,6 +1017,34 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **How:** `minimumReleaseAge: 4320` in `pnpm-workspace.yaml` enforces it for transitive dependencies too.
   No `minimumReleaseAgeExclude` entries. CI installs with `--frozen-lockfile`.
 - **Reopen if:** a security fix is needed sooner than 3 days; then add a dated, commented exclusion.
+
+### D53. oxfmt formats the repository; `mise run check` enforces it — Decided (Sid, 2026-11-20)
+- **How:** `oxfmt` 0.79.0, pinned in the root `package.json`, configured in `.oxfmtrc.json`: 120 columns, the width
+  the comments and docs are wrapped to (a formatter doesn't rewrap comments, so narrower code would sit next to wider
+  comments); Markdown prose left unwrapped and its code blocks left as written (their examples are hand-aligned and
+  commented). Markdown tables wider than 120 columns carry `<!-- oxfmt-ignore -->`, because aligning them pads every
+  cell to its column's widest one (AGENTS.md went from 20 KB to 46 KB, mostly spaces, and agents read it every
+  thread). `ignorePatterns` leaves alone the tracked files other tools write. `mise run format` rewrites;
+  `mise run format:check` is part of `check`, so CI fails on unformatted files. `.editorconfig` and `.vscode/` give
+  editors the same settings and format on save. The whole repository was reformatted once, in its own commit.
+- **Why oxfmt (compared 2026-11-20):** chosen as the best long-term base, not for the smallest diff.
+  - It is the formatter of the toolchain we already run: Oxc, the project behind oxlint (D15) and the compiler under
+    Vite 8's Rolldown; Vite+ 1.0 (stable since 2026-09-28) ships it as the formatter of `vp check`. Projects such as
+    vuejs/core, Turborepo, and sentry-javascript format with it.
+  - It takes Prettier's output as its baseline and passes Prettier's JS/TS conformance tests, so it formats like the
+    reference, but fixes Prettier's inconsistencies instead of copying them (documented divergences).
+  - It formats every file type here, including TOML (`mise.toml`), which Prettier doesn't. It ran in 0.3 s on this
+    repository; Prettier 3.10.1 took 7 s.
+  - It has built-in Tailwind class sorting, import sorting, and `package.json` key sorting, which Prettier needs
+    plugins for. Only `package.json` sorting is on (its default); the other two can reorder code that runs
+    differently (`tailwind-merge` keeps the last of two conflicting classes; imports run in order), so they wait for a
+    change of their own, checked with the e2e suite.
+  - Against it: it is 0.x (beta since 2026-02-24), so an upgrade can change output. The exact pin means an upgrade
+    happens only on purpose, in its own commit with what it reformats.
+  - Prettier 3.10.1: the stable reference, but about 20× slower here, no TOML, and its known inconsistencies stay.
+    Biome 2.6: stable and fast, with Markdown (about 92% Prettier-compatible) and YAML since October, but it is a
+    second toolchain with its own linter to switch off next to oxlint.
+- **Reopen if:** an oxfmt upgrade breaks formatting we rely on and the fix stalls, or Oxc stops maintaining it.
 
 ### D17. Development sign-in route — Made
 - `GET /__dev/log-me-in/<email>?returnTo=<path>` finds or creates the user, signs in through Better Auth's real

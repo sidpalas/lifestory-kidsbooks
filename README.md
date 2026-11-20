@@ -57,7 +57,8 @@ In an Amp orb, `.agents/setup` does all of the above except starting the app; ru
 ## Checks
 
 ```sh
-mise run check      # typecheck, lint, unit tests
+mise run check      # typecheck, lint, formatting (oxfmt), unit tests
+mise run format     # rewrite files the way format:check expects
 mise run test:e2e   # Playwright; needs the stack's Postgres and SeaweedFS running, migrated and seeded
 mise run test:e2e -- milestone1   # only the walk through the whole milestone 1 slice
 ```

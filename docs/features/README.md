@@ -10,6 +10,7 @@ The CLI: `mise run verify -- <command> [--config dev|image|live]`. `mise run ver
 
 ## Configurations
 
+<!-- oxfmt-ignore -->
 | Config | What runs | Origin | Signs in as | Use it for |
 | --- | --- | --- | --- | --- |
 | `dev` (default) | The dev web app (`mise run dev:web`, reused if one answers) and a worker this run starts | `http://localhost:3000`, or `--port` | `parent@lifestory.dev`, or `--as <seeded email>` | Every change, first |

@@ -8,6 +8,7 @@ evidence and a proposal, don't switch on your own.
 
 ## Layout
 
+<!-- oxfmt-ignore -->
 | Path | What |
 | --- | --- |
 | `apps/web` | TanStack Start app (React, Tailwind, shadcn/ui). Server functions in `src/server`, server routes in `src/routes/api` and `src/routes/[_][_]dev` (URL `/__dev`; a bare leading `_` would make a pathless layout). |
@@ -26,11 +27,14 @@ Tool versions (Node, pnpm) are pinned in `mise.toml`, and every command is a mis
 `pnpm` are already on `PATH`. Run `mise run check` and `mise run test:e2e` before handing work back.
 Times measured on an `a1.small` orb.
 
+<!-- oxfmt-ignore -->
 | Command | What | Time |
 | --- | --- | --- |
-| `mise run check` | `typecheck`, `lint`, and `test` in parallel | ~18–24 s |
+| `mise run check` | `typecheck`, `lint`, `format:check`, and `test` in parallel | ~18–24 s |
 | `mise run typecheck` | `tsc` (TypeScript 7) over every package, one checker each (`--checkers 1`: half the memory, no slower) | ~7–15 s |
 | `mise run lint` | oxlint, warnings fail | <1–3 s |
+| `mise run format` | oxfmt formats TS, TSX, JS, JSON, CSS, Markdown, YAML, and TOML in place (D53) | <1 s |
+| `mise run format:check` | oxfmt lists the files `format` would change and fails if there are any; part of `check`, so CI enforces it | <1 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`); most of it is importing modules | ~12 s |
 | `mise run verify -- <command>` | Drive the real app and keep evidence (`docs/features`): `picker` ~20 s, `proof` ~30 s, `looks` ~25 s in dev; `--config image` first builds both images, minutes on `a1.small` (`--no-build` reuses them) | see each |
 | `mise run test:e2e` | Playwright end-to-end tests (28; one test worker where the memory cap is under 6 GiB); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `art-import.spec.ts` imports a PSD and a flat page (D42; with `IMAGE_PROVIDER=openai` it runs on real edits, ~US$0.47), `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker, and refuses to run while any other worker beats on the database (the `worker` service, a preview worker with real providers): `amp orb service stop worker` first | 28 tests (`CI=1`, cold Vite cache): 5.5 min on `a1.medium`, 7.2 min capped to 2 CPUs and 3 GiB (2026-11-20; 21 tests took 3.4–3.6 min on `a1.small`); ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
@@ -73,6 +77,7 @@ Measured 2026-11-20 on `a1.medium` with the workload slice set to a small-equiva
 full suite (28 tests, one Playwright worker, cold Vite cache). Memory in GiB (1 GiB = 1024 MiB) from the sampler
 above; the per-process rows are PSS at the peak, approximate:
 
+<!-- oxfmt-ignore -->
 | | Before (`4086b47`, no cap) | After (3 GiB / 2 CPU cap) |
 | --- | --- | --- |
 | `CI=1` e2e peak (anon + shmem + kernel) | **2.96 GiB**: 0.04 GiB short of a1.small's cap; field runs 2.72–2.92 GiB and OOM kills | **2.58–2.70 GiB**, 28 passed, no retries, 7.2 min (2 CPUs); after `656e789`, **2.56–2.63 GiB**, 32 passed, 8.4 min; on a real `a1.small` at `5372474` (`verify -- e2e --ci`), **2.58 GiB**, 32 passed, no retries, 0 OOM kills, 9.0 min |
@@ -136,6 +141,7 @@ What took the memory, and what keeps it down now (don't undo these without measu
 
 Seeded accounts (password for all: `lifestory-dev-password`):
 
+<!-- oxfmt-ignore -->
 | Email | Role |
 | --- | --- |
 | `parent@lifestory.dev` | owner of "The Example Family" |
@@ -214,6 +220,18 @@ itself) is the default everywhere; there is no GPU in orbs or CI. `IMAGE_PROVIDE
 part generation; README, "Generating story parts"), and `IMAGE_PROVIDER=modal` uses FLUX 3 Klein on Modal, which calls
 back `/api/webhooks/modal`; the README's "Image generation on Modal" has the runbook. Don't run real providers unless
 asked, and keep it to a few dollars: OpenAI bills every edit, Modal spends GPU money.
+
+### Formatting
+
+oxfmt (`.oxfmtrc.json`, D53) formats every tracked TS, TSX, JS, JSON, CSS, Markdown, YAML, and TOML file; run
+`mise run format` before committing. Its `ignorePatterns` list the tracked files other tools write (the lockfile,
+TanStack's `routeTree.gen.ts`, drizzle-kit's migrations, the story directories under `fixtures/stories`, and the
+portrait `parts.json`): change their generator, not the file. A file a script writes that oxfmt would rewrite
+differently goes on that list too. Code blocks in Markdown stay as written. A Markdown table with a row wider than
+120 columns gets `<!-- oxfmt-ignore -->` on the line before it: aligning it would pad every cell to its column's
+widest one, which more than doubled this file. Python under `modal/` and
+`fixtures/art-sources` isn't formatted. Upgrading oxfmt (0.x, so output can change between versions) goes in its own
+commit with the files it reformats.
 
 ### Dependencies
 

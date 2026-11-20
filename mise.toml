@@ -87,6 +87,14 @@ run = "tsc -p packages/db --checkers 1 && tsc -p packages/core --checkers 1 && t
 description = "oxlint; warnings fail"
 run = "oxlint --deny-warnings apps packages"
 
+[tasks.format]
+description = "oxfmt: format files in place (.oxfmtrc.json lists the generated files it leaves alone)"
+run = "oxfmt"
+
+[tasks."format:check"]
+description = "oxfmt: list files that `mise run format` would change; fails if any"
+run = "oxfmt --check"
+
 [tasks.test]
 description = "Vitest unit tests"
 run = "vitest run"
@@ -100,8 +108,8 @@ description = "Check the live site after a deploy (no sign-in): mise run deploy:
 run = "node apps/web/scripts/check-deploy.ts"
 
 [tasks.check]
-description = "typecheck, lint, and unit tests"
-depends = ["typecheck", "lint", "test"]
+description = "typecheck, lint, formatting, and unit tests"
+depends = ["typecheck", "lint", "format:check", "test"]
 
 # ---- Verification -------------------------------------------------------------
 
