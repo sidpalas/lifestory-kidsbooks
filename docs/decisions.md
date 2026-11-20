@@ -463,6 +463,16 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   Bases with alpha (Paper Boat, Moon Picnic) get no ink, so published book parts don't change.
   `build-outline.ts` re-cut all 197 stored portrait parts (no new edits, no spend) and the landing demo's layers
   were regenerated.
+- **A line belongs to what it outlines (2026-11-20, Sid adopted it):** the ink rules above also covered the outline of
+  an ear beside long hair and of an earlobe beside a beard, measured by re-running them on every portrait part as it
+  was before them (`114f451`) and on Paper Boat's bases flattened onto paper. Ink is now covered only when the nearest
+  figure across from it that isn't ink or paper is mostly hair. On the portraits it keeps the crown, ponytail, braid
+  and buzz-cut fixes (it covers 103,492 of the 111,668 px the rules covered, nothing new) and restores those ears.
+  `build-outline.ts` re-cut the portrait parts again from `114f451`, and the landing demo's layers were regenerated.
+  Not settled: Paper Boat's pencil flattened onto paper still loses lines at ears, neck and shoulders to these rules
+  (27,148 px over 114 parts, against 0 on its transparent bases), because thin pencil isn't the thick ink they were
+  measured on. Its published bases have alpha and get no ink, so no book changes; art drawn in pencil on paper would
+  need the rules limited to ink as dark as the hair before it is imported.
 - **The beard needs no rule of its own; stubble couldn't be fixed (2026-11-20, Sid: "the full beard has a similar
   issue", "the stubble options look bad/patchy"):** the dark dashes where the live beard's sides meet the neck are
   the same half-covered ink, and the rule above covers them. A rule that also covered the ink facial hair merely

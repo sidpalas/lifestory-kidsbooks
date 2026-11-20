@@ -6,6 +6,8 @@
 // own bases, at the size they are stored. No part leaves bald scalp above it (crownGap), so none is redrawn.
 // Rerun 2026-11-20 with the base's ink (figureCoverage): hair painted over line art (a braid across the jaw, a
 // ponytail over the outline) left it showing as dotted dashes under a light colour; all 197 parts changed.
+// Rerun 2026-11-20 from the parts as they were at 114f451, after ink is covered only under hair (an ear's outline
+// beside long hair stays).
 // Rewrites packages/core/src/looks/portrait/parts/ and parts.json in place; running it again changes nothing.
 // usage (repo root): node fixtures/art-sources/portrait/build-outline.ts
 import { readFileSync, writeFileSync } from "node:fs";

@@ -779,12 +779,42 @@ export const coverOutline = (
   for (let changed = true; changed;) {
     findSolid();
     changed = crownPass();
+    // A line belongs to what it outlines: ink lies under the hair when what it outlines does, and otherwise stays,
+    // such as an ear's rim beside long hair or an earlobe beside a beard, which the rules below covered on the
+    // portraits (2026-11-20). What it outlines is the figure nearest it that isn't ink or paper; hair over the paper
+    // beside the line says nothing about it.
+    const underHair = (x: number, y: number) => {
+      for (let k = 1; k <= 2 * radius; k++) {
+        let hair = 0,
+          other = 0;
+        for (let dy = -k; dy <= k; dy++) {
+          for (let dx = -k; dx <= k; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== k) continue;
+            const nx = x + dx,
+              ny = y + dy;
+            if (nx < bx0 || ny < by0 || nx >= bx1 || ny >= by1) continue;
+            const q = ny * width + nx;
+            if (ink![q] || figure[q]! < 0.02) continue;
+            if (outAlpha[q]! >= 0.5) hair++;
+            else other++;
+          }
+        }
+        if (hair + other > 0) return hair >= other;
+      }
+      return true;
+    };
     const add: Array<number> = [];
     for (let y = by0; y < by1; y++) {
       for (let x = bx0; x < bx1; x++) {
         const c = (y - by0) * cropWidth + (x - bx0);
         const p = y * width + x;
-        if (!nearOutside[c] || !nearSkin[c] || (outAlpha[p]! >= 0.5 && !ink) || figure[p]! <= outAlpha[p]! + 0.01)
+        if (
+          !nearOutside[c] ||
+          !nearSkin[c] ||
+          (outAlpha[p]! >= 0.5 && !ink) ||
+          figure[p]! <= outAlpha[p]! + 0.01 ||
+          (ink?.[p] && !underHair(x, y))
+        )
           continue;
         // The nearest outside pixel, and the hair nearby for the colour.
         let ox = 0,
@@ -838,7 +868,7 @@ export const coverOutline = (
       for (let y = by0; y < by1; y++) {
         for (let x = bx0; x < bx1; x++) {
           const p = y * width + x;
-          if (!ink[p] || figure[p]! <= outAlpha[p]! + 0.01) continue;
+          if (!ink[p] || figure[p]! <= outAlpha[p]! + 0.01 || !underHair(x, y)) continue;
           const spanned = [
             [1, 0],
             [0, 1],

@@ -4,7 +4,7 @@
    {
     "asset": "parts/adult-oval-facial-hair-beard.png",
     "at": [
-     270,
+     272,
      417,
      705,
      718
@@ -150,9 +150,9 @@
    {
     "asset": "parts/adult-oval-soft-facial-hair-beard.png",
     "at": [
-     256,
-     398,
-     724,
+     262,
+     408,
+     714,
      700
     ],
     "palette": "hairColour"
@@ -642,7 +642,7 @@
     "at": [
      252,
      400,
-     742,
+     730,
      727
     ],
     "palette": "hairColour"
@@ -786,7 +786,7 @@
    {
     "asset": "parts/older-adult-oval-soft-facial-hair-beard.png",
     "at": [
-     264,
+     268,
      435,
      718,
      715
