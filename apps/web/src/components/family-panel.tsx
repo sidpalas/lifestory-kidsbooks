@@ -1,5 +1,5 @@
 // The active family: its name (owners can rename it), its members and pending invitations,
-// and (for owners and parents) a form to invite someone as a parent or a viewer.
+// and (for owners and editors) a form to invite someone as an editor or a viewer.
 import { FAMILY_NAME_MAX_LENGTH, type FamilyOverview, unwrapResult } from "@lifestory/core/contracts";
 import { useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -18,7 +18,8 @@ import {
   RenameFamilyResult,
 } from "~/server/families";
 
-const roleLabel: Record<string, string> = { owner: "Owner", parent: "Parent", viewer: "Viewer (read only)" };
+// The stored role "parent" (D3) shows as Editor: anyone can be invited to edit, a relative or a friend as much as a parent.
+const roleLabel: Record<string, string> = { owner: "Owner", parent: "Editor", viewer: "Viewer (read only)" };
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -115,7 +116,12 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
         )}
         <CardDescription>
           You're{" "}
-          {family.role === "viewer" ? "a viewer: you can read this family's books" : `the family's ${family.role}`}.
+          {family.role === "viewer"
+            ? "a viewer: you can read this family's books"
+            : family.role === "parent"
+              ? "an editor: you can make and edit this family's books"
+              : `the family's ${family.role}`}
+          .
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
@@ -167,7 +173,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
                 Invite someone
               </h2>
               <p className="text-sm text-muted-foreground">
-                Parents can make and edit books. Viewers can only read them.
+                Editors can make and edit books and invite others. Viewers can only read them.
               </p>
             </div>
             <form
@@ -190,7 +196,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
                 <Label htmlFor="invite-role">Role</Label>
                 <NativeSelect id="invite-role" name="role" defaultValue="viewer" className="w-full">
                   <option value="viewer">Viewer (read only)</option>
-                  <option value="parent">Parent (can edit)</option>
+                  <option value="parent">Editor (can edit)</option>
                 </NativeSelect>
               </div>
               <Button type="submit" className="w-full sm:w-auto" disabled={!hydrated}>

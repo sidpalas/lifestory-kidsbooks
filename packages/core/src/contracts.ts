@@ -40,7 +40,7 @@ export const FamilyMembership = Schema.Struct({
 });
 export type FamilyMembership = typeof FamilyMembership.Type;
 
-/** Roles a family member can invite someone with: "parent" edits books, "viewer" only reads them. */
+/** Roles a family member can invite someone with: "parent" (shown as Editor) edits books, "viewer" only reads them. */
 export const InviteRole = Schema.Literals(["parent", "viewer"]);
 export type InviteRole = typeof InviteRole.Type;
 

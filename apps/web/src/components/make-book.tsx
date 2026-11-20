@@ -114,7 +114,7 @@ export function StoryCast({
         <CardDescription>
           {canEdit
             ? "Choose who plays each part. The pages below show them with their saved looks right away."
-            : "Preview the pages with your family. You're a viewer in this family, so a parent makes the book."}
+            : "Preview the pages with your family. You're a viewer in this family, so an owner or editor makes the book."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

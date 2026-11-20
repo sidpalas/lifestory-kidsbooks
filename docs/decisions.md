@@ -23,7 +23,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 - **Why:** brief. Accounts hold details about children (names, ages, looks; no photos since D26), so nobody, the
   operator included, may sign in as someone else.
-- **How:** family roles `owner`, `parent` (edit books), `viewer` (read only), defined in `packages/core/src/auth.ts`
+- **How:** family roles `owner`, `parent` (edit books; the app calls it Editor, since a relative or friend can hold
+  it too), `viewer` (read only), defined in `packages/core/src/auth.ts`
   with an extra `book: [read, edit]` statement. The operator role (`admin`) is a custom admin-plugin role whose
   permissions omit `impersonate` and `impersonate-admins`; the smoke test asserts the impersonation endpoint
   returns 403 for the operator. `emailAndPassword.disableSignUp` is on: accounts come only from invitations, the

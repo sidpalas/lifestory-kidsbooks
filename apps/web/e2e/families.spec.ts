@@ -27,7 +27,7 @@ const signInWithPassword = async (page: Page, email: string) => {
   await expect(page.getByTestId("signed-in-as")).toContainText(email);
 };
 
-const inviteMember = async (page: Page, email: string, role: "Viewer (read only)" | "Parent (can edit)") => {
+const inviteMember = async (page: Page, email: string, role: "Viewer (read only)" | "Editor (can edit)") => {
   const form = page.getByRole("form", { name: "Invite a family member" });
   await form.getByLabel("Email").fill(email);
   await form.getByLabel("Role").selectOption({ label: role });
@@ -121,7 +121,7 @@ test("an existing user accepts an invitation into a second family and switches b
   await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
   await expect(page.getByTestId("families")).toHaveText(`alex-${id}'s family`);
   await page.goto("/family");
-  await inviteMember(page, friendEmail, "Parent (can edit)");
+  await inviteMember(page, friendEmail, "Editor (can edit)");
   await signOut(page);
 
   // The friend, who already has an account, accepts: the new family joins theirs and becomes active.
@@ -132,7 +132,9 @@ test("an existing user accepts an invitation into a second family and switches b
   const switcher = page.getByRole("combobox", { name: "Family" });
   await expect(switcher.locator("option:checked")).toHaveText(`alex-${id}'s family`);
   await page.goto("/family");
-  await expect(page.getByTestId("family-panel")).toContainText("You're the family's parent");
+  await expect(page.getByTestId("family-panel")).toContainText(
+    "You're an editor: you can make and edit this family's books.",
+  );
   await expect(page.getByTestId("member").filter({ hasText: ownerEmail })).toHaveText(`alex-${id}${ownerEmail}Owner`);
 
   // Switching back shows their own family, and the choice sticks across reloads.
@@ -209,7 +211,7 @@ test("on a phone, members show each identity once and long emails and pending in
 
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/family`);
-  await inviteMember(page, cousinEmail, "Parent (can edit)");
+  await inviteMember(page, cousinEmail, "Editor (can edit)");
   await inviteMember(page, longEmail, "Viewer (read only)");
   await signOut(page);
 
@@ -221,7 +223,7 @@ test("on a phone, members show each identity once and long emails and pending in
   await page.getByRole("button", { name: "Create account and join" }).click();
   await expect(page.getByTestId("signed-in-as")).toContainText(cousinEmail);
   await page.goto("/family");
-  await expect(page.getByTestId("member").filter({ hasText: cousinEmail })).toHaveText(`${cousinEmail}Parent`);
+  await expect(page.getByTestId("member").filter({ hasText: cousinEmail })).toHaveText(`${cousinEmail}Editor`);
   await expect(page.getByTestId("member").filter({ hasText: ownerEmail })).toHaveText(`kit-${id}${ownerEmail}Owner`);
 
   // The long pending invitation wraps inside its row, keeps its role, and nothing scrolls sideways.

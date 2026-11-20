@@ -21,7 +21,7 @@ its code loads only when the button is pressed.
 ## Routes and roles
 
 - `/characters/new` (add), `/characters/<id>` (edit; "Change look" in a book's cast links here).
-- Owner and parent edit; a viewer (grandparent) reads characters but has no picker.
+- Owner and editor edit; a viewer (grandparent) reads characters but has no picker.
 - `/` signed out: the landing demo, for anyone.
 
 ## Seed data

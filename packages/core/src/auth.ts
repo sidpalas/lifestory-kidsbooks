@@ -23,7 +23,8 @@ const PRINT_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 // ---- Family (organization) roles --------------------------------------------
 // A family is a Better Auth organization. "owner" and "parent" can edit books;
-// "viewer" (for example a grandparent) can only read them.
+// "viewer" (for example a grandparent) can only read them. The app shows "parent" as Editor:
+// anyone can be invited to edit, a relative or a friend as much as a parent.
 const familyStatements = { ...orgDefaultStatements, book: ["read", "edit"] } as const;
 export const familyAccess = createAccessControl(familyStatements);
 export const familyRoles = {
@@ -169,7 +170,7 @@ export class Auth extends Context.Service<
             mailer.send({
               to: invite.email,
               subject: `${invite.inviterName} invited you to ${invite.familyName} on Lifestory`,
-              text: `${invite.inviterName} invited you to join ${invite.familyName} as ${invite.role === "viewer" ? "a viewer (you can read the family's books)" : "a parent (you can edit the family's books)"}. Open the link to accept:`,
+              text: `${invite.inviterName} invited you to join ${invite.familyName} as ${invite.role === "viewer" ? "a viewer (you can read the family's books)" : "an editor (you can edit the family's books)"}. Open the link to accept:`,
               link: appUrl(`/invitations/${invite.id}`),
             }),
           ),

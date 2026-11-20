@@ -87,7 +87,7 @@ export const organization = pgTable("organization", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** A person's membership in a family, with a role: owner, parent, or viewer. */
+/** A person's membership in a family, with a role: owner, parent (shown as Editor), or viewer. */
 export const member = pgTable(
   "member",
   {
