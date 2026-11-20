@@ -78,4 +78,4 @@ export const resolveIllustration = Effect.fn("pages.resolveIllustration")(functi
       }),
     { concurrency: 4 },
   );
-});
+}, Effect.orDie);

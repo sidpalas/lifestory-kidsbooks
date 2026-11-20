@@ -62,7 +62,8 @@ export const getPasswordLink = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ token: Schema.String })))
   .handler(({ data }) => runEffect(PasswordLinkResult, findPasswordToken(data.token)));
 
-export const SetPasswordResult = ResultSchema(Done, InviteInvalid);
+// AuthRejected: Better Auth refused the new password for another reason than the link (InviteInvalid).
+export const SetPasswordResult = ResultSchema(Done, Schema.Union([InviteInvalid, AuthRejected]));
 
 export const setPassword = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ token: Schema.String, password: Password })))

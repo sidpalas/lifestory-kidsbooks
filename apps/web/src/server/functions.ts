@@ -10,6 +10,7 @@ import {
 import {
   NotAuthenticated,
   CastMember,
+  Forbidden,
   Look,
   LookOverride,
   NotFound,
@@ -92,7 +93,8 @@ export const StoryPreviewResult = ResultSchema(
     /** The family's books of this story, newest first. */
     books: Schema.Array(BookSummary),
   }),
-  Schema.Union([NotAuthenticated, NotFound]),
+  // Forbidden: the family checks it shares with book pages; reading the active family's books never fails with it.
+  Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
 
 export const PreviewChoice = Schema.Struct({

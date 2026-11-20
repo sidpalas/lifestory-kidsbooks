@@ -813,7 +813,7 @@ export const uploadDraftAsset = Effect.fn("authoring.uploadAsset")(function* (
   const asset = `${input.folder}/${stem}-${hash}${castingSource ? ".png" : extension === ".jpeg" ? ".jpg" : extension}`;
   yield* ObjectStorage.use((storage) =>
     storage.put(storyAssetKey(storyId, draft.version, asset), body, castingSource ? "image/png" : type.contentType),
-  );
+  ).pipe(Effect.orDie);
   return { asset };
 });
 
@@ -846,14 +846,17 @@ const publishIssues = Effect.fn("authoring.publishIssues")(function* (
   }
   const manifest = decoded.success;
   const storage = yield* ObjectStorage;
-  const stored = new Set((yield* storage.list(storyAssetKey(storyId, version, ""))).map((object) => object.key));
+  const stored = new Set(
+    (yield* storage.list(storyAssetKey(storyId, version, "")).pipe(Effect.orDie)).map((object) => object.key),
+  );
   const missing = manifestAssets(manifest).filter((asset) => !stored.has(storyAssetKey(storyId, version, asset)));
   const fonts = yield* Effect.forEach(
     manifest.fonts.filter((font) => stored.has(storyAssetKey(storyId, version, font.asset))),
     (font) =>
-      storage
-        .get(storyAssetKey(storyId, version, font.asset))
-        .pipe(Effect.map((object) => ({ asset: font.asset, variable: isVariableFont(object.body) }))),
+      storage.get(storyAssetKey(storyId, version, font.asset)).pipe(
+        Effect.map((object) => ({ asset: font.asset, variable: isVariableFont(object.body) })),
+        Effect.orDie,
+      ),
   );
   return [
     ...missing.map((asset) => `${asset}: file missing; upload it again`),
@@ -924,17 +927,19 @@ export const publishDraft = Effect.fn("authoring.publishDraft")(function* (
     }),
   );
   if (!published) return yield* new DraftChanged();
+  // Published: removing the draft's unused uploads only tidies its folder, so a storage failure here leaves some
+  // behind rather than reporting a publish that happened as failed.
   const storage = yield* ObjectStorage;
   const keep = new Set(manifestAssets(manifest).map((asset) => storyAssetKey(storyId, draft.version, asset)));
   const prefix = storyAssetKey(storyId, draft.version, "");
-  for (const object of yield* storage.list(prefix)) {
+  for (const object of yield* storage.list(prefix).pipe(Effect.orElseSucceed(() => []))) {
     if (
       keep.has(object.key) ||
       object.key.startsWith(`${prefix}recoloured/`) ||
       object.key.startsWith(`${prefix}parts/`)
     )
       continue;
-    yield* storage.delete(object.key);
+    yield* storage.delete(object.key).pipe(Effect.ignore);
   }
   return { version: draft.version };
 });
@@ -980,7 +985,10 @@ export const startNextVersion = Effect.fn("authoring.startNextVersion")(function
   // Copied inside the bucket, many at once: downloading and uploading each file made this take seconds.
   yield* Effect.forEach(
     manifestAssets(manifest),
-    (asset) => storage.copy(storyAssetKey(storyId, latest.version, asset), storyAssetKey(storyId, version, asset)),
+    (asset) =>
+      storage
+        .copy(storyAssetKey(storyId, latest.version, asset), storyAssetKey(storyId, version, asset))
+        .pipe(Effect.orDie),
     {
       concurrency: 16,
       discard: true,
