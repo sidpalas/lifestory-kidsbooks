@@ -3,11 +3,11 @@
 import { Forbidden, NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { StudioBar } from "~/components/app-shell";
 import { DraftEditor } from "~/components/authoring/draft-editor";
 import { message } from "~/components/authoring/fields";
 import { Button } from "~/components/ui/button";
-import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 import {
   ArchiveStoryResult,
   DraftResult,
@@ -18,6 +18,7 @@ import {
   StoryVersionsResult,
   storyVersionsFn,
 } from "~/server/authoring";
+import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 
 export const Route = createFileRoute("/author/$storyId")({
   ssr: false,
@@ -69,13 +70,13 @@ function AuthorStory() {
       <StudioBar />
       <main className="mx-auto flex max-w-[1500px] flex-col gap-4 p-6">
         <header className="flex flex-col gap-1">
-          <Link to="/author" className="text-muted-foreground text-sm hover:underline">
+          <Link to="/author" className="text-sm text-muted-foreground hover:underline">
             ← Your stories
           </Link>
           <h1 className="text-2xl font-semibold" data-testid="authoring-title">
             {versions.story.title}
           </h1>
-          <p className="text-muted-foreground text-sm" data-testid="authoring-meta">
+          <p className="text-sm text-muted-foreground" data-testid="authoring-meta">
             /{versions.story.slug} · {draft ? `drafting version ${draft.version}` : "no draft open"}
             {latest && ` · version ${latest.version} published ${new Date(latest.publishedAt).toLocaleDateString()}`}
           </p>
@@ -105,7 +106,7 @@ function AuthorStory() {
               {starting ? `Starting version ${next}…` : `Start version ${next}`}
             </Button>
             {error && (
-              <p role="alert" className="text-destructive text-sm">
+              <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             )}
@@ -176,7 +177,7 @@ function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }
         </div>
       )}
       {error && (
-        <p role="alert" className="text-destructive text-sm">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

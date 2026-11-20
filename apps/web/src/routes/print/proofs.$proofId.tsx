@@ -4,6 +4,7 @@
 import { NotFound, storyAssetKey, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Schema } from "effect";
+
 import { BookPage, pageSizeIn, StoryFonts } from "~/components/book/BookPage";
 import { getPrintableProofFn, PrintableProofResult } from "~/server/functions";
 

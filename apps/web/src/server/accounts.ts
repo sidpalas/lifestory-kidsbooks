@@ -1,3 +1,12 @@
+import {
+  acceptInvitation,
+  acceptInvitationAsNewUser,
+  Auth,
+  findPasswordToken,
+  invitationDetails,
+  setPasswordFromLink,
+  signIn,
+} from "@lifestory/core";
 // Sign-in, set-password links, and accepting invitations. The domain logic is in
 // @lifestory/core/accounts; these adapt requests to it and pass session cookies on.
 import {
@@ -11,18 +20,10 @@ import {
   NotFound,
   ResultSchema,
 } from "@lifestory/core/contracts";
-import {
-  acceptInvitation,
-  acceptInvitationAsNewUser,
-  Auth,
-  findPasswordToken,
-  invitationDetails,
-  setPasswordFromLink,
-  signIn,
-} from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { appendResponseHeader, getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
+
 import { runEffect } from "./runtime.ts";
 
 const Password = Schema.String.check(Schema.isMinLength(MIN_PASSWORD_LENGTH));

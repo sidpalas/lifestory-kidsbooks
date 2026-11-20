@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+
 import { Rect } from "../book-format/manifest.ts";
 import { Age, FaceOption, HairOption } from "../looks/vocabulary.ts";
 import { ImportResult } from "./contract.ts";

@@ -5,6 +5,7 @@
 import { defaultLook, type Look } from "@lifestory/core/contracts";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { describeLook, LookPicker, type Portrait } from "~/components/look-picker";
 import { demoAges, demoLayers } from "~/components/looks-demo-layers";
 import { Button } from "~/components/ui/button";
@@ -37,12 +38,12 @@ export default function LandingLookDemo() {
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-dashed p-4 sm:p-6" data-testid="look-demo">
       <p className="text-sm">
-        <span className="bg-muted mr-2 rounded px-1.5 py-0.5 text-xs font-medium">Demo</span>
+        <span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-xs font-medium">Demo</span>
         Nothing here is saved or sent anywhere.
       </p>
       <LookPicker look={look} pronouns="they/them" onChange={setLook} ages={demoAges} portrait={StaticPortrait} />
       <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-muted-foreground text-sm" data-testid="look-demo-summary">
+        <p className="text-sm text-muted-foreground" data-testid="look-demo-summary">
           In Lifestory you'd give them a name and they'd star in every page: {describeLook(look).toLowerCase()}.
         </p>
         <Button asChild variant="outline" size="sm" className="self-start sm:self-auto">

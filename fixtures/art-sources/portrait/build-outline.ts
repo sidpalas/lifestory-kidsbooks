@@ -7,6 +7,7 @@
 // Rewrites packages/core/src/looks/portrait/parts/ and parts.json in place; running it again changes nothing.
 // usage (repo root): node fixtures/art-sources/portrait/build-outline.ts
 import { readFileSync, writeFileSync } from "node:fs";
+
 import { rasterize } from "../../../packages/core/src/looks/recolour.ts";
 import { coverOutline } from "../../../packages/core/src/parts/cutout.ts";
 import { encodeLayer, figureCoverage, rectToPixels } from "../../../packages/core/src/parts/images.ts";

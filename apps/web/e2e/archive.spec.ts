@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { expect, test } from "@playwright/test";
+
 import type { ServerServices } from "@lifestory/core";
+import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
 // Archiving a story (D49): its author takes it out of every family's stories and stops new books of it, without

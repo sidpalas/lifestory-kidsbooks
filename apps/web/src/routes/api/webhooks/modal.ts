@@ -11,6 +11,7 @@ import {
 } from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Config, Effect, Option, Redacted, Schema } from "effect";
+
 import { serverRuntime } from "~/server/runtime";
 
 const decodeOutcome = Schema.decodeUnknownEffect(Schema.fromJsonString(GenerationOutcome));

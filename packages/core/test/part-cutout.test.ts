@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import partsByBase from "../src/looks/portrait/parts.json" with { type: "json" };
 import { rasterize } from "../src/looks/recolour.ts";
+import { SPARSE_HAIR } from "../src/looks/vocabulary.ts";
 import {
   coverOutline,
   CROWN_GAP_LIMIT,
@@ -12,7 +15,6 @@ import {
   type Rgb,
 } from "../src/parts/cutout.ts";
 import { figureCoverage } from "../src/parts/images.ts";
-import { SPARSE_HAIR } from "../src/looks/vocabulary.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is

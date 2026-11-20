@@ -5,12 +5,14 @@
 // Proofs belong to a family's book (books.ts), which passes its cast and text edits as `ProofContent`. A parent
 // approves a book's proof for print; unapproved proofs expire (D31).
 import { randomUUID } from "node:crypto";
+
 import { schema } from "@lifestory/db";
 import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { Effect, Schema } from "effect";
-import { type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
+
 import { Auth } from "./auth.ts";
+import { type Page, resolvePageText, type StoryManifest } from "./book-format/index.ts";
 import { ProofContent, type ProofSummary } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { InvalidInput, NotFound } from "./errors.ts";
@@ -18,8 +20,8 @@ import { requireFamilyAccess, roleCan } from "./families.ts";
 import { Jobs } from "./jobs.ts";
 import { composeIllustration } from "./looks/compose.ts";
 import { resolveIllustration } from "./pages.ts";
-import { withStoredAdditions } from "./stories.ts";
 import { ObjectStorage } from "./storage.ts";
+import { withStoredAdditions } from "./stories.ts";
 import { proofObjectKey, renderProof } from "./tasks/render-proof.ts";
 import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
 

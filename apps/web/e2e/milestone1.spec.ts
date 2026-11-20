@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
 // The whole milestone 1 slice (docs/brief.md, "Milestone 1 scope"), in order, as the people in it do it: the operator

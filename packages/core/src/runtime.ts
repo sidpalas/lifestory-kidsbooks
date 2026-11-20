@@ -1,15 +1,16 @@
 import { Config, Effect, Layer, ManagedRuntime } from "effect";
+
 import { Auth } from "./auth.ts";
 import { AppConfig } from "./config.ts";
 import { Database } from "./database.ts";
 import { Generations } from "./generations.ts";
 import { FakeImageProvider } from "./image-provider.ts";
+import { CastingProvider } from "./imports/casting-provider.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
 import { ModalImageProvider } from "./providers/modal.ts";
 import { OpenAIImageProvider } from "./providers/openai.ts";
 import { ObjectStorage } from "./storage.ts";
-import { CastingProvider } from "./imports/casting-provider.ts";
 
 /**
  * IMAGE_PROVIDER picks the provider: `fake` (the default; development, tests, CI), `openai` (the primary for part

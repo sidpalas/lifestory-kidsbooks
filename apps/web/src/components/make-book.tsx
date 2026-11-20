@@ -15,6 +15,7 @@ import {
 } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { lookPickerId, lookToggleId } from "~/components/book-look";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
@@ -141,7 +142,7 @@ export function StoryCast({
               ))}
             </ul>
             {canEdit && (
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {books.length === 1 ? "Open it" : "Choose one to open"} to change who's in it, edit its text, and print
                 it. Opening it keeps its cast and looks as they are; the choices below aren't applied to it.
               </p>
@@ -169,7 +170,7 @@ export function StoryCast({
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
                   <label htmlFor={`cast-${slot.slotId}`} className="font-medium">
-                    {slot.label} <span className="text-muted-foreground font-normal">({agesLabel(slot)})</span>
+                    {slot.label} <span className="font-normal text-muted-foreground">({agesLabel(slot)})</span>
                   </label>
                   <NativeSelect
                     id={`cast-${slot.slotId}`}
@@ -192,7 +193,7 @@ export function StoryCast({
                     </optgroup>
                   </NativeSelect>
                   {example ? (
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-xs text-muted-foreground">
                       {fits(slot).length === 0 ? `Nobody in your family is a ${agesLabel(slot)} yet. ` : ""}
                       {slot.example.name} comes with the story.{" "}
                       {trying(slot.slotId) && "Looks you try below show on the pages and aren't saved. "}
@@ -218,7 +219,7 @@ export function StoryCast({
                     </p>
                   ) : (
                     character && (
-                      <p className="text-muted-foreground text-xs" data-testid={`look-note-${slot.slotId}`}>
+                      <p className="text-xs text-muted-foreground" data-testid={`look-note-${slot.slotId}`}>
                         {Object.keys(changes(slot.slotId)).length > 0
                           ? `Drawn with a look for this book only, not ${character.name}'s saved one.`
                           : `Drawn with ${character.name}'s saved look.`}{" "}
@@ -262,7 +263,7 @@ export function StoryCast({
               <Button type="button" onClick={create} disabled={!hydrated || !everyoneFromFamily || making || updating}>
                 Make the book
               </Button>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 {everyoneFromFamily
                   ? "Makes a new book with this cast. Next you can edit its text and print a proof."
                   : "Choose someone from your family for every part to make the book."}
@@ -285,7 +286,7 @@ export function StoryCast({
               >
                 Make another copy
               </Button>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 {everyoneFromFamily
                   ? `Makes a separate book with this cast; ${books.length === 1 ? "your book stays" : "your books stay"} as ${books.length === 1 ? "it is" : "they are"}.`
                   : "Choose someone from your family for every part to make another copy."}
@@ -293,7 +294,7 @@ export function StoryCast({
             </div>
           ))}
         {error && (
-          <p className="text-destructive text-sm" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
         )}

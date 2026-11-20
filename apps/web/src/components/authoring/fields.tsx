@@ -1,6 +1,7 @@
 // Small controls the story draft editor shares: file uploads into the draft's folder, numbers, and rectangles.
 import { storyAssetKey } from "@lifestory/core/contracts";
 import { useState } from "react";
+
 import { FileInput } from "~/components/ui/file-input";
 import { Input } from "~/components/ui/input";
 
@@ -80,7 +81,7 @@ export function UploadField({
               className="size-10 shrink-0 rounded border bg-white object-contain"
             />
           )}
-          <code className="text-muted-foreground truncate">{asset}</code>
+          <code className="truncate text-muted-foreground">{asset}</code>
         </span>
       )}
       {busy && <span>Uploading…</span>}

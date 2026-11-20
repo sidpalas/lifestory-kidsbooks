@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { renderPlaceholder } from "../src/image-provider.ts";
 import { signBody, verifySignature } from "../src/providers/modal.ts";
 

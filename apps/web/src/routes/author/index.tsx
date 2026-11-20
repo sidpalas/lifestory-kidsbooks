@@ -2,6 +2,7 @@
 import { Forbidden, NotAuthenticated, NotFound, optionLabel, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { StudioBar } from "~/components/app-shell";
 import { message } from "~/components/authoring/fields";
 import { InviteFamilyCard } from "~/components/family-panel";
@@ -57,7 +58,7 @@ function AuthoringHome() {
               </CardHeader>
               <CardContent>
                 {stories.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">None yet.</p>
+                  <p className="text-sm text-muted-foreground">None yet.</p>
                 ) : (
                   <ul className="flex flex-col gap-2" data-testid="authored-stories">
                     {stories.map((story) => (
@@ -70,7 +71,7 @@ function AuthoringHome() {
                           >
                             {story.title}
                           </Link>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-xs text-muted-foreground">
                             /{story.slug} ·{" "}
                             {story.publishedVersion
                               ? `version ${story.publishedVersion} published`
@@ -147,7 +148,7 @@ function NewStory() {
             <Input name="summary" maxLength={500} />
           </label>
           {error && (
-            <p role="alert" className="text-destructive text-sm">
+            <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           )}

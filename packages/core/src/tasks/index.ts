@@ -1,5 +1,5 @@
-import { importTask } from "../imports/task.ts";
 import { castingTask } from "../imports/casting-task.ts";
+import { importTask } from "../imports/task.ts";
 import { generatePart } from "./generate-part.ts";
 import { renderProof } from "./render-proof.ts";
 import { sweepStorage } from "./sweep-storage.ts";

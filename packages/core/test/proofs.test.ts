@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
+
 import { exampleCast, StoryManifest } from "../src/book-format/index.ts";
 import { countPdfPages } from "../src/print.ts";
 import { proofPageText } from "../src/proofs.ts";

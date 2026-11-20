@@ -19,6 +19,7 @@ import {
 } from "@lifestory/core/contracts";
 import type * as React from "react";
 import { useRef } from "react";
+
 import { cn } from "~/lib/utils";
 
 export const portraitUrl = (look: Look) =>
@@ -88,7 +89,7 @@ function Choice({
       className={cn(
         "flex flex-col overflow-hidden leading-none ring-1 ring-black/15 transition hover:ring-black/40 disabled:cursor-not-allowed disabled:opacity-50",
         round ? "rounded-full" : "rounded-md",
-        pressed && "ring-2 ring-offset-2 ring-foreground hover:ring-foreground",
+        pressed && "ring-2 ring-foreground ring-offset-2 hover:ring-foreground",
       )}
     >
       {children}
@@ -304,10 +305,10 @@ export function LookPicker({
           height={280}
           className="rounded-md shadow-sm ring-1 ring-black/10"
         />
-        <figcaption className="text-muted-foreground text-xs" data-testid="look-summary">
+        <figcaption className="text-xs text-muted-foreground" data-testid="look-summary">
           {describeLook(look)}
         </figcaption>
-        <p className="text-muted-foreground text-[11px] leading-snug">
+        <p className="text-[11px] leading-snug text-muted-foreground">
           Books draw each choice with their own illustrations.
         </p>
       </figure>
@@ -326,7 +327,7 @@ export function LookPicker({
               >
                 <span className="block px-3 py-2 text-left text-sm">
                   {option.label}
-                  <span className="text-muted-foreground block text-[11px]">{option.years}</span>
+                  <span className="block text-[11px] text-muted-foreground">{option.years}</span>
                 </span>
               </Choice>
             ))}

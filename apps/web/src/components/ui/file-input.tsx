@@ -1,5 +1,6 @@
 import { UploadIcon } from "lucide-react";
 import { type ComponentProps, useState } from "react";
+
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
@@ -47,7 +48,7 @@ export function FileInput({
           <UploadIcon />
           {buttonText}
         </span>
-        <span className="text-muted-foreground min-w-0 truncate font-normal">{chosen ?? emptyText}</span>
+        <span className="min-w-0 truncate font-normal text-muted-foreground">{chosen ?? emptyText}</span>
       </span>
     </label>
   );

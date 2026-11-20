@@ -3,6 +3,7 @@
 // The page passes how to list, request, approve, and delete them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
+
 import { Button } from "~/components/ui/button";
 
 const formatBytes = (bytes: number) =>
@@ -106,7 +107,7 @@ export function ProofPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-medium">Print proof</h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every
             page, then approve it for print.
           </p>
@@ -117,8 +118,8 @@ export function ProofPanel({
           </Button>
         )}
       </div>
-      {error && <p className="text-destructive text-sm">{error}</p>}
-      {state && state.proofs.length === 0 && <p className="text-muted-foreground text-sm">No proofs yet.</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {state && state.proofs.length === 0 && <p className="text-sm text-muted-foreground">No proofs yet.</p>}
       {state && state.proofs.length > 0 && (
         <ul className="flex flex-col divide-y text-sm">
           {state.proofs.map((proof) => (
@@ -142,7 +143,7 @@ export function ProofPanel({
                   </span>
                 ) : (
                   proof.expiresAt && (
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-muted-foreground">
                       Deleted on {new Date(proof.expiresAt).toLocaleDateString()} unless approved
                     </span>
                   )

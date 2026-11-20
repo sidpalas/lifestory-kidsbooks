@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { expect, test } from "@playwright/test";
+
 import type { ServerServices, StoryPart } from "@lifestory/core";
+import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
 // Part generation has no screens yet (the authoring UI will call these functions), so this drives packages/core

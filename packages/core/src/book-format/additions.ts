@@ -3,6 +3,7 @@
 // revision, that only fill gaps: new palettes, new bases, new parts. A book draws its version merged with every
 // addition; a proof records the revision it was requested at and always draws exactly that. Browser-safe.
 import { Effect, Schema } from "effect";
+
 import { sameAppearance } from "../looks/vocabulary.ts";
 import { decodeStoryManifest, FigureBase, type FigureLayer, Palette, Part, type StoryManifest } from "./manifest.ts";
 

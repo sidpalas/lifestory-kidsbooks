@@ -4,6 +4,7 @@
 import { AccountExists, InviteInvalid, NotFound, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { PasswordFields } from "~/components/password-fields";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -74,7 +75,7 @@ function Invitation() {
   };
 
   const errorLine = error && (
-    <p className="text-destructive text-sm" role="alert">
+    <p className="text-sm text-destructive" role="alert">
       {error}
     </p>
   );

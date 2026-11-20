@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 // `page.import`: turns art made outside the app into one page's layers for one role (docs: the "Story art import
 // design" in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1). A layered file is stacked by use; a flat page goes
 // through the image model twice (the character removed, then made bald) with the cut-out of D36 against each edit;
@@ -6,8 +8,8 @@
 // step is deterministic, so a rerun writes the same bytes.
 import { schema } from "@lifestory/db";
 import { and, eq } from "drizzle-orm";
-import { createHash } from "node:crypto";
 import { Effect, Schema } from "effect";
+
 import { decodeStoryDraft, storyAssetKey } from "../book-format/index.ts";
 import type { FigureBase, Part, Rect } from "../book-format/manifest.ts";
 import { Database } from "../database.ts";

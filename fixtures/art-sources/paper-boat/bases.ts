@@ -5,6 +5,8 @@
 // usage (repo root): node fixtures/art-sources/paper-boat/bases.ts
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+
+import { fillFigureHoles, findSkin, skinDistance, toLab } from "../../../packages/core/src/imports/figure.ts";
 import {
   composeForReview,
   encodeMask,
@@ -13,7 +15,6 @@ import {
   makeBase,
   readRaster,
 } from "../../../packages/core/src/imports/images.ts";
-import { fillFigureHoles, findSkin, skinDistance, toLab } from "../../../packages/core/src/imports/figure.ts";
 import {
   alphaBounds,
   components,

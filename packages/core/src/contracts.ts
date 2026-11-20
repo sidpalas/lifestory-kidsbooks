@@ -1,6 +1,7 @@
 // Client-safe schemas shared by the web app's server functions and its UI.
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
+
 import {
   CastMember,
   Look,
@@ -10,8 +11,8 @@ import {
   StoryManifest,
   TextStyleName,
 } from "./book-format/index.ts";
-import { StoryPart } from "./parts/contract.ts";
 import { Casting } from "./imports/casting-contract.ts";
+import { StoryPart } from "./parts/contract.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";

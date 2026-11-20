@@ -20,9 +20,10 @@ import {
 import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useCallback, useState } from "react";
+
+import { BookLookPicker, focusById, lookPickerId, lookToggleId } from "~/components/book-look";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
-import { BookLookPicker, focusById, lookPickerId, lookToggleId } from "~/components/book-look";
 import { confirmDeleteBook } from "~/components/family-library";
 import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { agesLabel } from "~/components/make-book";
@@ -122,13 +123,13 @@ function BookEditor() {
     <main className="mx-auto flex max-w-6xl flex-col gap-6 p-8">
       <StoryFonts fonts={manifest.fonts} assetUrl={assetUrl} />
       <header className="flex flex-col gap-1">
-        <Link to="/" className="text-muted-foreground text-sm hover:underline">
+        <Link to="/" className="text-sm text-muted-foreground hover:underline">
           ← Home
         </Link>
         <h1 className="text-2xl font-semibold" data-testid="book-title">
           {view.book.title}
         </h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           Our edition of {story.title} by {story.authorName} · version {version}
           {!canEdit && " · you're a viewer, so you can read it but not change it"}
         </p>
@@ -178,7 +179,7 @@ function BookEditor() {
         })}
       </section>
       {error && (
-        <p className="text-destructive text-sm" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
@@ -387,7 +388,7 @@ function TextEditor({
           </div>
         );
       })}
-      <p className="text-muted-foreground text-xs">
+      <p className="text-xs text-muted-foreground">
         Names, titles, and pronouns fill in from the cast: {tokens},{" "}
         {`{{${view.manifest.characterSlots.at(-1)!.slotId}.title}}`} (what the kids call them), {`{{hero.they}}`},{" "}
         {`{{hero.their}}`}…
@@ -464,7 +465,7 @@ function RoleCard({
             <button
               type="button"
               id={lookToggleId(role.slotId)}
-              className="text-muted-foreground text-xs underline"
+              className="text-xs text-muted-foreground underline"
               aria-expanded={styling}
               aria-controls={styling ? lookPickerId(role.slotId) : undefined}
               onClick={() => onStyle(!styling)}
@@ -476,14 +477,14 @@ function RoleCard({
             <Link
               to="/characters/$characterId"
               params={{ characterId: character.id }}
-              className="text-muted-foreground text-xs underline"
+              className="text-xs text-muted-foreground underline"
             >
               {canEdit ? "Edit saved look" : "See saved look"}
             </Link>
           )}
         </div>
         {Object.keys(role.changes).length > 0 && (
-          <p className="text-muted-foreground text-xs" data-testid={`look-note-${role.slotId}`}>
+          <p className="text-xs text-muted-foreground" data-testid={`look-note-${role.slotId}`}>
             This book draws {role.member.name} with a look for this book only, not their saved one.
           </p>
         )}
@@ -525,7 +526,7 @@ function RoleCard({
           (Object.keys(role.override) as Array<LookAxis>).some(
             (axis) => role.member.look[axis] !== ({ ...character.look, ...role.changes } as Look)[axis],
           ) && (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               This book draws a stand-in for options the story can't draw yet.
             </p>
           )

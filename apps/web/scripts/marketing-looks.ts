@@ -5,8 +5,10 @@
 // It checks that every stack matches lookPortrait (the signed-in picker's /api/portrait) pixel for pixel before
 // writing the WebPs. Layer names: looks-demo.ts (demoLayers).
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+
 import { Effect } from "effect";
 import sharp from "sharp";
+
 import { composeFigure, type LayerSpec } from "../../../packages/core/src/looks/compose.ts";
 import {
   lookPortrait,

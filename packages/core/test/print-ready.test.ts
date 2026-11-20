@@ -1,6 +1,7 @@
 import { degrees, PDFDocument, StandardFonts } from "pdf-lib";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
+
 import { checkPrintReady, printTrimIssues, setPrintBoxes } from "../src/print-ready.ts";
 
 // A small book keeps the fixtures fast: a 2 × 3 in trim, so a page with Lulu's 0.125 in bleed is 2.25 × 3.25 in

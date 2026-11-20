@@ -1,5 +1,6 @@
 import { Link, useHydrated } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
+
 import characterPicker from "~/assets/marketing/character-picker.webp";
 import moonPicnic from "~/assets/marketing/moon-picnic.webp";
 import paperBoatFamily1 from "~/assets/marketing/paper-boat-family-1.webp";
@@ -71,7 +72,7 @@ export function Landing() {
             <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
               Picture books starring your family
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-lg text-muted-foreground">
               Real stories by human authors and illustrators. You choose how each of your family looks, and every page
               is drawn with them.
             </p>
@@ -79,7 +80,7 @@ export function Landing() {
               <Button asChild size="lg">
                 <Link to="/sign-in">Sign in</Link>
               </Button>
-              <p className="text-muted-foreground text-sm">Lifestory is invite-only for now.</p>
+              <p className="text-sm text-muted-foreground">Lifestory is invite-only for now.</p>
             </div>
           </div>
           <figure className="flex flex-col gap-3">
@@ -101,7 +102,7 @@ export function Landing() {
                 className="aspect-square w-full rounded-lg border shadow-sm"
               />
             </div>
-            <figcaption className="text-muted-foreground text-center text-sm">
+            <figcaption className="text-center text-sm text-muted-foreground">
               The same page of <span className="italic">The Paper Boat</span>, drawn for two families.
             </figcaption>
           </figure>
@@ -113,12 +114,12 @@ export function Landing() {
           </h2>
           <ol className="grid gap-4 sm:grid-cols-3">
             {steps.map((step, index) => (
-              <li key={step.title} className="bg-card flex flex-col gap-2 rounded-xl border p-5">
-                <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-full text-sm font-semibold">
+              <li key={step.title} className="flex flex-col gap-2 rounded-xl border bg-card p-5">
+                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {index + 1}
                 </span>
                 <h3 className="font-semibold">{step.title}</h3>
-                <p className="text-muted-foreground text-sm">{step.text}</p>
+                <p className="text-sm text-muted-foreground">{step.text}</p>
               </li>
             ))}
           </ol>
@@ -159,7 +160,7 @@ export function Landing() {
             <h2 id="try-picker" className="text-xl font-semibold">
               Try the character picker
             </h2>
-            <Suspense fallback={<p className="text-muted-foreground text-sm">Loading the picker…</p>}>
+            <Suspense fallback={<p className="text-sm text-muted-foreground">Loading the picker…</p>}>
               <LandingLookDemo />
             </Suspense>
           </section>
@@ -184,7 +185,7 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="text-muted-foreground mx-auto w-full max-w-5xl px-6 pb-8 text-sm">
+      <footer className="mx-auto w-full max-w-5xl px-6 pb-8 text-sm text-muted-foreground">
         <p className="border-t pt-6">
           Lifestory is invite-only for now. Have an invitation? Open the link in your email, or{" "}
           <Link to="/sign-in" className="text-foreground underline underline-offset-4">

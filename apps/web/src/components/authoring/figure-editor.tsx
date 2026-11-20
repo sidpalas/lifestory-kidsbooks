@@ -25,8 +25,10 @@ import {
   type StoryPart,
 } from "@lifestory/core/contracts";
 import { useRef, useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
+
 import { type DraftFiles, draftFileUrl, RectFields, UploadField } from "./fields";
 
 const faceLabel = (face: string) => faceOptions.find((option) => option.id === face)?.label.toLowerCase() ?? face;
@@ -212,7 +214,7 @@ function BasesGrid({
   return (
     <section className="flex flex-col gap-2" aria-label={`Base drawings of ${role}`}>
       <h4 className="text-sm font-semibold">Base drawings</h4>
-      <p className="text-muted-foreground text-xs">
+      <p className="text-xs text-muted-foreground">
         One per face type at each age this figure draws, and from teen up one with softer and one with defined features:
         bald, in neutral greys, filling the box. The skin mask covers every visible bit of skin (it takes the skin
         tone); the brow mask takes the hair colour.
@@ -232,7 +234,7 @@ function BasesGrid({
               <span className="text-xs font-semibold">
                 {at}
                 {appearance.features === "features:soft" && (
-                  <span className="text-muted-foreground font-normal"> (optional)</span>
+                  <span className="font-normal text-muted-foreground"> (optional)</span>
                 )}
               </span>
               <UploadField
@@ -392,7 +394,7 @@ function PartsGrid({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-semibold">
           Parts{" "}
-          <span className="text-muted-foreground font-normal" data-testid="parts-count">
+          <span className="font-normal text-muted-foreground" data-testid="parts-count">
             {cells.length - empty.length} of {cells.length} drawn, {waiting} waiting for approval
           </span>
         </h4>
@@ -472,7 +474,7 @@ function PartsGrid({
                       alt=""
                       className="size-12 rounded border bg-white object-contain"
                     />
-                    <code className="text-muted-foreground truncate">{part.asset}</code>
+                    <code className="truncate text-muted-foreground">{part.asset}</code>
                   </span>
                   <RectFields
                     label={`Place ${at}`}
@@ -532,7 +534,7 @@ function PartsGrid({
               ) : (
                 <>
                   {last && (
-                    <span className="text-muted-foreground text-xs" data-testid="last-attempt">
+                    <span className="text-xs text-muted-foreground" data-testid="last-attempt">
                       {statusLabel[last.status]}
                       {last.error ? `: ${last.error}` : ""}
                     </span>

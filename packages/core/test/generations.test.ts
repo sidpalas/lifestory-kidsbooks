@@ -1,6 +1,7 @@
 import type { JsonValue } from "absurd-sdk";
 import { Effect, Exit, Layer } from "effect";
 import { describe, expect, it } from "vitest";
+
 import { generateImage, type GenerationRow } from "../src/generations.ts";
 import { FakeImageProvider } from "../src/image-provider.ts";
 import type { StoredObject } from "../src/storage.ts";

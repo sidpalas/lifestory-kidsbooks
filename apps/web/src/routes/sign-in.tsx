@@ -1,6 +1,7 @@
 import { InvalidCredentials, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -52,7 +53,7 @@ function SignIn() {
               <Input id="password" name="password" type="password" autoComplete="current-password" required />
             </div>
             {error && (
-              <p className="text-destructive text-sm" role="alert">
+              <p className="text-sm text-destructive" role="alert">
                 {error}
               </p>
             )}

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+
 import { expect, test } from "@playwright/test";
 
 test("signed-out visitors get the landing page, with public images and a way to sign in", async ({ page }) => {

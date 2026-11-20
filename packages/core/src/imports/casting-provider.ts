@@ -1,7 +1,8 @@
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import sharp from "sharp";
-import { InvalidInput } from "../errors.ts";
+
 import type { CharacterSlot } from "../book-format/manifest.ts";
+import { InvalidInput } from "../errors.ts";
 import { CastFigure } from "./casting-contract.ts";
 
 /** Image understanding only. Image edits still go through ImageProvider. */

@@ -2,6 +2,7 @@
 // visitors get the landing page there instead.
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+
 import { AppShell } from "~/components/app-shell";
 import { getHome, HomeResult } from "~/server/functions";
 

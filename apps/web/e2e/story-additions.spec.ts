@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { expect, type Page, test } from "@playwright/test";
+
 import type { ServerServices } from "@lifestory/core";
+import { expect, type Page, test } from "@playwright/test";
 import { Effect } from "effect";
 
 // Story additions (D41): an option added to the vocabulary after a story was published reaches it without a new

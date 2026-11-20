@@ -2,6 +2,7 @@
 import { type Character, defaultLook, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { LookPicker, withPronounFeatures } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -55,12 +56,12 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
 
   return (
     <main className="flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
-      <Link to="/characters" className="text-muted-foreground text-sm hover:underline">
+      <Link to="/characters" className="text-sm text-muted-foreground hover:underline">
         ← Characters
       </Link>
       <h1 className="text-2xl font-semibold">{character ? character.name : "Add a family member"}</h1>
       {!canEdit && (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           You're a viewer in this family, so you can see characters but not change them.
         </p>
       )}
@@ -79,7 +80,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
           </div>
           <div className="flex min-w-48 flex-col gap-2">
             <Label htmlFor="character-title">
-              What the kids call them <span className="text-muted-foreground font-normal">(optional)</span>
+              What the kids call them <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               id="character-title"
@@ -123,14 +124,14 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
               {character ? "Save changes" : "Add to the family"}
             </Button>
             {character && (
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 Every book with {character.name} redraws from the new look.
               </p>
             )}
           </div>
         )}
         {error && (
-          <p className="text-destructive text-sm" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
         )}

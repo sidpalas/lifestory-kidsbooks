@@ -1,6 +1,7 @@
 // Importing art made outside the app: the base made from a coloured figure, and an import applied to a page.
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
+
 import type { Page } from "../src/book-format/manifest.ts";
 import { applyImport, type ImportResult } from "../src/imports/contract.ts";
 import { makeBase } from "../src/imports/images.ts";

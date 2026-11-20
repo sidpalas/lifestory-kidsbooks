@@ -1,7 +1,8 @@
+import nunitoLatin from "@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2?url";
 /// <reference types="vite/client" />
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type * as React from "react";
-import nunitoLatin from "@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2?url";
+
 import appCss from "~/styles.css?url";
 
 export const Route = createRootRoute({

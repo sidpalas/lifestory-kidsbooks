@@ -4,6 +4,7 @@
 import { type FamilyMembership, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import type * as React from "react";
+
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
 import { signOut, SignOutResult } from "~/server/accounts";
@@ -75,7 +76,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
   return (
     <div className="flex min-h-screen">
       <aside
-        className="bg-secondary/40 sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-1 border-r p-4 md:flex"
+        className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-1 border-r bg-secondary/40 p-4 md:flex"
         aria-label="Lifestory"
       >
         <Link to="/" className="px-3 pb-3 text-lg font-semibold">
@@ -83,7 +84,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         </Link>
         <div className="flex flex-col gap-1 px-3 pb-3">
           <FamilySwitcher shell={shell} id="families" />
-          {viewer && <p className="text-muted-foreground text-xs">Viewer: you can read this family's books</p>}
+          {viewer && <p className="text-xs text-muted-foreground">Viewer: you can read this family's books</p>}
         </div>
         <nav aria-label="Family" className="flex flex-col gap-0.5">
           {places(viewer).map((place) => (
@@ -100,17 +101,17 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         </nav>
         {studio && (
           <div className="mt-3 flex flex-col gap-1 border-t pt-3">
-            <p className="text-muted-foreground px-3 text-xs">For authors</p>
+            <p className="px-3 text-xs text-muted-foreground">For authors</p>
             <Link
               to="/author"
-              className="text-primary border-primary/40 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent"
+              className="rounded-md border border-primary/40 px-3 py-1.5 text-sm font-medium text-primary hover:bg-accent"
             >
               Studio
             </Link>
           </div>
         )}
         <div className="mt-auto flex flex-col items-start gap-1 px-3 text-xs">
-          <p className="text-muted-foreground break-all" data-testid="signed-in-as">
+          <p className="break-all text-muted-foreground" data-testid="signed-in-as">
             Signed in as {shell.user.name} ({shell.user.email})
           </p>
           <Button
@@ -126,7 +127,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
-        <header className="bg-background sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-2 md:hidden">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-2 md:hidden">
           <Link to="/" className="font-semibold">
             Lifestory
           </Link>
@@ -136,7 +137,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
           {studio && (
             <Link
               to="/author"
-              className="text-primary border-primary/40 rounded-md border px-2 py-1 text-xs font-medium"
+              className="rounded-md border border-primary/40 px-2 py-1 text-xs font-medium text-primary"
             >
               Studio
             </Link>
@@ -156,13 +157,13 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
 
       <nav
         aria-label="Sections"
-        className="bg-background fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t bg-background md:hidden"
       >
         {places(viewer).map((place) => (
           <Link
             key={place.to}
             to={place.to}
-            className="text-muted-foreground py-3 text-center text-xs"
+            className="py-3 text-center text-xs text-muted-foreground"
             activeOptions={{ exact: place.to === "/" }}
             activeProps={{ className: "text-primary font-semibold" }}
           >
@@ -191,7 +192,7 @@ export function ShellPage({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">{title}</h1>
-          {description && <p className="text-muted-foreground text-sm">{description}</p>}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         {actions}
       </header>

@@ -2,6 +2,7 @@
 // age, then one feature at a time, and checks the portrait (/api/portrait) follows every choice and
 // loads. It never presses "Add to the family", so it writes nothing.
 import { writeFileSync } from "node:fs";
+
 import { imagesSettled, signedIn } from "./browser.ts";
 import type { Report } from "./report.ts";
 import type { Stack } from "./stack.ts";

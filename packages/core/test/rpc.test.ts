@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect";
 import { describe, expect, it } from "vitest";
+
 import { NotAuthenticated, NotFound } from "../src/errors.ts";
 import { ResultSchema, unwrapResult } from "../src/rpc.ts";
 

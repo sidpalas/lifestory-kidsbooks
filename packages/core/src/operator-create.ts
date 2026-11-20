@@ -1,3 +1,5 @@
+import { parseArgs } from "node:util";
+
 // Creates the operator account, once, inside a deployed container (docs/decisions.md D21).
 // Production images have no mise; run it with plain Node from the web image's /app, like migrate.ts:
 //   node packages/core/src/operator-create.ts --email you@example.com [--name "Your Name"]
@@ -8,7 +10,7 @@
 import { schema } from "@lifestory/db";
 import { eq } from "drizzle-orm";
 import { Effect } from "effect";
-import { parseArgs } from "node:util";
+
 import { createAccountWithFamily, ensureOwnFamily } from "./accounts.ts";
 import { MIN_PASSWORD_LENGTH } from "./contracts.ts";
 import { Database } from "./database.ts";

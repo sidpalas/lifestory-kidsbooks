@@ -3,6 +3,7 @@
 // Used by apps/web/Dockerfile: `pnpm build`, then `pnpm start`.
 import { serve } from "srvx";
 import { staticMiddleware } from "srvx/static";
+
 // @ts-expect-error: built output, no type declarations
 import app from "./dist/server/server.js";
 

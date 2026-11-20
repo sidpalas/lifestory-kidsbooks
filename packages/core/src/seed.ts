@@ -2,8 +2,10 @@
 // with ON CONFLICT DO NOTHING, so running it again changes nothing.
 //   mise run db:seed
 import { fileURLToPath } from "node:url";
+
 import { schema } from "@lifestory/db";
 import { Effect } from "effect";
+
 import { ensureOwnFamily } from "./accounts.ts";
 import { Database } from "./database.ts";
 import { ensureDevUser } from "./dev-users.ts";

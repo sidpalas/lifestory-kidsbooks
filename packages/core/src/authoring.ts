@@ -6,9 +6,11 @@
 // publishing writes the merged manifest.
 import { createHash, randomUUID } from "node:crypto";
 import { extname } from "node:path";
+
 import { schema } from "@lifestory/db";
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { Effect, Schema, SchemaIssue } from "effect";
+
 import type { SessionUser } from "./auth.ts";
 import {
   decodeStoryDraft,
@@ -28,19 +30,15 @@ import {
 import type { AuthoredStory } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { DraftChanged, Forbidden, InvalidInput, NotFound, StoryNotPublishable } from "./errors.ts";
-import { composeFigure, type LayerSpec } from "./looks/compose.ts";
-import type { Look } from "./looks/vocabulary.ts";
-import { resolveIllustration } from "./pages.ts";
-import { printTrimIssues } from "./print-ready.ts";
-import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
-import { getPart, listParts, requestParts, reviewPart, withApprovedParts } from "./parts/parts.ts";
-import { ObjectStorage } from "./storage.ts";
-import { withStoredAdditions } from "./stories.ts";
-import { type ArtImportRequest, ImportResult, type ImportStatus } from "./imports/contract.ts";
-import { importTask } from "./imports/task.ts";
-import { Jobs } from "./jobs.ts";
 import { Casting, CastingOutcome } from "./imports/casting-contract.ts";
 import { castingTask } from "./imports/casting-task.ts";
+import { type ArtImportRequest, ImportResult, type ImportStatus } from "./imports/contract.ts";
+import { composeForReview } from "./imports/images.ts";
+import { importTask } from "./imports/task.ts";
+import { Jobs } from "./jobs.ts";
+import { composeFigure, type LayerSpec } from "./looks/compose.ts";
+import { rasterize } from "./looks/recolour.ts";
+import type { Look } from "./looks/vocabulary.ts";
 import {
   DEFAULT_FEATURES,
   HEAD_ONLY_OPTIONS,
@@ -50,9 +48,13 @@ import {
   partAxesAt,
   sameAppearance,
 } from "./looks/vocabulary.ts";
-import { rasterize } from "./looks/recolour.ts";
+import { resolveIllustration } from "./pages.ts";
+import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
 import { byLightness, headTop } from "./parts/images.ts";
-import { composeForReview } from "./imports/images.ts";
+import { getPart, listParts, requestParts, reviewPart, withApprovedParts } from "./parts/parts.ts";
+import { printTrimIssues } from "./print-ready.ts";
+import { ObjectStorage } from "./storage.ts";
+import { withStoredAdditions } from "./stories.ts";
 
 // ---- Who may author ------------------------------------------------------------
 

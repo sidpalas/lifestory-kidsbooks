@@ -1,4 +1,5 @@
 import { MIN_PASSWORD_LENGTH } from "@lifestory/core/contracts";
+
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
@@ -16,7 +17,7 @@ export function PasswordFields() {
           minLength={MIN_PASSWORD_LENGTH}
           required
         />
-        <p className="text-muted-foreground text-xs">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirm">Repeat the password</Label>

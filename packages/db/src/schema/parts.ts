@@ -3,6 +3,7 @@
 // The part's files live with its story version under `stories/<storyId>/v<n>/parts/` (D31). Approved parts go into
 // the version's manifest as `Part` entries, so book composition never reads this table.
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
 import { user } from "./auth.ts";
 import { generation } from "./generations.ts";
 import { storyVersion } from "./stories.ts";

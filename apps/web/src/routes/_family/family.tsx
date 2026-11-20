@@ -1,6 +1,7 @@
 // Family settings: the family's name, members, and invitations.
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+
 import { ShellPage } from "~/components/app-shell";
 import { FamilyPanel } from "~/components/family-panel";
 import { FamiliesResult, getFamilies } from "~/server/families";
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_family/family")({
             <FamilyPanel family={active} />
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">You're not in a family yet.</p>
+          <p className="text-sm text-muted-foreground">You're not in a family yet.</p>
         )}
       </ShellPage>
     );

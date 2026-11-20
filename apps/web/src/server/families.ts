@@ -1,3 +1,4 @@
+import { activeFamily, Auth, inviteFamily, inviteMember, renameFamily, switchFamily } from "@lifestory/core";
 // Families: the active family with its members, renaming it, inviting members and new families,
 // and the family switcher. Role checks happen in @lifestory/core and Better Auth.
 import {
@@ -11,10 +12,10 @@ import {
   NotAuthenticated,
   ResultSchema,
 } from "@lifestory/core/contracts";
-import { activeFamily, Auth, inviteFamily, inviteMember, renameFamily, switchFamily } from "@lifestory/core";
 import { createServerFn } from "@tanstack/react-start";
 import { appendResponseHeader, getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
+
 import { runEffect } from "./runtime.ts";
 
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));

@@ -8,6 +8,7 @@ import { isAPIError } from "better-auth/api";
 import { generateRandomString, hashPassword } from "better-auth/crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { Effect } from "effect";
+
 import { Auth, INVITE_TTL_SECONDS } from "./auth.ts";
 import { Database } from "./database.ts";
 import { AccountExists, AuthRejected, Forbidden, InvalidCredentials, InviteInvalid } from "./errors.ts";

@@ -1,13 +1,15 @@
+import { createHash } from "node:crypto";
+
 // Part generation and review for a story's author (D26, D30; docs/plan.md, "Authoring-time part generation"). The
 // authoring UI calls these: request a part for an appearance, list and read parts while they generate, approve or
 // reject them, and put the approved ones into the draft version's manifest (withApprovedParts). The `part.generate`
 // task (tasks/generate-part.ts) does the generating.
 import { createDb, schema } from "@lifestory/db";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { createHash } from "node:crypto";
 import { Effect, Schema } from "effect";
-import type { FigureLayer, Part, Rect, StoryManifest } from "../book-format/manifest.ts";
+
 import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
+import type { FigureLayer, Part, Rect, StoryManifest } from "../book-format/manifest.ts";
 import { Database } from "../database.ts";
 import { Forbidden, InvalidInput, NotFound } from "../errors.ts";
 import { Jobs } from "../jobs.ts";

@@ -21,11 +21,13 @@ import {
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { FileInput } from "~/components/ui/file-input";
 import { Input } from "~/components/ui/input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { ArtImportStartResult, ArtImportStatusResult, artImportStatusFn, requestArtImportFn } from "~/server/authoring";
+
 import { type DraftFiles, draftFileUrl, message, RectFields, uploadDraftFile } from "./fields";
 
 type Face = (typeof faceOptions)[number]["id"];
@@ -303,7 +305,7 @@ export function ArtImport({
     >
       <div>
         <h3 className="font-semibold">Import art made outside the app</h3>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           A layered file (PSD from Photoshop, Procreate, Krita, Affinity or Clip Studio), several PNG layers, or one
           flat picture of the page. The import separates the character from the scene, takes the hair off into a part,
           and finds the skin, blush and lips. You review it on light and dark skin before it goes into the page.
@@ -443,7 +445,7 @@ export function ArtImport({
         </p>
       )}
       {error && (
-        <p role="alert" className="text-destructive text-xs">
+        <p role="alert" className="text-xs text-destructive">
           {error}
         </p>
       )}
@@ -492,7 +494,7 @@ export function ArtImport({
             )}
           </div>
           {applied.length > 0 && (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Applied: {applied.join("; ")}. Save to keep it; the parts grid can generate the other hairstyles.
             </p>
           )}

@@ -3,6 +3,7 @@
 import { FAMILY_NAME_MAX_LENGTH, type FamilyOverview, unwrapResult } from "@lifestory/core/contracts";
 import { useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -89,7 +90,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               </div>
             </div>
             {renameError && (
-              <p className="text-destructive text-sm" role="alert">
+              <p className="text-sm text-destructive" role="alert">
                 {renameError}
               </p>
             )}
@@ -120,7 +121,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
       <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
         <section className="flex flex-col gap-2" aria-labelledby="family-members">
           <h2 id="family-members" className="text-sm font-semibold">
-            Members <span className="text-muted-foreground font-normal">· {family.members.length}</span>
+            Members <span className="font-normal text-muted-foreground">· {family.members.length}</span>
           </h2>
           <ul className="divide-y rounded-lg border" data-testid="members">
             {family.members.map((member) => {
@@ -143,7 +144,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
           <section className="flex flex-col gap-2" aria-labelledby="family-invitations">
             <h2 id="family-invitations" className="text-sm font-semibold">
               Pending invitations{" "}
-              <span className="text-muted-foreground font-normal">· {family.invitations.length}</span>
+              <span className="font-normal text-muted-foreground">· {family.invitations.length}</span>
             </h2>
             <ul className="divide-y rounded-lg border border-dashed" data-testid="invitations">
               {family.invitations.map((invitation) => (
@@ -165,7 +166,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               <h2 id="family-invite" className="text-sm font-semibold">
                 Invite someone
               </h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Parents can make and edit books. Viewers can only read them.
               </p>
             </div>
@@ -197,7 +198,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               </Button>
             </form>
             {status && (
-              <p className={status.ok ? "text-sm" : "text-destructive text-sm"} role="status">
+              <p className={status.ok ? "text-sm" : "text-sm text-destructive"} role="status">
                 {status.text}
               </p>
             )}
@@ -230,13 +231,13 @@ function MemberRow({
     >
       <div className="flex min-w-0 flex-[1_1_16rem] flex-col">
         <span className="text-sm font-medium wrap-anywhere">{primary}</span>
-        {secondary && <span className="text-muted-foreground text-sm wrap-anywhere">{secondary}</span>}
+        {secondary && <span className="text-sm wrap-anywhere text-muted-foreground">{secondary}</span>}
       </div>
       <span
         className={
           pending
-            ? "text-muted-foreground rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
-            : "bg-secondary text-secondary-foreground rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
+            ? "rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-muted-foreground"
+            : "rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-secondary-foreground"
         }
       >
         {roleLabel[role] ?? role}
@@ -288,7 +289,7 @@ export function InviteFamilyCard() {
           </Button>
         </form>
         {status && (
-          <p className={status.ok ? "text-sm" : "text-destructive text-sm"} role="status">
+          <p className={status.ok ? "text-sm" : "text-sm text-destructive"} role="status">
             {status.text}
           </p>
         )}

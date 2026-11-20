@@ -6,6 +6,7 @@
 // Idempotent: run it again after a change to the poses.
 // usage (repo root): node fixtures/art-sources/paper-boat/build-v3.ts
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+
 import { IN_MANIFEST, POSES } from "./poses.ts";
 
 const HERE = new URL("./", import.meta.url).pathname;

@@ -11,12 +11,14 @@
 // Server-only (sharp, node:fs).
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+
 import { Effect } from "effect";
 import sharp from "sharp";
+
 import type { FigureLayer, Part, StoryManifest } from "../book-format/manifest.ts";
 import { composeFigure } from "./compose.ts";
-import { recolour } from "./recolour.ts";
 import partsByBase from "./portrait/parts.json" with { type: "json" };
+import { recolour } from "./recolour.ts";
 import { ageOptions, faceOptions, featuresOptions, hasFeatures, type Look } from "./vocabulary.ts";
 
 const FULL = [0, 0, 1000, 1000] as const;

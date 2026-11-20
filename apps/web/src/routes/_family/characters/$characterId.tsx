@@ -1,5 +1,6 @@
 import { NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+
 import { CharacterForm } from "~/components/character-form";
 import { CharacterResult, getCharacterFn } from "~/server/books";
 

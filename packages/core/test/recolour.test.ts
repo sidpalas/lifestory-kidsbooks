@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
+
 import { paletteAt, recolour } from "../src/looks/recolour.ts";
 
 const png = (pixels: ReadonlyArray<readonly [number, number, number, number]>) =>

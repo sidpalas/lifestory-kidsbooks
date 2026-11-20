@@ -1,7 +1,8 @@
 import { Absurd, type JsonValue, type TaskContext } from "absurd-sdk";
 import { Context, Effect, Layer, Schema } from "effect";
-import { Database } from "./database.ts";
+
 import type { TaskState } from "./contracts.ts";
+import { Database } from "./database.ts";
 import { JobError } from "./errors.ts";
 
 /**

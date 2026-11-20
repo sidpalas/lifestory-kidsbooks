@@ -1,6 +1,7 @@
 // Headless Chromium (Playwright) turning the app's print page into a PDF (D12). Only the worker calls this, and
 // only its image ships a browser; playwright-core loads on first use, so the web app never starts it.
 import { Effect, Exit } from "effect";
+
 import type { StorageError } from "./errors.ts";
 import type { StoredObject } from "./storage.ts";
 

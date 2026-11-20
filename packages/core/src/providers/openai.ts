@@ -4,6 +4,7 @@
 // test set before it replaces this one (plan.md, "Image providers").
 import type { JsonObject } from "absurd-sdk";
 import { Config, Effect, Layer, Redacted } from "effect";
+
 import { GenerationFailed } from "../errors.ts";
 import { generationEvent, type GenerationOutcome, ImageProvider } from "../image-provider.ts";
 import { Jobs } from "../jobs.ts";

@@ -3,6 +3,7 @@
 // foreground, and the figure's box, base, skin mask, overlay, occluder, and the hair it was drawn with as a part.
 // The author reviews the result and applies it to the draft; nothing is saved until they do.
 import { Schema } from "effect";
+
 import { FigureBase, type FigureLayer, type Page, Part, Rect } from "../book-format/manifest.ts";
 import { Age, FaceOption, HairOption } from "../looks/vocabulary.ts";
 

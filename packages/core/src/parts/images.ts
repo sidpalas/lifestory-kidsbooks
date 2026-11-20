@@ -2,6 +2,7 @@
 // the provider's edit into an RGBA layer placed in the base, and the review images on the lightest and darkest skin.
 // Every function is deterministic, so a rerun step writes the same bytes.
 import sharp, { type Sharp } from "sharp";
+
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
 import {

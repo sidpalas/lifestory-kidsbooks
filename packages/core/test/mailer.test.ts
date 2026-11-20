@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
+
 import { ConfigProvider, Effect, Exit, Layer } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { Mailer } from "../src/mailer.ts";
 
 // A stand-in for Resend's API: records each request and answers with the next status in `statuses`.

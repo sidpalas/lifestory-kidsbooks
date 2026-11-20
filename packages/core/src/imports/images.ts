@@ -4,6 +4,7 @@
 // occluder from a coloured figure (figure.ts), with review images on the lightest and darkest skin. Deterministic, so a
 // rerun step writes the same bytes.
 import sharp from "sharp";
+
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { recolour, rasterize } from "../looks/recolour.ts";
 import {

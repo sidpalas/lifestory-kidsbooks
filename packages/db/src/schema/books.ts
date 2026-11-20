@@ -2,6 +2,7 @@
 // A book pins one story version and stores only who fills each role and the family's text edits; pages are
 // composed from those when they're shown or printed, so a look change applies everywhere at once.
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+
 import { organization } from "./auth.ts";
 import { storyVersion } from "./stories.ts";
 

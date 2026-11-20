@@ -1,21 +1,3 @@
-// Characters and personalized books. The domain logic and every family role check are in @lifestory/core
-// (characters.ts, books.ts); these adapt requests to it.
-import {
-  BookExists,
-  BookSummary,
-  BookView,
-  Character,
-  CharacterInput,
-  Forbidden,
-  InvalidInput,
-  LookOverride,
-  NotAuthenticated,
-  JobError,
-  NotFound,
-  ProofSummary,
-  ResultSchema,
-  StorySummary,
-} from "@lifestory/core/contracts";
 import {
   activeFamily,
   approveProof,
@@ -37,9 +19,28 @@ import {
   setLookOverride,
   updateCharacter,
 } from "@lifestory/core";
+// Characters and personalized books. The domain logic and every family role check are in @lifestory/core
+// (characters.ts, books.ts); these adapt requests to it.
+import {
+  BookExists,
+  BookSummary,
+  BookView,
+  Character,
+  CharacterInput,
+  Forbidden,
+  InvalidInput,
+  LookOverride,
+  NotAuthenticated,
+  JobError,
+  NotFound,
+  ProofSummary,
+  ResultSchema,
+  StorySummary,
+} from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
+
 import { runEffect } from "./runtime.ts";
 
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));

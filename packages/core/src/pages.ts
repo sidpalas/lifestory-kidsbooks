@@ -2,8 +2,10 @@
 // assets, recoloured or mirrored layers at a cached PNG made once with the version-pinned recolour (plan.md,
 // "Composing pages").
 import { createHash } from "node:crypto";
-import sharp from "sharp";
+
 import { Effect } from "effect";
+import sharp from "sharp";
+
 import { storyAssetKey } from "./book-format/manifest.ts";
 import type { LayerSpec, PlacedRect } from "./looks/compose.ts";
 import { RECOLOUR_ALGORITHM, recolour } from "./looks/recolour.ts";

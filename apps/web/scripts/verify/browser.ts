@@ -2,6 +2,7 @@
 // lays words out at fractional positions; the headless shell rounds them to whole pixels (commit c9a06f1), so a
 // comparison made inside the shell can't see screen-versus-print drift.
 import { type Browser, type BrowserContext, chromium, type Page } from "@playwright/test";
+
 import type { Stack } from "./stack.ts";
 
 export interface Session {

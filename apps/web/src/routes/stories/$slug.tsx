@@ -18,8 +18,9 @@ import {
 } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useRef, useState } from "react";
-import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+
 import { BookLookPicker, focusById, lookToggleId, PickerCard } from "~/components/book-look";
+import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { LookPicker } from "~/components/look-picker";
 import { EXAMPLE, StoryCast, tryPickerId, tryToggleId } from "~/components/make-book";
 import { getStoryPreviewFn, PreviewChoice, StoryPreviewResult } from "~/server/functions";
@@ -123,11 +124,11 @@ function StoryPreview() {
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
       <StoryFonts fonts={manifest.fonts} assetUrl={assetUrl} />
       <header className="flex flex-col gap-2">
-        <Link to="/" className="text-muted-foreground text-sm hover:underline">
+        <Link to="/" className="text-sm text-muted-foreground hover:underline">
           ← All stories
         </Link>
         <h1 className="text-2xl font-semibold">{story.title}</h1>
-        <p className="text-muted-foreground text-sm" data-testid="story-meta">
+        <p className="text-sm text-muted-foreground" data-testid="story-meta">
           by {story.authorName} · version {version} · {widthIn} × {heightIn} in · {manifest.pages.length} pages
         </p>
         {archived && (
@@ -222,7 +223,7 @@ function StoryPreview() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold" data-testid="pages-heading">
             The pages with {shown}
-            {updating && <span className="text-muted-foreground ml-2 text-sm font-normal">Updating…</span>}
+            {updating && <span className="ml-2 text-sm font-normal text-muted-foreground">Updating…</span>}
           </h2>
         </div>
         <ol className="grid gap-8 md:grid-cols-2">
@@ -242,7 +243,7 @@ function StoryPreview() {
                   />
                 </ScaledPage>
               </div>
-              <p className="text-muted-foreground text-xs">Page {i + 1}</p>
+              <p className="text-xs text-muted-foreground">Page {i + 1}</p>
             </li>
           ))}
         </ol>

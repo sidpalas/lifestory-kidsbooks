@@ -2,6 +2,7 @@ import { createDb, type Db } from "@lifestory/db";
 import { sql } from "drizzle-orm";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { Pool } from "pg";
+
 import { AppConfig } from "./config.ts";
 
 /** One pg pool per process, shared by Drizzle, Better Auth, and Absurd. */

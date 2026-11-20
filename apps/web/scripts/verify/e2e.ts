@@ -3,6 +3,7 @@
 // never memory.current or memory.peak (both include page cache).
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+
 import type { Report } from "./report.ts";
 import { liveWorkerBeats, readHealth, repoRoot } from "./stack.ts";
 

@@ -1,7 +1,9 @@
 // The feature map (docs/features) stays in step with the verify CLI: every `verify <command>` it names exists and
 // runs in the configurations the file claims, and every feature file has the headings agents look for.
 import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { commands } from "../scripts/verify/commands.ts";
 
 const dir = new URL("../../../docs/features/", import.meta.url);

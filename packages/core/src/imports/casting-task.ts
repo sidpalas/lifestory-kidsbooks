@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+
 import { Effect, Schema } from "effect";
+
 import { CharacterSlot, type Rect, storyAssetKey } from "../book-format/index.ts";
 import { generateImage } from "../generations.ts";
 import { defineTask, Jobs, step } from "../jobs.ts";

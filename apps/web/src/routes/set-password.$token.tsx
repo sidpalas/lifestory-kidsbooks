@@ -3,9 +3,10 @@
 import { InviteInvalid, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
+import { PasswordFields } from "~/components/password-fields";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { PasswordFields } from "~/components/password-fields";
 import { getPasswordLink, PasswordLinkResult, setPassword, SetPasswordResult } from "~/server/accounts";
 
 export const Route = createFileRoute("/set-password/$token")({
@@ -68,7 +69,7 @@ function SetPassword() {
           <form className="flex flex-col gap-4" onSubmit={submit}>
             <PasswordFields />
             {error && (
-              <p className="text-destructive text-sm" role="alert">
+              <p className="text-sm text-destructive" role="alert">
                 {error}
               </p>
             )}

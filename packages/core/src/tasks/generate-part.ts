@@ -1,12 +1,14 @@
-import { schema } from "@lifestory/db";
-import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
+
+import { schema } from "@lifestory/db";
+import type { TaskContext } from "absurd-sdk";
+import { and, asc, eq } from "drizzle-orm";
 import { Effect } from "effect";
+
 import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
 import type { Rect } from "../book-format/manifest.ts";
 import { Database } from "../database.ts";
 import { generateImage } from "../generations.ts";
-import type { TaskContext } from "absurd-sdk";
 import { defineTask, step } from "../jobs.ts";
 import { type Age, DEFAULT_FEATURES, type FeaturesOption, sameAppearance } from "../looks/vocabulary.ts";
 import {

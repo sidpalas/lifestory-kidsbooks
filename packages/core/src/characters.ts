@@ -3,6 +3,7 @@
 import { schema } from "@lifestory/db";
 import { asc, eq } from "drizzle-orm";
 import { Effect, Schema } from "effect";
+
 import { Character, type CharacterInput } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { NotFound } from "./errors.ts";

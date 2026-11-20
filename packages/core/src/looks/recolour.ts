@@ -2,6 +2,7 @@
 // version-pinned function: the same inputs give the same bytes, and changing it means a new algorithm name, so
 // approved art never changes silently. Server-only (sharp).
 import sharp from "sharp";
+
 import type { Palette } from "../book-format/manifest.ts";
 
 export const RECOLOUR_ALGORITHM = "gradient-map-v1";

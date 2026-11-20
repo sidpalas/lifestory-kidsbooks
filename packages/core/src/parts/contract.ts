@@ -1,5 +1,6 @@
 // What the authoring UI sends and gets back for part generation and review (browser-safe; exported from contracts.ts).
 import { Schema } from "effect";
+
 import { type Part, Rect } from "../book-format/manifest.ts";
 import { Age, FaceOption, FeaturesOption, PartAxis } from "../looks/vocabulary.ts";
 

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
+
 import { Effect, Exit, Layer } from "effect";
 import { describe, expect, it } from "vitest";
+
 import { manifestAssets, storyAssetKey } from "../src/book-format/manifest.ts";
 import { Database } from "../src/database.ts";
 import type { StoredObject } from "../src/storage.ts";

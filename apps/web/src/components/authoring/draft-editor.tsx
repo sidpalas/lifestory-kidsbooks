@@ -29,6 +29,7 @@ import {
 } from "@lifestory/core/contracts";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -49,10 +50,11 @@ import {
   SaveDraftResult,
   saveDraftFn,
 } from "~/server/authoring";
-import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
+
 import { ArtImport } from "./art-import";
-import { FigureEditor, type Generation } from "./figure-editor";
 import { CastingTab } from "./casting";
+import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
+import { FigureEditor, type Generation } from "./figure-editor";
 import { ReviewTab } from "./review";
 
 type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
@@ -286,7 +288,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
     <div className={`grid gap-6 ${tab === "casting" || tab === "review" ? "" : "lg:grid-cols-[minmax(0,1fr)_auto]"}`}>
       <StoryFonts fonts={draft.fonts} assetUrl={(asset) => draftFileUrl(files.storyId, files.version, asset)} />
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-2">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background py-2">
           <div role="tablist" className="flex flex-wrap gap-1">
             {tabs.map((candidate) => (
               <Button
@@ -303,7 +305,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             ))}
           </div>
           <span className="flex-1" />
-          <span className="text-muted-foreground text-xs" data-testid="draft-state">
+          <span className="text-xs text-muted-foreground" data-testid="draft-state">
             {dirty ? "Unsaved changes" : `Saved · revision ${view.revision}`}
           </span>
           <Button size="sm" onClick={() => void persist(draft, casting)} disabled={busy || !dirty}>
@@ -313,7 +315,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         {status && (
           <p
             role={status.error ? "alert" : "status"}
-            className={status.error ? "text-destructive text-sm" : "text-muted-foreground text-sm"}
+            className={status.error ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
           >
             {status.text}
           </p>
@@ -371,7 +373,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
 
         <section aria-label="Publish" className="flex flex-col gap-2 rounded-md border p-4">
           <h3 className="font-semibold">Check and publish version {view.version}</h3>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Publishing runs the book format's checks: every reference resolves, every look option has a palette or an
             approved part on every figure, every file is uploaded, and fonts are static. A published version never
             changes; later edits go into the next version.
@@ -383,7 +385,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             <Button size="sm" onClick={() => void publish()} disabled={busy || dirty}>
               Publish version {view.version}
             </Button>
-            {dirty && <span className="text-muted-foreground self-center text-xs">Save first.</span>}
+            {dirty && <span className="self-center text-xs text-muted-foreground">Save first.</span>}
           </div>
           {issues && (
             <div data-testid="publish-issues" data-count={issues.length}>
@@ -449,7 +451,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             </ScaledPage>
           </div>
         )}
-        <p className="text-muted-foreground max-w-md text-xs">
+        <p className="max-w-md text-xs text-muted-foreground">
           As the page will print. Text and pictures follow your edits before you save.
         </p>
         {draft.characterSlots.length > 0 && (
@@ -475,7 +477,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
                 </NativeSelect>
               </label>
             ))}
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Family members of the ages a role accepts. Only the preview changes; families see the example.
             </p>
           </fieldset>
@@ -573,7 +575,7 @@ function StoryTab({
 
       <section className="flex flex-col gap-2" aria-label="Fonts">
         <h3 className="font-semibold">Fonts</h3>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           One static WOFF2 file per weight, so the printed PDF uses the real font. Fonts must allow embedding (e.g. SIL
           OFL).
         </p>
@@ -582,7 +584,7 @@ function StoryTab({
             <li key={font.asset} className="flex items-center gap-2">
               <span className="font-medium">{font.family}</span>
               <span>{font.weight ?? "no weight"}</span>
-              <code className="text-muted-foreground truncate text-xs">{font.asset}</code>
+              <code className="truncate text-xs text-muted-foreground">{font.asset}</code>
               <Button
                 size="sm"
                 variant="ghost"
@@ -627,7 +629,7 @@ function StoryTab({
               }
             />
           ) : (
-            <span className="text-muted-foreground text-xs">Name the family to upload its file.</span>
+            <span className="text-xs text-muted-foreground">Name the family to upload its file.</span>
           )}
         </div>
       </section>
@@ -752,7 +754,7 @@ const newSlot = (draft: StoryDraft): CharacterSlot => {
 function RolesTab({ draft, change }: { draft: StoryDraft; change: Change }) {
   return (
     <div className="flex flex-col gap-4" data-testid="roles-tab">
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         Each role is played by a family member. A role accepts some ages and covers every other look option. The example
         character plays it in previews.
       </p>
@@ -908,7 +910,7 @@ function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: numbe
           </label>
         ))}
       </div>
-      <p className="text-muted-foreground text-xs" data-testid="role-tokens">
+      <p className="text-xs text-muted-foreground" data-testid="role-tokens">
         Tokens: {PRONOUN_FIELDS.map((field) => `{{${slot.slotId}.${field}}}`).join(" ")} · capitalize the field (
         {`{{${slot.slotId}.They}}`}) to capitalize the word.
       </p>
@@ -965,7 +967,7 @@ function PageTab({
     <div className="flex flex-col gap-6" data-testid="page-tab">
       <div className="flex flex-wrap items-end gap-2">
         <h3 className="mr-2 font-semibold">
-          Page {index + 1} <span className="text-muted-foreground text-xs font-normal">({page.pageId})</span>
+          Page {index + 1} <span className="text-xs font-normal text-muted-foreground">({page.pageId})</span>
         </h3>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Layout
@@ -1046,7 +1048,7 @@ function PageTab({
                 }
               />
               {problems.map((problem) => (
-                <p key={problem} role="alert" className="text-destructive text-xs">
+                <p key={problem} role="alert" className="text-xs text-destructive">
                   {problem}
                 </p>
               ))}
@@ -1061,7 +1063,7 @@ function PageTab({
         >
           Add a paragraph
         </Button>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Write {"{{role.name}}"}, {"{{role.title}}"}, or a pronoun such as {"{{role.they}}"} where the family's names
           go; the Roles tab lists each role's tokens.
         </p>

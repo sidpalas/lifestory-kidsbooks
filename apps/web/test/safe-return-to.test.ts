@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { safeReturnTo } from "../src/lib/safe-return-to.ts";
 
 describe("safeReturnTo", () => {

@@ -2,6 +2,7 @@
 // Stories, Our books, and Characters pages of the app shell (D48).
 import { type BookSummary, type Character, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
+
 import { portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { deleteBookFn, EditBookResult } from "~/server/books";
@@ -35,7 +36,7 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
                 className="rounded-md ring-1 ring-black/10"
               />
               <span className="w-full truncate text-center font-medium">{character.name}</span>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-muted-foreground">
                 {character.title ? `${character.title} · ${character.pronouns}` : character.pronouns}
               </span>
             </Link>
@@ -52,7 +53,7 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
           </li>
         )}
       </ul>
-      {characters.length === 0 && !canEdit && <p className="text-muted-foreground text-sm">No characters yet.</p>}
+      {characters.length === 0 && !canEdit && <p className="text-sm text-muted-foreground">No characters yet.</p>}
     </>
   );
 }
@@ -62,7 +63,7 @@ export function FamilyBooks({ books, canEdit }: { books: ReadonlyArray<BookSumma
   const hydrated = useHydrated();
   if (books.length === 0)
     return (
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         No books yet.{" "}
         {canEdit && (
           <Link to="/stories" className="text-foreground underline underline-offset-4">
@@ -74,12 +75,12 @@ export function FamilyBooks({ books, canEdit }: { books: ReadonlyArray<BookSumma
   return (
     <ul className="flex flex-col gap-2" data-testid="books">
       {books.map((book) => (
-        <li key={book.id} className="bg-card flex items-center justify-between gap-3 rounded-md border p-3">
+        <li key={book.id} className="flex items-center justify-between gap-3 rounded-md border bg-card p-3">
           <div className="min-w-0">
             <Link to="/books/$bookId" params={{ bookId: book.id }} className="font-medium hover:underline">
               {book.title}
             </Link>
-            <p className="text-muted-foreground text-xs">With {book.cast}</p>
+            <p className="text-xs text-muted-foreground">With {book.cast}</p>
           </div>
           {canEdit && (
             <Button
@@ -118,12 +119,12 @@ export function StoryList({
       {stories.map((story) => {
         const ours = books.filter((book) => book.storySlug === story.slug);
         return (
-          <li key={story.id} className="bg-card flex flex-col gap-2 rounded-md border p-4">
+          <li key={story.id} className="flex flex-col gap-2 rounded-md border bg-card p-4">
             <Link to="/stories/$slug" params={{ slug: story.slug }} className="font-semibold hover:underline">
               {story.title}
             </Link>
-            <p className="text-muted-foreground text-sm">{story.summary}</p>
-            <p className="text-muted-foreground text-xs">by {story.authorName}</p>
+            <p className="text-sm text-muted-foreground">{story.summary}</p>
+            <p className="text-xs text-muted-foreground">by {story.authorName}</p>
             <div className="mt-auto pt-1">
               {ours.length === 1 ? (
                 <Button asChild size="sm">

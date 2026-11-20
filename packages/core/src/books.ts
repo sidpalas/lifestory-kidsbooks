@@ -5,15 +5,16 @@
 import { schema } from "@lifestory/db";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
+
 import { type CastMember, castLook, LookOverride, type StoryManifest, withLookChanges } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
-import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
 import { Character as CharacterSchema } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
 import { composeIllustration } from "./looks/compose.ts";
+import { ageLabel, type Look } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
 import { createProof, proofSummaries } from "./proofs.ts";
 import { readableStoryVersion, withStoredAdditions } from "./stories.ts";

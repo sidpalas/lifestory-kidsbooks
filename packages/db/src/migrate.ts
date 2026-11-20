@@ -3,6 +3,7 @@
 // Safe to run concurrently (the web and worker services both run it before a release): a session advisory lock
 // makes a second run wait, then find nothing left to apply. Drizzle's migrator takes no lock of its own.
 import { fileURLToPath } from "node:url";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";

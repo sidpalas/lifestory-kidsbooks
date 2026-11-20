@@ -6,6 +6,7 @@
 //
 // Exit 0 when every check passed, 1 when one failed, 2 on a usage error.
 import { parseArgs } from "node:util";
+
 import { commands, type ConfigName } from "./commands.ts";
 import { e2e } from "./e2e.ts";
 import { layout } from "./layout.ts";

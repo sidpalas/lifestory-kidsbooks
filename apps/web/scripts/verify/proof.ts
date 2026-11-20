@@ -7,7 +7,9 @@
 // signed-in account's family (on live, the agent family's, D38); a failed run can leave its proof (it expires, D32).
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+
 import sharp from "sharp";
+
 import { imagesSettled, signedIn } from "./browser.ts";
 import type { Report } from "./report.ts";
 import type { Stack } from "./stack.ts";

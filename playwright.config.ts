@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { totalmem } from "node:os";
+
 import { defineConfig, devices } from "@playwright/test";
 
 // The end-to-end tests need Postgres and SeaweedFS running, migrated, and seeded

@@ -1,5 +1,6 @@
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { AppShell, ShellPage } from "~/components/app-shell";
 import { StoryList } from "~/components/family-library";
 import { Landing, landingHead } from "~/components/landing";
@@ -48,12 +49,12 @@ function Home() {
             <h2 id="latest-book" className="text-lg font-semibold">
               Pick up where you left off
             </h2>
-            <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
               <div className="min-w-0">
                 <Link to="/books/$bookId" params={{ bookId: latest.id }} className="font-semibold hover:underline">
                   {latest.title}
                 </Link>
-                <p className="text-muted-foreground text-sm">With {latest.cast}</p>
+                <p className="text-sm text-muted-foreground">With {latest.cast}</p>
               </div>
               <Button asChild variant="outline" size="sm">
                 <Link to="/books/$bookId" params={{ bookId: latest.id }}>
@@ -80,16 +81,16 @@ function NextStep({ hasFamily }: { hasFamily: boolean }) {
   const current = hasFamily ? 1 : 0;
   return (
     <section
-      className="bg-card flex flex-col gap-4 rounded-lg border p-5"
+      className="flex flex-col gap-4 rounded-lg border bg-card p-5"
       aria-labelledby="next-step"
       data-testid="next-step"
     >
       <div className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-sm">Next step</p>
+        <p className="text-sm text-muted-foreground">Next step</p>
         <h2 id="next-step" className="text-xl font-semibold">
           {hasFamily ? "Choose a story and make your first book" : "Add your first family member"}
         </h2>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           {hasFamily
             ? "Pick who plays each part, and every page is drawn with them."
             : "Choose how they look: age, face, skin tone, hair, and glasses. No photos needed."}
@@ -103,8 +104,8 @@ function NextStep({ hasFamily }: { hasFamily: boolean }) {
             className={cn(
               "border-t-4 pt-2",
               index < current && "border-primary",
-              index === current && "border-primary text-primary font-semibold",
-              index > current && "text-muted-foreground border-border",
+              index === current && "border-primary font-semibold text-primary",
+              index > current && "border-border text-muted-foreground",
             )}
           >
             {index < current ? `${step} · done` : step}

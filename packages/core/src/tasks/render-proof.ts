@@ -1,13 +1,14 @@
 import { schema } from "@lifestory/db";
 import { eq } from "drizzle-orm";
 import { Effect, Schema } from "effect";
-import { decodeStoryManifest } from "../book-format/index.ts";
+
 import { Auth } from "../auth.ts";
+import { decodeStoryManifest } from "../book-format/index.ts";
 import { AppConfig } from "../config.ts";
 import { Database } from "../database.ts";
 import { defineTask, step } from "../jobs.ts";
-import { countPdfPages, printPdf } from "../print.ts";
 import { checkPrintReady, setPrintBoxes } from "../print-ready.ts";
+import { countPdfPages, printPdf } from "../print.ts";
 import { ObjectStorage } from "../storage.ts";
 
 /** Where a proof's PDF lives: under its family, like everything a family owns. */

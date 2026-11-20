@@ -1,26 +1,3 @@
-// Story authoring (D37): an author's stories, the draft editor, checking and publishing, and the operator's grants.
-// Permission checks happen in @lifestory/core (authoring.ts). File uploads are a server route
-// (routes/api/authoring/stories.$storyId.assets.ts), since they carry bytes.
-import {
-  ArtImportRequest,
-  Casting,
-  CastingStatus,
-  AuthoredStory,
-  DraftChanged,
-  DraftView,
-  Forbidden,
-  InvalidInput,
-  NotAuthenticated,
-  Look,
-  NotFound,
-  PartDecision,
-  PartRequest,
-  ResultSchema,
-  StoryDraft,
-  StoryNotPublishable,
-  StoryPart,
-  ImportStatus,
-} from "@lifestory/core/contracts";
 import {
   artImportStatus,
   requestCasting,
@@ -47,9 +24,33 @@ import {
   startNextVersion,
   storyVersions,
 } from "@lifestory/core";
+// Story authoring (D37): an author's stories, the draft editor, checking and publishing, and the operator's grants.
+// Permission checks happen in @lifestory/core (authoring.ts). File uploads are a server route
+// (routes/api/authoring/stories.$storyId.assets.ts), since they carry bytes.
+import {
+  ArtImportRequest,
+  Casting,
+  CastingStatus,
+  AuthoredStory,
+  DraftChanged,
+  DraftView,
+  Forbidden,
+  InvalidInput,
+  NotAuthenticated,
+  Look,
+  NotFound,
+  PartDecision,
+  PartRequest,
+  ResultSchema,
+  StoryDraft,
+  StoryNotPublishable,
+  StoryPart,
+  ImportStatus,
+} from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect, Schema } from "effect";
+
 import { runEffect } from "./runtime.ts";
 
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));

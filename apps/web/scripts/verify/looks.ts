@@ -1,9 +1,10 @@
+import { lookVocabulary } from "@lifestory/core/contracts";
 // verify looks: docs/features/story-looks.md. On a story's preview page, sets every role to the lightest and then the
 // darkest skin with each hair colour, through the page's visual example pickers, and draws a contact sheet: one row per
 // combination, one column per page. Checks every layer loads and every combination recolours the figures. Writes
 // nothing (looks live in the URL).
 import sharp from "sharp";
-import { lookVocabulary } from "@lifestory/core/contracts";
+
 import { imagesSettled, signedIn } from "./browser.ts";
 import type { Report } from "./report.ts";
 import type { Stack } from "./stack.ts";
