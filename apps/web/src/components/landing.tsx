@@ -1,17 +1,23 @@
 import { Link, useHydrated } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
+import characterPicker from "~/assets/marketing/character-picker.webp";
+import moonPicnic from "~/assets/marketing/moon-picnic.webp";
+import paperBoatFamily1 from "~/assets/marketing/paper-boat-family-1.webp";
+import paperBoatFamily2 from "~/assets/marketing/paper-boat-family-2.webp";
+import socialPreview from "~/assets/marketing/social-preview.png";
 import { Button } from "~/components/ui/button";
 
 // The live demo (and the picker it reuses) loads only when a visitor presses "Try it".
 const LandingLookDemo = lazy(() => import("~/components/landing-look-demo"));
 
-// The page signed-out visitors see at /. Its images are marketing copies under public/marketing (served as static
-// files), not story assets: those stay behind sign-in.
+// The page signed-out visitors see at /. Its images are marketing copies under src/assets/marketing, not story assets:
+// those stay behind sign-in. Imported, so the build names each file after its content: a replaced image gets a new
+// URL, and browsers and Cloudflare (which keep static images for 4 hours) can't keep showing the old one.
 
 const DESCRIPTION =
   "Picture books written and illustrated by people, starring your family. Pick how each person looks from options the illustrator approved, and every page is drawn with them.";
 
-export const landingHead = ({ url, image }: { url: string; image: string }) => ({
+export const landingHead = ({ url }: { url: string }) => ({
   meta: [
     { title: "Lifestory: picture books starring your family" },
     { name: "description", content: DESCRIPTION },
@@ -20,7 +26,7 @@ export const landingHead = ({ url, image }: { url: string; image: string }) => (
     { property: "og:title", content: "Lifestory: picture books starring your family" },
     { property: "og:description", content: DESCRIPTION },
     { property: "og:url", content: url },
-    { property: "og:image", content: image },
+    { property: "og:image", content: new URL(socialPreview, url).href },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     { property: "og:image:alt", content: "Two pages of The Paper Boat, the same scene drawn with two different families" },
@@ -68,7 +74,7 @@ export function Landing() {
           <figure className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <img
-                src="/marketing/paper-boat-family-1.webp"
+                src={paperBoatFamily1}
                 alt="The Paper Boat, page 1: a fair-skinned boy with glasses points to the pond beside his mum, who has long brown hair"
                 width={640}
                 height={640}
@@ -76,7 +82,7 @@ export function Landing() {
                 className="aspect-square w-full rounded-lg border shadow-sm"
               />
               <img
-                src="/marketing/paper-boat-family-2.webp"
+                src={paperBoatFamily2}
                 alt="The same page drawn with a dark-skinned girl with black braids and her mum, who has long black hair"
                 width={640}
                 height={640}
@@ -123,7 +129,7 @@ export function Landing() {
             )}
           </div>
           <img
-            src="/marketing/character-picker.webp"
+            src={characterPicker}
             alt="The character picker: a portrait of a young child next to choices for age, face, skin tone, and hairstyle"
             width={1000}
             height={876}
@@ -151,7 +157,7 @@ export function Landing() {
             </p>
           </div>
           <img
-            src="/marketing/moon-picnic.webp"
+            src={moonPicnic}
             alt="The Moon Picnic: a brown-skinned girl and her grandpa have a picnic on the Moon"
             width={720}
             height={720}

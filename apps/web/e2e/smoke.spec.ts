@@ -10,7 +10,7 @@ test("signed-out visitors get the landing page, with public images and a way to 
   await expect(images).toHaveCount(4);
   for (const image of await images.all()) {
     await image.scrollIntoViewIfNeeded();
-    expect(await image.getAttribute("src")).toMatch(/^\/marketing\//);
+    expect(await image.getAttribute("src")).toMatch(/^\/(assets|src\/assets\/marketing)\//);
     await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
   }
   const preview = await page.locator('meta[property="og:image"]').getAttribute("content");
