@@ -15,6 +15,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
 import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
+import { Route as FamilyAdminRouteImport } from './routes/_family/admin'
 import { Route as FamilyFamilyRouteImport } from './routes/_family/family'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiPortraitRouteImport } from './routes/api/portrait'
@@ -64,6 +65,11 @@ const _devMailboxRoute = _devMailboxRouteImport.update({
   id: '/__dev/mailbox',
   path: '/__dev/mailbox',
   getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyAdminRoute = FamilyAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => FamilyRoute,
 } as any)
 const FamilyFamilyRoute = FamilyFamilyRouteImport.update({
   id: '/family',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
+  '/admin': typeof FamilyAdminRoute
   '/family': typeof FamilyFamilyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
+  '/admin': typeof FamilyAdminRoute
   '/family': typeof FamilyFamilyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
+  '/_family/admin': typeof FamilyAdminRoute
   '/_family/family': typeof FamilyFamilyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
+    | '/admin'
     | '/family'
     | '/api/health'
     | '/api/portrait'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
+    | '/admin'
     | '/family'
     | '/api/health'
     | '/api/portrait'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
+    | '/_family/admin'
     | '/_family/family'
     | '/api/health'
     | '/api/portrait'
@@ -402,6 +414,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/__dev/mailbox'
       preLoaderRoute: typeof _devMailboxRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_family/admin': {
+      id: '/_family/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof FamilyAdminRouteImport
+      parentRoute: typeof FamilyRoute
     }
     '/_family/family': {
       id: '/_family/family'
@@ -547,6 +566,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface FamilyRouteChildren {
+  FamilyAdminRoute: typeof FamilyAdminRoute
   FamilyFamilyRoute: typeof FamilyFamilyRoute
   FamilyCharactersCharacterIdRoute: typeof FamilyCharactersCharacterIdRoute
   FamilyCharactersNewRoute: typeof FamilyCharactersNewRoute
@@ -556,6 +576,7 @@ interface FamilyRouteChildren {
 }
 
 const FamilyRouteChildren: FamilyRouteChildren = {
+  FamilyAdminRoute: FamilyAdminRoute,
   FamilyFamilyRoute: FamilyFamilyRoute,
   FamilyCharactersCharacterIdRoute: FamilyCharactersCharacterIdRoute,
   FamilyCharactersNewRoute: FamilyCharactersNewRoute,

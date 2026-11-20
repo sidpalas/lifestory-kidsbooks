@@ -743,7 +743,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   book), then the stories; a story the family already has one book of offers "Open our book" instead of "Make a book",
   and one with several ("Our 2 books") opens the story page, which lists them (D47).
 - **Studio:** authors and the operator get a "Studio" link under the sidebar; `/author` and its story pages carry a
-  dark "Lifestory Studio" bar with "Back to family", and the operator's "Invite a new family" moved there.
+  dark "Lifestory Studio" bar with "Back to family". Studio is only for making stories: the operator's tools moved
+  to Admin (`/admin`, Sid, 2026-11-20), a page in the shell linked under Studio for the operator only, with Families
+  ("Invite a new family") and Authors (who can write stories). Its server functions check the operator role; others
+  get not found. On phones Admin has no link yet: Sid is choosing how phones reach secondary places.
 - **Story and book pages stay full width** without the shell, so their pages have room.
 - **Reopen if:** families find the sidebar heavy for a handful of stories (the bookshelf layout was the runner-up),
   or orders and a marketplace need a different top level.

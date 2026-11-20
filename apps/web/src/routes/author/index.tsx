@@ -1,31 +1,19 @@
-// Authoring home (D37): the stories this author wrote, starting a new one, and for the operator, who may author.
-import { Forbidden, NotAuthenticated, NotFound, optionLabel, unwrapResult } from "@lifestory/core/contracts";
+// Authoring home (D37): the stories this author wrote and starting a new one. The operator's tools are in Admin.
+import { NotAuthenticated, optionLabel, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, Link, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { StudioBar } from "~/components/app-shell";
 import { message } from "~/components/authoring/fields";
-import { InviteFamilyCard } from "~/components/family-panel";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import {
-  AuthoringHomeResult,
-  AuthorsResult,
-  ChangeAuthorsResult,
-  CreateStoryResult,
-  createStoryFn,
-  getAuthoringHome,
-  grantAuthorFn,
-  listAuthorsFn,
-  revokeAuthorFn,
-} from "~/server/authoring";
+import { AuthoringHomeResult, CreateStoryResult, createStoryFn, getAuthoringHome } from "~/server/authoring";
 
 export const Route = createFileRoute("/author/")({
   loader: async () => {
     try {
-      const home = unwrapResult(AuthoringHomeResult)(await getAuthoringHome());
-      return { ...home, authors: home.isOperator ? unwrapResult(AuthorsResult)(await listAuthorsFn()) : [] };
+      return unwrapResult(AuthoringHomeResult)(await getAuthoringHome());
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       throw error;
@@ -43,7 +31,7 @@ const slugify = (title: string) =>
     .slice(0, 60);
 
 function AuthoringHome() {
-  const { canAuthor, isOperator, stories, authors } = Route.useLoaderData();
+  const { canAuthor, stories } = Route.useLoaderData();
   return (
     <>
       <StudioBar />
@@ -100,8 +88,6 @@ function AuthoringHome() {
             Writing stories is open to invited authors for now. Ask the operator to let you author.
           </p>
         )}
-        {isOperator && <Authors authors={authors} />}
-        {isOperator && <InviteFamilyCard />}
       </main>
     </>
   );
@@ -156,73 +142,6 @@ function NewStory() {
             Start the story
           </Button>
         </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Authors({ authors }: { authors: ReadonlyArray<{ userId: string; name: string; email: string }> }) {
-  const hydrated = useHydrated();
-  const router = useRouter();
-  const [status, setStatus] = useState<string | null>(null);
-  const load = () => router.invalidate();
-  const grant = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    const email = String(new FormData(formElement).get("email") ?? "").trim();
-    try {
-      unwrapResult(ChangeAuthorsResult)(await grantAuthorFn({ data: { email } }));
-      setStatus(`${email} can author stories now.`);
-      formElement.reset();
-      await load();
-    } catch (cause) {
-      setStatus(
-        cause instanceof NotFound
-          ? `No account uses ${email}; invite them first.`
-          : cause instanceof Forbidden
-            ? cause.message
-            : message(cause),
-      );
-    }
-  };
-  return (
-    <Card data-testid="authors">
-      <CardHeader>
-        <CardTitle>Authors</CardTitle>
-        <CardDescription>
-          You can always author. Let other accounts write and publish stories of their own.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <ul className="flex flex-col gap-1 text-sm">
-          {authors.map((author) => (
-            <li key={author.userId} className="flex items-center gap-2">
-              {author.name} <span className="text-muted-foreground">{author.email}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7"
-                onClick={() => void revokeAuthorFn({ data: { userId: author.userId } }).then(load)}
-              >
-                Remove
-              </Button>
-            </li>
-          ))}
-        </ul>
-        <form aria-label="Let someone author" className="flex items-end gap-2" onSubmit={(event) => void grant(event)}>
-          <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-            Account email
-            <Input name="email" type="email" required />
-          </label>
-          <Button type="submit" disabled={!hydrated}>
-            Let them author
-          </Button>
-        </form>
-        {status && (
-          <p role="status" className="text-sm">
-            {status}
-          </p>
-        )}
       </CardContent>
     </Card>
   );

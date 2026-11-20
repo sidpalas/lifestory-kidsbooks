@@ -43,7 +43,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   const granEmail = `gran-${id}@example.com`;
 
   // The operator invites a family: the account and its family exist from now on.
-  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/author");
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/admin");
   const inviteFamily = page.getByRole("form", { name: "Invite a new family" });
   await inviteFamily.getByLabel("Name").fill("Robin");
   await inviteFamily.getByLabel("Email").fill(ownerEmail);
@@ -244,13 +244,55 @@ test("on a phone, members show each identity once and long emails and pending in
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
-test("only the operator sees Studio and the new-family invite", async ({ page }) => {
+test("only the operator reaches Admin; Studio no longer holds its tools", async ({ page }) => {
+  // A parent: no Studio or Admin link, and /admin is not found, its operator actions refused by the server.
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
   await expect(page.getByTestId("signed-in-as")).toBeVisible();
   await expect(page.getByRole("link", { name: "Studio" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
   await page.goto("/author");
   await expect(page.getByTestId("not-an-author")).toBeVisible();
   await expect(page.getByTestId("invite-family")).toHaveCount(0);
+  await page.goto("/admin");
+  await expect(page.getByText(/not found/i)).toBeVisible();
+  await expect(page.getByTestId("invite-family")).toHaveCount(0);
+  await expect(page.getByTestId("authors")).toHaveCount(0);
+
+  // The operator: Admin sits under Studio in the sidebar and holds Families and Authors; Studio is for stories.
+  await page.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/");
+  const sidebar = page.getByRole("complementary", { name: "Lifestory" });
+  await sidebar.getByRole("link", { name: "Admin" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole("heading", { name: "Families" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Authors" })).toBeVisible();
+  await expect(page.getByTestId("invite-family")).toBeVisible();
+  await expect(page.getByTestId("authors")).toBeVisible();
+  await sidebar.getByRole("link", { name: "Studio" }).click();
+  await expect(page.getByRole("heading", { name: "Write stories" })).toBeVisible();
+  await expect(page.getByTestId("invite-family")).toHaveCount(0);
+  await expect(page.getByTestId("authors")).toHaveCount(0);
+});
+
+test("an author who isn't the operator can't reach Admin", async ({ browser }) => {
+  const email = `author-${unique()}@example.com`;
+  const operator = await (await browser.newContext()).newPage();
+  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/admin");
+  const grant = operator.getByRole("form", { name: "Let someone author" });
+  // The account must exist before it can author.
+  const author = await (await browser.newContext()).newPage();
+  await author.goto(`/__dev/log-me-in/${email}?returnTo=/`);
+  await grant.getByLabel("Account email").fill(email);
+  await grant.getByRole("button", { name: "Let them author" }).click();
+  await expect(operator.getByRole("status")).toHaveText(`${email} can author stories now.`);
+  await operator.context().close();
+
+  await author.reload();
+  await expect(author.getByRole("link", { name: "Studio" })).toBeVisible();
+  await expect(author.getByRole("link", { name: "Admin" })).toHaveCount(0);
+  await author.goto("/admin");
+  await expect(author.getByText(/not found/i)).toBeVisible();
+  await expect(author.getByTestId("authors")).toHaveCount(0);
+  await author.context().close();
 });
 
 test("a wrong password is refused", async ({ page }) => {

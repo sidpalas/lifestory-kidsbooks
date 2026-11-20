@@ -67,7 +67,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   // 1. Sign up by invite: the operator invites a new family; the invitee sets a password from the emailed link and
   // arrives as the owner of their own family.
   const operator = await personPage(browser);
-  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/author");
+  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/admin");
   const inviteFamily = operator.getByRole("form", { name: "Invite a new family" });
   await inviteFamily.getByLabel("Name").fill("Robin");
   await inviteFamily.getByLabel("Email").fill(ownerEmail);

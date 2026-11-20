@@ -9,14 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { NativeSelect } from "~/components/ui/native-select";
-import {
-  inviteFamilyFn,
-  InviteFamilyResult,
-  inviteMemberFn,
-  InviteMemberResult,
-  renameFamilyFn,
-  RenameFamilyResult,
-} from "~/server/families";
+import { inviteMemberFn, InviteMemberResult, renameFamilyFn, RenameFamilyResult } from "~/server/families";
 
 // The stored role "parent" (D3) shows as Editor: anyone can be invited to edit, a relative or a friend as much as a parent.
 const roleLabel: Record<string, string> = { owner: "Owner", parent: "Editor", viewer: "Viewer (read only)" };
@@ -249,57 +242,5 @@ function MemberRow({
         {roleLabel[role] ?? role}
       </span>
     </li>
-  );
-}
-
-/** The operator invites a new family: the account and its family are created now. */
-export function InviteFamilyCard() {
-  const hydrated = useHydrated();
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    try {
-      const { email } = unwrapResult(InviteFamilyResult)(
-        await inviteFamilyFn({ data: { name: String(form.get("name")), email: String(form.get("email")) } }),
-      );
-      setStatus({ ok: true, text: `Invitation sent to ${email}. They choose a password from the emailed link.` });
-      formElement.reset();
-    } catch (error) {
-      setStatus({ ok: false, text: message(error) });
-    }
-  };
-
-  return (
-    <Card data-testid="invite-family">
-      <CardHeader>
-        <CardTitle>Invite a new family</CardTitle>
-        <CardDescription>
-          Operator only. Creates the account and its family; the invitee sets a password from the email.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <form className="flex flex-wrap items-end gap-2" onSubmit={submit} aria-label="Invite a new family">
-          <div className="flex min-w-40 flex-1 flex-col gap-2">
-            <Label htmlFor="family-name">Name</Label>
-            <Input id="family-name" name="name" required />
-          </div>
-          <div className="flex min-w-48 flex-1 flex-col gap-2">
-            <Label htmlFor="family-email">Email</Label>
-            <Input id="family-email" name="email" type="email" required />
-          </div>
-          <Button type="submit" disabled={!hydrated}>
-            Invite family
-          </Button>
-        </form>
-        {status && (
-          <p className={status.ok ? "text-sm" : "text-sm text-destructive"} role="status">
-            {status.text}
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }

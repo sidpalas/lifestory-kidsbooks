@@ -58,7 +58,7 @@ const StoryId = Schema.Struct({ storyId: Schema.String });
 const Text = (max: number) => Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(max));
 
 export const AuthoringHomeResult = ResultSchema(
-  Schema.Struct({ canAuthor: Schema.Boolean, isOperator: Schema.Boolean, stories: Schema.Array(AuthoredStory) }),
+  Schema.Struct({ canAuthor: Schema.Boolean, stories: Schema.Array(AuthoredStory) }),
   NotAuthenticated,
 );
 
@@ -69,7 +69,6 @@ export const getAuthoringHome = createServerFn({ method: "GET" }).handler(() =>
       const user = yield* currentUser;
       return {
         canAuthor: yield* canAuthor(user),
-        isOperator: user.role === "admin",
         stories: yield* listAuthoredStories(user),
       };
     }),

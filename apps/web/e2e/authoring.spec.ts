@@ -72,7 +72,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
 
   // 1. The operator lets the account author.
   const operator = await (await browser.newContext()).newPage();
-  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/author");
+  await operator.goto("/__dev/log-me-in/operator@lifestory.dev?returnTo=/admin");
   const grant = operator.getByRole("form", { name: "Let someone author" });
   await grant.getByLabel("Account email").fill(authorEmail);
   await grant.getByRole("button", { name: "Let them author" }).click();

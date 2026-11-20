@@ -1,5 +1,5 @@
 // The app shell around every family page (D48): a sidebar on wide screens with the family's places and, for authors
-// and the operator, a separate Studio link; on phones a top bar and bottom tabs instead. Story and book pages open
+// and the operator, a separate Studio link (and Admin for the operator); on phones a top bar and bottom tabs instead. Story and book pages open
 // without it, full width, so their pages have room.
 import { type FamilyMembership, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
@@ -101,13 +101,20 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         </nav>
         {studio && (
           <div className="mt-3 flex flex-col gap-1 border-t pt-3">
-            <p className="px-3 text-xs text-muted-foreground">For authors</p>
+            <p className="px-3 text-xs text-muted-foreground">
+              {shell.isOperator ? "Behind the scenes" : "For authors"}
+            </p>
             <Link
               to="/author"
               className="rounded-md border border-primary/40 px-3 py-1.5 text-sm font-medium text-primary hover:bg-accent"
             >
               Studio
             </Link>
+            {shell.isOperator && (
+              <Link to="/admin" className={navItem} activeProps={{ className: "bg-accent font-semibold" }}>
+                Admin
+              </Link>
+            )}
           </div>
         )}
         <div className="mt-auto flex flex-col items-start gap-1 px-3 text-xs">
