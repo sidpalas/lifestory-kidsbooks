@@ -35,7 +35,8 @@ The same spec exercises the existing PSD/flat import and the option-sheet redo l
 
 - `CASTING_PROVIDER=fake` is the default: labelled sample boxes, not image analysis. Set `CASTING_PROVIDER=openai`
   and `OPENAI_API_KEY` for vision suggestions; `OPENAI_CASTING_MODEL` defaults to `gpt-6.2-sol`. Image edits use
-  `IMAGE_PROVIDER` independently. Both live on the worker's process-wide runtime.
+  `IMAGE_PROVIDER` independently. Both live on the worker's process-wide runtime. Production sets both to
+  `openai` in `.railway/railway.ts`.
 - Every worker on the database takes tasks, including a preview `worker` service running real providers: stop it
   (`amp orb service stop worker`) before the e2e, or the e2e's imports and extractions become billed edits.
 - Every explicit extraction shows a rough estimate before starting. No automatic paid retries are performed.
@@ -47,7 +48,7 @@ The same spec exercises the existing PSD/flat import and the option-sheet redo l
   its change to the latest state, so jobs finishing together don't fail the draft's revision check.
 - Move earlier / Move later reorder the source pictures and their book pages together; book pages without a
   picture keep their positions.
-- Solid boxes are figures, dashed boxes are heads (including hair). A head box moves with its figure and stays
+- Solid boxes are figures (rust when selected, blue otherwise), dashed green boxes are heads (including hair). A head box moves with its figure and stays
   inside it; "Edit head boxes" turns on moving and resizing them.
 - Background work can be resumed after returning to the draft. PSD semantic-layer detection, automatic full
   base-matrix derivation and foreground/overlap reconstruction are not automatic: inspect carefully and use manual

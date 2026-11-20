@@ -483,6 +483,8 @@ export function CastingTab({
   );
 }
 
+/** Head boxes' colour, apart from the figures' rust (selected) and blue. */
+const HEAD = "#15803d";
 /** `r` moved (and shrunk if it must be) to lie within `outer`. */
 const inside = (r: Rect, outer: Rect): Rect => {
   const w = Math.min(r[2] - r[0], outer[2] - outer[0]);
@@ -550,15 +552,18 @@ function CastPageEditor({
             .map((f, i) => {
               const b = head ? f.head : f.box;
               const active = figure?.id === f.id;
+              // Heads have their own colour so a dashed head line doesn't disappear under its figure's outline.
+              const color = head ? HEAD : active ? "#bc492e" : "#2563eb";
               return (
-                <g key={f.id} stroke={active ? "#bc492e" : "#2563eb"}>
+                <g key={f.id} stroke={color}>
                   <rect
                     x={b[0]}
                     y={b[1]}
                     width={b[2] - b[0]}
                     height={b[3] - b[1]}
-                    fill={active ? "#bc492e18" : "transparent"}
+                    fill={active ? `${color}18` : "transparent"}
                     strokeWidth={5}
+                    strokeDasharray={head ? "12 8" : undefined}
                     className="cursor-move"
                     onPointerDown={(e) => {
                       e.currentTarget.setPointerCapture(e.pointerId);
@@ -573,7 +578,8 @@ function CastPageEditor({
                       width={f.head[2] - f.head[0]}
                       height={f.head[3] - f.head[1]}
                       fill="none"
-                      strokeWidth={3}
+                      stroke={HEAD}
+                      strokeWidth={4}
                       strokeDasharray="12 8"
                       pointerEvents="none"
                     />
@@ -581,7 +587,7 @@ function CastPageEditor({
                   <text
                     x={b[0] + 6}
                     y={Math.max(25, b[1] - 8)}
-                    fill={active ? "#bc492e" : "#2563eb"}
+                    fill={color}
                     stroke="white"
                     paintOrder="stroke"
                     strokeWidth={3}
@@ -595,7 +601,7 @@ function CastPageEditor({
                       y={b[3] - 18}
                       width={36}
                       height={36}
-                      fill="#bc492e"
+                      fill={color}
                       className="cursor-se-resize"
                       onPointerDown={(e) => {
                         e.currentTarget.setPointerCapture(e.pointerId);
@@ -610,7 +616,7 @@ function CastPageEditor({
       </div>
       <div className="flex min-w-0 flex-col gap-3">
         <p className="text-xs text-muted-foreground">
-          Solid boxes are whole figures; dashed boxes are heads (including hair) and move with their figure. Drag a box to move it, or its bottom-right handle to resize. Turn on “Edit head boxes” below to move or resize the heads. Exact coordinates are in Details.
+          Solid boxes are whole figures; dashed green boxes are heads (including hair) and move with their figure. Drag a box to move it, or its bottom-right handle to resize. Turn on “Edit head boxes” below to move or resize the heads. Exact coordinates are in Details.
         </p>
         <div className="flex flex-wrap gap-1">
           {page.figures.map((f, i) => (

@@ -21,6 +21,8 @@ export default defineRailway(() => {
     S3_FORCE_PATH_STYLE: "false",
     // OpenAI edits story parts (D30, D36); "modal" is the fallback and needs its MODAL_* variables instead.
     IMAGE_PROVIDER: "openai",
+    // Casting suggestions read uploaded page art with OpenAI vision (OPENAI_CASTING_MODEL defaults to gpt-6.2-sol).
+    CASTING_PROVIDER: "openai",
   };
 
   // Each push to main deploys both services, after CI passes (checkSuites).
