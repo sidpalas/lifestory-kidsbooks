@@ -84,6 +84,10 @@ const makeAuth = (options: {
         ac: familyAccess,
         roles: familyRoles,
         creatorRole: "owner",
+        // Families come only from accounts.ts (D3, D23): ensureOwnFamily creates them as a system action (a userId and
+        // no session), which Better Auth allows even with this off. A signed-in user can't POST
+        // /api/auth/organization/create.
+        allowUserToCreateOrganization: false,
         // No family deletion until account deletion is designed (D31): it would leave the owner without a family (D3).
         disableOrganizationDeletion: true,
         invitationExpiresIn: INVITE_TTL_SECONDS,

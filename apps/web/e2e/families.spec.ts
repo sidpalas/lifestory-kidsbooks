@@ -117,6 +117,14 @@ test("an existing user accepts an invitation into a second family and switches b
   // New accounts from the dev sign-in route get a one-person family too.
   await page.goto(`/__dev/log-me-in/${friendEmail}?returnTo=/`);
   await expect(page.getByTestId("families")).toHaveText(`sam-${id}'s family`);
+  // Families come only from the operator's invite and accounts.ts (D23): a user can't make one through Better Auth.
+  const created = await page.request.post("/api/auth/organization/create", {
+    data: { name: "Another family", slug: `another-${id}` },
+    headers: { origin: new URL(page.url()).origin },
+  });
+  expect(created.status()).toBe(403);
+  await page.reload();
+  await expect(page.getByTestId("families")).toHaveText(`sam-${id}'s family`);
   await signOut(page);
   await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
   await expect(page.getByTestId("families")).toHaveText(`alex-${id}'s family`);
