@@ -365,6 +365,31 @@ None of this is built in milestone 1; these are the seams that keep it from need
   means parallel edits and cut-outs, not the Batch API. It changes D26's "every story supports every option" and its
   "a human reviews every image before families see it", so the app would say that variants beyond the base set
   are generated on the fly. The publish check would require only the base set. No format change.
+- **Cut-outs that hold across art styles (Sid, 2026-11-20: another pass once a few more stories in other styles
+  exist to test on).** `coverOutline` and its ink rules (D28's portrait, `parts/cutout.ts`) were tuned on two styles:
+  the picker's thick-ink portraits on paper and Paper Boat's pencil and watercolour with transparent bases. Each fix
+  so far has been measured on one style and has shifted defects in another:
+  - Paper Boat's bases flattened onto paper, the same art, gain 27,148 px of coverage over 114 hair and facial-hair
+    parts against 0 on their transparent bases: ear rims, jaw-to-neck joins, collars and shirt folds under long hair.
+    Even without ink rules, paper's anti-aliased edge alone adds 2,726 px at the crown. Published books are
+    unaffected (transparent bases get no ink), but pencil art drawn on paper would be.
+  - On the portraits' beards, `coverOutline` adds a tab over the earlobe and down the neck line where the beard meets
+    them. Redrawing all eight beards (2026-11-20, US$0.42) gave the same tabs; cut without `coverOutline`, the tabs
+    go but the jaw's ink shows as dashes along some beards' edges. The shipped beards stay as they were.
+  - Not covered by any art yet: dark or coloured paper, painterly art with no outlines, heavily textured skin,
+    strong profile and three-quarter views, hair over hands or props, very small heads, bases above 1536 px.
+
+  The approach for that pass: deterministic checks over every committed style, run before any rule changes and kept
+  as tests. (1) The same art with a transparent background and flattened onto light and dark paper covers the same
+  pixels. (2) Round trips: compose a stored part onto its base as a synthetic edit, cut it out again, and compare,
+  on both backgrounds, plus Kite's PSD (`fixtures/imports`), whose Kid and Hair layers are a real pair. (3) A few
+  hand-labelled masks per style of what must stay (ears, jaw and neck lines, collars, mouth) and what hair must cover
+  (the crown band). (4) Contact sheets of each style, pose and hair type, sparse and full, on the lightest skin with
+  the lightest hair and the darkest with the darkest. Generalize only what holds on all of them; a likely direction is
+  to apply ink rules only where the part's colour is as close to the line as the matte can't separate, which needs
+  the part's colours before neutralizing. Re-cutting published parts means a new story version (D24); portrait
+  parts can be re-cut in place, as `fixtures/art-sources/portrait/build-outline.ts` does.
+
 - **Server-rendered catalogue pages for search engines.** Catalogue routes keep TanStack Start's SSR on (only the
   editor turns it off) and read published stories only, with no session required.
 

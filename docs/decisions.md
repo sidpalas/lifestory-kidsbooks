@@ -472,7 +472,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   Not settled: Paper Boat's pencil flattened onto paper still loses lines at ears, neck and shoulders to these rules
   (27,148 px over 114 parts, against 0 on its transparent bases), because thin pencil isn't the thick ink they were
   measured on. Its published bases have alpha and get no ink, so no book changes; art drawn in pencil on paper would
-  need the rules limited to ink as dark as the hair before it is imported.
+  need the rules limited to ink as dark as the hair before it is imported. Sid deferred a general pass until more
+  stories in other styles exist: plan.md, "How Coming later fits", "Cut-outs that hold across art styles".
 - **The beard needs no rule of its own; stubble couldn't be fixed (2026-11-20, Sid: "the full beard has a similar
   issue", "the stubble options look bad/patchy"):** the dark dashes where the live beard's sides meet the neck are
   the same half-covered ink, and the rule above covers them. A rule that also covered the ink facial hair merely
