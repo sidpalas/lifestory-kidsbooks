@@ -7,6 +7,7 @@
 // The signed-out landing demo passes `portrait` to draw from static layers instead (landing-look-demo.tsx).
 import { ageLabel, ageOptions, hasFeatures, type Look, type LookAxis, lookVocabulary, partAxesAt, type PronounSet } from "@lifestory/core/contracts";
 import type * as React from "react";
+import { useRef } from "react";
 import { cn } from "~/lib/utils";
 
 export const portraitUrl = (look: Look) =>
@@ -53,7 +54,7 @@ function Choice({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "overflow-hidden leading-none ring-1 ring-black/15 transition hover:ring-black/40 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex flex-col overflow-hidden leading-none ring-1 ring-black/15 transition hover:ring-black/40 disabled:cursor-not-allowed disabled:opacity-50",
         round ? "rounded-full" : "rounded-md",
         pressed && "ring-2 ring-offset-2 ring-foreground hover:ring-foreground",
       )}
@@ -72,7 +73,7 @@ function Thumb({ look, label, portrait: Portrait }: { look: Look; label?: string
   return (
     <span className="flex flex-col items-center">
       <Portrait look={look} alt="" width={61} height={70} className="block h-[70px] w-[61px] object-cover" />
-      {label && <span className="w-[61px] truncate px-0.5 py-1 text-[10px] leading-tight">{label}</span>}
+      {label && <span className="w-[61px] px-0.5 py-1 text-center text-[10px] leading-tight text-balance">{label}</span>}
     </span>
   );
 }
@@ -134,15 +135,25 @@ export function LookPicker({
   // Steps are numbered in order, skipping the ones this age doesn't show.
   const shown: ReadonlyArray<string> = ["Age", "skin", "face", ...(hasFeatures(look.age) ? ["features"] : []), ...drawn.filter((axis) => axis === "hair"), "hairColour", ...(["facialHair", "glasses"] as const).filter((axis) => drawn.includes(axis))];
   const step = (key: string, title: string) => `${shown.indexOf(key) + 1}. ${title}`;
-  // Another age keeps the face, colours, and hairstyle; glasses and facial hair go when the new age doesn't draw them, and growing
-  // into an age with features starts from the ones the pronouns suggest.
-  const setAge = (age: Look["age"]) =>
-    onChange({
-      ...(hasFeatures(age) && !hasFeatures(look.age) ? withPronounFeatures(look, pronouns) : look),
-      age,
-      ...(partAxesAt(age).includes("glasses") ? {} : { glasses: "glasses:none" }),
-      ...(partAxesAt(age).includes("facialHair") ? {} : { facialHair: "facial-hair:none" }),
-    });
+  // Glasses and facial hair chosen at an age that draws them, kept while another age hides them (D50).
+  const hidden = useRef<Partial<Pick<Look, "glasses" | "facialHair">>>({});
+  // Another age keeps the face, colours, and hairstyle, and growing into an age with features starts from the ones
+  // the pronouns suggest. Glasses and facial hair go to none while the new age doesn't draw them, so the look never
+  // holds a choice the parent can't see (a page pinned to an older age would draw it), and come back with an age
+  // that draws them.
+  const setAge = (age: Look["age"]) => {
+    const next: Look = { ...(hasFeatures(age) && !hasFeatures(look.age) ? withPronounFeatures(look, pronouns) : look), age };
+    for (const [axis, none] of [["glasses", "glasses:none"], ["facialHair", "facial-hair:none"]] as const) {
+      if (!partAxesAt(age).includes(axis)) {
+        if (look[axis] !== none) hidden.current = { ...hidden.current, [axis]: look[axis] };
+        Object.assign(next, { [axis]: none });
+      } else if (!partAxesAt(look.age).includes(axis) && hidden.current[axis]) {
+        Object.assign(next, { [axis]: hidden.current[axis] });
+        hidden.current = { ...hidden.current, [axis]: undefined };
+      }
+    }
+    onChange(next);
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-[244px_minmax(0,1fr)]" data-testid="look-picker">

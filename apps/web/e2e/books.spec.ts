@@ -52,12 +52,16 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     expect(steps).toEqual(["1. Age", "2. Skin tone", "3. Face", "4. Hairstyle", "5. Hair colour", "6. Extras"]);
     const preview = page.getByTestId("look-preview");
     const before = await preview.getAttribute("src");
-    // A toddler has no glasses parts, so the picker doesn't offer them; back to a young child, it does.
+    // A toddler has no glasses parts, so the picker doesn't offer them; back to a young child, it does, and the
+    // glasses chosen before come back (D50).
+    await page.getByRole("button", { name: "Round glasses" }).click();
     await page.getByRole("button", { name: "Toddler", exact: true }).click();
     await expect(page.getByRole("group", { name: /Hairstyle/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Round glasses" })).toHaveCount(0);
     await expect(page.getByTestId("look-summary")).toHaveText("Toddler, round face, brown skin, curly black hair");
     await page.getByRole("button", { name: "Young child", exact: true }).click();
+    await expect(page.getByTestId("look-summary")).toHaveText("Young child, round face, brown skin, curly black hair, glasses");
+    await expect(page.getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
     // Pronouns order the hairstyles, likelier first, and never hide one (D29).
     const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
     await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Coily afro hair", "Locs hair", "Short hair", "Buzz cut hair"]);

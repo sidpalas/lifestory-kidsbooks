@@ -4,7 +4,9 @@
 
 A parent adds a family member as a character: name, pronouns, an age, then one feature at a time in a fixed order
 (skin tone, face, features from teen up, hairstyle, hair colour, facial hair from adult up, extras/glasses). Each
-choice changes only its own axis; there are no whole-look presets (D50). New characters start from `defaultLook`. A
+choice changes only its own axis; there are no whole-look presets (D50). New characters start from `defaultLook`.
+Glasses and facial hair go to none at an age that doesn't draw them and come back with an age that does, while the
+picker is open (not saved). A
 story-independent portrait (`/api/portrait?<look>`, D28) follows every choice, and the summary under it names the look.
 
 Signed-out visitors can try the same picker on the landing page ("Try it: build a child"): Baby, Toddler, and Young

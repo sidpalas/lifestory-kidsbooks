@@ -717,8 +717,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   from one `defaultLook`, so the preview is never empty. The per-book picker keeps "Use <name>'s saved look" as its
   only whole-look reset. The same picker serves the character form, a story's try-a-look, the per-book picker, and
   the landing demo.
-- **Not changed (yet):** changing to an age without glasses or facial hair still clears them, so teen → toddler →
-  teen loses the glasses. The renderer already ignores axes an age doesn't draw, so the picker could keep them.
+- **Hidden choices come back (Sid):** an age that doesn't draw glasses or facial hair sets them to none, and the
+  picker remembers them for as long as it's open, so teen → toddler → teen keeps the glasses. The look itself never
+  holds a choice the parent can't see: a page that pins a role to an older age would draw it. A choice the age hides
+  is not saved.
 - **Reopen if:** parents testing it want a quick start again (then offer it before step 2, not mid-sequence).
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
