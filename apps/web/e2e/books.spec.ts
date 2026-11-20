@@ -64,9 +64,9 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
     await expect(page.getByRole("button", { name: "Round glasses" })).toHaveAttribute("aria-pressed", "true");
     // Pronouns order the hairstyles, likelier first, and never hide one (D29).
     const labels = (step: RegExp) => page.getByRole("group", { name: step }).getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Coily afro hair", "Locs hair", "Short hair", "Buzz cut hair"]);
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Long hair", "Ponytail hair", "Braids hair", "Curly hair", "Bun hair", "Afro hair", "Locs hair", "Short hair", "Buzz cut hair"]);
     await page.getByLabel("Pronouns").selectOption("he/him");
-    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Buzz cut hair", "Curly hair", "Coily afro hair", "Locs hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair"]);
+    await expect.poll(() => labels(/Hairstyle/)).toEqual(["Short hair", "Buzz cut hair", "Curly hair", "Afro hair", "Locs hair", "Long hair", "Ponytail hair", "Braids hair", "Bun hair"]);
     await page.getByLabel("Pronouns").selectOption("she/her");
     await page.getByRole("button", { name: "Long hair" }).click();
     await page.getByRole("button", { name: "Brown hair colour" }).click();

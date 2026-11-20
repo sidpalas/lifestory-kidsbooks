@@ -39,7 +39,7 @@ const hairstyles = [
   { label: "Buzz cut", file: "short" },
   { label: "Ponytail", file: "long" },
   { label: "Braids", file: "long" },
-  { label: "Coily afro", file: "curly" },
+  { label: "Afro", file: "curly" },
   { label: "Locs", file: "long" },
   { label: "Bun", file: "curly" },
 ] as const;

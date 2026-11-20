@@ -75,7 +75,7 @@ export const hairOptions = [
   { id: "hair:buzz", label: "Buzz cut", addedAt: D43 },
   { id: "hair:ponytail", label: "Ponytail", addedAt: D43 },
   { id: "hair:braids", label: "Braids", addedAt: D43 },
-  { id: "hair:afro", label: "Coily afro", addedAt: D43 },
+  { id: "hair:afro", label: "Afro", addedAt: D43 },
   { id: "hair:locs", label: "Locs", addedAt: D43 },
   { id: "hair:bun", label: "Bun", addedAt: D43 },
 ] as const satisfies ReadonlyArray<LookOption>;
