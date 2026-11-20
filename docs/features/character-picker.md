@@ -8,7 +8,8 @@ choice changes only its own axis; there are no whole-look presets (D50). New cha
 Glasses and facial hair go to none at an age that doesn't draw them and come back with an age that does, while the
 picker is open (not saved). Each age offers its own hairstyles (D51): bald at every age; babies wispy or soft curls;
 toddlers and young children also a top knot or puffs; full-head styles from toddler up. A hairstyle an age doesn't
-have becomes the nearest one it does (`hairAt`: long is wispy at baby) and comes back the same way. Bald hides the
+have becomes the nearest one it does (`hairAt`: long is wispy at baby) and comes back the same way. Facial hair is
+none, a moustache or a full beard; stubble was retired (D52), and a look saved with it reads as none. Bald hides the
 hair colour step. A
 story-independent portrait (`/api/portrait?<look>`, D28) follows every choice, and the summary under it names the look.
 

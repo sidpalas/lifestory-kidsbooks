@@ -27,6 +27,7 @@ import {
   hairAt,
   offeredAt,
   optionsAt,
+  RETIRED_OPTIONS,
   partAxesAt,
   requiredAt,
   sameAppearance,
@@ -376,6 +377,8 @@ const figureIssues = (
       issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
     else if (!partAxesAt(part.age).includes(part.axis))
       issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
+    // A retired option's parts stay in the versions published with them and are never drawn (D52).
+    if (RETIRED_OPTIONS.has(part.option)) return;
     const known = lookVocabulary[part.axis].find((option) => option.id === part.option);
     if (!known || NO_PART_OPTIONS.has(part.option)) {
       issues.push({

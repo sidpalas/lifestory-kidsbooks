@@ -3,7 +3,7 @@
 // each story must supply parts or palettes for every option here, at every age it draws a role (D26, D29), except
 // options added after it was published (`addedAt`, D43): those it may lack, and a book asks for a stand-in.
 // Browser-safe.
-import { Effect, Schema } from "effect";
+import { Effect, Schema, SchemaTransformation } from "effect";
 
 export interface LookOption {
   readonly id: string;
@@ -121,10 +121,19 @@ export const glassesOptions = [
 /** Facial hair (D43), drawn as a part from adult up and recoloured with the hair colour. */
 export const facialHairOptions = [
   { id: "facial-hair:none", label: "No facial hair" },
-  { id: "facial-hair:stubble", label: "Stubble", addedAt: D43 },
   { id: "facial-hair:moustache", label: "Moustache", addedAt: D43 },
   { id: "facial-hair:beard", label: "Full beard", addedAt: D43 },
 ] as const satisfies ReadonlyArray<LookOption>;
+
+/**
+ * Options taken out of the vocabulary (D52), each with the option that replaces it. Looks and overrides saved with
+ * one still decode, as the replacement; a published manifest's parts for one stay valid and are never drawn. A
+ * retired ID is never reused for another drawing.
+ */
+export const RETIRED_OPTIONS: ReadonlyMap<string, string> = new Map([
+  // 2026-11-20, Sid: "All of the ones I have seen read as patchy"; two rounds of edits didn't fix it.
+  ["facial-hair:stubble", "facial-hair:none"],
+]);
 
 /** Options with no part to draw. */
 export const NO_PART_OPTIONS: ReadonlySet<string> = new Set(["hair:none", "glasses:none", "facial-hair:none"]);
@@ -141,7 +150,6 @@ export const HEAD_ONLY_OPTIONS: ReadonlySet<string> = new Set([
   "hair:afro",
   "hair:bun",
   "glasses:round",
-  "facial-hair:stubble",
   "facial-hair:moustache",
   "facial-hair:beard",
 ]);
@@ -166,7 +174,16 @@ export const SkinOption = Schema.Literals(ids(skinOptions));
 export const HairOption = Schema.Literals(ids(hairOptions));
 export const HairColourOption = Schema.Literals(ids(hairColourOptions));
 export const GlassesOption = Schema.Literals(ids(glassesOptions));
-export const FacialHairOption = Schema.Literals(ids(facialHairOptions));
+/** Facial hair, decoding a retired option as its replacement (D52). */
+export const FacialHairOption = Schema.Literals([...ids(facialHairOptions), "facial-hair:stubble"]).pipe(
+  Schema.decodeTo(
+    Schema.Literals(ids(facialHairOptions)),
+    SchemaTransformation.transform({
+      decode: (id) => (RETIRED_OPTIONS.get(id) ?? id) as (typeof facialHairOptions)[number]["id"],
+      encode: (id) => id,
+    }),
+  ),
+);
 
 /** A family member's look: one option per axis. */
 export const Look = Schema.Struct({

@@ -462,6 +462,14 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   Bases with alpha (Paper Boat, Moon Picnic) get no ink, so published book parts don't change.
   `build-outline.ts` re-cut all 197 stored portrait parts (no new edits, no spend) and the landing demo's layers
   were regenerated.
+- **The beard needs no rule of its own; stubble couldn't be fixed (2026-11-20, Sid: "the full beard has a similar
+  issue", "the stubble options look bad/patchy"):** the dark dashes where the live beard's sides meet the neck are
+  the same half-covered ink, and the rule above covers them. A rule that also covered the ink facial hair merely
+  touches was tried and dropped: it left blobs of hair colour on the nostrils under the moustache. Stubble was tried
+  without `coverOutline` (extended to the face's outline, its dots became a solid band at the cheek) and redrawn
+  (8 parts, US$0.42, the prompt asking for an even shadow with no bare patches; edits kept outside the repo): fuller
+  on younger adults but still patchy, worse on the older round face, where the model drew the dots close to the
+  skin's tone and the cut-out drops most of them. Stubble was retired instead (D52).
 - **Overrides (Made):** `book_cast.look_override` holds options a book draws instead of the character's own, for axes
   its story version can't draw (D26's "story-specific override"). `castLook` applies an override only while the
   character's own option is unsupported, so a later look change back to a supported option takes effect again. A role
@@ -794,6 +802,23 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   through `build-outline.ts`; US$1.05 on OpenAI. Their small skin layers were dropped, as no portrait part has one.
 - **Reopen if:** families with babies born with a full head of hair ask for it (add short and curly at baby, dated),
   or the sparse styles don't survive an illustrator's story art.
+
+### D52. An option leaves the vocabulary by retiring, never by deletion; stubble is retired — Decided (Sid, 2026-11-20) / Made
+
+- **Why (Sid):** stubble "read as patchy" on every face after two rounds of edits (D43's retake, then 8 redraws for
+  US$0.42): "Lets delete and then I can republish", and "we should establish a strategy for handling things like
+  this in the future". Deleting an option ID outright breaks what already names it: published manifests and their
+  additions (The Paper Boat v6 has stubble parts on two poses, revision 2 on a third), which never change, fail the
+  manifest check for an unknown option; and saved looks, book changes and stand-ins (`character.look`,
+  `book_cast.look_override`, `look_changes`) stop decoding, so those books and characters fail to load.
+- **How:** `RETIRED_OPTIONS` maps a retired ID to its replacement (stubble → no facial hair). The option leaves
+  `lookVocabulary`, so the picker, coverage checks, part requests and the figure editor no longer know it, and the
+  picker's portrait parts for it are deleted. Its axis schema still accepts the old ID and decodes it as the
+  replacement, so a saved look reads as the replacement and is written back that way at its next save; no migration
+  and no production write. A published version's parts for a retired option stay valid and are never drawn, so no
+  version is republished for a retirement (a republish only drops dead parts). A retired ID is never reused.
+- **Reopen if:** a retired option has no sensible replacement (then a book asks for a stand-in, like an unsupported
+  option), or stubble returns with art that survives the cut-out: give it a new ID.
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 

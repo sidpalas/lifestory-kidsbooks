@@ -104,8 +104,6 @@ const optionWords: Record<string, string> = {
     "fine, short dark brown hair gathered into one small top knot tied on top of the head, a little tuft that points upward like a tiny palm tree, with short, thin hair on the sides and back",
   "hair:puffs":
     "short dark brown hair parted in the middle and gathered into two small, round, fluffy puffs, one high on each side of the top of the head, the hair between them lying close to the scalp",
-  "facial-hair:stubble":
-    "short, dense dark brown stubble on the jaw, chin and upper lip: tiny dark brown dots, clearly darker than the skin, like a five o'clock shadow",
   "facial-hair:moustache": "a neat, medium-thick dark brown moustache",
   "facial-hair:beard": "a full, neatly trimmed dark brown beard and moustache",
 };

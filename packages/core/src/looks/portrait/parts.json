@@ -24,18 +24,6 @@
     "palette": "hairColour"
    }
   ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/adult-oval-facial-hair-stubble.png",
-    "at": [
-     319,
-     536,
-     626,
-     711
-    ],
-    "palette": "hairColour"
-   }
-  ],
   "glasses:round": [
    {
     "asset": "parts/adult-oval-glasses-round.png",
@@ -178,18 +166,6 @@
      514,
      603,
      579
-    ],
-    "palette": "hairColour"
-   }
-  ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/adult-oval-soft-facial-hair-stubble.png",
-    "at": [
-     317,
-     523,
-     654,
-     686
     ],
     "palette": "hairColour"
    }
@@ -340,18 +316,6 @@
     "palette": "hairColour"
    }
   ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/adult-round-facial-hair-stubble.png",
-    "at": [
-     278,
-     501,
-     719,
-     704
-    ],
-    "palette": "hairColour"
-   }
-  ],
   "glasses:round": [
    {
     "asset": "parts/adult-round-glasses-round.png",
@@ -494,18 +458,6 @@
      496,
      625,
      563
-    ],
-    "palette": "hairColour"
-   }
-  ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/adult-round-soft-facial-hair-stubble.png",
-    "at": [
-     294,
-     506,
-     699,
-     690
     ],
     "palette": "hairColour"
    }
@@ -708,18 +660,6 @@
     "palette": "hairColour"
    }
   ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/older-adult-oval-facial-hair-stubble.png",
-    "at": [
-     307,
-     517,
-     608,
-     709
-    ],
-    "palette": "hairColour"
-   }
-  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-oval-glasses-round.png",
@@ -862,18 +802,6 @@
      494,
      623,
      572
-    ],
-    "palette": "hairColour"
-   }
-  ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/older-adult-oval-soft-facial-hair-stubble.png",
-    "at": [
-     288,
-     507,
-     659,
-     669
     ],
     "palette": "hairColour"
    }
@@ -1024,18 +952,6 @@
     "palette": "hairColour"
    }
   ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/older-adult-round-facial-hair-stubble.png",
-    "at": [
-     283,
-     533,
-     706,
-     725
-    ],
-    "palette": "hairColour"
-   }
-  ],
   "glasses:round": [
    {
     "asset": "parts/older-adult-round-glasses-round.png",
@@ -1178,18 +1094,6 @@
      510,
      628,
      588
-    ],
-    "palette": "hairColour"
-   }
-  ],
-  "facial-hair:stubble": [
-   {
-    "asset": "parts/older-adult-round-soft-facial-hair-stubble.png",
-    "at": [
-     316,
-     535,
-     608,
-     713
     ],
     "palette": "hairColour"
    }

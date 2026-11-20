@@ -23,6 +23,8 @@ import {
   unsupportedOptions,
   vocabularyGaps,
   type Look,
+  LookOverride,
+  lookVocabulary,
 } from "../src/book-format/index.ts";
 import { Look as LookSchema } from "../src/looks/vocabulary.ts";
 import { withApprovedParts } from "../src/parts/parts.ts";
@@ -410,6 +412,20 @@ describe("looks against a story (D26, D29)", () => {
     ).toEqual([]);
     const { facialHair: _, ...stored } = look;
     expect(Schema.decodeUnknownSync(LookSchema)(stored).facialHair).toBe("facial-hair:none");
+  });
+
+  it("reads a retired option saved in a look or a book's stand-in as its replacement, and still rejects unknown ones (D52)", () => {
+    const look = { ...soft("face:round"), facialHair: "facial-hair:stubble" };
+    expect(Schema.decodeUnknownSync(LookSchema)(look).facialHair).toBe("facial-hair:none");
+    expect(Schema.decodeUnknownSync(LookOverride)({ facialHair: "facial-hair:stubble" })).toEqual({
+      facialHair: "facial-hair:none",
+    });
+    expect(
+      Result.isFailure(Schema.decodeUnknownResult(LookSchema)({ ...look, facialHair: "facial-hair:goatee" })),
+    ).toBe(true);
+    // A published version keeps its parts for the retired option (Paper Boat's stubble, accepted above); a new part
+    // can't name it, since it isn't offered anywhere.
+    expect(lookVocabulary.facialHair.map((option) => option.id)).not.toContain("facial-hair:stubble");
   });
 
   it("draws a figure pinned to an age at that age, whatever age the character is", () => {
