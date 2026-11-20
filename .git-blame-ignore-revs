@@ -3,3 +3,6 @@
 
 # Format the repository with oxfmt (mechanical, D53)
 efda1c8c04b7d1d8df3317973c1357d54c1f330f
+
+# Sort imports and Tailwind classes with oxfmt (mechanical, D53)
+f9c561e79a38bb524b20763f157abd3571436797
