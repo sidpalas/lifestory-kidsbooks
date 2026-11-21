@@ -260,7 +260,7 @@ function BookEditor() {
                 type="button"
                 aria-label={`Page ${i + 1}`}
                 aria-current={i === pageIndex ? "page" : undefined}
-                onClick={() => void navigate({ search: { page: candidate.pageId }, replace: true })}
+                onClick={() => void navigate({ search: { page: candidate.pageId }, replace: true, resetScroll: false })}
                 className={`block w-fit rounded-sm ring-1 ring-black/10 ${i === pageIndex ? "ring-2 ring-foreground" : "hover:ring-black/40"}`}
               >
                 <ScaledPage trim={manifest.trim} scale={0.3}>

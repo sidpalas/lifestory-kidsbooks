@@ -201,6 +201,21 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   // has Grandpa Joe's parts (short hair, glasses) and Ada adds glasses to the child's 6 appearances: 39 + 6 = 45.
   expect((await pageSources(page)).flat()).toHaveLength(45);
 
+  // Choosing a page from the list below the editor keeps the window where it is: the router used to reset the
+  // scroll to the top on every page change.
+  const thumbnails = page.getByRole("region", { name: "All pages" });
+  await thumbnails.getByRole("button", { name: "Page 3" }).scrollIntoViewIfNeeded();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(100);
+  await thumbnails.getByRole("button", { name: "Page 3" }).click();
+  await expect(page).toHaveURL(/[?&]page=/);
+  await expect(thumbnails.getByRole("button", { name: "Page 3" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText(/^Page 3 of 6/)).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await thumbnails.getByRole("button", { name: "Page 1" }).click();
+  await expect(thumbnails.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+
   // Edit page 1's paragraph: the page shows the draft as it will print, then the saved text after a reload.
   const editor = page.getByTestId("editor-page");
   const block = page.getByRole("textbox", { name: "Text block 2" });
