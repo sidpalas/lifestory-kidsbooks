@@ -276,17 +276,26 @@ function BookEditor() {
                     aria-label={`Page ${i + 1}`}
                     aria-current={i === pageIndex ? "page" : undefined}
                     onClick={() => show(i)}
-                    className={`block w-fit rounded-sm ring-1 ring-black/10 ${i === pageIndex ? "ring-2 ring-foreground" : "hover:ring-black/40"}`}
+                    className="group flex flex-col items-center gap-1"
                   >
-                    <ScaledPage trim={manifest.trim} scale={0.14}>
-                      <BookPage
-                        manifest={manifest}
-                        page={candidate}
-                        text={view.pages[i]!.text.map((block) => ({ style: block.style, text: block.text }))}
-                        illustration={illustration(i)}
-                        cast={view.cast}
-                      />
-                    </ScaledPage>
+                    <span
+                      className={`block w-fit rounded-sm ring-1 ring-black/10 ${i === pageIndex ? "ring-2 ring-foreground" : "group-hover:ring-black/40"}`}
+                    >
+                      <ScaledPage trim={manifest.trim} scale={0.14}>
+                        <BookPage
+                          manifest={manifest}
+                          page={candidate}
+                          text={view.pages[i]!.text.map((block) => ({ style: block.style, text: block.text }))}
+                          illustration={illustration(i)}
+                          cast={view.cast}
+                        />
+                      </ScaledPage>
+                    </span>
+                    <span
+                      className={`text-xs tabular-nums ${i === pageIndex ? "font-semibold text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}
+                    >
+                      {i + 1}
+                    </span>
                   </button>
                 </li>
               ))}
