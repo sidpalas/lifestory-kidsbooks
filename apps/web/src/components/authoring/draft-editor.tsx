@@ -414,7 +414,8 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         className={`${tab === "casting" || tab === "review" ? "hidden" : "flex"} flex-col gap-3 lg:sticky lg:top-4 lg:self-start`}
         aria-label="Page preview"
       >
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Pages">
+        {/* As wide as the preview, not as all the tabs in one row: with 24 pages that squeezed the editor to nothing. */}
+        <div className="flex w-0 min-w-full flex-wrap gap-1" role="tablist" aria-label="Pages">
           {draft.pages.map((candidate, i) => (
             <Button
               key={candidate.pageId}
