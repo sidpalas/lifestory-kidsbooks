@@ -1,7 +1,8 @@
 // verify layout: docs/features/page-previews.md. Opens a family's book of --story (making one if the family has none),
 // the story's own page, and, when the account authors a story with a draft open, its draft preview, at 320 and 390
-// CSS px (phones) and 1280 (desktop). On each it checks every page preview keeps the page's shape, fits the screen,
-// overlaps no other preview, and that the page doesn't scroll sideways; it screenshots each view.
+// CSS px (phones) and 1280 (desktop). On each it checks every page preview keeps the page's shape, fits the screen
+// (or the strip it scrolls in), overlaps no other preview, and that the page doesn't scroll sideways; it screenshots
+// each view.
 // It writes a book only when the family has none of the story.
 import { signedIn } from "./browser.ts";
 import type { Report } from "./report.ts";
@@ -32,13 +33,18 @@ const measure = (page: import("@playwright/test").Page): Promise<Measured> =>
       let clip: HTMLElement | null = sheet.parentElement;
       while (clip && getComputedStyle(clip).overflow === "visible") clip = clip.parentElement;
       const shown = (clip ?? sheet).getBoundingClientRect();
+      // A strip that scrolls sideways (the book editor's page strip) may hold previews past the screen's edge; what
+      // must fit is the strip.
+      let strip: HTMLElement | null = sheet.parentElement;
+      while (strip && !["auto", "scroll"].includes(getComputedStyle(strip).overflowX)) strip = strip.parentElement;
+      const end = Math.min(shown.right, strip?.getBoundingClientRect().right ?? Infinity);
       return {
         left: box.left,
         top: box.top + window.scrollY,
         right: box.right,
         bottom: box.bottom + window.scrollY,
         ratio: shown.width / shown.height,
-        visibleRight: Math.min(box.right, shown.right),
+        visibleRight: Math.min(box.right, end),
         // The page as drawn must be no bigger than what shows of it, or the clip crops its edge.
         cropped: box.width - shown.width > 1 || box.height - shown.height > 1,
       };

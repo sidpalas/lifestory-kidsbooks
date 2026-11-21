@@ -3,13 +3,14 @@
 ## What it is
 
 Every on-screen page is `BookPage` at print size (8.5 in trim + bleed = 840 CSS px) scaled down by `ScaledPage`. A
-preview shows at its view's scale (book editor 0.72, its page list 0.3, story page 0.5, draft preview 0.55) or
+preview shows at its view's scale (book editor 0.72, its page strip 0.14, story page 0.5, draft preview 0.55) or
 smaller when its container is narrower, so on a phone each page shrinks to fit, keeps its shape, and overlaps nothing.
 The page inside never reflows: screen and print keep the same line breaks.
 
 ## Routes and roles
 
-- `/books/<bookId>`: the editor's page and the "All pages" list; owners and viewers of the family.
+- `/books/<bookId>`: the editor's page and, under it, the "All pages" strip of thumbnails that scrolls sideways,
+  with Previous and Next above the page; owners and viewers of the family.
 - `/stories/<slug>`: the story's pages with the chosen cast; any signed-in account.
 - `/author/<storyId>`: the draft preview; the story's authors.
 
@@ -23,7 +24,9 @@ one the run says so and checks the other two.
 
 `mise run verify -- layout --story the-paper-boat [--as operator@lifestory.dev]` at 320, 390, and 1280 px: each
 preview shows the page's whole shape, stays on screen, overlaps no other, and the page doesn't scroll sideways.
-Screenshots per view and width. `e2e -- books` asserts the same for the book editor at 320 px.
+A preview in a strip that scrolls sideways (the book editor's) needs to fit the strip, not the screen. Screenshots
+per view and width. `e2e -- books` asserts the same for the book editor at 320 px, and that changing pages from the
+strip moves neither the window nor the strip.
 
 ## Gotchas
 

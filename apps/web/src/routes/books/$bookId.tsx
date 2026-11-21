@@ -19,7 +19,7 @@ import {
 } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/react-router";
 import { Schema } from "effect";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BookLookPicker, focusById, lookPickerId, lookToggleId } from "~/components/book-look";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
@@ -98,6 +98,19 @@ function BookEditor() {
     manifest.pages.findIndex((page) => page.pageId === selected),
   );
   const page = manifest.pages[pageIndex]!;
+  // Changing pages keeps the window where it is (the router would scroll to the top on every search change).
+  const show = (index: number) =>
+    void navigate({ search: { page: manifest.pages[index]!.pageId }, replace: true, resetScroll: false });
+  // Scrolls the page strip, and only the strip, so the shown page's thumbnail is in view.
+  const strip = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = strip.current!;
+    const box = list.getBoundingClientRect();
+    const item = list.children[pageIndex]!.getBoundingClientRect();
+    const by =
+      item.left < box.left ? item.left - box.left - 8 : item.right > box.right ? item.right - box.right + 8 : 0;
+    if (by) list.scrollBy({ left: by, behavior: "smooth" });
+  }, [pageIndex]);
 
   const run = async (call: () => Promise<unknown>) => {
     setError(null);
@@ -222,10 +235,23 @@ function BookEditor() {
 
       <section aria-label="Editor" className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span>
               Page {pageIndex + 1} of {manifest.pages.length}, as it will print ({manifest.trim.widthIn} ×{" "}
               {manifest.trim.heightIn} in plus bleed)
+            </span>
+            <span className="flex shrink-0 gap-1">
+              <Button variant="outline" size="sm" disabled={pageIndex === 0} onClick={() => show(pageIndex - 1)}>
+                ← Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pageIndex === manifest.pages.length - 1}
+                onClick={() => show(pageIndex + 1)}
+              >
+                Next →
+              </Button>
             </span>
           </div>
           <div className="w-fit rounded-sm shadow-md ring-1 ring-black/10" data-testid="editor-page">
@@ -239,6 +265,33 @@ function BookEditor() {
               />
             </ScaledPage>
           </div>
+          {/* Under the page, in its column: the text editor beside or below it can grow and shrink with each page's
+              paragraphs without moving the strip. As wide as the page, not as all the thumbnails in one row. */}
+          <section aria-label="All pages" className="w-0 min-w-full">
+            <ol ref={strip} className="flex gap-2 overflow-x-auto p-1 pb-2">
+              {manifest.pages.map((candidate, i) => (
+                <li key={candidate.pageId} className="shrink-0">
+                  <button
+                    type="button"
+                    aria-label={`Page ${i + 1}`}
+                    aria-current={i === pageIndex ? "page" : undefined}
+                    onClick={() => show(i)}
+                    className={`block w-fit rounded-sm ring-1 ring-black/10 ${i === pageIndex ? "ring-2 ring-foreground" : "hover:ring-black/40"}`}
+                  >
+                    <ScaledPage trim={manifest.trim} scale={0.14}>
+                      <BookPage
+                        manifest={manifest}
+                        page={candidate}
+                        text={view.pages[i]!.text.map((block) => ({ style: block.style, text: block.text }))}
+                        illustration={illustration(i)}
+                        cast={view.cast}
+                      />
+                    </ScaledPage>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
         </div>
         <TextEditor
           key={`${page.pageId}`}
@@ -250,32 +303,6 @@ function BookEditor() {
             run(() => saveTextEditFn({ data: { bookId: view.book.id, pageId: page.pageId, blockIndex, content } }))
           }
         />
-      </section>
-
-      <section aria-label="All pages">
-        <ol className="grid grid-cols-2 gap-4 md:grid-cols-3">
-          {manifest.pages.map((candidate, i) => (
-            <li key={candidate.pageId}>
-              <button
-                type="button"
-                aria-label={`Page ${i + 1}`}
-                aria-current={i === pageIndex ? "page" : undefined}
-                onClick={() => void navigate({ search: { page: candidate.pageId }, replace: true, resetScroll: false })}
-                className={`block w-fit rounded-sm ring-1 ring-black/10 ${i === pageIndex ? "ring-2 ring-foreground" : "hover:ring-black/40"}`}
-              >
-                <ScaledPage trim={manifest.trim} scale={0.3}>
-                  <BookPage
-                    manifest={manifest}
-                    page={candidate}
-                    text={view.pages[i]!.text.map((block) => ({ style: block.style, text: block.text }))}
-                    illustration={illustration(i)}
-                    cast={view.cast}
-                  />
-                </ScaledPage>
-              </button>
-            </li>
-          ))}
-        </ol>
       </section>
 
       <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} remove={deleteProof} hydrated />

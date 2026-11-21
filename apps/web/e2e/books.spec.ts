@@ -201,20 +201,32 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   // has Grandpa Joe's parts (short hair, glasses) and Ada adds glasses to the child's 6 appearances: 39 + 6 = 45.
   expect((await pageSources(page)).flat()).toHaveLength(45);
 
-  // Choosing a page from the list below the editor keeps the window where it is: the router used to reset the
-  // scroll to the top on every page change.
+  // Changing pages from the strip under the page keeps the window where it is and the strip where it was: the router
+  // used to scroll to the top, and the strip used to sit below the text editor, which grows and shrinks with each
+  // page's paragraphs (page 1 has a title and a paragraph, page 2 one paragraph). Below 1024 px the text editor
+  // stacks under the page, where that moved the strip.
+  await page.setViewportSize({ width: 800, height: 900 });
   const thumbnails = page.getByRole("region", { name: "All pages" });
-  await thumbnails.getByRole("button", { name: "Page 3" }).scrollIntoViewIfNeeded();
-  const scrolled = await page.evaluate(() => window.scrollY);
-  expect(scrolled).toBeGreaterThan(100);
-  await thumbnails.getByRole("button", { name: "Page 3" }).click();
-  await expect(page).toHaveURL(/[?&]page=/);
-  await expect(thumbnails.getByRole("button", { name: "Page 3" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText(/^Page 3 of 6/)).toBeVisible();
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await page.mouse.wheel(0, 400);
+  const position = () =>
+    thumbnails.evaluate((strip) => ({ scrollY: window.scrollY, top: strip.getBoundingClientRect().top }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  const stripAt = await position();
+  await thumbnails.getByRole("button", { name: "Page 2" }).click();
+  await expect(thumbnails.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText(/^Page 2 of 6/)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /^Text block/ })).toHaveCount(1);
+  expect(await position()).toEqual(stripAt);
   await thumbnails.getByRole("button", { name: "Page 1" }).click();
+  await expect(page.getByRole("textbox", { name: /^Text block/ })).toHaveCount(2);
+  expect(await position()).toEqual(stripAt);
+  // Previous and Next sit above the page; they step through the book and stop at its ends.
+  await expect(page.getByRole("button", { name: "← Previous" })).toBeDisabled();
+  await page.getByRole("button", { name: "Next →" }).click();
+  await expect(thumbnails.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "← Previous" }).click();
   await expect(thumbnails.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // Edit page 1's paragraph: the page shows the draft as it will print, then the saved text after a reload.
   const editor = page.getByTestId("editor-page");
@@ -234,6 +246,7 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
 
   // On a 320 px phone every preview shrinks to fit, as a whole square page (still 840 px laid out inside), and none
   // overlaps another or makes the page scroll sideways. Fixed scales once put the thumbnails on top of each other.
+  // The page strip scrolls sideways within itself, so its thumbnails may lie past the screen's edge; the strip doesn't.
   await page.setViewportSize({ width: 320, height: 800 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   const boxes = await page.getByTestId("book-page").evaluateAll((sheets) =>
@@ -245,13 +258,14 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
         top: box.top,
         bottom: box.bottom,
         layoutWidth: (sheet as HTMLElement).offsetWidth,
+        inStrip: !!sheet.closest('[aria-label="All pages"]'),
       };
     }),
   );
   expect(boxes).toHaveLength(7);
   for (const [i, box] of boxes.entries()) {
     expect(box.layoutWidth).toBe(840);
-    expect(box.right).toBeLessThanOrEqual(320);
+    if (!box.inStrip) expect(box.right).toBeLessThanOrEqual(320);
     expect(box.right - box.left).toBeCloseTo(box.bottom - box.top, 0);
     for (const other of boxes.slice(i + 1)) {
       const overlaps =
@@ -260,6 +274,9 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
       expect(overlaps).toBe(false);
     }
   }
+  expect(
+    await page.getByRole("region", { name: "All pages" }).evaluate((strip) => strip.getBoundingClientRect().right),
+  ).toBeLessThanOrEqual(320);
   await evidence(page, "book-editor-320");
   await page.setViewportSize({ width: 1280, height: 720 });
 
