@@ -39,9 +39,11 @@ interface Appearance {
   readonly face: FigureBase["face"];
   readonly features?: FeaturesOption;
 }
-const appearancesAt = (ages: ReadonlyArray<Age>): ReadonlyArray<Appearance> =>
+type Face = FigureBase["face"];
+/** With the story's one face type (D55), only that face's drawings. */
+const appearancesAt = (ages: ReadonlyArray<Age>, oneFace: Face | undefined): ReadonlyArray<Appearance> =>
   ages.flatMap((age) =>
-    faceOptions.flatMap(({ id: face }) =>
+    (oneFace ? [oneFace] : faceOptions.map(({ id }) => id)).flatMap((face) =>
       hasFeatures(age) ? featuresOptions.map(({ id: features }) => ({ age, face, features })) : [{ age, face }],
     ),
   );
@@ -80,6 +82,7 @@ export function FigureEditor({
   pageId,
   figure,
   slots,
+  oneFace,
   generation,
   onChange,
 }: {
@@ -87,6 +90,8 @@ export function FigureEditor({
   pageId: string;
   figure: FigureLayer;
   slots: ReadonlyArray<CharacterSlot>;
+  /** The story's one face type (D55), if its art draws only one. */
+  oneFace?: Face | undefined;
   generation: Generation;
   onChange: (figure: FigureLayer) => void;
 }) {
@@ -156,7 +161,15 @@ export function FigureEditor({
       </div>
       <RectFields label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
 
-      <BasesGrid files={files} folder={folder} role={role} figure={figure} ages={ages} onChange={onChange} />
+      <BasesGrid
+        files={files}
+        folder={folder}
+        role={role}
+        figure={figure}
+        ages={ages}
+        oneFace={oneFace}
+        onChange={onChange}
+      />
       {figure.showsHead !== false && (
         <PartsGrid
           files={files}
@@ -164,6 +177,7 @@ export function FigureEditor({
           role={role}
           figure={figure}
           ages={ages}
+          oneFace={oneFace}
           generation={generation}
           onChange={onChange}
         />
@@ -178,6 +192,7 @@ function BasesGrid({
   role,
   figure,
   ages,
+  oneFace,
   onChange,
 }: {
   files: DraftFiles;
@@ -185,6 +200,7 @@ function BasesGrid({
   role: string;
   figure: FigureLayer;
   ages: ReadonlyArray<Age>;
+  oneFace: Face | undefined;
   onChange: (figure: FigureLayer) => void;
 }) {
   // A base needs its drawing and its skin mask; whichever arrives first waits here for the other. The ref holds the
@@ -220,7 +236,7 @@ function BasesGrid({
         tone); the brow mask takes the hair colour.
       </p>
       <ul className="grid gap-2 md:grid-cols-2">
-        {appearancesAt(ages).map((appearance) => {
+        {appearancesAt(ages, oneFace).map((appearance) => {
           const base = figure.bases.find((candidate) => draws(candidate, appearance));
           const waiting = pending[appearanceKey(appearance)];
           const at = appearanceLabel(appearance);
@@ -296,6 +312,7 @@ function PartsGrid({
   role,
   figure,
   ages,
+  oneFace,
   generation,
   onChange,
 }: {
@@ -304,13 +321,14 @@ function PartsGrid({
   role: string;
   figure: FigureLayer;
   ages: ReadonlyArray<Age>;
+  oneFace: Face | undefined;
   generation: Generation;
   onChange: (figure: FigureLayer) => void;
 }) {
   // Where generated parts may be, in thousandths of the base: the head, with room for long hair (D36).
   const [zone, setZone] = useState<Rect>([200, 0, 800, 450]);
   // A softer base is optional (without one the defined base draws, D40), so its parts are cells only once it exists.
-  const drawn = appearancesAt(ages).filter(
+  const drawn = appearancesAt(ages, oneFace).filter(
     (at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)),
   );
   const cells: ReadonlyArray<PartCell> = drawn.flatMap((appearance) =>

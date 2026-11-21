@@ -132,17 +132,20 @@ export function ArtImport({
   files,
   page,
   slots,
+  oneFace,
   onApply,
 }: {
   files: DraftFiles;
   page: Page;
   slots: ReadonlyArray<CharacterSlot>;
+  /** The story's one face type (D55), if its art draws only one: imports start with it. */
+  oneFace?: Face | undefined;
   onApply: (edit: (page: Page) => Page) => void;
 }) {
   const [slotId, setSlotId] = useState(slots[0]?.slotId ?? "");
   const slot = slots.find((candidate) => candidate.slotId === slotId);
   const [age, setAge] = useState<Age>(slot?.ages[0] ?? "young-child");
-  const [face, setFace] = useState<Face>("face:round");
+  const [face, setFace] = useState<Face>(oneFace ?? "face:round");
   const [layers, setLayers] = useState<ReadonlyArray<SourceLayer>>([]);
   const [flat, setFlat] = useState<File | null>(null);
   const [box, setBox] = useState<Rect>([300, 200, 700, 900]);

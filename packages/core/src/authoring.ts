@@ -18,6 +18,7 @@ import {
   presetFrame,
   decodeStoryManifest,
   uncoveredOptions,
+  drawnFace,
   exampleCast,
   isVariableFont,
   manifestAssets,
@@ -379,7 +380,8 @@ const draftPagePreview = (
     const member = cast[layer.slotId];
     if (!member) return [];
     try {
-      return composeFigure(draft.palettes, draft.partOrder, layer, looks[layer.slotId] ?? member.look);
+      const look = looks[layer.slotId] ?? member.look;
+      return composeFigure(draft.palettes, draft.partOrder, layer, { ...look, face: drawnFace(draft, look.face) });
     } catch {
       return [];
     }

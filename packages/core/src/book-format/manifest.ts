@@ -109,8 +109,8 @@ export const CharacterSlot = Schema.Struct({
   description: Schema.String,
   /**
    * The ages a family member may be to fill the slot (D29). Age is the one axis a story may restrict (D26): every
-   * figure of the slot not pinned to an age supplies a base for every face type at each of these ages, and every
-   * other option in the look vocabulary.
+   * figure of the slot not pinned to an age supplies a base for every face type (the story's `oneFace` only, when
+   * set) at each of these ages, and every other option in the look vocabulary.
    */
   ages: Schema.Array(Age).check(Schema.isMinLength(1)),
   /** Fills the slot in story previews, before a family chooses anyone. */
@@ -291,9 +291,21 @@ export const StoryDraft = Schema.Struct({
   }),
   /** Bottom to top, the part axes drawn between the base face and the occluder. */
   partOrder: Schema.Array(PartAxis),
+  /**
+   * The one face type the story's art draws (D55), for art styles that don't tell round from oval: every character
+   * is drawn with it whatever their own face type, and figures need bases and parts for it only. Absent: each
+   * character's own face type, so every figure draws both.
+   */
+  oneFace: Schema.optionalKey(FaceOption),
   pages: Schema.Array(Page),
 });
 export type StoryDraft = typeof StoryDraft.Type;
+
+/** The face type a story draws for a character whose own is `face`: the story's one face type if it has one (D55). */
+export const drawnFace = (
+  story: { readonly oneFace?: typeof FaceOption.Type | undefined },
+  face: typeof FaceOption.Type,
+): typeof FaceOption.Type => story.oneFace ?? face;
 
 export const StoryManifest = StoryDraft.check(
   // References inside the manifest must resolve, so a page never names a slot,
@@ -476,7 +488,8 @@ const figureIssues = (
 
 /**
  * What a story version published at `publishedAt` lacks from the look vocabulary. Publishing requires none (Sid,
- * 2026-11-19: every story supports every option except faces of another age), except options added to the
+ * 2026-11-19: every story supports every option except faces of another age; a story with `oneFace` draws only that
+ * face type, D55), except options added to the
  * vocabulary after `publishedAt` (D43): a version published earlier simply doesn't support them, and a book asks for
  * a stand-in; see `unsupportedOptions`.
  */
@@ -510,7 +523,8 @@ const coverageGaps = (
       if (layer.kind !== "figure") continue;
       const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId)!;
       for (const age of drawnAges(layer, slot)) {
-        for (const { id: face } of faceOptions) {
+        // A story drawing one face type needs nothing for the other (D55).
+        for (const face of new Set(faceOptions.map(({ id }) => drawnFace(manifest, id)))) {
           // From teen up the defined base is required, and a softer one, when drawn, needs its parts too (D40).
           const soft = layer.bases.some((base) => sameAppearance(base, age, face, "features:soft"));
           for (const features of hasFeatures(age)
@@ -561,8 +575,9 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
     for (const layer of page.illustration.layers) {
       if (layer.kind !== "figure" || layer.slotId !== slotId) continue;
       const age = layer.age ?? look.age;
-      const features = drawnFeatures(layer.bases, age, look.face, look);
-      if (!layer.bases.some((base) => sameAppearance(base, age, look.face, features))) {
+      const face = drawnFace(manifest, look.face);
+      const features = drawnFeatures(layer.bases, age, face, look);
+      if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) {
         unsupported.add("face");
         continue; // Parts are drawn per face, so with an unsupported face only the face is the problem.
       }
@@ -572,7 +587,7 @@ export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look
         if (NO_PART_OPTIONS.has(option)) continue;
         if (
           !layer.parts.some(
-            (part) => sameAppearance(part, age, look.face, features) && part.axis === axis && part.option === option,
+            (part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option,
           )
         )
           unsupported.add(axis);

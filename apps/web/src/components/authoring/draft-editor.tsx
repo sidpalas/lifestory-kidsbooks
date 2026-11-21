@@ -12,6 +12,7 @@ import {
   DraftChanged,
   type DraftView,
   exampleCast,
+  faceOptions,
   type FigureLayer,
   type IllustrationLayer,
   type LookAxis,
@@ -564,6 +565,31 @@ function StoryTab({
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
           />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Face types the art draws
+          <NativeSelect
+            aria-label="Face types the art draws"
+            value={draft.oneFace ?? ""}
+            onChange={(event) => {
+              const oneFace = event.target.value as StoryDraft["oneFace"] | "";
+              change((d) => {
+                const next = { ...d };
+                delete next.oneFace;
+                return oneFace ? { ...next, oneFace } : next;
+              });
+            }}
+          >
+            <option value="">Round and oval (each character&apos;s own)</option>
+            {faceOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label.replace(/ face$/, "")} only
+              </option>
+            ))}
+          </NativeSelect>
+          <span className="text-xs font-normal text-muted-foreground">
+            One face type draws every character with it, whatever their own, and needs bases and parts for it only.
+          </span>
         </label>
       </section>
 
@@ -1161,7 +1187,7 @@ function PageTab({
         </p>
       </section>
 
-      <ArtImport files={files} page={page} slots={draft.characterSlots} onApply={setPage} />
+      <ArtImport files={files} page={page} slots={draft.characterSlots} oneFace={draft.oneFace} onApply={setPage} />
 
       <section className="flex flex-col gap-3" aria-label="Illustration layers">
         <h3 className="font-semibold">Illustration, bottom to top</h3>
@@ -1219,6 +1245,7 @@ function PageTab({
                   pageId={page.pageId}
                   figure={layer}
                   slots={draft.characterSlots}
+                  oneFace={draft.oneFace}
                   generation={generationFor(page.pageId, layer.slotId)}
                   onChange={(figure: FigureLayer) =>
                     setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))

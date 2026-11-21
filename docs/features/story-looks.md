@@ -42,3 +42,7 @@ and unchanged layers, not halos or wrong-looking art.
 - The first view of a combination recolours its layers on the server, so pages lag the selects by a second or more;
   the CLI waits for the layer URLs to change instead of sleeping.
 - Hairstyles, glasses, and facial hair aren't swept yet; a role's own age decides which parts it draws (D29).
+- A story whose art draws one face type (D55; the draft editor's "Face types the art draws") draws every character
+  with it: an oval-faced child in a round-only story gets the round base and parts, and the face is never offered as
+  unsupported there. It publishes with that face type's bases and parts only. Unit checks in `mise run check`
+  (`book-format.test.ts`) cover it; no seeded story sets it.
