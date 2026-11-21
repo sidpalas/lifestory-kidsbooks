@@ -46,7 +46,8 @@ export const ageOptions = [
 
 /**
  * Face types (D29): a facial structure the illustrator draws at every age, so a character keeps their face as they
- * grow. A story draws each face type, at every age it draws a role, as a base of its own.
+ * grow. A story draws each face type, at every age it draws a role, as a base of its own, unless its art draws one
+ * face type for everyone (`oneFace`, D55).
  */
 export const faceOptions = [
   { id: "face:round", label: "Round face" },

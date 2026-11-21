@@ -1,6 +1,13 @@
 // Composing a page's illustration for a cast (plan.md, "Composing pages"): which files to stack, where, and which
 // of them to recolour. Pure and browser-safe; the server turns the recolours into cached images (pages.ts).
-import type { CastMember, FigureLayer, Page, Palette, StoryManifest } from "../book-format/manifest.ts";
+import {
+  type CastMember,
+  drawnFace,
+  type FigureLayer,
+  type Page,
+  type Palette,
+  type StoryManifest,
+} from "../book-format/manifest.ts";
 import {
   drawnFeatures,
   figurePartAxes,
@@ -42,7 +49,8 @@ const within = ([bx0, by0, bx1, by1]: PlacedRect, [ax0, ay0, ax1, ay1]: PlacedRe
  * then the occluder (its skin recoloured too). Drawn at the figure's pinned age, else the look's own (D29); part
  * axes that don't exist at that age (a toddler's glasses) are left out, and so is a baby's hairstyle in a story
  * drawn before babies had one (D51). A figure with `flip` is all mirrored within its box (D44).
- * Story pages and the picker's portrait both compose with this.
+ * Story pages and the picker's portrait both compose with this; a story's caller passes the look with its face
+ * type as the story draws it (`drawnFace`, D55).
  * An option the figure or palettes lack is a bug (callers check `unsupportedOptions` first), so it throws.
  */
 export const composeFigure = (
@@ -116,5 +124,7 @@ export const composeIllustration = (
   page.illustration.layers.flatMap((layer): ReadonlyArray<LayerSpec> => {
     if (layer.kind === "art") return [{ asset: layer.asset, rect: FULL, recolour: [] }];
     const member = cast[layer.slotId];
-    return member ? composeFigure(manifest.palettes, manifest.partOrder, layer, member.look) : [];
+    if (!member) return [];
+    const look = { ...member.look, face: drawnFace(manifest, member.look.face) };
+    return composeFigure(manifest.palettes, manifest.partOrder, layer, look);
   });

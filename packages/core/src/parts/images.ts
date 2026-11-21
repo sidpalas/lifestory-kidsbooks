@@ -5,12 +5,16 @@ import sharp, { type Sharp } from "sharp";
 
 import type { Palette, Rect } from "../book-format/manifest.ts";
 import { paletteAt, rasterize, recolour } from "../looks/recolour.ts";
+import type { Region } from "./contract.ts";
 import {
   alphaBounds,
+  components,
   coverOutline,
   crownGap,
   cutOutPart,
   type CutOutMetrics,
+  enclosed,
+  erode,
   findShift,
   neutralize,
   paperSilhouette,
@@ -188,9 +192,20 @@ export const cutOutLayer = async (
 /**
  * How to cut a part out. `neutral`: the part's colours become the neutral tones its palette recolours (hair, facial
  * hair), else it keeps the colours drawn (glasses). `figure`: the base as stored, whose alpha is the figure's
- * silhouette; a neutral part reaches it where it stops just short (coverOutline).
+ * silhouette; a neutral part reaches it where it stops just short (coverOutline). `region`: the figure's drawn region
+ * (D56), outside which every layer is clear.
  */
-export type CutOutOptions = { readonly neutral: true; readonly figure: Uint8Array } | { readonly neutral: false };
+export type CutOutOptions = ({ readonly neutral: true; readonly figure: Uint8Array } | { readonly neutral: false }) & {
+  readonly region?: Region | null;
+};
+
+/** Coverage (0..1) of `region` (thousandths) at `width` × `height`, antialiased at its edge. */
+export const regionCoverage = async (region: Region, width: number, height: number) => {
+  const points = region.map(([x, y]) => `${(x * width) / 1000},${(y * height) / 1000}`).join(" ");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><polygon points="${points}" fill="#fff"/></svg>`;
+  const alpha = await sharp(Buffer.from(svg)).ensureAlpha().extractChannel(3).raw().toBuffer();
+  return Float32Array.from(alpha, (a) => a / 255);
+};
 
 /**
  * The figure's coverage (0..1) at `width` × `height`, the silhouette coverOutline extends hair to: the base's own
@@ -210,6 +225,39 @@ export const figureCoverage = async (
     height,
     data: Float32Array.from({ length: width * height * 3 }, (_, i) => rgba[Math.floor(i / 3) * 4 + (i % 3)]! / 255),
   });
+};
+
+/**
+ * Removes from a hair layer (in place) the pieces the model redrew in the face: a piece lying wholly inside the head's
+ * skin (its holes, such as an open mouth, included) and mostly over the base's dark features, the eyes, brows and
+ * mouth, is the model's own copy of them, which would otherwise take the hair colour (Dream Adventure p01, 2026-11-20).
+ * Hair over plain scalp (curls drawn on a bald head seen from behind) is lighter underneath and stays.
+ */
+const dropRedrawnFeatures = (alpha: Float32Array, base: Rgb, mask: Uint8Array, width: number, height: number) => {
+  const skin = Uint8Array.from(mask, (m) => (m >= 128 ? 1 : 0));
+  const holes = enclosed(skin, width, height);
+  const inside = erode(
+    Uint8Array.from(skin, (s, p) => (s || holes[p] ? 1 : 0)),
+    width,
+    height,
+    Math.max(2, Math.round((3 * Math.max(width, height)) / 1024)),
+  );
+  const tone = (p: number) => (base.data[p * 3]! + base.data[p * 3 + 1]! + base.data[p * 3 + 2]!) / 3;
+  const tones = skin
+    .reduce<Array<number>>((all, s, p) => (s ? (all.push(tone(p)), all) : all), [])
+    .toSorted((a, b) => a - b);
+  if (tones.length === 0) return;
+  const plain = tones[Math.floor(tones.length * 0.6)]!;
+  const pieces = components(
+    Uint8Array.from(alpha, (a) => (a > 0.05 ? 1 : 0)),
+    width,
+    height,
+  );
+  for (const piece of pieces) {
+    if (!piece.every((p) => inside[p])) continue;
+    const dark = piece.reduce((n, p) => n + (tone(p) < plain * 0.8 ? 1 : 0), 0);
+    if (dark >= piece.length / 2) for (const p of piece) alpha[p] = 0;
+  }
 };
 
 /** A cut-out split by region into the part and any skin drawn in it (cutOutLayer). */
@@ -242,16 +290,19 @@ const splitLayers = async <M extends CutOutMetrics>(
   );
   const skinAlpha = options.neutral ? alpha.map((a, p) => (skin[p] ? a : 0)) : new Float32Array(alpha.length);
   const cut = alpha.map((a, p) => (skin[p] ? 0 : a));
+  if (options.neutral) dropRedrawnFeatures(cut, base, new Uint8Array(mask), width, height);
   // Hair reaches the head's outline, which the matte leaves out (coverOutline).
   const figure = options.neutral ? await figureCoverage(options.figure, width, height) : null;
   const outline = figure
     ? coverOutline(cut, colour, figure.coverage, new Uint8Array(mask), width, height, figure.ink)
     : null;
-  const partAlpha = outline?.alpha ?? cut;
+  const inRegion = options.region ? await regionCoverage(options.region, width, height) : null;
+  const clip = (layer: Float32Array) => (inRegion ? layer.map((a, p) => a * inRegion[p]!) : layer);
+  const partAlpha = clip(outline?.alpha ?? cut);
   const partColour = outline?.colour ?? colour;
   const layers = await Promise.all([
     encodeLayer("part", partAlpha, options.neutral ? neutralize(partColour, partAlpha) : colour, width, height),
-    encodeLayer("skin", skinAlpha, colour, width, height),
+    encodeLayer("skin", clip(skinAlpha), colour, width, height),
   ]);
   return {
     layers: layers.filter((layer): layer is PartLayer => layer !== null),

@@ -18,6 +18,7 @@ import {
   presetFrame,
   decodeStoryManifest,
   uncoveredOptions,
+  drawnFace,
   exampleCast,
   isVariableFont,
   manifestAssets,
@@ -51,9 +52,9 @@ import {
   sameAppearance,
 } from "./looks/vocabulary.ts";
 import { resolveIllustration } from "./pages.ts";
-import { manifestParts, type PartDecision, type PartRequest, type StoryPart } from "./parts/contract.ts";
+import { manifestParts, type PartDecision, type PartRequest, type Region, type StoryPart } from "./parts/contract.ts";
 import { byLightness, headTop } from "./parts/images.ts";
-import { getPart, listParts, requestParts, reviewPart, withApprovedParts } from "./parts/parts.ts";
+import { getPart, listParts, requestParts, reviewPart, setFigureRegion, withApprovedParts } from "./parts/parts.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
 import { withStoredAdditions } from "./stories.ts";
@@ -379,7 +380,8 @@ const draftPagePreview = (
     const member = cast[layer.slotId];
     if (!member) return [];
     try {
-      return composeFigure(draft.palettes, draft.partOrder, layer, looks[layer.slotId] ?? member.look);
+      const look = looks[layer.slotId] ?? member.look;
+      return composeFigure(draft.palettes, draft.partOrder, layer, { ...look, face: drawnFace(draft, look.face) });
     } catch {
       return [];
     }
@@ -558,6 +560,18 @@ export const requestDraftParts = Effect.fn("authoring.requestParts")(function* (
     user.id,
     requests.map((request) => ({ ...request, storyVersionId: draft.id })),
   );
+});
+
+/** Draws the parts of a figure on the saved draft within a region, or their zones with null (setFigureRegion, D56). */
+export const setDraftFigureRegion = Effect.fn("authoring.setRegion")(function* (
+  user: SessionUser,
+  storyId: string,
+  pageId: string,
+  slotId: string,
+  region: Region | null,
+) {
+  const { draft } = yield* draftOf(user, storyId);
+  return yield* setFigureRegion(user.id, draft.id, pageId, slotId, region);
 });
 
 /** The author's review of a generated part of the draft: approve or reject (reviewPart). */

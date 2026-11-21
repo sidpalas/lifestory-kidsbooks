@@ -7,6 +7,27 @@ import { Age, FaceOption, FeaturesOption, PartAxis } from "../looks/vocabulary.t
 export const PartStatus = Schema.Literals(["generating", "pending_review", "approved", "rejected", "failed"]);
 export type PartStatus = typeof PartStatus.Type;
 
+/**
+ * Where a figure's parts may appear (D56): a polygon the author draws on the base, [x, y] points in thousandths of
+ * the base. It can follow a helmet's opening or leave out an arm in front, which a zone's rectangle can't; every
+ * layer of a part is clipped to it.
+ */
+export const Region = Schema.Array(
+  Schema.Tuple([
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000 })),
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000 })),
+  ]),
+).check(Schema.isMinLength(3), Schema.isMaxLength(200));
+export type Region = typeof Region.Type;
+
+/** The region's bounding box, the zone a part with a region is cut out within. */
+export const regionBox = (region: Region): Rect => [
+  Math.min(...region.map(([x]) => x)),
+  Math.min(...region.map(([, y]) => y)),
+  Math.max(...region.map(([x]) => x)),
+  Math.max(...region.map(([, y]) => y)),
+];
+
 /** Generate one option for one appearance: the figure of `slotId` on `pageId`, drawn from its base for age and face. */
 export const PartRequest = Schema.Struct({
   storyVersionId: Schema.String,
@@ -20,6 +41,8 @@ export const PartRequest = Schema.Struct({
   option: Schema.String,
   /** Where the part may be, in thousandths of the base: the head zone, with room for long hair. */
   zone: Rect,
+  /** The figure's drawn region (D56); with one, the zone is its bounding box. */
+  region: Schema.optionalKey(Region),
   /** Another seed is another attempt at the same option; the same request with the same seed is the same part. */
   seed: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1_000_000 }))),
   /** The illustrator's guidance for the prompt, such as "two short braids, parted in the middle". */
@@ -40,6 +63,7 @@ export const StoryPart = Schema.Struct({
   option: Schema.String,
   seed: Schema.Int,
   zone: Rect,
+  region: Schema.NullOr(Region),
   note: Schema.NullOr(Schema.String),
   prompt: Schema.String,
   status: PartStatus,

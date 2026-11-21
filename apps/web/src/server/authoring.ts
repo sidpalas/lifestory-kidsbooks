@@ -18,6 +18,7 @@ import {
   requestDraftParts,
   reviewDraftPart,
   publishDraft,
+  setDraftFigureRegion,
   revokeAuthor,
   saveDraft,
   setStoryArchived,
@@ -41,6 +42,7 @@ import {
   NotFound,
   PartDecision,
   PartRequest,
+  Region,
   ResultSchema,
   StoryDraft,
   StoryNotPublishable,
@@ -302,6 +304,27 @@ export const reviewDraftPartFn = createServerFn({ method: "POST" })
       DraftPartResult,
       currentUser.pipe(
         Effect.flatMap((user) => reviewDraftPart(user, data.storyId, data.partId, data.decision, data.reason)),
+      ),
+    ),
+  );
+
+/** Draws a figure's parts within a region, or their zones with null, and cuts them out again (D56). */
+export const setDraftFigureRegionFn = createServerFn({ method: "POST" })
+  .validator(
+    Schema.toStandardSchemaV1(
+      Schema.Struct({
+        storyId: Schema.String,
+        pageId: Schema.String,
+        slotId: Schema.String,
+        region: Schema.NullOr(Region),
+      }),
+    ),
+  )
+  .handler(({ data }) =>
+    runEffect(
+      DraftPartsRequestResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => setDraftFigureRegion(user, data.storyId, data.pageId, data.slotId, data.region)),
       ),
     ),
   );

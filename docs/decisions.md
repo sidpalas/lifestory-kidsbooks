@@ -214,7 +214,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     anyone, and the character `ages` it accepts (D29; format 1 had one `age`, `child` or `adult`). The plan's `pronounSet: "from-character"` and
     free-text `defaults` are dropped: pronouns and look always come from whoever fills the slot.
   - **Characters are figures composed from parts (D26).** A `figure` layer has a `box` on the page and, for each
-    face type at each age it draws (D29), a base drawn bald in neutral greys with a `skinMask` covering every visible bit of skin,
+    face type at each age it draws (D29; only the story's `oneFace` when set, D55), a base drawn bald in neutral greys with a `skinMask` covering every visible bit of skin,
     an optional `browMask`, and an optional `occluder` with its own skin mask. Its `parts` are cropped drawings
     placed `at` a rectangle inside the box, one per option, age and face, each naming the palette it takes and whether
     it is approved. `showsHead: false` marks a figure with only a hand in frame (no parts, skin still recoloured).
@@ -299,7 +299,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   and any member can fill a role in any story. A look holds option IDs from one shared vocabulary (plan.md, "Looks
   and the picker"). **Every story supports every option except age (Sid, 2026-11-19):** a role accepts some ages
   (D29), and covers every other option at each of them; falling back to a default would draw someone who doesn't look like the
-  family member. Publishing checks this. When an option added later is missing from an older published version, the
+  family member. Publishing checks this. A story whose art draws one face type needs only that one, and draws everyone
+  with it (D55, 2026-11-20). When an option added later is missing from an older published version, the
   book either disables that story for the character or keeps a story-specific override with a supported option.
 - **Why:** no children's photos to store or protect, and nothing near the license's biometric and digital-replica
   limits; a human reviews every image before families see it (the §2e content-review condition); consistent, print-
@@ -384,7 +385,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     closed opaque mass are opaque.
 - **Hair is asked for in dark brown** and turned into neutral tones (median 0.40, where the hair palettes put the
   colour), so it stands out from every skin and still takes any hair colour.
-- **The zone is per request,** not in the format (D26's head zone): the authoring UI asks the illustrator for it.
+- **The zone is per request,** not in the format (D26's head zone): the authoring UI asks the illustrator for it, and since D56 a drawn region too.
 - **Open:** pencil textures weren't tried; a real illustrator's base (D30's "Watch") is still the test that counts;
   the portrait base's own extraction artefacts (D28) show up as small changes the model "repairs"; figures are
   addressed by page and role (`slotId`), so a page with the same role twice needs another key.
@@ -499,7 +500,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   lose likeness. Faces become **face types** (`face:round`, `face:oval`) drawn at every age, so a character keeps their
   face as they grow.
 - **Roles and figures:** a slot declares the `ages` it accepts (the hero of the sample takes young and older
-  children; its grown-up takes adults and older adults), and a figure has a base and parts per face type at each.
+  children; its grown-up takes adults and older adults), and a figure has a base and parts per face type at each
+  (only the story's one face type when its art draws one, D55).
   A figure may pin an `age`, so a role can grow up during a story (a newborn on page 1, a toddler on page 6); it then
   draws that age whatever the character's own. `partAxesAt(age)` says which parts an age has: a baby none, a toddler
   hair only. An override never sets an age. A character whose age a role doesn't accept leaves that role's pictures
@@ -862,6 +864,50 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Not now:** rotation (an optional frame field later, without a new format version; pdftotext splits rotated
   words, so the word check would measure frames unrotated), inline bold and italic, per-frame text style overrides.
 - **Reopen if:** a real story needs text flowing from one frame into the next, or text along a path.
+
+### D55. A story's art may draw one face type for every character — Decided (Sid, 2026-11-20) / Made
+
+- **Why (Sid):** some art styles don't tell round from oval. Of Dream Adventure, whose art draws round faces only:
+  "for this illustration style I don't know that we need round vs oval (it is inherently round). I think we can use
+  1 style regardless of what the character has set", and "There's likely going to be art styles where we don't need
+  to split between round and oval." This narrows D26's rule (Sid, 2026-11-19) that every story supports every option
+  except age, and D29's base and parts per face type at each age: a story may declare that its art has one face type.
+- **How:** the manifest's optional `oneFace` (`face:round` or `face:oval`). When set, every character is drawn with
+  that face type whatever their look's own; `drawnFace` maps a look's face through the manifest, and coverage
+  (`vocabularyGaps`, `uncoveredOptions`), `unsupportedOptions`/`castLook`, page composition and the draft preview all
+  use it. Publishing then needs bases and parts for that face type only; bases or parts of the other face type are
+  allowed and never drawn. A book never reports `face` unsupported or asks for a face stand-in in such a story. The
+  look itself is unchanged, so the same character keeps their face type in stories that draw both. The draft editor's
+  Story tab sets it ("Face types the art draws"), and the art import starts with that face type.
+- **No new format version (Made; Sid can veto):** absent means each character's own face type, so every stored
+  version decodes, publishes and prints exactly as before, and nothing upgrades. A format version marks a change
+  stored manifests must be upgraded through (D29's format 2, D54's format 3); an optional key needs none, as D54
+  already planned for frame rotation.
+- **Reopen if:** an art style draws one face type at some ages and both at others (then per slot or per age), or
+  parents notice that their oval-faced child looks the same as a round-faced one in such a story and mind.
+
+### D56. The author draws where a figure's parts may appear; saving re-cuts them from their edits — Decided (Sid, 2026-11-20) / Made
+
+- **Why (Sid):** "I wonder if it would be useful to create an interface that would allow me/the author to define edges
+  around the generated parts to assist in masking/cutting them", then "Let's do it!". This meets D30's "Reopen if":
+  most of Dream Adventure's remaining rejects were cut-out defects, not drawing. Hair outside a helmet (p09, p20), on
+  a raised arm (p11) or above a hat, which a rectangular zone can't leave out. Each took a hand-tuned zone or a paid
+  redo.
+- **How:** the figure editor's "Hair region" draws a polygon over the base (click to add a point, or on an edge to
+  insert one; drag to move; double-click to remove; zoom; a part's current cut shown tinted over the base).
+  `story_part.region` (migration 0018, a nullable column) stores it in thousandths of the base, and `splitLayers`
+  clears every layer outside it, the hair and any skin the model drew, after the cut-out. A request with a region
+  uses its bounding box as the zone. "Save region" (`setFigureRegion`) records it on the part each cell shows (the
+  approved one, else the newest with an edit; other attempts keep their review) and spawns `part.recut`, which cuts
+  that part out again from the edit it already has: no generation, no spend. Re-cut parts wait for review again.
+- **Made (Sid can veto):** the region is per request like D30's zone, not in the format, so the manifest and every
+  stored version are unchanged. Re-cut layers and review images are named after the region
+  (`part-<hash>.png`), because a version's asset paths stand for their contents (the recolour cache, `pages.ts`).
+  One region per figure, drawn on its first base, applies to the figure's bases at every age.
+- **Not yet:** "never hair" strokes inside the region (rings the model redrew around p09's eyes), and a per-part
+  eraser. The region keeps what's inside it as cut.
+- **Reopen if:** bases of one figure at different ages put the head in different places (then a region per base),
+  or authors still reject parts for defects inside the region (then the strokes above).
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 

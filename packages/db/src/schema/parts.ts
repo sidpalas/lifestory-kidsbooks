@@ -31,6 +31,11 @@ export const storyPart = pgTable(
     seed: integer("seed").notNull(),
     /** Where the part may be, [x0, y0, x1, y1] in thousandths of the base (the head zone). */
     zone: jsonb("zone").notNull(),
+    /**
+     * The figure's drawn region (D56), [[x, y], ...] in thousandths of the base: every layer is clipped to it, and the
+     * zone is its bounding box. Null for a part cut out within its zone alone.
+     */
+    region: jsonb("region"),
     /** The illustrator's guidance added to the prompt, such as "two short braids". */
     note: text("note"),
     prompt: text("prompt").notNull(),

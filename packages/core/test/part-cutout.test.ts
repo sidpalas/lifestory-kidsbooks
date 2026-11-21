@@ -1,10 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
 import partsByBase from "../src/looks/portrait/parts.json" with { type: "json" };
 import { rasterize } from "../src/looks/recolour.ts";
 import { SPARSE_HAIR } from "../src/looks/vocabulary.ts";
+import type { Region } from "../src/parts/contract.ts";
 import {
   coverOutline,
   CROWN_GAP_LIMIT,
@@ -14,7 +16,7 @@ import {
   type PixelRect,
   type Rgb,
 } from "../src/parts/cutout.ts";
-import { figureCoverage } from "../src/parts/images.ts";
+import { cutOutLayer, figureCoverage } from "../src/parts/images.ts";
 
 // A synthetic edit with a known answer: a textured base B with a face, and a part with known alpha and colour (a
 // hair cap with soft edges, thin opaque glasses frames, half-transparent wisps). The "model" output is
@@ -168,6 +170,38 @@ describe("cutOutPart", () => {
   it("finds nothing outside the zone even where the picture changed", () => {
     const outside = pixels.filter((p) => !inZone(p) && result.alpha[p]! > 0);
     expect(outside).toEqual([]);
+  });
+});
+
+const grain = (x: number, y: number, k: number) => 0.004 * Math.sin(x * 12.9898 * k + y * 78.233);
+
+describe("cutOutPart with a zone around the whole figure", () => {
+  // Only a band of paper lies outside the zone (a tiled figure whose zone takes in all of it), its grain different in
+  // the edit: no gain can be fitted to one tone, and fitting one anyway flattened the edit, so the whole figure came out.
+  const truth = scene();
+  const wide: PixelRect = [12, 12, W - 12, H - 12];
+  for (const [image, k] of [
+    [truth.base, 1],
+    [truth.edit, 2],
+  ] as const)
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (x < 14 || x >= W - 14 || y < 14 || y >= H - 14)
+          image.data.set([0.95 + grain(x, y, k), 0.93 + grain(x, y, k), 0.88 + grain(x, y, k)], (y * W + x) * 3);
+  const result = cutOutPart(truth.base, truth.edit, wide);
+  const pixels = [...Array(W * H).keys()].filter((p) => {
+    const x = p % W,
+      y = Math.floor(p / W);
+    return x >= 14 && x < W - 14 && y >= 14 && y < H - 14;
+  });
+
+  it("cuts out the part, not the figure", () => {
+    for (const [gain] of result.metrics.colourFit) expect(gain).toBeGreaterThan(0.5);
+    const stray = pixels.filter(
+      (p) => truth.alpha[p] === 0 && !truth.mouth[p] && !truth.eyes[p] && result.alpha[p]! > 0.1,
+    );
+    expect(stray.length).toBeLessThan(pixels.length * 0.01);
+    expect(mean(pixels.filter((p) => truth.alpha[p] === 1).map((p) => result.alpha[p]!))).toBeGreaterThan(0.9);
   });
 });
 
@@ -529,4 +563,58 @@ describe("the picker's portrait hair", () => {
     expect(parts.filter(({ gap }) => gap > CROWN_GAP_LIMIT).map(({ part, gap }) => `${part}: ${gap}`)).toEqual([]);
     expect(parts.filter(({ covered }) => covered > 0).map(({ part, covered }) => `${part}: ${covered}`)).toEqual([]);
   }, 60_000);
+});
+
+// The drawn region test (D56): a head, and a hair cap spreading to both sides of it.
+const inHead = (x: number, y: number) => Math.hypot(x - 100, y - 115) < 50;
+const inHair = (x: number, y: number) => y > 40 && y < 115 && Math.hypot(x - 100, y - 105) < 65;
+const ground = (x: number, y: number) =>
+  [Math.round(150 + 40 * Math.sin(x / 6) * Math.cos(y / 9)), 170, 210, 255] as const;
+
+describe("cutOutLayer within a drawn region (D56)", () => {
+  // A head on a textured background; the edit adds a hair cap that spreads to both sides of the head. The region
+  // keeps the left half of the base, as one drawn to leave out a helmet's shell or an arm would.
+  const S = 200;
+  const png = async (pixel: (x: number, y: number) => readonly [number, number, number, number]) => {
+    const data = Buffer.alloc(S * S * 4);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) data.set(pixel(x, y), (y * S + x) * 4);
+    return new Uint8Array(
+      await sharp(data, { raw: { width: S, height: S, channels: 4 } })
+        .png()
+        .toBuffer(),
+    );
+  };
+  const skin = [208, 170, 148, 255] as const;
+
+  const cut = async (region: Region | null) => {
+    const [base, edit, skinMask, figure] = await Promise.all([
+      png((x, y) => (inHead(x, y) ? skin : ground(x, y))),
+      png((x, y) => (inHair(x, y) ? [70, 45, 30, 255] : inHead(x, y) ? skin : ground(x, y))),
+      png((x, y) => (inHead(x, y) ? [255, 255, 255, 255] : [0, 0, 0, 0])),
+      png((x, y) => (inHead(x, y) ? skin : [0, 0, 0, 0])),
+    ]);
+    const { layers } = await cutOutLayer(
+      { base, width: S, height: S, padding: { left: 0, top: 0, paddedWidth: S, paddedHeight: S } },
+      edit,
+      skinMask,
+      [0, 0, 1000, 1000],
+      { neutral: true, figure, region },
+    );
+    return layers.find((layer) => layer.region === "part")!;
+  };
+
+  it("keeps the part inside the region, and without one cuts all of it", async () => {
+    const whole = await cut(null);
+    expect(whole.at[0]).toBeLessThan(250);
+    expect(whole.at[2]).toBeGreaterThan(750);
+    const clipped = await cut([
+      [0, 0],
+      [500, 0],
+      [500, 1000],
+      [0, 1000],
+    ]);
+    expect(clipped.at[0]).toBeLessThan(250);
+    // The region's edge is at x = 100 px; the crop keeps alphaBounds' 2 px margin past the last pixel.
+    expect(clipped.at[2]).toBeLessThanOrEqual(515);
+  });
 });

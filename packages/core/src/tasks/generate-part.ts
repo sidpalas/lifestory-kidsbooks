@@ -11,6 +11,7 @@ import { Database } from "../database.ts";
 import { generateImage } from "../generations.ts";
 import { defineTask, step } from "../jobs.ts";
 import { type Age, DEFAULT_FEATURES, type FeaturesOption, sameAppearance } from "../looks/vocabulary.ts";
+import type { Region } from "../parts/contract.ts";
 import {
   byLightness,
   composeReview,
@@ -31,6 +32,7 @@ import {
   partAssets,
   partPrompt,
   PartTaskParams,
+  RecutTaskParams,
   type StoredLayer,
   tiledPrompt,
 } from "../parts/parts.ts";
@@ -70,7 +72,15 @@ const loadPart = Effect.fn("parts.load")(function* (partId: string) {
       Effect.orDie,
     );
   const put = (asset: string, body: Uint8Array) => storage.put(key(asset), body, "image/png").pipe(Effect.orDie);
-  return { ...row, decoded: manifest, ...appearance, assets: partAssets(partId), key, read, put };
+  return {
+    ...row,
+    decoded: manifest,
+    ...appearance,
+    assets: partAssets(partId, row.part.region as Region | null),
+    key,
+    read,
+    put,
+  };
 });
 type LoadedPart = Effect.Success<ReturnType<typeof loadPart>>;
 
@@ -180,9 +190,14 @@ const setPart = (partId: string, patch: Partial<typeof schema.storyPart.$inferIn
     Effect.as(true),
   );
 
-/** Glasses keep their colours; hair and facial hair are recoloured and reach the figure's silhouette. */
-const cutOutOptions = (part: LoadedPart, figure: Uint8Array): CutOutOptions =>
-  part.part.axis === "glasses" ? { neutral: false } : { neutral: true, figure };
+/**
+ * Glasses keep their colours; hair and facial hair are recoloured and reach the figure's silhouette. All stay inside
+ * the figure's drawn region, if it has one (D56).
+ */
+const cutOutOptions = (part: LoadedPart, figure: Uint8Array): CutOutOptions => ({
+  ...(part.part.axis === "glasses" ? { neutral: false as const } : { neutral: true as const, figure }),
+  region: part.part.region as Region | null,
+});
 
 /** Where a part's edit came from: its own edit, or one tile of a tiled edit (D44). */
 interface Edit {
@@ -473,6 +488,73 @@ const generateTiled = (ctx: TaskContext, partIds: ReadonlyArray<string>) =>
     }
     return results;
   });
+
+/**
+ * Cuts a part out again from the edit it already has (setFigureRegion, D56), as `cut-out` and the steps after it do
+ * in generatePart: no new generation. The base's geometry comes from preparing it again (deterministic), the tile's
+ * place in a tiled edit from the metrics its first cut recorded.
+ */
+export const recutPart = defineTask({
+  name: "part.recut",
+  params: RecutTaskParams,
+  run: ({ partId }, ctx) =>
+    Effect.gen(function* () {
+      const found = yield* step(
+        ctx,
+        "find-edit",
+        Effect.gen(function* () {
+          const part = yield* loadPart(partId);
+          const [generation] = part.part.generationId
+            ? yield* Database.query((db) =>
+                db.select().from(schema.generation).where(eq(schema.generation.id, part.part.generationId!)),
+              )
+            : [];
+          if (!generation?.objectKey) return null;
+          const base = yield* part.read(part.base.asset);
+          const { base: _, input: __, ...geometry } = yield* Effect.promise(() => prepareBase(base));
+          const metrics = (part.part.metrics ?? {}) as { tile?: Edit["tile"]; reference?: string | null };
+          return {
+            geometry,
+            edit: {
+              key: generation.objectKey,
+              generationId: generation.id,
+              ...(metrics.tile ? { tile: metrics.tile } : {}),
+              reference: metrics.reference ?? null,
+            } satisfies Edit,
+          };
+        }),
+      );
+      if (!found) {
+        yield* step(
+          ctx,
+          "failed",
+          setPart(partId, { status: "failed", error: "the part has no edit to cut out again" }),
+        );
+        return [{ partId, status: "failed" as const }];
+      }
+      const { geometry, edit } = found;
+      return [
+        yield* finishPart(ctx, partId, "", geometry, edit, (part, base, skinMask, figure, output) =>
+          edit.tile
+            ? cutOutTile(
+                { base, width: geometry.width, height: geometry.height },
+                output,
+                edit.tile,
+                skinMask,
+                part.part.zone as Rect,
+                cutOutOptions(part, figure),
+              )
+            : cutOutLayer(
+                { base, width: geometry.width, height: geometry.height, padding: geometry.padding },
+                output,
+                skinMask,
+                part.part.zone as Rect,
+                cutOutOptions(part, figure),
+              ),
+        ),
+      ];
+    }),
+});
 
 /**
  * Generates parts for appearances (docs/plan.md, "Authoring-time part generation"; D30, D44), in steps a rerun

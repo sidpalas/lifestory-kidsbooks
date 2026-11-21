@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 // reject them, and put the approved ones into the draft version's manifest (withApprovedParts). The `part.generate`
 // task (tasks/generate-part.ts) does the generating.
 import { createDb, schema } from "@lifestory/db";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import { decodeStoryVersion, storyAssetKey } from "../book-format/index.ts";
@@ -28,22 +28,37 @@ import {
   type PartAxis,
   sameAppearance,
 } from "../looks/vocabulary.ts";
-import { manifestParts, type PartDecision, type PartRequest, type PartStatus, type StoryPart } from "./contract.ts";
+import {
+  manifestParts,
+  type PartDecision,
+  type PartRequest,
+  type PartStatus,
+  type Region,
+  regionBox,
+  type StoryPart,
+} from "./contract.ts";
 
-/** A part's files, relative to its story version's folder. */
-export const partAssets = (partId: string) => ({
-  base: `parts/${partId}/base.png`,
-  input: `parts/${partId}/input.png`,
-  /** An approved drawing of the option, for the edit to copy (referenceFor in tasks/generate-part.ts). */
-  reference: `parts/${partId}/reference.png`,
-  /** Without extension: the provider appends its own. */
-  edit: `parts/${partId}/edit`,
-  part: `parts/${partId}/part.png`,
-  skin: `parts/${partId}/skin.png`,
-  light: `parts/${partId}/light.png`,
-  dark: `parts/${partId}/dark.png`,
-  sheet: `parts/${partId}/sheet.png`,
-});
+/**
+ * A part's files, relative to its story version's folder. A part cut within a region (D56) names its cut-out and review
+ * images after the region, so cutting it again in another region writes new files: a version's asset paths stand
+ * for their contents (pages.ts caches recoloured layers by path).
+ */
+export const partAssets = (partId: string, region?: Region | null) => {
+  const cut = region ? `-${createHash("sha256").update(JSON.stringify(region)).digest("hex").slice(0, 12)}` : "";
+  return {
+    base: `parts/${partId}/base.png`,
+    input: `parts/${partId}/input.png`,
+    /** An approved drawing of the option, for the edit to copy (referenceFor in tasks/generate-part.ts). */
+    reference: `parts/${partId}/reference.png`,
+    /** Without extension: the provider appends its own. */
+    edit: `parts/${partId}/edit`,
+    part: `parts/${partId}/part${cut}.png`,
+    skin: `parts/${partId}/skin${cut}.png`,
+    light: `parts/${partId}/light${cut}.png`,
+    dark: `parts/${partId}/dark${cut}.png`,
+    sheet: `parts/${partId}/sheet${cut}.png`,
+  };
+};
 
 /**
  * The ID of a request: the same appearance, option, zone, note, and seed always name the same part, and changing any
@@ -63,6 +78,7 @@ export const partIdFor = (request: PartRequest) => {
     request.seed ?? 1,
     // Only when set, so parts requested before features existed keep their IDs.
     ...(request.features ? [request.features] : []),
+    ...(request.region ? [{ region: request.region }] : []),
   ]);
   return `part_${createHash("sha256").update(key).digest("hex").slice(0, 24)}`;
 };
@@ -172,7 +188,7 @@ const partView = (
   generation: { provider: string; objectKey: string; costUsd: number | null } | null,
 ): StoryPart => {
   const key = (asset: string | null) => (asset ? storyAssetKey(storyId, version, asset) : null);
-  const files = partAssets(row.id);
+  const files = partAssets(row.id, row.region as Region | null);
   const ready = row.status === "pending_review" || row.status === "approved" || row.status === "rejected";
   return {
     id: row.id,
@@ -186,6 +202,7 @@ const partView = (
     option: row.option,
     seed: row.seed,
     zone: row.zone as Rect,
+    region: (row.region as Region | null) ?? null,
     note: row.note,
     prompt: row.prompt,
     status: row.status,
@@ -294,6 +311,8 @@ export const requestParts = Effect.fn("parts.request")(function* (
 ) {
   const versions = new Set(requests.map((request) => request.storyVersionId));
   if (versions.size !== 1) return yield* new InvalidInput({ message: "request parts of one story version at a time" });
+  // A region's bounding box is its zone.
+  requests = requests.map((request) => (request.region ? { ...request, zone: regionBox(request.region) } : request));
   const version = yield* authoredVersion(userId, requests[0]!.storyVersionId);
   if (version.publishedAt)
     return yield* new InvalidInput({ message: "this version is published; generate parts for a draft" });
@@ -362,6 +381,7 @@ export const requestParts = Effect.fn("parts.request")(function* (
             option: request.option,
             seed: request.seed ?? 1,
             zone: request.zone,
+            region: request.region ?? null,
             note: request.note ?? null,
             prompt: partPrompt(request.age, request.option, request.note),
             requestedBy: userId,
@@ -398,6 +418,88 @@ export const requestParts = Effect.fn("parts.request")(function* (
     }
   });
   return yield* Effect.forEach(requests, (request) => getPart(userId, partIdFor(request)));
+});
+
+/** `part.recut`'s params: one part to cut out again from its edit (setFigureRegion). */
+export const RecutTaskParams = Schema.Struct({ partId: Schema.String });
+
+/**
+ * Draws a figure's parts within `region` (D56), or within their zones alone with null. For each option and
+ * appearance of the figure it takes the part its cell shows (the approved one, else the newest with an edit and not
+ * generating; other attempts keep their review), records the region on it, and spawns `part.recut`, which cuts it
+ * out again from that edit: no new generation, so no spend. The parts are generating until then, and wait for review
+ * again after. Fails with NotFound, Forbidden (not the author), or InvalidInput (a published version, a region too
+ * small).
+ */
+export const setFigureRegion = Effect.fn("parts.setRegion")(function* (
+  userId: string,
+  storyVersionId: string,
+  pageId: string,
+  slotId: string,
+  region: Region | null,
+) {
+  const version = yield* authoredVersion(userId, storyVersionId);
+  if (version.publishedAt)
+    return yield* new InvalidInput({ message: "this version is published; draw regions on a draft" });
+  if (region) {
+    const [x0, y0, x1, y1] = regionBox(region);
+    if ((x1 - x0) * (y1 - y0) < 100 * 100)
+      return yield* new InvalidInput({ message: "the region is too small to hold a part" });
+  }
+  // Parts with an edit to cut, as the author sees them: one whose task ended without writing it reads as failed.
+  const rows = yield* withEndedTasks(
+    (yield* Database.query((db) =>
+      db
+        .select({ part: schema.storyPart })
+        .from(schema.storyPart)
+        .innerJoin(schema.generation, eq(schema.generation.id, schema.storyPart.generationId))
+        .where(
+          and(
+            eq(schema.storyPart.storyVersionId, storyVersionId),
+            eq(schema.storyPart.pageId, pageId),
+            eq(schema.storyPart.slotId, slotId),
+            isNotNull(schema.generation.objectKey),
+          ),
+        )
+        .orderBy(asc(schema.storyPart.createdAt), asc(schema.storyPart.id)),
+    )).map((row) => row.part),
+  );
+  const shown = [
+    ...Map.groupBy(
+      rows.filter((row) => row.status !== "generating"),
+      (row) => JSON.stringify([row.age, row.face, row.features, row.axis, row.option]),
+    ).values(),
+  ].map((cell) => cell.findLast((row) => row.status === "approved") ?? cell.at(-1)!);
+  const { pool } = yield* Database;
+  const jobs = yield* Jobs;
+  yield* Effect.promise(async () => {
+    const connection = await pool.connect();
+    try {
+      await connection.query("BEGIN");
+      const db = createDb(connection);
+      const client = jobs.client.bindToConnection(connection);
+      for (const row of shown) {
+        const { taskID } = await client.spawn("part.recut", { partId: row.id }, { queue: Jobs.queue });
+        await db
+          .update(schema.storyPart)
+          .set({
+            region,
+            zone: region ? regionBox(region) : row.zone,
+            status: "generating",
+            error: null,
+            taskId: taskID,
+          })
+          .where(eq(schema.storyPart.id, row.id));
+      }
+      await connection.query("COMMIT");
+    } catch (error) {
+      await connection.query("ROLLBACK");
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+  return yield* Effect.forEach(shown, (row) => getPart(userId, row.id));
 });
 
 /**

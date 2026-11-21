@@ -22,6 +22,8 @@ import {
   partAxesAt,
   type PartDecision,
   type Rect,
+  type Region,
+  regionBox,
   type StoryPart,
 } from "@lifestory/core/contracts";
 import { useRef, useState } from "react";
@@ -30,6 +32,7 @@ import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
 
 import { type DraftFiles, draftFileUrl, RectFields, UploadField } from "./fields";
+import { type Point, RegionEditor } from "./region-editor";
 
 const faceLabel = (face: string) => faceOptions.find((option) => option.id === face)?.label.toLowerCase() ?? face;
 
@@ -39,9 +42,11 @@ interface Appearance {
   readonly face: FigureBase["face"];
   readonly features?: FeaturesOption;
 }
-const appearancesAt = (ages: ReadonlyArray<Age>): ReadonlyArray<Appearance> =>
+type Face = FigureBase["face"];
+/** With the story's one face type (D55), only that face's drawings. */
+const appearancesAt = (ages: ReadonlyArray<Age>, oneFace: Face | undefined): ReadonlyArray<Appearance> =>
   ages.flatMap((age) =>
-    faceOptions.flatMap(({ id: face }) =>
+    (oneFace ? [oneFace] : faceOptions.map(({ id }) => id)).flatMap((face) =>
       hasFeatures(age) ? featuresOptions.map(({ id: features }) => ({ age, face, features })) : [{ age, face }],
     ),
   );
@@ -69,9 +74,12 @@ export interface Generation {
       axis: Part["axis"];
       option: string;
       zone: Rect;
+      region?: Region;
       seed: number;
     }>,
   ) => void;
+  /** Draws this figure's parts within a region, or their zones with null, cutting the generated ones out again (D56). */
+  readonly setRegion: (region: Region | null) => void;
   readonly review: (partId: string, decision: PartDecision) => void;
 }
 
@@ -80,6 +88,7 @@ export function FigureEditor({
   pageId,
   figure,
   slots,
+  oneFace,
   generation,
   onChange,
 }: {
@@ -87,6 +96,8 @@ export function FigureEditor({
   pageId: string;
   figure: FigureLayer;
   slots: ReadonlyArray<CharacterSlot>;
+  /** The story's one face type (D55), if its art draws only one. */
+  oneFace?: Face | undefined;
   generation: Generation;
   onChange: (figure: FigureLayer) => void;
 }) {
@@ -156,7 +167,15 @@ export function FigureEditor({
       </div>
       <RectFields label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
 
-      <BasesGrid files={files} folder={folder} role={role} figure={figure} ages={ages} onChange={onChange} />
+      <BasesGrid
+        files={files}
+        folder={folder}
+        role={role}
+        figure={figure}
+        ages={ages}
+        oneFace={oneFace}
+        onChange={onChange}
+      />
       {figure.showsHead !== false && (
         <PartsGrid
           files={files}
@@ -164,6 +183,7 @@ export function FigureEditor({
           role={role}
           figure={figure}
           ages={ages}
+          oneFace={oneFace}
           generation={generation}
           onChange={onChange}
         />
@@ -178,6 +198,7 @@ function BasesGrid({
   role,
   figure,
   ages,
+  oneFace,
   onChange,
 }: {
   files: DraftFiles;
@@ -185,6 +206,7 @@ function BasesGrid({
   role: string;
   figure: FigureLayer;
   ages: ReadonlyArray<Age>;
+  oneFace: Face | undefined;
   onChange: (figure: FigureLayer) => void;
 }) {
   // A base needs its drawing and its skin mask; whichever arrives first waits here for the other. The ref holds the
@@ -220,7 +242,7 @@ function BasesGrid({
         tone); the brow mask takes the hair colour.
       </p>
       <ul className="grid gap-2 md:grid-cols-2">
-        {appearancesAt(ages).map((appearance) => {
+        {appearancesAt(ages, oneFace).map((appearance) => {
           const base = figure.bases.find((candidate) => draws(candidate, appearance));
           const waiting = pending[appearanceKey(appearance)];
           const at = appearanceLabel(appearance);
@@ -296,6 +318,7 @@ function PartsGrid({
   role,
   figure,
   ages,
+  oneFace,
   generation,
   onChange,
 }: {
@@ -304,13 +327,18 @@ function PartsGrid({
   role: string;
   figure: FigureLayer;
   ages: ReadonlyArray<Age>;
+  oneFace: Face | undefined;
   generation: Generation;
   onChange: (figure: FigureLayer) => void;
 }) {
   // Where generated parts may be, in thousandths of the base: the head, with room for long hair (D36).
   const [zone, setZone] = useState<Rect>([200, 0, 800, 450]);
+  // Or, drawn, where they may be (D56): the region the newest part was cut within, until the author changes it.
+  const saved = generation.parts.findLast((part) => part.status !== "failed")?.region ?? null;
+  const [points, setPoints] = useState<ReadonlyArray<Point>>(saved ?? []);
+  const region = points.length >= 3 ? (points as Region) : null;
   // A softer base is optional (without one the defined base draws, D40), so its parts are cells only once it exists.
-  const drawn = appearancesAt(ages).filter(
+  const drawn = appearancesAt(ages, oneFace).filter(
     (at) => at.features !== "features:soft" || figure.bases.some((base) => draws(base, at)),
   );
   const cells: ReadonlyArray<PartCell> = drawn.flatMap((appearance) =>
@@ -358,7 +386,7 @@ function PartsGrid({
     ...(cell.features ? { features: cell.features } : {}),
     axis: cell.axis,
     option: cell.option.id,
-    zone,
+    ...(region ? { zone: regionBox(region), region } : { zone }),
     seed: attempts(cell).reduce((max, part) => Math.max(max, part.seed), 0) + 1,
   });
   const setPart = (old: Part, next: Part) =>
@@ -414,9 +442,28 @@ function PartsGrid({
         <p className="font-medium">Generate the missing parts from the base</p>
         <p className="text-muted-foreground">
           Each empty cell is drawn on its base by the image model, cut out, and shown here on the lightest and darkest
-          skin for you to approve or reject. Parts may only appear inside the zone.
+          skin for you to approve or reject. Parts may only appear inside the hair region, or without one, the zone.
         </p>
-        <RectFields label="Head zone" value={zone} onChange={(rect) => setZone(rect as Rect)} />
+        {figure.bases[0] && (
+          <RegionEditor
+            baseUrl={draftFileUrl(files.storyId, files.version, figure.bases[0].asset)}
+            points={points}
+            onPoints={(update) => setPoints(update)}
+            saved={saved}
+            parts={generation.parts}
+            // One part per cell, as setFigureRegion re-cuts them.
+            recuttable={
+              new Set(
+                generation.parts
+                  .filter((part) => part.status !== "generating" && part.files.edit !== null)
+                  .map((part) => JSON.stringify([part.age, part.face, part.features, part.axis, part.option])),
+              ).size
+            }
+            blocked={generation.blocked}
+            onSave={generation.setRegion}
+          />
+        )}
+        {!region && <RectFields label="Head zone" value={zone} onChange={(rect) => setZone(rect as Rect)} />}
         <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"

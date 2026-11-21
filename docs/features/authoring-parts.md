@@ -6,7 +6,9 @@ An author generates and reviews options for a figure's bases (D36, D44). One edi
 four bases, or two large bases, with 110 px of headroom. Each tile is cut out and reviewed separately. Approved
 head-only parts also fill the other features' base; shoulder-length styles keep their own drawing. Fixed option
 descriptions and an approved neutral-grey drawing as a second reference keep designs consistent across poses.
-The Mirrored checkbox flips the figure and every part together without regenerating them.
+The Mirrored checkbox flips the figure and every part together without regenerating them. Each figure's "Hair region"
+(D56) is a polygon drawn over its base where parts may appear; every layer is clipped to it, and saving it cuts the
+part each cell shows out again from its existing edit (`part.recut`), at no cost, for review again.
 
 The Review tab groups each option across pages and bases, on light/dark skin. It can plan missing parts from
 existing bases and queue up to 40 per explicit round (roughly US$1.96 before tiling savings; estimates, not a
@@ -31,7 +33,8 @@ was approved. Uploaded options can also be reviewed and approved on sheets; repl
 
 Drives generation through the worker, fetches review files with author-only access, approves a part into the
 manifest, and generates four bases in one edit. Checks tile boundaries, shared generation, repeat requests and
-approved-reference metadata. Unit checks in `mise run check` cover head-only sharing versus long hair and mirrored
+approved-reference metadata, then draws a hair region in the editor and checks every shown part is re-cut inside it
+from the same edit, at no cost. Unit checks in `mise run check` cover head-only sharing versus long hair and mirrored
 layer placement. The authoring e2e checks the editor through publication and a personalized book. A hair part's
 cut-out metrics include `crownGap`, the bald scalp it leaves above it; `part-cutout.test.ts` holds every hair part
 of the sample stories under `CROWN_GAP_LIMIT` except the published ones it lists, and every raster one with nothing
@@ -39,6 +42,10 @@ left for `coverOutline` to cover. The art-import e2e checks option-sheet generat
 actual-page composition and explicit bulk approval.
 
 ## Gotchas
+
+- A hair region clips what's outside it, nothing inside: rings or flecks the model redrew inside the face stay. Draw
+  it on the figure's first base; it applies at every age. Saving re-cuts the part each cell shows, approved ones too,
+  so they need approving again.
 
 - Generate missing parts sends a batch per figure, grouped by option, note and seed. A single request still uses
   the whole-base edit. Parts and their queued jobs are recorded in one transaction.

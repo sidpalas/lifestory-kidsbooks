@@ -21,6 +21,7 @@ export {
   partPrompt,
   requestParts,
   reviewPart,
+  setFigureRegion,
   withApprovedParts,
 } from "./parts/parts.ts";
 export * from "./runtime.ts";

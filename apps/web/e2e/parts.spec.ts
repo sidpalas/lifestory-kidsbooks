@@ -15,7 +15,7 @@ test("an author generates a part, reviews it on light and dark skin, and approve
   page,
 }) => {
   // Single, four-tile and two-tile edits all run through the real worker, sequentially on this small orb.
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   // Imported here, not at the top: Playwright's runner imports every spec to list the tests, and @lifestory/core would
   // cost it ~0.2 GB for the whole run, which a 4 GB orb can't spare (AGENTS.md, "Orb size").
   const {
@@ -215,6 +215,43 @@ test("an author generates a part, reviews it on light and dark skin, and approve
       error: expect.stringMatching(/^the generation task (cancelled|failed)$/),
     });
     expect((await run(getPart(operator, stuck.id))).status).toBe("failed");
+
+    // The author draws the hero's hair region (D56) in the editor, the left half of the zone, and saves it: the part
+    // each cell shows (the approved curls, the newest short and long, the failed one with an edit) is cut out again
+    // from the edit it has, at no cost, with nothing right of the region, and waits for review again.
+    const shown = [part, ...parts, ...large];
+    await page.goto(`/__dev/log-me-in/operator@lifestory.dev?returnTo=/author/${storyId}`);
+    await page.getByRole("tab", { name: "Pages", exact: true }).click();
+    const editor = page.getByTestId("figure-hero").getByTestId("region-editor");
+    const canvas = editor.getByTestId("region-canvas");
+    await canvas.scrollIntoViewIfNeeded();
+    const box = (await canvas.boundingBox())!;
+    for (const [x, y] of [
+      [250, 2],
+      [500, 2],
+      [500, 420],
+      [250, 420],
+    ] as const)
+      await page.mouse.click(box.x + (x / 1000) * box.width, box.y + (y / 1000) * box.height);
+    await expect(editor.getByTestId("region-state")).toHaveText("4 points, not saved");
+    await editor.getByRole("button", { name: `Save region and re-cut ${shown.length} parts` }).click();
+    let recut: Array<StoryPart> = [];
+    await expect
+      .poll(
+        async () => (recut = await Promise.all(shown.map((p) => run(getPart(operator, p.id))))).map((p) => p.status),
+        { timeout: 60_000 },
+      )
+      .toEqual(shown.map(() => "pending_review"));
+    await expect(editor.getByTestId("region-state")).toHaveText("4 points, saved");
+    for (const [i, after] of recut.entries()) {
+      const before = shown[i]!;
+      expect(after).toMatchObject({ status: "pending_review", costUsd: 0, files: { edit: before.files.edit } });
+      expect(after.region).toHaveLength(4);
+      const hair = after.layers.find((l) => l.palette === "hairColour")!;
+      expect(hair.key).not.toBe(before.layers.find((l) => l.palette === "hairColour")?.key);
+      // The region's right edge is x = 500; alphaBounds keeps a margin of a couple of pixels past the last one.
+      expect(hair.at[2]).toBeLessThanOrEqual(515);
+    }
   } finally {
     await runtime.dispose();
   }

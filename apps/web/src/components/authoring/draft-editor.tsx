@@ -12,6 +12,7 @@ import {
   DraftChanged,
   type DraftView,
   exampleCast,
+  faceOptions,
   type FigureLayer,
   type IllustrationLayer,
   type LookAxis,
@@ -47,6 +48,7 @@ import {
   PublishDraftResult,
   publishDraftFn,
   requestDraftPartsFn,
+  setDraftFigureRegionFn,
   reviewDraftPartFn,
   SaveDraftResult,
   saveDraftFn,
@@ -147,6 +149,24 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
     setView(kept);
     return kept;
   };
+  /** Starts work on parts, then follows them on the worker until none is still generating (up to 5 minutes). */
+  const followParts = (failure: string, start: () => ReturnType<typeof requestDraftPartsFn>) =>
+    void (async () => {
+      setBusy(true);
+      setStatus(null);
+      try {
+        unwrapResult(DraftPartsRequestResult)(await start());
+        for (let i = 0; i < 300; i++) {
+          const next = await refresh();
+          if (!next.parts.some((part) => part.status === "generating")) break;
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      } catch (cause) {
+        setStatus({ error: true, text: `${failure}: ${message(cause)}` });
+      } finally {
+        setBusy(false);
+      }
+    })();
   const generationFor = (pageId: string, slotId: string): Generation => {
     const twice =
       (draft.pages.find((p) => p.pageId === pageId)?.illustration.layers ?? []).filter(
@@ -162,27 +182,15 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             ? "Working…"
             : null,
       generate: (requests) =>
-        void (async () => {
-          setBusy(true);
-          setStatus(null);
-          try {
-            unwrapResult(DraftPartsRequestResult)(
-              await requestDraftPartsFn({
-                data: { storyId: files.storyId, requests: requests.map((request) => ({ pageId, slotId, ...request })) },
-              }),
-            );
-            // Parts generate on the worker; follow them until none is still generating (up to 5 minutes).
-            for (let i = 0; i < 300; i++) {
-              const next = await refresh();
-              if (!next.parts.some((part) => part.status === "generating")) break;
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-          } catch (cause) {
-            setStatus({ error: true, text: `Couldn't generate: ${message(cause)}` });
-          } finally {
-            setBusy(false);
-          }
-        })(),
+        followParts("Couldn't generate", () =>
+          requestDraftPartsFn({
+            data: { storyId: files.storyId, requests: requests.map((request) => ({ pageId, slotId, ...request })) },
+          }),
+        ),
+      setRegion: (region) =>
+        followParts("Couldn't cut the parts out again", () =>
+          setDraftFigureRegionFn({ data: { storyId: files.storyId, pageId, slotId, region } }),
+        ),
       review: (partId, decision) =>
         void (async () => {
           try {
@@ -414,7 +422,8 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         className={`${tab === "casting" || tab === "review" ? "hidden" : "flex"} flex-col gap-3 lg:sticky lg:top-4 lg:self-start`}
         aria-label="Page preview"
       >
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Pages">
+        {/* As wide as the preview, not as all the tabs in one row: with 24 pages that squeezed the editor to nothing. */}
+        <div className="flex w-0 min-w-full flex-wrap gap-1" role="tablist" aria-label="Pages">
           {draft.pages.map((candidate, i) => (
             <Button
               key={candidate.pageId}
@@ -563,6 +572,31 @@ function StoryTab({
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
           />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Face types the art draws
+          <NativeSelect
+            aria-label="Face types the art draws"
+            value={draft.oneFace ?? ""}
+            onChange={(event) => {
+              const oneFace = event.target.value as StoryDraft["oneFace"] | "";
+              change((d) => {
+                const next = { ...d };
+                delete next.oneFace;
+                return oneFace ? { ...next, oneFace } : next;
+              });
+            }}
+          >
+            <option value="">Round and oval (each character&apos;s own)</option>
+            {faceOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label.replace(/ face$/, "")} only
+              </option>
+            ))}
+          </NativeSelect>
+          <span className="text-xs font-normal text-muted-foreground">
+            One face type draws every character with it, whatever their own, and needs bases and parts for it only.
+          </span>
         </label>
       </section>
 
@@ -1160,7 +1194,7 @@ function PageTab({
         </p>
       </section>
 
-      <ArtImport files={files} page={page} slots={draft.characterSlots} onApply={setPage} />
+      <ArtImport files={files} page={page} slots={draft.characterSlots} oneFace={draft.oneFace} onApply={setPage} />
 
       <section className="flex flex-col gap-3" aria-label="Illustration layers">
         <h3 className="font-semibold">Illustration, bottom to top</h3>
@@ -1218,6 +1252,7 @@ function PageTab({
                   pageId={page.pageId}
                   figure={layer}
                   slots={draft.characterSlots}
+                  oneFace={draft.oneFace}
                   generation={generationFor(page.pageId, layer.slotId)}
                   onChange={(figure: FigureLayer) =>
                     setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))

@@ -621,6 +621,46 @@ describe("looks against a story (D26, D29)", () => {
   });
 });
 
+/** The sample declaring that its art draws only round faces (D55); `roundArtOnly` also drops every oval base and part. */
+const roundFaced = (roundArtOnly: boolean) =>
+  decoded(
+    variant((m) => {
+      m.oneFace = "face:round";
+      if (!roundArtOnly) return;
+      for (const page of m.pages)
+        for (const layer of page.illustration.layers) {
+          if (layer.kind !== "figure") continue;
+          layer.bases = layer.bases.filter((base: any) => base.face !== "face:oval");
+          layer.parts = layer.parts.filter((part: any) => part.face !== "face:oval");
+        }
+    }),
+  );
+
+describe("a story whose art draws one face type (D55)", () => {
+  it("publishes with that face type's bases and parts only, and without the field still needs both", () => {
+    expect("oneFace" in decoded(sample)).toBe(false);
+    expect(vocabularyGaps(roundFaced(true), publishedAt)).toEqual([]);
+    const { oneFace: _, ...withoutField } = roundFaced(true);
+    const gaps = vocabularyGaps(decoded(withoutField), publishedAt);
+    expect(gaps).toContain('p01/hero: no base for "young-child/face:oval"');
+    expect(gaps).toContain('p02/grownup: no part for "hair:long" on "adult/face:oval/features:defined"');
+    expect(gaps.every((gap) => gap.includes("face:oval"))).toBe(true);
+  });
+
+  it("draws an oval-faced character with the round art, with nothing unsupported, even where oval art exists", () => {
+    const oval = childLook("face:oval", "hair:long");
+    for (const manifest of [roundFaced(true), roundFaced(false)]) {
+      expect(unsupportedOptions(manifest, "hero", oval)).toEqual([]);
+      expect(castLook(manifest, "hero", oval)).toEqual({ look: oval, wrongAge: false, unsupported: [] });
+      const assets = heroAssets(manifest, oval);
+      expect(assets[0]).toBe("pages/p02/hero/base-child-1.svg");
+      expect(assets).toEqual(heroAssets(manifest, childLook("face:round", "hair:long")));
+    }
+    // Without the field the same look draws the oval base.
+    expect(heroAssets(decoded(sample), oval)[0]).toBe("pages/p02/hero/base-child-2.svg");
+  });
+});
+
 describe("composeIllustration", () => {
   const manifest = decoded(sample);
   const cast = exampleCast(manifest);

@@ -102,6 +102,9 @@ export const findShift = (base: Rgb, edit: Rgb, zone: PixelRect, range = 6): rea
   return [best[0], best[1]];
 };
 
+/** The least standard deviation (0..1) of the edit's outside pixels in a channel for colourMatch to fit a gain. */
+const MIN_FIT_SPREAD = 0.03;
+
 /**
  * Per channel least-squares fit edit → base over the pixels outside `zone`, refit without outliers (pixels the
  * model changed for real). Returns the corrected edit and the fit.
@@ -134,8 +137,17 @@ export const colourMatch = (base: Rgb, edit: Rgb, zone: PixelRect) => {
         }
       }
       const denominator = n * sxx - sx * sx;
-      if (n < 16 || Math.abs(denominator) < 1e-9) break;
-      gain = (n * sxy - sx * sy) / denominator;
+      if (n < 16) break;
+      // Outside pixels of nearly one tone (mostly paper, when the zone takes in the whole figure) fix an offset but not
+      // a gain: a least-squares gain on them is noise, and a gain far below 1 flattens the edit so all of it reads as
+      // changed. Measured 2026-11-20 on 239 parts: re-tones fit gains of 0.69–1.14, flattened edits 0–0.46.
+      const fitted = (n * sxy - sx * sy) / denominator;
+      if (denominator / (n * n) < MIN_FIT_SPREAD ** 2 || !(fitted >= 0.5 && fitted <= 2)) {
+        gain = 1;
+        offset = (sy - sx) / n;
+        continue;
+      }
+      gain = fitted;
       offset = (sy - gain * sx) / n;
     }
     fit.push([gain, offset]);
