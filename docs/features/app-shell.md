@@ -2,8 +2,8 @@
 
 ## What it is
 
-The navigation around every family page (D48): a sidebar with Home, Stories, Our books, Characters, and Family
-settings; bottom tabs on phones. Home shows a "Next step" card until the family has a character and a book, then
+The navigation around every family page (D48): a sidebar with Home, Stories, Our books, Our family (the people
+who star in the books), and Sharing (who can open them: members and invitations); bottom tabs on phones. Home shows a "Next step" card until the family has a character and a book, then
 the newest book ("Pick up where you left off") and the stories. A story card opens the family's book of it, or the
 story page when there are several (D47). Authors and the operator reach Studio (`/author`),
 which has its own dark bar and is only for making stories. The operator also gets Admin (`/admin`), under Studio in
@@ -11,9 +11,9 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 
 ## Routes and roles
 
-- `/` (Home; signed-out visitors get the landing page), `/stories`, `/books`, `/characters`, `/characters/new`,
-  `/characters/<id>`, `/family`, `/admin`. All under the `_family` layout route except Home, which renders the shell itself.
-- Viewers see the same places without edit actions; "Family settings" reads "Family". Studio only for authors and
+- `/` (Home; signed-out visitors get the landing page), `/stories`, `/books`, `/family` (Our family), `/family/new`,
+  `/family/<id>`, `/sharing`, `/admin`. All under the `_family` layout route except Home, which renders the shell itself.
+- Viewers see the same places without edit actions. Studio only for authors and
   the operator. Admin only for the operator: its loader lists authors, which the server refuses with `Forbidden` for
   anyone else, so the page is not found; inviting a family and granting or removing authors check the role again.
   On phones the top bar holds the logo, the family name, and a Menu button (the account's initial and a down arrow in an outlined pill); its sheet holds who's signed in, the
@@ -28,7 +28,7 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 ## Verify
 
 `mise run verify -- e2e -- smoke families books milestone1`: signed-in identity and family name in the sidebar,
-stories on Home, family settings at `/family`, characters at `/characters`, books at `/books`, the operator's family
+stories on Home, Sharing at `/sharing`, Our family at `/family`, books at `/books`, the operator's family
 invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author; on a phone,
 the Menu sheet's switcher, Sign out, Studio and Admin links.
 
@@ -38,6 +38,6 @@ the Menu sheet's switcher, Sign out, Studio and Admin links.
   repeat them without testids, so specs stay unambiguous. The sheet is a native `<dialog>` opened with `showModal()`,
   so Esc and focus containment come from the browser; a click on its backdrop closes it.
 - The shell's data (`getHome`) reloads with each navigation; keep it small.
-- `/family` lists members (`member` rows) and pending invitations (`invitation` rows) apart from the invite form; a
+- `/sharing` lists members (`member` rows) and pending invitations (`invitation` rows) apart from the invite form; a
   member whose name is their email shows it once. On phones the role pill sits under the identity; `families.spec.ts`
   checks a 320px screen with a long pending email.

@@ -1,5 +1,5 @@
 // The active family's characters, books, and the stories it can make books of: the lists on Home and on the
-// Stories, Our books, and Characters pages of the app shell (D48).
+// Stories, Our books, and Our family pages of the app shell (D48).
 import { type BookSummary, type Character, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 
@@ -10,7 +10,7 @@ import { deleteBookFn, EditBookResult } from "~/server/books";
 /** Asks, then deletes a book with its text edits and proofs. Resolves true once it's gone. */
 export const confirmDeleteBook = async (book: { id: string; title: string; cast: string }) => {
   const sure = window.confirm(
-    `Delete "${book.title}" with ${book.cast}? Its text edits and PDF proofs are deleted too. Your family's characters stay.`,
+    `Delete "${book.title}" with ${book.cast}? Its text edits and PDF proofs are deleted too. Everyone in Our family stays.`,
   );
   if (!sure) return false;
   unwrapResult(EditBookResult)(await deleteBookFn({ data: { bookId: book.id } }));
@@ -24,7 +24,7 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
         {characters.map((character) => (
           <li key={character.id}>
             <Link
-              to="/characters/$characterId"
+              to="/family/$characterId"
               params={{ characterId: character.id }}
               className="flex w-24 flex-col items-center gap-1 rounded-md p-1 text-sm hover:bg-accent"
             >
@@ -45,7 +45,7 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
         {canEdit && (
           <li>
             <Link
-              to="/characters/new"
+              to="/family/new"
               className="flex h-[70px] w-24 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent"
             >
               Add someone

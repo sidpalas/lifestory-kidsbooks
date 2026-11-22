@@ -737,10 +737,12 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   operator's cards styled like family content. Five layouts were compared (sidebar, bookshelf, three tabs, next
   step, family first); Sid chose the sidebar and kept the next-step card "at the top of the homepage during user
   onboarding, basically until they have added a character and made at least one book".
-- **What:** the sidebar lists Home, Stories, Our books, Characters, and Family settings ("Family" for viewers), with
+- **What:** the sidebar lists Home, Stories, Our books, Our family, and Sharing, with
   the family switcher (only past one family, D3) at the top and who's signed in at the foot. Pages:
-  `/` (Home), `/stories`, `/books`, `/characters` (and its new and edit pages), `/family` (name, members,
-  invitations). Below `md` the sidebar becomes a top bar and five bottom tabs. Home shows the next-step card to
+  `/` (Home), `/stories`, `/books`, `/family` (Our family: the people who star in the books, with its new and edit
+  pages), `/sharing` (name, members, invitations). These were Characters at `/characters` and Family settings at
+  `/family` until Sid renamed them (2026-11-22): characters are family members, so "Characters" and "Family" read as
+  the same thing; "family" now means the people in the books, and Sharing says who can open them. Below `md` the sidebar becomes a top bar and five bottom tabs. Home shows the next-step card to
   parents and owners while the family has no character or no book, then "Pick up where you left off" (the newest
   book), then the stories; a story the family already has one book of offers "Open our book" instead of "Make a book",
   and one with several ("Our 2 books") opens the story page, which lists them (D47).

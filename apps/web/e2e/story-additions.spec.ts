@@ -21,7 +21,7 @@ const imagesLoaded = (page: Page) =>
     .toBe(0);
 
 const addCharacter = async (page: Page, name: string, age: string, choices: ReadonlyArray<string>) => {
-  await page.goto("/characters/new");
+  await page.goto("/family/new");
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Pronouns").selectOption("she/her");
   await page.getByRole("button", { name: age, exact: true }).click();

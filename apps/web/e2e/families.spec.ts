@@ -31,7 +31,7 @@ const signInWithPassword = async (page: Page, email: string) => {
 };
 
 const inviteMember = async (page: Page, email: string, role: "Viewer (read only)" | "Editor (can edit)") => {
-  const form = page.getByRole("form", { name: "Invite a family member" });
+  const form = page.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email").fill(email);
   await form.getByLabel("Role").selectOption({ label: role });
   await form.getByRole("button", { name: "Send invitation" }).click();
@@ -64,7 +64,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   await page.getByRole("button", { name: "Set password and sign in" }).click();
   await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Robin (${ownerEmail})`);
   await expect(page.getByTestId("families")).toHaveText("Robin's family");
-  await page.goto("/family");
+  await page.goto("/sharing");
   await expect(page.getByTestId("members")).toContainText("Owner");
 
   // The link works once.
@@ -72,7 +72,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   await expect(page.getByText("This link has expired")).toBeVisible();
 
   // The owner invites a grandparent with the view-only role.
-  await page.goto("/family");
+  await page.goto("/sharing");
   await inviteMember(page, granEmail, "Viewer (read only)");
   const invitation = page.getByTestId("invitation").filter({ hasText: granEmail });
   await expect(invitation).toContainText("Invitation pending");
@@ -89,9 +89,9 @@ test("the operator invites a new family, whose owner sets a password and invites
   await page.getByRole("button", { name: "Create account and join" }).click();
   await expect(page.getByTestId("signed-in-as")).toHaveText(`Signed in as Gran (${granEmail})`);
   await expect(page.getByTestId("families")).toHaveText("Robin's family");
-  await page.goto("/family");
+  await page.goto("/sharing");
   await expect(page.getByTestId("family-panel")).toContainText("You're a viewer: you can read this family's books");
-  await expect(page.getByRole("form", { name: "Invite a family member" })).toHaveCount(0);
+  await expect(page.getByRole("form", { name: "Invite someone" })).toHaveCount(0);
 
   // A viewer can't invite anyone, even by calling Better Auth directly.
   const origin = new URL(page.url()).origin;
@@ -104,7 +104,7 @@ test("the operator invites a new family, whose owner sets a password and invites
   // The owner signs in again with the password they chose.
   await signOut(page);
   await signInWithPassword(page, ownerEmail);
-  await page.goto("/family");
+  await page.goto("/sharing");
   // Accepted: Gran is a member with her name over her email, and the invitation is gone.
   await expect(page.getByTestId("member").filter({ hasText: granEmail })).toHaveText(
     `Gran${granEmail}Viewer (read only)`,
@@ -131,7 +131,7 @@ test("an existing user accepts an invitation into a second family and switches b
   await signOut(page);
   await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/`);
   await expect(page.getByTestId("families")).toHaveText(`alex-${id}'s family`);
-  await page.goto("/family");
+  await page.goto("/sharing");
   await inviteMember(page, friendEmail, "Editor (can edit)");
   await signOut(page);
 
@@ -142,7 +142,7 @@ test("an existing user accepts an invitation into a second family and switches b
   await page.getByRole("button", { name: "Accept invitation" }).click();
   const switcher = page.getByRole("combobox", { name: "Family" });
   await expect(switcher.locator("option:checked")).toHaveText(`alex-${id}'s family`);
-  await page.goto("/family");
+  await page.goto("/sharing");
   await expect(page.getByTestId("family-panel")).toContainText(
     "You're an editor: you can make and edit this family's books.",
   );
@@ -183,7 +183,7 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await page.goto(`/__dev/log-me-in/${viewerEmail}?returnTo=/`);
   await signOut(page);
 
-  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/family`);
+  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/sharing`);
   await expect(page.getByTestId("families")).toHaveText(`rio-${id}'s family`);
 
   // A blank name is refused before it's sent; the saved name is trimmed.
@@ -213,7 +213,7 @@ test("the owner renames the family, and a viewer sees the new name but can't ren
   await expect(page.getByText(`Join ${newName}`)).toBeVisible();
   await page.getByRole("button", { name: "Accept invitation" }).click();
   await expect(page.getByRole("combobox", { name: "Family" }).locator("option:checked")).toHaveText(newName);
-  await page.goto("/family");
+  await page.goto("/sharing");
   await expect(page.getByTestId("family-name")).toHaveText(newName);
   await expect(page.getByTestId("family-panel")).toContainText("You're a viewer");
   await expect(page.getByRole("button", { name: "Rename" })).toHaveCount(0);
@@ -233,7 +233,7 @@ test("on a phone, members show each identity once and long emails and pending in
   const longEmail = `a-very-long-grandparent-address-${id}@extremely-long-family-domain.example.com`;
 
   await page.setViewportSize({ width: 320, height: 720 });
-  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/family`);
+  await page.goto(`/__dev/log-me-in/${ownerEmail}?returnTo=/sharing`);
   await inviteMember(page, cousinEmail, "Editor (can edit)");
   await inviteMember(page, longEmail, "Viewer (read only)");
   await signOut(page);
@@ -245,7 +245,7 @@ test("on a phone, members show each identity once and long emails and pending in
   await page.getByLabel("Repeat the password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account and join" }).click();
   await expect(page.getByTestId("signed-in-as")).toContainText(cousinEmail);
-  await page.goto("/family");
+  await page.goto("/sharing");
   await expect(page.getByTestId("member").filter({ hasText: cousinEmail })).toHaveText(`${cousinEmail}Editor`);
   await expect(page.getByTestId("member").filter({ hasText: ownerEmail })).toHaveText(`kit-${id}${ownerEmail}Owner`);
 

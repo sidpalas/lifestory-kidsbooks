@@ -5,7 +5,7 @@ import { ShellPage } from "~/components/app-shell";
 import { FamilyCharacters } from "~/components/family-library";
 import { FamilyLibraryResult, getFamilyLibrary } from "~/server/books";
 
-export const Route = createFileRoute("/_family/characters/")({
+export const Route = createFileRoute("/_family/family/")({
   loader: async () => {
     try {
       return unwrapResult(FamilyLibraryResult)(await getFamilyLibrary());
@@ -14,12 +14,12 @@ export const Route = createFileRoute("/_family/characters/")({
       throw error;
     }
   },
-  component: function Characters() {
+  component: function OurFamily() {
     const { characters, canEdit } = Route.useLoaderData();
     return (
       <ShellPage
-        title="Characters"
-        description="Your family as drawn in books. Each story draws these looks with its own illustrations."
+        title="Our family"
+        description="The people who star in your books. Choose how each one looks once, and every story draws them in its own style. They don't need an account."
       >
         <FamilyCharacters characters={characters} canEdit={canEdit} />
       </ShellPage>

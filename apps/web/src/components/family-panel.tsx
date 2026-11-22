@@ -120,7 +120,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
       <CardContent className="flex flex-col gap-6 px-4 sm:px-6">
         <section className="flex flex-col gap-2" aria-labelledby="family-members">
           <h2 id="family-members" className="text-sm font-semibold">
-            Members <span className="font-normal text-muted-foreground">· {family.members.length}</span>
+            People with access <span className="font-normal text-muted-foreground">· {family.members.length}</span>
           </h2>
           <ul className="divide-y rounded-lg border" data-testid="members">
             {family.members.map((member) => {
@@ -163,7 +163,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
           <section className="flex flex-col gap-3 border-t pt-6" aria-labelledby="family-invite">
             <div className="flex flex-col gap-1">
               <h2 id="family-invite" className="text-sm font-semibold">
-                Invite someone
+                Invite someone to see your books
               </h2>
               <p className="text-sm text-muted-foreground">
                 Editors can make and edit books and invite others. Viewers can only read them.
@@ -172,7 +172,7 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
             <form
               className="flex flex-col gap-3 sm:flex-row sm:items-end"
               onSubmit={invite}
-              aria-label="Invite a family member"
+              aria-label="Invite someone"
             >
               <div className="flex min-w-0 flex-col gap-2 sm:flex-1">
                 <Label htmlFor="invite-email">Email</Label>

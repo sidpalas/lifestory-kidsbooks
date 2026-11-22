@@ -20,14 +20,13 @@ export type Shell = {
   isOperator: boolean;
 };
 
-const places = (viewer: boolean) =>
-  [
-    { to: "/", label: "Home", short: "Home" },
-    { to: "/stories", label: "Stories", short: "Stories" },
-    { to: "/books", label: "Our books", short: "Books" },
-    { to: "/characters", label: "Characters", short: "Characters" },
-    { to: "/family", label: viewer ? "Family" : "Family settings", short: "Family" },
-  ] as const;
+const places = [
+  { to: "/", label: "Home", short: "Home" },
+  { to: "/stories", label: "Stories", short: "Stories" },
+  { to: "/books", label: "Our books", short: "Books" },
+  { to: "/family", label: "Our family", short: "Family" },
+  { to: "/sharing", label: "Sharing", short: "Sharing" },
+] as const;
 
 function useSwitchFamily() {
   const router = useRouter();
@@ -201,7 +200,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
           {viewer && <p className="text-xs text-muted-foreground">Viewer: you can read this family's books</p>}
         </div>
         <nav aria-label="Family" className="flex flex-col gap-0.5">
-          {places(viewer).map((place) => (
+          {places.map((place) => (
             <Link
               key={place.to}
               to={place.to}
@@ -262,7 +261,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
         aria-label="Sections"
         className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t bg-background md:hidden"
       >
-        {places(viewer).map((place) => (
+        {places.map((place) => (
           <Link
             key={place.to}
             to={place.to}

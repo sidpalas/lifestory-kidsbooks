@@ -113,7 +113,7 @@ function NextStep({ hasFamily }: { hasFamily: boolean }) {
         ))}
       </ol>
       <Button asChild className="self-start">
-        {hasFamily ? <Link to="/stories">Choose a story</Link> : <Link to="/characters/new">Add someone</Link>}
+        {hasFamily ? <Link to="/stories">Choose a story</Link> : <Link to="/family/new">Add someone</Link>}
       </Button>
     </section>
   );

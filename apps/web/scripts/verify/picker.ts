@@ -1,4 +1,4 @@
-// verify picker: docs/features/character-picker.md. Drives /characters/new as a parent does: name and pronouns, an
+// verify picker: docs/features/character-picker.md. Drives /family/new as a parent does: name and pronouns, an
 // age, then one feature at a time, and checks the portrait (/api/portrait) follows every choice and
 // loads. It never presses "Add to the family", so it writes nothing.
 import { writeFileSync } from "node:fs";
@@ -11,10 +11,10 @@ export const picker = async (stack: Stack, report: Report) => {
   const session = await signedIn(stack, { deviceScaleFactor: 2 });
   const { page } = session;
   try {
-    await page.goto("/characters/new");
+    await page.goto("/family/new");
     report.check(
       "route",
-      page.url().endsWith("/characters/new"),
+      page.url().endsWith("/family/new"),
       `signed in as ${stack.who}, at ${new URL(page.url()).pathname}`,
       { fatal: true },
     );

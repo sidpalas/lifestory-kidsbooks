@@ -85,11 +85,11 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByRole("button", { name: "Set password and sign in" }).click();
   await expect(owner.getByTestId("signed-in-as")).toHaveText(`Signed in as Robin (${ownerEmail})`);
   await expect(owner.getByTestId("families")).toHaveText("Robin's family");
-  await owner.goto("/family");
+  await owner.goto("/sharing");
   await expect(owner.getByTestId("members")).toContainText("Owner");
 
   // 2. The owner invites the grandparent with the view-only role, and she joins with an account of her own.
-  const inviteMember = owner.getByRole("form", { name: "Invite a family member" });
+  const inviteMember = owner.getByRole("form", { name: "Invite someone" });
   await inviteMember.getByLabel("Email").fill(granEmail);
   await inviteMember.getByLabel("Role").selectOption({ label: "Viewer (read only)" });
   await inviteMember.getByRole("button", { name: "Send invitation" }).click();
@@ -104,12 +104,12 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await gran.getByLabel("Repeat the password").fill(PASSWORD);
   await gran.getByRole("button", { name: "Create account and join" }).click();
   await expect(gran.getByTestId("families")).toHaveText("Robin's family");
-  await gran.goto("/family");
+  await gran.goto("/sharing");
   await expect(gran.getByTestId("family-panel")).toContainText("You're a viewer");
 
   // 3. The owner adds two family members in the picker: an age, then one feature at a time, with the portrait
   // following each choice.
-  await owner.goto("/characters/new");
+  await owner.goto("/family/new");
   await owner.getByLabel("Name").fill(child);
   await owner.getByLabel("Pronouns").selectOption("she/her");
   await owner.getByRole("button", { name: "Young child", exact: true }).click();
@@ -126,7 +126,7 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByRole("button", { name: "Add to the family" }).click();
   await expect(owner.getByTestId("characters")).toContainText(child);
 
-  await owner.goto("/characters/new");
+  await owner.goto("/family/new");
   await owner.getByLabel("Name").fill(grownup);
   await owner.getByLabel("Pronouns").selectOption("he/him");
   await owner.getByLabel(/What the kids call them/).fill("Dad");
@@ -156,8 +156,8 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await owner.getByRole("button", { name: "Blonde hair colour" }).click();
   await owner.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns to Characters; opening the book sooner can read the look from before the save.
-  await expect(owner).toHaveURL(/\/characters$/);
+  // Saving returns to Our family; opening the book sooner can read the look from before the save.
+  await expect(owner).toHaveURL(/\/family$/);
   await owner.goto(bookPath);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(owner);

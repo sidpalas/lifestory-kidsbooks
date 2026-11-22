@@ -211,7 +211,7 @@ export function StoryCast({
                       {fits(slot).length === 0 && canEdit && (
                         <>
                           {" "}
-                          <Link to="/characters/new" className="underline">
+                          <Link to="/family/new" className="underline">
                             Add someone ({agesLabel(slot)})
                           </Link>
                         </>

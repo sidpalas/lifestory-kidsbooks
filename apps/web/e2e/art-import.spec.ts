@@ -159,7 +159,7 @@ test("art import: a layered PSD becomes a page, its figure, and its hair; the st
 
   // 5. A family makes a book of it: a young child with curly hair is drawn with the imported curls.
   const child = `Ada ${id}`;
-  await page.goto("/characters/new");
+  await page.goto("/family/new");
   await page.getByLabel("Name").fill(child);
   await page.getByLabel("Pronouns").selectOption("she/her");
   await page.getByRole("button", { name: "Young child", exact: true }).click();

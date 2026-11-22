@@ -27,7 +27,7 @@ const addCharacter = async (
   choices: ReadonlyArray<string>,
   refine: (picker: Page) => Promise<void> = async () => {},
 ) => {
-  await page.goto("/characters/new");
+  await page.goto("/family/new");
   await page.getByLabel("Name").fill(name);
   await page.getByLabel("Pronouns").selectOption(pronouns);
   // Age first (D29): it decides which steps the picker offers. Then one choice per step (D50).
@@ -298,8 +298,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Blonde hair colour" }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns to Characters; opening the book sooner can read the look from before the save.
-  await expect(page).toHaveURL(/\/characters$/);
+  // Saving returns to Our family; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/family$/);
   await page.goto(bookUrl);
   await expect(allPages).toHaveCount(6);
   await imagesLoaded(page);
@@ -315,8 +315,8 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await page.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
   await page.getByRole("button", { name: "Adult", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns to Characters; opening the book sooner can read the look from before the save.
-  await expect(page).toHaveURL(/\/characters$/);
+  // Saving returns to Our family; opening the book sooner can read the look from before the save.
+  await expect(page).toHaveURL(/\/family$/);
   await page.goto(bookUrl);
   await expect(page.getByTestId("role-hero").getByRole("status")).toContainText("Choose someone else for the child");
   await imagesLoaded(page);
@@ -355,7 +355,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(viewer.getByText("you're a viewer")).toBeVisible();
   await expect(viewer.getByRole("button", { name: /Save text/ })).toHaveCount(0);
   await expect(viewer.getByRole("textbox", { name: "Text block 1" })).toHaveAttribute("readonly", "");
-  await viewer.goto("/characters");
+  await viewer.goto("/family");
   await expect(viewer.getByTestId("characters")).toContainText(child);
   await expect(viewer.getByRole("link", { name: "Add someone" })).toHaveCount(0);
   await viewer.getByRole("link", { name: new RegExp(child) }).click();
@@ -387,7 +387,7 @@ test("a viewer reads the family's characters and books but can't change them", a
   await remove.click();
   await confirm;
   await expect(remove).toHaveCount(0);
-  await page.goto("/characters");
+  await page.goto("/family");
   await expect(page.getByTestId("characters")).toContainText(child);
   await page.goto(bookUrl);
   await expect(page.getByText(/not found/i)).toBeVisible();
@@ -472,7 +472,7 @@ test("a parent styles a family member for one book before making it, without cha
       .filter((src) => src!.includes("/recoloured/"))
       .toSorted(),
   ).toEqual(styled.filter((src) => src.includes("/recoloured/")).toSorted());
-  await page.goto("/characters");
+  await page.goto("/family");
   await expect(
     page
       .getByTestId("characters")

@@ -1,4 +1,4 @@
-// Family settings: the family's name, members, and invitations.
+// Sharing: the family's name, who can open its books (members and invitations), and inviting someone.
 import { NotAuthenticated, unwrapResult } from "@lifestory/core/contracts";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
@@ -6,7 +6,7 @@ import { ShellPage } from "~/components/app-shell";
 import { FamilyPanel } from "~/components/family-panel";
 import { FamiliesResult, getFamilies } from "~/server/families";
 
-export const Route = createFileRoute("/_family/family")({
+export const Route = createFileRoute("/_family/sharing")({
   loader: async () => {
     try {
       return unwrapResult(FamiliesResult)(await getFamilies());
@@ -15,10 +15,17 @@ export const Route = createFileRoute("/_family/family")({
       throw error;
     }
   },
-  component: function Family() {
+  component: function Sharing() {
     const { active } = Route.useLoaderData();
     return (
-      <ShellPage title={active?.role === "viewer" ? "Family" : "Family settings"}>
+      <ShellPage
+        title="Sharing"
+        description={
+          active
+            ? `Who can open ${active.name}'s books. Being here doesn't put anyone in a book; add them in Our family for that.`
+            : undefined
+        }
+      >
         {active ? (
           <div className="w-full max-w-2xl">
             <FamilyPanel family={active} />

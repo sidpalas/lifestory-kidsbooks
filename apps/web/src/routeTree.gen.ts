@@ -16,7 +16,7 @@ import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
 import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as FamilyAdminRouteImport } from './routes/_family/admin'
-import { Route as FamilyFamilyRouteImport } from './routes/_family/family'
+import { Route as FamilySharingRouteImport } from './routes/_family/sharing'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiPortraitRouteImport } from './routes/api/portrait'
 import { Route as AuthorIndexRouteImport } from './routes/author/index'
@@ -27,9 +27,9 @@ import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$tok
 import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as FamilyBooksIndexRouteImport } from './routes/_family/books/index'
-import { Route as FamilyCharactersIndexRouteImport } from './routes/_family/characters/index'
-import { Route as FamilyCharactersCharacterIdRouteImport } from './routes/_family/characters/$characterId'
-import { Route as FamilyCharactersNewRouteImport } from './routes/_family/characters/new'
+import { Route as FamilyFamilyIndexRouteImport } from './routes/_family/family/index'
+import { Route as FamilyFamilyCharacterIdRouteImport } from './routes/_family/family/$characterId'
+import { Route as FamilyFamilyNewRouteImport } from './routes/_family/family/new'
 import { Route as FamilyStoriesIndexRouteImport } from './routes/_family/stories/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
@@ -71,9 +71,9 @@ const FamilyAdminRoute = FamilyAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => FamilyRoute,
 } as any)
-const FamilyFamilyRoute = FamilyFamilyRouteImport.update({
-  id: '/family',
-  path: '/family',
+const FamilySharingRoute = FamilySharingRouteImport.update({
+  id: '/sharing',
+  path: '/sharing',
   getParentRoute: () => FamilyRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -126,20 +126,19 @@ const FamilyBooksIndexRoute = FamilyBooksIndexRouteImport.update({
   path: '/books/',
   getParentRoute: () => FamilyRoute,
 } as any)
-const FamilyCharactersIndexRoute = FamilyCharactersIndexRouteImport.update({
-  id: '/characters/',
-  path: '/characters/',
+const FamilyFamilyIndexRoute = FamilyFamilyIndexRouteImport.update({
+  id: '/family/',
+  path: '/family/',
   getParentRoute: () => FamilyRoute,
 } as any)
-const FamilyCharactersCharacterIdRoute =
-  FamilyCharactersCharacterIdRouteImport.update({
-    id: '/characters/$characterId',
-    path: '/characters/$characterId',
-    getParentRoute: () => FamilyRoute,
-  } as any)
-const FamilyCharactersNewRoute = FamilyCharactersNewRouteImport.update({
-  id: '/characters/new',
-  path: '/characters/new',
+const FamilyFamilyCharacterIdRoute = FamilyFamilyCharacterIdRouteImport.update({
+  id: '/family/$characterId',
+  path: '/family/$characterId',
+  getParentRoute: () => FamilyRoute,
+} as any)
+const FamilyFamilyNewRoute = FamilyFamilyNewRouteImport.update({
+  id: '/family/new',
+  path: '/family/new',
   getParentRoute: () => FamilyRoute,
 } as any)
 const FamilyStoriesIndexRoute = FamilyStoriesIndexRouteImport.update({
@@ -180,7 +179,7 @@ export interface FileRoutesByFullPath {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/admin': typeof FamilyAdminRoute
-  '/family': typeof FamilyFamilyRoute
+  '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -191,14 +190,14 @@ export interface FileRoutesByFullPath {
   '/__dev/': typeof _devIndexRoute
   '/author/': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/characters/$characterId': typeof FamilyCharactersCharacterIdRoute
-  '/characters/new': typeof FamilyCharactersNewRoute
+  '/family/$characterId': typeof FamilyFamilyCharacterIdRoute
+  '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books/': typeof FamilyBooksIndexRoute
-  '/characters/': typeof FamilyCharactersIndexRoute
+  '/family/': typeof FamilyFamilyIndexRoute
   '/stories/': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -208,7 +207,7 @@ export interface FileRoutesByTo {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/admin': typeof FamilyAdminRoute
-  '/family': typeof FamilyFamilyRoute
+  '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -219,14 +218,14 @@ export interface FileRoutesByTo {
   '/__dev': typeof _devIndexRoute
   '/author': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/characters/$characterId': typeof FamilyCharactersCharacterIdRoute
-  '/characters/new': typeof FamilyCharactersNewRoute
+  '/family/$characterId': typeof FamilyFamilyCharacterIdRoute
+  '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books': typeof FamilyBooksIndexRoute
-  '/characters': typeof FamilyCharactersIndexRoute
+  '/family': typeof FamilyFamilyIndexRoute
   '/stories': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -238,7 +237,7 @@ export interface FileRoutesById {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/_family/admin': typeof FamilyAdminRoute
-  '/_family/family': typeof FamilyFamilyRoute
+  '/_family/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -249,14 +248,14 @@ export interface FileRoutesById {
   '/__dev/': typeof _devIndexRoute
   '/author/': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/_family/characters/$characterId': typeof FamilyCharactersCharacterIdRoute
-  '/_family/characters/new': typeof FamilyCharactersNewRoute
+  '/_family/family/$characterId': typeof FamilyFamilyCharacterIdRoute
+  '/_family/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/_family/books/': typeof FamilyBooksIndexRoute
-  '/_family/characters/': typeof FamilyCharactersIndexRoute
+  '/_family/family/': typeof FamilyFamilyIndexRoute
   '/_family/stories/': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -268,7 +267,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/admin'
-    | '/family'
+    | '/sharing'
     | '/api/health'
     | '/api/portrait'
     | '/author/$storyId'
@@ -279,14 +278,14 @@ export interface FileRouteTypes {
     | '/__dev/'
     | '/author/'
     | '/__dev/log-me-in/$email'
-    | '/characters/$characterId'
-    | '/characters/new'
+    | '/family/$characterId'
+    | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/books/'
-    | '/characters/'
+    | '/family/'
     | '/stories/'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesByTo: FileRoutesByTo
@@ -296,7 +295,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/admin'
-    | '/family'
+    | '/sharing'
     | '/api/health'
     | '/api/portrait'
     | '/author/$storyId'
@@ -307,14 +306,14 @@ export interface FileRouteTypes {
     | '/__dev'
     | '/author'
     | '/__dev/log-me-in/$email'
-    | '/characters/$characterId'
-    | '/characters/new'
+    | '/family/$characterId'
+    | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/books'
-    | '/characters'
+    | '/family'
     | '/stories'
     | '/api/authoring/stories/$storyId/assets'
   id:
@@ -325,7 +324,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/_family/admin'
-    | '/_family/family'
+    | '/_family/sharing'
     | '/api/health'
     | '/api/portrait'
     | '/author/$storyId'
@@ -336,14 +335,14 @@ export interface FileRouteTypes {
     | '/__dev/'
     | '/author/'
     | '/__dev/log-me-in/$email'
-    | '/_family/characters/$characterId'
-    | '/_family/characters/new'
+    | '/_family/family/$characterId'
+    | '/_family/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/_family/books/'
-    | '/_family/characters/'
+    | '/_family/family/'
     | '/_family/stories/'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesById: FileRoutesById
@@ -422,11 +421,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilyAdminRouteImport
       parentRoute: typeof FamilyRoute
     }
-    '/_family/family': {
-      id: '/_family/family'
-      path: '/family'
-      fullPath: '/family'
-      preLoaderRoute: typeof FamilyFamilyRouteImport
+    '/_family/sharing': {
+      id: '/_family/sharing'
+      path: '/sharing'
+      fullPath: '/sharing'
+      preLoaderRoute: typeof FamilySharingRouteImport
       parentRoute: typeof FamilyRoute
     }
     '/api/health': {
@@ -499,25 +498,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilyBooksIndexRouteImport
       parentRoute: typeof FamilyRoute
     }
-    '/_family/characters/': {
-      id: '/_family/characters/'
-      path: '/characters'
-      fullPath: '/characters/'
-      preLoaderRoute: typeof FamilyCharactersIndexRouteImport
+    '/_family/family/': {
+      id: '/_family/family/'
+      path: '/family'
+      fullPath: '/family/'
+      preLoaderRoute: typeof FamilyFamilyIndexRouteImport
       parentRoute: typeof FamilyRoute
     }
-    '/_family/characters/$characterId': {
-      id: '/_family/characters/$characterId'
-      path: '/characters/$characterId'
-      fullPath: '/characters/$characterId'
-      preLoaderRoute: typeof FamilyCharactersCharacterIdRouteImport
+    '/_family/family/$characterId': {
+      id: '/_family/family/$characterId'
+      path: '/family/$characterId'
+      fullPath: '/family/$characterId'
+      preLoaderRoute: typeof FamilyFamilyCharacterIdRouteImport
       parentRoute: typeof FamilyRoute
     }
-    '/_family/characters/new': {
-      id: '/_family/characters/new'
-      path: '/characters/new'
-      fullPath: '/characters/new'
-      preLoaderRoute: typeof FamilyCharactersNewRouteImport
+    '/_family/family/new': {
+      id: '/_family/family/new'
+      path: '/family/new'
+      fullPath: '/family/new'
+      preLoaderRoute: typeof FamilyFamilyNewRouteImport
       parentRoute: typeof FamilyRoute
     }
     '/_family/stories/': {
@@ -567,21 +566,21 @@ declare module '@tanstack/react-router' {
 
 interface FamilyRouteChildren {
   FamilyAdminRoute: typeof FamilyAdminRoute
-  FamilyFamilyRoute: typeof FamilyFamilyRoute
-  FamilyCharactersCharacterIdRoute: typeof FamilyCharactersCharacterIdRoute
-  FamilyCharactersNewRoute: typeof FamilyCharactersNewRoute
+  FamilySharingRoute: typeof FamilySharingRoute
+  FamilyFamilyCharacterIdRoute: typeof FamilyFamilyCharacterIdRoute
+  FamilyFamilyNewRoute: typeof FamilyFamilyNewRoute
   FamilyBooksIndexRoute: typeof FamilyBooksIndexRoute
-  FamilyCharactersIndexRoute: typeof FamilyCharactersIndexRoute
+  FamilyFamilyIndexRoute: typeof FamilyFamilyIndexRoute
   FamilyStoriesIndexRoute: typeof FamilyStoriesIndexRoute
 }
 
 const FamilyRouteChildren: FamilyRouteChildren = {
   FamilyAdminRoute: FamilyAdminRoute,
-  FamilyFamilyRoute: FamilyFamilyRoute,
-  FamilyCharactersCharacterIdRoute: FamilyCharactersCharacterIdRoute,
-  FamilyCharactersNewRoute: FamilyCharactersNewRoute,
+  FamilySharingRoute: FamilySharingRoute,
+  FamilyFamilyCharacterIdRoute: FamilyFamilyCharacterIdRoute,
+  FamilyFamilyNewRoute: FamilyFamilyNewRoute,
   FamilyBooksIndexRoute: FamilyBooksIndexRoute,
-  FamilyCharactersIndexRoute: FamilyCharactersIndexRoute,
+  FamilyFamilyIndexRoute: FamilyFamilyIndexRoute,
   FamilyStoriesIndexRoute: FamilyStoriesIndexRoute,
 }
 

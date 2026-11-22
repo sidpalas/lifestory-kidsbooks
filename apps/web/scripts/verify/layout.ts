@@ -75,7 +75,7 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
         );
       if ((await family()).includes(null)) {
         for (const age of ["Young child", "Adult"]) {
-          await page.goto("/characters/new");
+          await page.goto("/family/new");
           await page.getByLabel("Name").fill(`Layout ${age}`);
           await page.getByRole("button", { name: age, exact: true }).click();
           await page.getByRole("button", { name: "Add to the family" }).click();

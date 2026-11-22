@@ -542,7 +542,7 @@ function RoleCard({
           )}
           {character && (
             <Link
-              to="/characters/$characterId"
+              to="/family/$characterId"
               params={{ characterId: character.id }}
               className="text-xs text-muted-foreground underline"
             >

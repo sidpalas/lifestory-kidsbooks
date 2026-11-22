@@ -1,4 +1,4 @@
-// Admin: the operator's tools, apart from Studio (making stories) and Family settings (one's own family). Only the
+// Admin: the operator's tools, apart from Studio (making stories) and Sharing (one's own family). Only the
 // operator reaches it: listing authors fails with Forbidden for anyone else, so the page is not found for them, and
 // every action below checks the operator role on the server again.
 import { Forbidden, NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";

@@ -256,7 +256,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
 
   // 8. A family makes a book of it: the author's own family adds a young child with curly hair and a round face, so
   // her hair is the generated part the version published.
-  await author.goto("/characters/new");
+  await author.goto("/family/new");
   await author.getByLabel("Name").fill(child);
   await author.getByLabel("Pronouns").selectOption("she/her");
   await author.getByRole("button", { name: "Young child", exact: true }).click();

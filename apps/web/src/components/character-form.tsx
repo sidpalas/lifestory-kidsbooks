@@ -47,7 +47,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
           data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } },
         }),
       );
-      await router.navigate({ to: "/characters" });
+      await router.navigate({ to: "/family" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
       setSaving(false);
@@ -56,8 +56,8 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
 
   return (
     <main className="flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
-      <Link to="/characters" className="text-sm text-muted-foreground hover:underline">
-        ← Characters
+      <Link to="/family" className="text-sm text-muted-foreground hover:underline">
+        ← Our family
       </Link>
       <h1 className="text-2xl font-semibold">{character ? character.name : "Add a family member"}</h1>
       {!canEdit && (
