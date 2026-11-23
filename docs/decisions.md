@@ -332,6 +332,14 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     ~11/12 at US$0.038. It re-renders more of the picture (mean change outside the part 16–18/255 against ~11).
   - Masked edits (BFL Fill, OpenAI) redrew the whole mask or returned artefacts; OpenAI's transparent parts had
     clean alpha but didn't fit the head (0/4). This closes D26's open question on transparent output.
+  - **Update 2026-11-23 (thread T-8b52103b-ac29-4045-8048-12ef3cf41c6f):** the 0/4 holds for the inputs tested
+    here, not for transparent output in general. Asked for the hair alone (`background=transparent`) on the hair
+    test's flat line-art input (re-ink in black, skin flat peach, clothes light grey), sunburst fitted the head in
+    24/24 parts: 2 views × 3 styles, in 2 runs with a flat grey fill and 2 runs with a pencil-and-watercolour fill.
+    Faces stayed clear except the long fringe over the eyebrows, and long hair still lay over the shoulders.
+    That is US$0.024 per view (one call covers two views), or US$0.030 with the painted page as a style reference.
+    Whether part generation switches to transparent hair layers is Sid's open call; "What" above is unchanged
+    until then.
 - **Terms (official pages, 2026-11-19):** OpenAI doesn't train on API inputs by default (Services Agreement §4.2),
   keeps them 30 days for abuse monitoring, and assigns output to the customer (§4.1). BFL's API terms (§2b) license
   BFL to train on inputs and outputs, which rules it out for illustrators' art without an enterprise contract.
