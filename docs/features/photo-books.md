@@ -40,3 +40,7 @@ each step comes with the parent screens.
 - Photos are deleted at the order, on refusal, or after 24 h; a test that looks for them later finds nothing, by
   design.
 - Figures on one page must not touch or overlap; the import refuses such pages.
+- A generated figure is clipped to its keep zone (the bald figure dilated, plus a hair zone above the head), not its
+  box: on p04 the model redrew the elephant behind the hero inside the box. Pages that lose many pixels to the clip
+  are flagged in review. Art for photo stories needs tight figure cuts and a scenery occluder over any body edge the
+  scenery hides (D56).

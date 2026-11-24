@@ -314,8 +314,18 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   - **Each figure on each page** is redrawn from the page reference (plate plus the bald figure, cropped to the
     figure's window) and the approved sheet, on a transparent background, never from the photo. The model draws
     what the figure wears and holds; only scenery occluders are composited over it. Production checks: retry an
-    output with no transparent pixels, an alpha floor of 0.1, clip to the figure's box plus a margin, rescale when
-    the fit IoU against the bald figure is below **0.5** (p04's lying hero fitted correctly at 0.596), then tint.
+    output with no transparent pixels, an alpha floor of 0.1, rescale when the fit IoU against the bald figure is
+    below **0.5** (p04's lying hero fitted correctly at 0.596), clip to the figure's keep zone, then tint.
+  - **Keep zone, not the figure's box:** on p04 the model drew a second copy of Tiny, the elephant in the plate that
+    the bald head rests against, plus an invented shirt and shoulder, all inside the hero's box (one sample; p23 with
+    the same prompt didn't). The layer is clipped to the bald figure's alpha dilated by a few percent of its size,
+    plus a hair zone: the head's box (recorded per figure at import) grown about 40% up and to the sides. Both are
+    configuration. `page.figure` stores the share of output pixels it clipped away, and the review queue (D57) flags
+    pages above a threshold.
+  - **Illustrator rules (authoring docs):** cut each figure's layer tight, with no band of background around it;
+    where scenery covers the body (a blanket over the torso), put it in a scenery occluder that also covers the
+    shoulder and neck edge, so anything the model invents underneath stays hidden; draw a clear boundary between
+    body and scenery (Sid wants Crosby's p04 redrawn this way).
   - **Tint, on for every figure:** match the layer's RGB mean to the illustrator's bald figure on that page, and
     scale its contrast by that figure's std ÷ the layer's std, clamped to 0.6–1.2. It blended on the night pages
     p04 and p23; a multiply from the plate around the figure came out muddy.
@@ -358,10 +368,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   sheet), never for pages; the operator never sees them. The worker refuses to send a photo unless
   `OPENAI_ZDR=enabled` is set for the OpenAI project it uses (a safety setting, not a launch gate). Under ZDR OpenAI
   still keeps an image its classifier flags as potential CSAM, for manual review; the policies say so (D58).
-- **Book format 4:** a page's figure is `{ kind: "photoFigure", slotId, reference, stock, window, tint }`; a slot
+- **Book format 4:** a page's figure is `{ kind: "photoFigure", slotId, reference, stock, window, head, tint }`; a slot
   gains a stock outfit and a stock sheet; a story gains `photo` (style reference and prompt version, pinned per
   story version like `gradient-map-v1` was). The import (D42) makes the plate, the bald reference per figure, the
-  window and scenery occluders, and the author approves the stock figures drawn by the same pipeline.
+  window, the head box and scenery occluders, and the author approves the stock figures drawn by the same pipeline.
   `BookPage`, printing and flattening (D27, D35) are unchanged apart from where figure layers come from.
 - **Fakes:** `FakeImageProvider` gains multi-image and transparent edits, and a fake `PhotoCheck` refuses a photo
   whose name contains `two-faces`, so tests and orbs make no API calls (D13).
@@ -1226,7 +1236,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Decided (Sid, 2026-11-19) / Made
 
-- **Changed by D56–D57 (Sid, 2026-11-24):** the import makes the plate, the bald reference per figure, its window and scenery occluders, refuses figures that touch, and the author approves stock figures; bases, masks and hair parts go.
+- **Changed by D56–D57 (Sid, 2026-11-24):** the import makes the plate, the bald reference per figure, its window, head box and scenery occluders, refuses figures that touch, and the author approves stock figures; bases, masks and hair parts go.
 - **What (design: the "Story art import design" artifact in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1):** authors
   draw in their own tools and bring a layered file (PSD, which Photoshop, Procreate, Krita, Affinity and Clip Studio all
   export), several PNG layers, or one flat picture per page. The `/author` page tab's import turns it into what D24 and
