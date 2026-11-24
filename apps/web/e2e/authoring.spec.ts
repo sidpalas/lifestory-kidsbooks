@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
+import { markShownBookDrawn } from "./drawn.ts";
+
 // Story authoring (D37), as an author does it: the operator lets an account author; the author starts a story, uploads
 // static fonts and sets text styles and the photo style (D56), defines a role with its outfit and stock sheet, lays out a
 // page with plate art, a placed figure (its bald reference and stock drawing) and scenery in front, writes text with
@@ -192,6 +194,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await role.getByLabel("Name").fill(child);
   await role.getByLabel("Pronouns").selectOption("she/her");
   await author.getByRole("button", { name: "Make the book" }).click();
+  await markShownBookDrawn(author);
   await expect(author).toHaveURL(/\/books\/book_/);
   const pages = author.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(pages).toHaveCount(1);

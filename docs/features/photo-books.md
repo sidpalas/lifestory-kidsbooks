@@ -8,31 +8,38 @@ character sheet per role and a cover (`likeness.preview`), up to two rounds of n
 opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
 `page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
 proof and sends the book for review. The operator redoes a page, refuses the book with a note, or approves it for
-print (`book.release`). Being built: phases 3–9 of the "Photo books: plan and UX" artifact.
+print (`book.release`). Built on the fakes; the Crosby import and a real-provider run are still to come.
 
 ## Routes and roles
 
-- Story page: "Put your family in this book" makes a draft book (owner and editor; a viewer sees the stock
-  characters only).
+- Story page: "Make the book" makes a draft book, or reopens the family's draft of the story (owner and editor; a
+  viewer sees the stock characters only).
+- `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
+  (`POST /api/books/<id>/photos`, resized to 1536 px in the browser), the sheets and cover with two change rounds,
+  "Make my book", then the page-change form under each page and "Send for review". Proofs appear from page changes on.
 - The draft book's photo, preview and order steps, then its page-change and review steps: owner and editor. Drafts
   are hidden from Our books and from the story page's list of the family's books.
-- Policies: terms, privacy policy, child safety and AI policy, linked from the footer, account setup, the photo
-  step and the order step (D58).
-- `/admin` review queue: the operator only, through `reviewBook`; it shows sheets and pages, and photos only on an opted-in book.
+- `/policies/terms`, `/policies/privacy`, `/policies/child-safety` (D58), public, from `apps/web/src/policies/*.md`
+  rendered with marked; linked from the landing footer, the photo step and the order step. Bump `POLICY_VERSION`
+  in `contracts.ts` with any text change.
+- `/admin` "Books to review" and `/review/<id>`: the operator only, through `reviewBook`; sheets, pages with notes,
+  the approved proof, and photos only on an opted-in book. Redo a page, refuse with a note (emailed to the owners),
+  or approve.
 
 ## Seed data
 
-- To come with format 4: a photo story (Crosby locally; a small placeholder fixture for tests) and fake test photos,
-  one named `two-faces` that the fake `PhotoCheck` refuses.
+- `fixtures/stories/kite-day` (The Kite Day): the placeholder format 4 story. Crosby's Dream Adventure comes with
+  its import.
+- The fake `PhotoCheck` refuses any photo whose file name contains `two-faces`.
 - `IMAGE_PROVIDER=fake` and the fake `PhotoCheck` are the defaults; no API calls in orbs or CI.
 
 ## Verify
 
-`mise run verify -- e2e -- photo-book` once `photo-book.spec.ts` lands: a two-role book through the check with one
+`mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
 bad photo, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
-deletes, and the 24 h sweep of an abandoned draft. A dedicated `verify` command with screenshots of each step comes
-with the parent screens.
+deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a drawn book with `markDrawn`
+(`e2e/drawn.ts`).
 
 ## Gotchas
 

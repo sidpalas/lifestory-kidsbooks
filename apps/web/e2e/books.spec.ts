@@ -1,6 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
+import { markDrawn, markShownBookDrawn } from "./drawn.ts";
+
 // Personalized books, who plays each role, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
 // "The Example Family"; the seeded grandparent is a viewer in it. Names are unique per run.
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -81,6 +83,7 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   await expect.poll(() => preview.locator("img").count()).toBe(8);
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
+  await markShownBookDrawn(page);
 
   const allPages = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(allPages).toHaveCount(3);
@@ -207,6 +210,7 @@ test("a viewer reads the family's books but can't change them", async ({ page, b
   );
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
+  await markShownBookDrawn(page);
   const bookUrl = new URL(page.url()).pathname;
 
   const viewer = await browser.newPage();
@@ -281,6 +285,7 @@ test("a family with a book of the story is sent to it instead of silently making
     await page.getByRole("button", { name: "Make the book" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     const bookPath = new URL(page.url()).pathname;
+    await markDrawn(bookPath.split("/").at(-1)!);
 
     // The stale tab's "Make the book" makes nothing: it says why and lists the book that exists now.
     await stale.getByRole("button", { name: "Make the book" }).click();
@@ -333,9 +338,12 @@ test("a family with a book of the story is sent to it instead of silently making
         ),
       ),
     );
-    expect(attempts.filter(Exit.isSuccess)).toHaveLength(1);
-    expect(JSON.stringify(attempts.find(Exit.isFailure))).toContain("BookExists");
+    // The first makes a draft; the second, under the same lock, reopens that draft (D57) instead of a second copy.
+    const made = attempts.filter(Exit.isSuccess).map((exit) => exit.value.id);
+    expect(made).toHaveLength(2);
+    expect(new Set(made).size).toBe(1);
     await runtime.dispose();
+    await markDrawn(made[0]!);
 
     // With several books the page doesn't pick one: each is listed, and another copy is made only on purpose.
     await page.goto(storyUrl);
@@ -351,6 +359,7 @@ test("a family with a book of the story is sent to it instead of silently making
     await page.getByRole("button", { name: "Make another copy" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     const newest = new URL(page.url()).pathname;
+    await markDrawn(newest.split("/").at(-1)!);
     expect(newest).not.toBe(bookPath);
     // Home picks up the newest book, and the story's card leaves the choice to the story page.
     await page.goto("/");

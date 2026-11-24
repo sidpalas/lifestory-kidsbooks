@@ -5,6 +5,8 @@ import type { ServerServices } from "@lifestory/core";
 import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
+import { markDrawn } from "./drawn.ts";
+
 // Archiving a story (D49): its author takes it out of every family's stories and stops new books of it, without
 // touching the books already made, and can restore it. A fresh story each run, so the seeded ones stay published.
 test("an author archives a story: families can't find it or make a book of it, existing books still draw, and restoring brings it back", async ({
@@ -72,6 +74,7 @@ test("an author archives a story: families can't find it or make a book of it, e
     const cast = { hero: hero, grownup: grown };
     // The family made a book before the story was archived.
     const { id: bookId } = await run(createBook(parent, family, { slug, cast }));
+    await markDrawn(bookId);
 
     // 1. The author archives it from Studio, after confirming.
     const author = await signedIn("operator@lifestory.dev", `/author/${storyId}`);

@@ -23,6 +23,7 @@ import { Route as AuthorStoryIdRouteImport } from './routes/author/$storyId'
 import { Route as BooksBookIdRouteImport } from './routes/books/$bookId'
 import { Route as InvitationsInvitationIdRouteImport } from './routes/invitations.$invitationId'
 import { Route as PoliciesPolicyRouteImport } from './routes/policies.$policy'
+import { Route as ReviewBookIdRouteImport } from './routes/review.$bookId'
 import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$token'
 import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
@@ -103,6 +104,11 @@ const PoliciesPolicyRoute = PoliciesPolicyRouteImport.update({
   path: '/policies/$policy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewBookIdRoute = ReviewBookIdRouteImport.update({
+  id: '/review/$bookId',
+  path: '/review/$bookId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetPasswordTokenRoute = SetPasswordTokenRouteImport.update({
   id: '/set-password/$token',
   path: '/set-password/$token',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/policies/$policy': typeof PoliciesPolicyRoute
+  '/review/$bookId': typeof ReviewBookIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/policies/$policy': typeof PoliciesPolicyRoute
+  '/review/$bookId': typeof ReviewBookIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev': typeof _devIndexRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
   '/policies/$policy': typeof PoliciesPolicyRoute
+  '/review/$bookId': typeof ReviewBookIdRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/books/$bookId'
     | '/invitations/$invitationId'
     | '/policies/$policy'
+    | '/review/$bookId'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev/'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/books/$bookId'
     | '/invitations/$invitationId'
     | '/policies/$policy'
+    | '/review/$bookId'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/books/$bookId'
     | '/invitations/$invitationId'
     | '/policies/$policy'
+    | '/review/$bookId'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev/'
@@ -322,6 +334,7 @@ export interface RootRouteChildren {
   BooksBookIdRoute: typeof BooksBookIdRoute
   InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
   PoliciesPolicyRoute: typeof PoliciesPolicyRoute
+  ReviewBookIdRoute: typeof ReviewBookIdRoute
   SetPasswordTokenRoute: typeof SetPasswordTokenRoute
   StoriesSlugRoute: typeof StoriesSlugRoute
   _devIndexRoute: typeof _devIndexRoute
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PoliciesPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/review/$bookId': {
+      id: '/review/$bookId'
+      path: '/review/$bookId'
+      fullPath: '/review/$bookId'
+      preLoaderRoute: typeof ReviewBookIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/set-password/$token': {
       id: '/set-password/$token'
       path: '/set-password/$token'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   BooksBookIdRoute: BooksBookIdRoute,
   InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
   PoliciesPolicyRoute: PoliciesPolicyRoute,
+  ReviewBookIdRoute: ReviewBookIdRoute,
   SetPasswordTokenRoute: SetPasswordTokenRoute,
   StoriesSlugRoute: StoriesSlugRoute,
   _devIndexRoute: _devIndexRoute,

@@ -2,7 +2,7 @@
 // operator reaches it: listing authors fails with Forbidden for anyone else, so the page is not found for them, and
 // every action below checks the operator role on the server again.
 import { Forbidden, NotAuthenticated, NotFound, unwrapResult } from "@lifestory/core/contracts";
-import { createFileRoute, notFound, redirect, useHydrated, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { ShellPage } from "~/components/app-shell";
@@ -13,11 +13,13 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { AuthorsResult, ChangeAuthorsResult, grantAuthorFn, listAuthorsFn, revokeAuthorFn } from "~/server/authoring";
 import { inviteFamilyFn, InviteFamilyResult } from "~/server/families";
+import { listReviewQueueFn, ReviewQueueResult } from "~/server/photo-books";
 
 export const Route = createFileRoute("/_family/admin")({
   loader: async () => {
     try {
-      return { authors: unwrapResult(AuthorsResult)(await listAuthorsFn()) };
+      const [authors, queue] = await Promise.all([listAuthorsFn(), listReviewQueueFn()]);
+      return { authors: unwrapResult(AuthorsResult)(authors), queue: unwrapResult(ReviewQueueResult)(queue) };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       if (error instanceof Forbidden) throw notFound();
@@ -25,9 +27,35 @@ export const Route = createFileRoute("/_family/admin")({
     }
   },
   component: function Admin() {
-    const { authors } = Route.useLoaderData();
+    const { authors, queue } = Route.useLoaderData();
     return (
-      <ShellPage title="Admin" description="Operator only: who can use Lifestory and who can write stories for it.">
+      <ShellPage
+        title="Admin"
+        description="Operator only: books to review, who can use Lifestory and who can write stories for it."
+      >
+        <section className="flex flex-col gap-3" aria-labelledby="admin-review">
+          <h2 id="admin-review" className="text-lg font-semibold">
+            Books to review
+          </h2>
+          {queue.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No book is waiting for review.</p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm" data-testid="review-queue">
+              {queue.map((book) => (
+                <li key={book.id} className="flex flex-wrap items-center gap-2">
+                  <Link to="/review/$bookId" params={{ bookId: book.id }} className="underline">
+                    {book.title}
+                  </Link>
+                  <span className="text-muted-foreground">
+                    {book.familyName} · sent {new Date(book.sentAt).toLocaleDateString()}
+                    {book.photoReview && " · photos shared"}
+                  </span>
+                  {book.flagged && <span className="text-amber-700">a page lost pixels to the clip</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         <section className="flex flex-col gap-3" aria-labelledby="admin-families">
           <h2 id="admin-families" className="text-lg font-semibold">
             Families

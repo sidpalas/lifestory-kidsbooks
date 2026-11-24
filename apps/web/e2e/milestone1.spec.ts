@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
+import { markShownBookDrawn } from "./drawn.ts";
+
 // The whole milestone 1 slice (docs/brief.md, "Milestone 1 scope"), in order, as the people in it do it: the operator
 // invites a family, its owner invites a view-only grandparent, makes a book of the sample story, saying who plays each
 // role, edits a page's text, then downloads the PDF proof
@@ -114,6 +116,7 @@ test("milestone 1: invite, family, viewer, a book and its cast, a text edit, an 
   await grown.getByLabel("Age").selectOption({ label: "Adult" });
   await evidence(owner, "m1-cast");
   await owner.getByRole("button", { name: "Make the book" }).click();
+  await markShownBookDrawn(owner);
   await expect(owner).toHaveURL(/\/books\/book_/);
   const bookPath = new URL(owner.url()).pathname;
   const allPages = owner.getByRole("region", { name: "All pages" }).getByTestId("book-page");

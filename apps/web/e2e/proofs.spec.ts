@@ -2,6 +2,8 @@ import type { ServerServices } from "@lifestory/core";
 import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
+import { markDrawn } from "./drawn.ts";
+
 // Chromium writes page dictionaries and font names uncompressed, so the PDF's structure can be read from its bytes.
 const pdfFacts = (pdf: Buffer) => {
   const text = pdf.toString("latin1");
@@ -42,6 +44,7 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
     ({ id: bookId } = await run(
       createBook(parent, family, { slug: "the-kite-day", cast: { hero: hero, grownup: grown }, existing }),
     ));
+    await markDrawn(bookId);
   } finally {
     await runtime.dispose();
   }
@@ -144,6 +147,7 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
         existing,
       }),
     );
+    await markDrawn(bookId);
 
     // Rendering: deleting it right after the request removes the row and cancels the render, which takes seconds.
     const rendering = await run(core.requestBookProof(parent, bookId));
@@ -275,6 +279,7 @@ test("deleting a book deletes its proofs' PDFs, and no PDF is served without its
         existing,
       }),
     );
+    await markDrawn(bookId);
     const proof = await run(core.requestBookProof(parent, bookId));
     let objectKey = "";
     await expect
