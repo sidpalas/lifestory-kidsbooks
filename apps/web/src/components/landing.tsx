@@ -12,7 +12,7 @@ import { Button } from "~/components/ui/button";
 // URL, and browsers and Cloudflare (which keep static images for 4 hours) can't keep showing the old one.
 
 const DESCRIPTION =
-  "Picture books written and illustrated by people, starring your family. Upload a photo of each person, and the illustrator's art is redrawn with them in the book's style.";
+  "Picture books written and illustrated by people, starring your family. Upload a photo of each person, and the illustrator's art is redrawn with them in the book's style, then printed and shipped to you.";
 
 export const landingHead = ({ url }: { url: string }) => ({
   meta: [
@@ -47,7 +47,7 @@ const steps = [
   },
   {
     title: "Get your book",
-    text: "Every page is drawn with your family. A person checks the whole book before it prints.",
+    text: "Every page is drawn with your family. A person checks the whole book, then it's printed and shipped to you.",
   },
 ];
 
@@ -161,10 +161,11 @@ export function Landing() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-2xl font-semibold">Your words, ready to print</h2>
+          <h2 className="text-2xl font-semibold">A printed book, at your door</h2>
           <p className="max-w-3xl text-muted-foreground">
-            Read each page as it will print and change the text if you like. Then download a print-ready PDF of the
-            whole book.
+            Read every page as it will print, and change the words if you like. Once we've checked the book, it's
+            printed on demand and shipped to you. Or choose the PDF of the whole book for less, to read on screen or
+            print yourself.
           </p>
         </section>
       </main>
