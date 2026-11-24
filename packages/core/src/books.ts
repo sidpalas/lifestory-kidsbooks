@@ -173,13 +173,19 @@ export const createBook = Effect.fn("books.create")(function* (
   return { id };
 });
 
-const loadBook = Effect.fn("books.load")(function* (bookId: string) {
+export const loadBook = Effect.fn("books.load")(function* (bookId: string) {
   const [row] = yield* Database.query((db) =>
     db
       .select({
         id: schema.book.id,
         familyId: schema.book.familyId,
         title: schema.book.title,
+        status: schema.book.status,
+        photoReview: schema.book.photoReview,
+        likenessStatus: schema.book.likenessStatus,
+        likenessRound: schema.book.likenessRound,
+        cover: schema.book.cover,
+        orderedAt: schema.book.orderedAt,
         storyId: schema.story.id,
         storyVersionId: schema.book.storyVersionId,
         slug: schema.story.slug,

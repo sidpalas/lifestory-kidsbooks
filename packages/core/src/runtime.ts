@@ -7,6 +7,7 @@ import { Generations } from "./generations.ts";
 import { FakeImageProvider } from "./image-provider.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
+import { FakePhotoCheck, OpenAIPhotoCheck } from "./photo-check.ts";
 import { OpenAIImageProvider } from "./providers/openai.ts";
 import { ObjectStorage } from "./storage.ts";
 
@@ -18,12 +19,20 @@ const ImageProviderLayer = Layer.unwrap(
   ),
 );
 
+/** PHOTO_CHECK picks the photo check: `fake` (the default; refuses `two-faces` photos) or `openai` (D56). */
+const PhotoCheckLayer = Layer.unwrap(
+  Effect.map(
+    Config.Literals(["fake", "openai"], "PHOTO_CHECK").pipe(Config.withDefault("fake" as const)),
+    (check) => ({ fake: FakePhotoCheck, openai: OpenAIPhotoCheck })[check],
+  ),
+);
+
 /**
  * Every server-side service, wired once. The web server and the worker each
  * build one ManagedRuntime from this layer and run all their Effects through it.
  */
 export const ServerLayer = ImageProviderLayer.pipe(
-  Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer)),
+  Layer.provideMerge(Layer.mergeAll(Auth.layer, Jobs.layer, ObjectStorage.layer, Generations.layer, PhotoCheckLayer)),
   Layer.provideMerge(Mailer.layer),
   Layer.provideMerge(Database.layer),
   Layer.provideMerge(AppConfig.layer),

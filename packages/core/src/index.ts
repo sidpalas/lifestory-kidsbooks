@@ -19,3 +19,5 @@ export * from "./proofs.ts";
 export * from "./print-ready.ts";
 export * from "./tasks/index.ts";
 export * from "./books.ts";
+export * from "./photo-check.ts";
+export * from "./figure.ts";

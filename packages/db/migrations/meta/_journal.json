@@ -134,6 +134,13 @@
       "when": 1795542513624,
       "tag": "0018_photo_books_remove_parts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795544601696,
+      "tag": "0019_photo_book_flow",
+      "breakpoints": true
     }
   ]
 }

@@ -187,3 +187,85 @@ export const DraftView = Schema.Struct({
   ),
 });
 export type DraftView = typeof DraftView.Type;
+
+/**
+ * Hair chips (D56): what the parent says about each person's hair, which the sheet prompt puts in words. Colours sit
+ * on a grid of lightness and redness, so the photo check can tell how many steps the photo's hair is from the chips.
+ */
+export const hairColours = [
+  { id: "black", label: "Black", at: [0, 0] },
+  { id: "dark-brown", label: "Dark brown", at: [1, 0] },
+  { id: "brown", label: "Brown", at: [2, 0] },
+  { id: "light-brown", label: "Light brown", at: [3, 0] },
+  { id: "dark-blond", label: "Dark blond", at: [4, 0] },
+  { id: "blond", label: "Blond", at: [5, 0] },
+  { id: "platinum", label: "Platinum blond", at: [6, 0] },
+  { id: "auburn", label: "Auburn", at: [2, 1] },
+  { id: "red", label: "Red", at: [3, 2] },
+  { id: "strawberry-blond", label: "Strawberry blond", at: [4, 1] },
+  { id: "grey", label: "Grey", at: [5, -1] },
+  { id: "white", label: "White", at: [6, -1] },
+] as const;
+export const HairColour = Schema.Literals(hairColours.map((colour) => colour.id));
+export type HairColour = typeof HairColour.Type;
+
+export const hairLengths = [
+  { id: "none", label: "No hair" },
+  { id: "very-short", label: "Very short" },
+  { id: "short", label: "Short" },
+  { id: "medium", label: "Chin to shoulder" },
+  { id: "long", label: "Long" },
+] as const;
+export const HairLength = Schema.Literals(hairLengths.map((length) => length.id));
+
+export const hairTextures = [
+  { id: "straight", label: "Straight" },
+  { id: "wavy", label: "Wavy" },
+  { id: "curly", label: "Curly" },
+  { id: "coily", label: "Coily" },
+] as const;
+export const HairTexture = Schema.Literals(hairTextures.map((texture) => texture.id));
+
+export const Hair = Schema.Struct({ colour: HairColour, length: HairLength, texture: HairTexture });
+export type Hair = typeof Hair.Type;
+
+/** Steps between two hair colours: lighting moves a photo's hair about one (D56, spike). */
+export const hairSteps = (a: HairColour, b: HairColour) => {
+  const [ax, ay] = hairColours.find((colour) => colour.id === a)!.at;
+  const [bx, by] = hairColours.find((colour) => colour.id === b)!.at;
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+};
+
+/** What the photo check saw (D56): moderation scores and the vision model's report, never who the person is. */
+export const PhotoReport = Schema.Struct({
+  moderation: Schema.Struct({ sexual: Schema.Number, violence: Schema.Number, selfHarm: Schema.Number }),
+  /** Faces in focus and near the camera, the main one included. */
+  prominentFaces: Schema.Number,
+  /** Bystanders: small or out of focus; they never refuse a photo. */
+  backgroundFaces: Schema.Number,
+  mainFaceVisible: Schema.Boolean,
+  /** The main face's width in pixels of the uploaded image. */
+  mainFaceWidthPx: Schema.Number,
+  sharpness: Schema.Literals(["sharp", "soft", "blurred"]),
+  lighting: Schema.Literals(["good", "dim", "harsh"]),
+  occlusions: Schema.Array(Schema.Literals(["hat", "helmet", "sunglasses", "goggles", "mask", "hand", "other"])),
+  apparentAge: Age,
+  hairColour: Schema.NullOr(HairColour),
+  facialHair: Schema.Literals(["none", "stubble", "moustache", "beard"]),
+  tip: Schema.String,
+});
+export type PhotoReport = typeof PhotoReport.Type;
+
+/** A refusal or warning, for the parent. */
+export const PhotoIssue = Schema.Struct({ code: Schema.String, message: Schema.String });
+export type PhotoIssue = typeof PhotoIssue.Type;
+
+/** The check's verdict on one photo, stored on the book's likeness. */
+export const PhotoCheckResult = Schema.Struct({
+  status: Schema.Literals(["passed", "refused"]),
+  refusals: Schema.Array(PhotoIssue),
+  warnings: Schema.Array(PhotoIssue),
+  /** Absent when moderation refused it before the vision check. */
+  report: Schema.NullOr(PhotoReport),
+});
+export type PhotoCheckResult = typeof PhotoCheckResult.Type;
