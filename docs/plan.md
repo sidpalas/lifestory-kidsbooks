@@ -3,6 +3,10 @@
 How milestone 1 ([brief.md](brief.md#milestone-1-scope)) gets built on the Phase 1 foundation. Decisions referenced
 as D*n* are in [decisions.md](decisions.md). This plan changes like decisions do: with evidence, and with Sid's approval.
 
+**Since D56 (2026-11-24)** photo books replace looks, parts and Modal. The sections on looks, the picker, part
+generation and Modal describe the system being removed; the photo-book plan is the "Photo books: plan and UX"
+artifact in thread T-01a1fb83-7824-71fa-8625-bfe2dcc7ccda, recorded in D56–D58.
+
 ## Repository layout
 
 What exists after Phase 1, and what milestone 1 adds (marked _new_):

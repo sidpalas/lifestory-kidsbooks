@@ -6,6 +6,12 @@ I'm building this as a realistic, fairly complex product that I'll use on my You
 
 The product: parents create custom picture books. Human authors and illustrators write the stories and draw the illustrations, including a range of looks for each character. Parents pick how each of their family's characters looks (face, skin tone, hairstyle, hair colour, extras such as glasses) from options the illustrator approved, and can edit the text; they don't edit the artwork itself. No photos of real people are uploaded, and no AI runs when a family makes a book: AI is tooling that helps illustrators produce the variants (docs/decisions.md D26). Later it grows into a marketplace with community ranking and community authoring with revenue share.
 
+**Changed 2026-11-24 (Sid, D56–D58):** parents now upload one photo per character, and a model draws them into the
+book in the story's style through a per-book character sheet, on OpenAI under zero data retention. "Make my book"
+is the order, a parent can change up to 3 pages, and a person reviews every book before print. Looks, parts and
+the Modal function are removed. Where this brief says otherwise (no photos, no AI at book time, generation only at
+authoring time, Modal as fallback, the picker and parts in milestone 1), D56–D58 replace it.
+
 ## Decided
 
 - TypeScript throughout, except the image model.

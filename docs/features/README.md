@@ -51,6 +51,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
 - [page-previews](page-previews.md): pages fit phones and desktop in the book editor, story page, and draft
   preview, keeping their shape. `verify layout`.
 - Personalized book, look change on every page, text editor: covered by `e2e -- milestone1 books`; no map file yet.
+- [photo-books](photo-books.md): photos per role, the check, sheets and preview rounds, the order, page changes and
+  our review (D56–D58; being built, replaces looks and parts). `verify e2e -- photo-book` once its spec lands.
 
 ### Print
 

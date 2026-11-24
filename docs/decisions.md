@@ -21,6 +21,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D3. Better Auth; a family is an organization; operator via the admin plugin without impersonation — Decided
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** photos are uploaded now, kept until the order and never longer than 24 h, and the operator reviews family books through `reviewBook` (D57), named in the policies (D58). Still no impersonation.
 - **Why:** brief. Accounts hold details about children (names, ages, looks; no photos since D26), so nobody, the
   operator included, may sign in as someone else.
 - **How:** family roles `owner`, `parent` (edit books; the app calls it Editor, since a relative or friend can hold
@@ -179,6 +180,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D5. Image generation: FLUX 3 Image Klein on Modal — Decided
 
+- **Superseded by D56 (Sid, 2026-11-24):** Klein on Modal, its function and its webhook are removed with the parts system; image generation is OpenAI `gpt-image-2.5-sunburst` under ZDR.
 - **Why:** brief. Checked 2026-11-18: released 2026-10-15, 5.6B parameters, open weights, image editing and
   multi-reference generation with up to 10 references, bounding boxes for placement (useful for character slots).
 - **License:** FLUX Kommunity License. Non-commercial use, plus commercial output for organizations under
@@ -270,6 +272,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** the Modal function is removed.
 - **How:** `modal/flux_klein.py` runs the distilled checkpoint through Diffusers' `ModularPipeline` with the prompt
   upsampler on (BFL: "do not use the model without it"), all in bf16 (~39 GB), on one A100-80GB. Weights live on
   the Modal Volume `lifestory-flux-klein-weights`, filled once on a CPU. Containers scale down 60 s after the last job
@@ -282,8 +285,155 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** GPU spend matters more than latency (fp8 weights or the upsampler on a smaller GPU), or bursts of
   pages need more than one container.
 
+### D56. Photo books: every role is drawn from one photo per book, through a per-book character sheet — Decided (Sid, 2026-11-24)
+
+- **What changed (Sid, 2026-11-24):** parents upload one photo per character, and a model draws that person into
+  the book in the story's style. This supersedes D26 (no photos, no AI at book time) and the looks system built on
+  it (D28, D29's face types, D40, D41, D43, D44, D46, D50, D51, D52, D55), part generation (D30, D36), and Klein on
+  Modal (D5, D25). Every parts story is a test and is deleted (below). Characters keep name, title, pronouns and
+  age, and D29's seven age buckets stay: a role's `ages` now feed the sheet prompt ("a young child of about six").
+- **The parent's path:** the story page shows the illustrator's stock characters. "Put your family in this book"
+  makes a draft book. The parent picks a family member for each role (every role, not only the hero) and uploads
+  one photo each, with hair chips. Each photo is checked in about 3 s. About 45 s after the last one passes, the
+  parent sees each character sheet and a cover with everyone on it, and can ask for up to two rounds of changes,
+  one note per character. "Make my book" places the order (D57).
+- **Generation (plan: the "Photo-to-hero approach summary" and "Photo books: plan and UX" artifacts, threads
+  T-8b52103b-ac29-4045-8048-12ef3cf41c6f and T-01a1fb83-7824-71fa-8625-bfe2dcc7ccda):**
+  - **Model:** OpenAI `gpt-image-2.5-sunburst` through `/v1/images/edits` with several images, quality medium,
+    1536×1024 or 1024×1536. It is the newest image model OpenAI lists as eligible for zero data retention;
+    2.6 is not. The model ID is configuration (`OPENAI_PHOTO_MODEL`), since `gpt-image-2` shuts down on 2027-02-10.
+  - **Character sheet**, once per role per book, from the photo and the story's style reference: the person at the
+    role's age, front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
+    owns it, because it carries that story's style.
+  - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
+    from the sheets (`likeness.revise`). **Proposed by the spike; needs Sid's OK**, since Sid first chose a fresh
+    sheet from the photo each round. Drift test, three rounds: chained edits kept outline overlap ≥ 0.994 with body
+    change ≤ 14/255; fresh sheets fell to 0.797 overlap with ≤ 77/255 and drew a different-looking child each round.
+    The mode and prompt are configuration, so the fresh-sheet path stays available. After about 5 edits, the sheet
+    is rebuilt once from the photo with the latest sheet as a reference (untested; only before the order).
+  - **Each figure on each page** is redrawn from the page reference (plate plus the bald figure, cropped to the
+    figure's window) and the approved sheet, on a transparent background, never from the photo. The model draws
+    what the figure wears and holds; only scenery occluders are composited over it. Production checks: retry an
+    output with no transparent pixels, an alpha floor of 0.1, clip to the figure's box plus a margin, rescale when
+    the fit IoU against the bald figure is below **0.5** (p04's lying hero fitted correctly at 0.596), then tint.
+  - **Tint, on for every figure:** match the layer's RGB mean to the illustrator's bald figure on that page, and
+    scale its contrast by that figure's std ÷ the layer's std, clamped to 0.6–1.2. It blended on the night pages
+    p04 and p23; a multiply from the plate around the figure came out muddy.
+  - **Several figures on a page** are drawn one call each, back to front, each seeing the others bald. **Characters
+    on a page must not touch or overlap** (no hugs, held hands, a hand on a shoulder); the import refuses a page whose
+    figures' padded boxes meet, and the authoring docs list it as a limitation.
+- **Photo check (`PhotoCheck` service, task `photo.check`):** the browser converts HEIC, resizes to at most 1536 px
+  and strips metadata; there is no minimum image size (the spike's best photos were 636–866 px). The server runs:
+  - `omni-moderation-latest` with per-category thresholds, not `flagged` (which fired on a pool-table photo at
+    violence 0.40): refuse at `sexual` ≥ 0.3, or `violence` or `self-harm` ≥ 0.8, and delete the photo at once.
+  - `gpt-5.4-mini` (`OPENAI_CHECK_MODEL`) through `/v1/responses` with a strict JSON schema: `prominentFaces` and
+    `backgroundFaces` counted apart, main face visible and its size, sharpness, lighting, occlusions, apparent age
+    bucket, hair from the chip vocabulary (which gains strawberry blond and auburn), facial hair, issues and a tip.
+    The prompt says not to identify the person. Spike: US$0.0009–0.0024 and 1.7–3.3 s per photo on 10 of Sid's
+    photos; `gpt-5.4-nano` missed a helmet, a beanie and the child on his shoulders.
+  - Rules in code: **refuse** with no visible main face, a second prominent face (offer a crop), a face under about
+    150 px across, or a blurred face. Background faces never refuse (counting every face would have refused 7 of 10
+    good photos). **Warn** on a hat, helmet, goggles or sunglasses, poor light, an age far from the role's, or hair
+    two or more steps from the chips (lighting moves hair colour a step).
+- **Durable workflows (Absurd, D4; every step idempotent):**
+
+  <!-- oxfmt-ignore -->
+  | Task | Spawned by | Steps |
+  | --- | --- | --- |
+  | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
+  | `likeness.preview` | the last photo passing | a sheet per role, then the cover, one call per figure; keyed by book |
+  | `likeness.revise` | each change round | one sheet edit per note, then the cover; keyed by book and round |
+  | `book.make` | the order (D57) | delete any photo left (backstop), spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
+  | `page.figure` | `book.make`, a page change, the operator's redo | generate, the checks above, tint, store; keyed by book, page, slot and version |
+  | `storage.sweep` | the worker, every 6 h (D31) | adds photo objects older than 24 h and unordered drafts older than 24 h |
+
+  `page.import` (D42) and `proof.render` (D27) stay tasks. Every image call goes through `generateImage(ctx, …)`
+  (D13, D14), so a retry never pays twice. The order, consent, notes, choosing a page version, sending for review,
+  and the operator's approve or refuse are single transactions in server functions.
+
+- **Photos, privacy and storage:** photos live at `families/<familyId>/books/<bookId>/photos/<slotId>/<uploadId>`
+  and are deleted at the order, on refusal, or 24 h after upload, whichever is first. Sheets, the cover and preview
+  rounds live under `…/books/<bookId>/likeness/` and pages, both versions of a changed one, under `…/pages/`, all
+  deleted with the book. Only the worker reads photos and only OpenAI receives them, twice (the check and the
+  sheet), never for pages; the operator never sees them. The worker refuses to send a photo unless
+  `OPENAI_ZDR=enabled` is set for the OpenAI project it uses (a safety setting, not a launch gate). Under ZDR OpenAI
+  still keeps an image its classifier flags as potential CSAM, for manual review; the policies say so (D58).
+- **Book format 4:** a page's figure is `{ kind: "photoFigure", slotId, reference, stock, window, tint }`; a slot
+  gains a stock outfit and a stock sheet; a story gains `photo` (style reference and prompt version, pinned per
+  story version like `gradient-map-v1` was). The import (D42) makes the plate, the bald reference per figure, the
+  window and scenery occluders, and the author approves the stock figures drawn by the same pipeline.
+  `BookPage`, printing and flattening (D27, D35) are unchanged apart from where figure layers come from.
+- **Fakes:** `FakeImageProvider` gains multi-image and transparent edits, and a fake `PhotoCheck` refuses a photo
+  whose name contains `two-faces`, so tests and orbs make no API calls (D13).
+- **Removing parts (Sid: every parts story was a test):** the looks vocabulary and picker, `/api/portrait`, part
+  generation, the cut-out, recolouring, the import's base, mask and hair steps, the Moon Picnic and Paper Boat
+  fixtures and their specs, and the Modal function and webhook. `character.look`, the `book_cast` look columns and
+  `story_part` are dropped by a destructive migration. In production, parts stories, their books, proofs and
+  objects are deleted by a one-off command in the same phase; Sid is the only user and gave that go with the plan.
+  Order: the photo flow lands, then the wipe, then the migration.
+- **Cost (estimates from measured calls):** a sheet US$0.032, a figure US$0.036, a sheet edit US$0.023, a check
+  about US$0.002. Worst case with two rounds, 23 pages, 3 page changes and 10% retries: about US$1.24 for a child
+  alone, US$1.55 with a grandparent on 4 pages.
+- **Why:** families want their own child, and composed parts didn't look good enough after long testing. A sheet
+  in the middle removed page-to-page drift on all 15 test pages, where pages drawn straight from the photo drifted
+  in hair colour, length and freckles, and it lets the photo be deleted before any page is drawn.
+- **Rejected:** composable figure, hair and accessory layers with recolour (D26's system); pages straight from the
+  photo; page changes as edits of the current page; preview rounds as fresh sheets (pending Sid's OK above); a
+  third-party photo-quality API (another vendor and agreement).
+- **Reopen if:** a real child's photo comes out clearly worse than the adult photos tested (to be tried once ZDR is
+  active), authors need touching figures (then test both figures in one call), the check refuses good photos, or a
+  ZDR-eligible successor model draws worse on the same test set.
+
+### D57. "Make my book" is the order; then up to 3 page changes, then our review before print — Decided (Sid, 2026-11-24)
+
+- **Book status:** `draft` → `ordered` → `making` → `changes` → `in_review` → `approved`, or `refused` with a note.
+  Drafts are hidden from Our books and from D47's list, and the sweep deletes a draft older than 24 h whole.
+- **The order:** "Make my book", with every sheet approved, records a `book_order` row (price snapshot, status; no
+  payment provider yet, payment is settled by hand while the app is invite-only) and moves the book to `ordered`.
+  The same request deletes the book's photos and records when; `book.make`'s first step deletes any left, and the
+  24 h sweep is the last backstop (Made; Sid can veto). Then `book.make` draws every page from the approved sheets
+  in about a minute.
+- **Page changes:** the parent reads the whole book and asks for a change on up to 3 pages. Each redraws that
+  page's figure from the approved sheet, the page reference and the note added to the prompt (`page.figure` with
+  the next version), not as an edit of the current page, since each edit pass changes the figure 12–20/255. The
+  parent then keeps the original or uses the new version, so a change never makes a page worse. A note about the
+  character as a whole ("her hair is wrong everywhere") can't be fixed page by page; the screen says so and points
+  the parent to us, and the operator decides whether to redraw the sheet and the book at our cost. Text edits and
+  proofs work as today; a proof pins the chosen version of every page's art.
+- **Send for review:** the parent approves a proof (D32) and sends the book for review. The operator's queue under
+  `/admin` shows the approved sheets beside every page with the parent's notes; the operator redoes a page, refuses
+  the book with a note that is emailed to the family, or approves it, which makes the approved proof the print file.
+- **Operator access:** the operator reads family books only through `reviewBook(bookId)` in `packages/core`, and
+  sees the sheets and pages, never the photos. There is no view log in v1; when reviewers beyond the founders join,
+  that function writes a `review_access` row and nothing else changes. Still no impersonation (D3).
+- **Why (Sid):** the order is where a parent commits; after it pages are drawn once and changes are limited, so a
+  book's cost is bounded. A person reviewing every book is the content review the policies promise.
+- **Reopen if:** payment arrives (it plugs in at the order), parents need more than 3 page changes, or the review
+  queue gets too long for the founders.
+
+### D58. Policies for adults: terms, privacy policy, and a child safety and AI policy; consent records the version — Decided (Sid, 2026-11-24)
+
+- **What:** three policies in the repository, written for adults 18+, versioned, and shown at account setup (an
+  18+ statement), the photo step, the order step and the footer:
+  - **Terms of service:** the uploader confirms they have the right to use each photo (guardian of any child in it,
+    consent of any adult). No photos of others without permission, of public figures, or sexual or harmful
+    requests. We may refuse a photo or a book. An order is placed at "Make my book".
+  - **Privacy policy:** what we collect and why, with D56's retention rules; storage on Railway, encrypted in
+    transit and at rest; who sees what (the family, and our team reviewing every book, which sees sheets and pages,
+    never photos); deletion on request; processors: OpenAI (checks and drawing, under ZDR, no training, with the
+    CSAM-classifier exception), Resend (email), Railway (hosting).
+  - **Child safety and AI policy:** what AI does and receives (each photo twice), human review of every book, how
+    to report a problem, and what we do with abusive uploads.
+- **Consent:** at the photo step the parent ticks three statements (18 or older; the right to use the photos; how
+  photos are used, including OpenAI under ZDR, deletion and our review). A `consent` row records user, family, book,
+  statements, policy version and time, and stays as long as the account. `book_likeness` points at it.
+- **Not legal advice:** a lawyer reads them before inviting beyond friends and family (COPPA, GDPR and UK GDPR, US
+  biometric laws such as BIPA; no face template is kept, but photos are processed for likeness).
+- **Reopen if:** a lawyer's review, public sign-ups, or a new processor.
+
 ### D26. Characters are illustrator-approved variants composed from parts; no AI when a book is made — Decided (Sid, 2026-11-18)
 
+- **Superseded by D56 (Sid, 2026-11-24):** parents upload one photo per character and a model draws them into the book through a per-book character sheet.
 - **What changed:** parents no longer upload photos and no model draws family members into books. For each role
   a parent picks a base face (a handful per role, covering age, gender and facial structure, drawn by the illustrator),
   a skin tone, a hairstyle, a hair colour and extras such as glasses. Every option is approved by the illustrator before
@@ -317,6 +467,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D30. Part generation: OpenAI `gpt-image-2.6-sunburst` as the primary provider, Klein on Modal as the fallback — Decided (Sid, 2026-11-19)
 
+- **Superseded by D56 (Sid, 2026-11-24):** sheets and figures use `gpt-image-2.5-sunburst` (ZDR-eligible; 2.6 is not), and part generation is removed.
 - **What:** authoring tooling generates parts by editing the base in place with OpenAI `gpt-image-2.6-sunburst`
   (medium quality, base padded to 2:3), then cuts the part out (plan.md, "Authoring-time part generation").
   `gpt-image-2.6-flare` is allowed for faster drafts. Klein on Modal (D25) stays as the fallback. Masked edits and
@@ -358,6 +509,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D36. Part generation runs as `part.generate`; the cut-out is known-background matting in TypeScript; parts live in `story_part` until approved — Made (2026-11-19)
 
+- **Superseded by D56 (Sid, 2026-11-24):** `part.generate`, `story_part` and the cut-out are removed.
 - **What:** `requestPart` records a `story_part` row for an appearance (page, role, age, face) and an option and
   spawns `part.generate` (plan.md, "Authoring-time part generation"). The OpenAI provider (`IMAGE_PROVIDER=openai`,
   D30) edits the base padded to the provider's 2:3 size; the cut-out (`packages/core/src/parts/cutout.ts`) stores
@@ -441,6 +593,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D28. The picker shows a story-independent portrait; books keep per-role overrides — Decided (Sid, 2026-11-19) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** there are no looks, no picker and no portrait; a book's characters come from photos.
 - **Portrait (Sid's request):** while a parent picks a look, the picker shows one character illustration that belongs
   to no story (`packages/core/src/looks/portrait.ts`), served as `/api/portrait?<look>`. Each story then draws the same
   option IDs with its own parts. The portrait is composed like a story figure (`composeFigure`, then `gradient-map-v1`),
@@ -501,6 +654,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D29. Character ages: seven buckets first in the picker; roles accept some, figures can pin one — Decided (Sid, 2026-11-19) / Made
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** the seven age buckets and a role's accepted `ages` stay and feed the sheet prompt; face types and pinned figure ages go with the looks.
 - **What:** a look's first axis is the character's `age`, one of `baby` (0–1), `toddler` (1–3), `young-child` (3–7),
   `older-child` (8–12), `teen` (13–17), `adult` (18–64), `older-adult` (65+). The buckets are character ages, not
   Wonderbly-style reader ages: they split where the body changes enough that one drawn base can't cover both, or where
@@ -529,6 +683,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D40. Features: softer or defined, from teen up; pronouns pick the default — Decided (Sid, 2026-11-19) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** features are part of the looks vocabulary, which is removed.
 - **Why (Sid):** the gouache portrait's teen and adult bases read male even with long hair (D28), and a face type
   in two versions gives better likeness. Sid chose a new axis over replacing round and oval, and more hairstyles plus
   facial hair over a gender or ethnicity axis (those are still to come).
@@ -550,6 +705,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D41. New look options reach a published story as additions, not a new version — Decided (Sid, 2026-11-19) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** there is no looks vocabulary to add options to.
 - **Why (Sid):** "It seems important to be able to make tweaks like this to the authorship side without requiring a
   new version of every story to be created." A new vocabulary option (red hair) meant a new version of every story,
   which copies every file, and books stay pinned to the old version, so they never got the option anyway. One shared
@@ -590,6 +746,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D43. Six more hairstyles and facial hair; options added later are optional for stories published before them — Decided (Sid, 2026-11-19)
 
+- **Superseded by D56 (Sid, 2026-11-24):** hairstyles and facial hair are no longer options; the photo check reads hair from the photo into chips.
 - **What (Sid):** hairstyles buzz cut, ponytail, braids, coily afro, locs and bun join short, curly and long, and a
   facial hair axis (none, stubble, moustache, full beard) is offered from adult up. Pronouns order the hairstyles
   (she/her starts with long, ponytail and braids; he/him with short and buzz cut) and never hide one. Facial hair is
@@ -615,6 +772,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D44. Parts cost less per option: tiled edits, head-only parts shared across features, and a `flip` on figures — Decided (Sid, 2026-11-19) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** parts are removed.
 - **Why (assessment of 2026-11-19, artifact "Per-pose parts: cost and consistency" in thread
   T-01a1f50e-6d8e-70ce-bea8-adf2e7932795):** with D43's vocabulary a figure needs a part per option on every base
   (hero: 4 bases × 10 = 40 parts; a grown-up with softer bases: 8 × 13 = 104), so a 24-page book with 2 roles comes to
@@ -672,6 +830,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D45. The story page previews the family's own cast; example looks are a separate "try looks" mode; proofs belong to books — Made (2026-11-19)
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** the story page shows the illustrator's stock characters and leads to "Put your family in this book"; there is no "try looks".
 - **Why (Sid, on production):** "i selected characters from my family, but it didnt update the images and it also
   still shows the placeholder pickers with default names?" The story page had a "Make our book" cast form that changed
   nothing on the page, below it look pickers for each role's example character ("Leo as the child") as text
@@ -702,6 +861,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D46. A book can draw a family member with its own look, kept on the book; the story page shows it before the book is made — Approved by Sid / Made (2026-11-19)
 
+- **Superseded by D56 (Sid, 2026-11-24):** there are no looks to override; a book draws each character from its own photo.
 - **Why (Sid):** "being able to set an override style on the page (without modifying the canonical definition for a
   family member) would be ideal", chosen before "Make the book", shown in the preview, and "not saved to the DB until
   you click make this book".
@@ -721,6 +881,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D47. A family with a book of a story is sent to it; another copy is made only on purpose — Made (2026-11-20)
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** draft books (before the order) aren't listed or counted.
 - **Why (Sid):** "if someone clicks 'Make the book' they would not want to create a new copy of it. Perhaps if an
   instance of a book already exists in the family, we should warn the user about that and take them to the existing
   one rather than creating a new one with no mention of the existing one."
@@ -785,6 +946,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D50. The picker is one ordered sequence of single choices; no whole-look presets — Decided (Sid, 2026-11-20) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** the picker is removed.
 - **Why (Sid):** "Start from a look" was confusing: picking one replaced every axis, so a parent working down the
   steps lost what they'd already chosen below it, and after one tweak no preset showed as chosen. This replaces D26's
   "starts from a few curated looks".
@@ -803,6 +965,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D51. Young hair: bald at every age; wispy, soft curls, top knot and puffs for babies to young children — Decided (Sid, 2026-11-20)
 
+- **Superseded by D56 (Sid, 2026-11-24):** hair options are removed.
 - **Why (Sid):** "0–7 are the most likely hero characters … we don't have anything kind of between infant with no hair
   and toddler with a full head of hair." Every baby was drawn bald (`partAxesAt("baby")` was empty) while the picker
   still asked for a hair colour; toddlers had only full-head styles. Research (thread
@@ -835,6 +998,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D52. An option leaves the vocabulary by retiring, never by deletion; stubble is retired — Decided (Sid, 2026-11-20) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** the vocabulary is removed.
 - **Why (Sid):** stubble "read as patchy" on every face after two rounds of edits (D43's retake, then 8 redraws for
   US$0.42): "Lets delete and then I can republish", and "we should establish a strategy for handling things like
   this in the future". Deleting an option ID outright breaks what already names it: published manifests and their
@@ -883,6 +1047,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D55. A story's art may draw one face type for every character — Decided (Sid, 2026-11-20) / Made
 
+- **Superseded by D56 (Sid, 2026-11-24):** face types are removed.
 - **Why (Sid):** some art styles don't tell round from oval. Of Dream Adventure, whose art draws round faces only:
   "for this illustration style I don't know that we need round vs oval (it is inherently round). I think we can use
   1 style regardless of what the character has set", and "There's likely going to be art styles where we don't need
@@ -904,6 +1069,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** new objects live under `families/<familyId>/books/<bookId>/` (photos, likeness, pages), and the sweep deletes photos and unordered drafts older than 24 h.
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no
   table records each object. The `storage.sweep` task deletes everything under `families/<id>/` once that family no
@@ -927,6 +1093,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D32. A parent approves a book's proof once, with who and when; unapproved proofs expire after 30 days — Made (2026-11-19)
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** approving a proof is how the parent sends the book for review; the operator's approval (D57) makes it the print file.
 - **Approval:** `proof.approved_at` and `proof.approved_by` (migration 0008, two nullable columns). The book page's
   proof list has "Approve for print" next to each ready proof's download link, for roles that edit books (owner,
   parent); a viewer sees who approved it and when, and downloads it, but can't approve. Only a ready proof of a book
@@ -1000,6 +1167,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D37. Story authoring: the operator and accounts the operator grants write stories in the app — Decided (Sid, 2026-11-19) / Made
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** the operator also reviews every family book before print (D57).
 - **Who may author (Sid, 2026-11-19: a table, not a column on `user`, because it sets up studios):** the operator (admin role) always, and any account the operator lets author on
   `/author` ("Authors"), recorded in `story_author` (user, granted by, when; migration 0011). Revoking stops new work;
   the author's stories stay theirs and published versions stay published. Options weighed:
@@ -1058,6 +1226,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D42. Story art comes in as the illustrator made it and is turned into the format by an import the author reviews — Decided (Sid, 2026-11-19) / Made
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** the import makes the plate, the bald reference per figure, its window and scenery occluders, refuses figures that touch, and the author approves stock figures; bases, masks and hair parts go.
 - **What (design: the "Story art import design" artifact in thread T-01a1f4cb-9c6d-7743-8aea-3999570d90f1):** authors
   draw in their own tools and bring a layered file (PSD, which Photoshop, Procreate, Krita, Affinity and Clip Studio all
   export), several PNG layers, or one flat picture per page. The `/author` page tab's import turns it into what D24 and
@@ -1146,12 +1315,14 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D13. One image provider interface; a deterministic fake provider by default — Recommended
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** the interface gains multi-image edits and transparent output, and a fake `PhotoCheck` joins the fake provider.
 - **How:** `ImageProvider` service in `packages/core/src/image-provider.ts`. The fake renders an SVG whose colours
   derive from a hash of the request key, so retried steps write byte-identical objects.
 - **Reopen if:** never expected.
 
 ### D14. Generation as an Absurd workflow that suspends for Modal's callback and for the illustrator's approval — Recommended
 
+- **Changed by D56–D57 (Sid, 2026-11-24):** generation runs when a family makes a book, not at authoring time; there is no Modal callback, and the illustrator's approval is the author approving stock figures.
 - See [plan.md](plan.md#authoring-time-part-generation-later-milestone). Since D26 it runs at authoring time only. The fake provider goes through the same suspend-and-callback path
   (it emits the completion event itself), so tests exercise the real workflow.
 - **Sid, 2026-11-18:** confirmed the callback design.
