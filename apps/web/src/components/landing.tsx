@@ -70,8 +70,8 @@ export function Landing({ retention }: { retention: DataRetention }) {
               Picture books starring your family
             </h1>
             <p className="text-lg text-muted-foreground">
-              Real stories by human authors and illustrators. Add a photo of each of your family, and every page is
-              drawn with them.
+              Real stories by human authors and illustrators. Add a photo of each family member, and they appear on
+              every page.
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button asChild size="lg">
@@ -125,14 +125,14 @@ export function Landing({ retention }: { retention: DataRetention }) {
 
         <section className="grid items-center gap-8 md:grid-cols-2">
           <div className="flex flex-col gap-3">
-            <h2 className="text-2xl font-semibold">An illustrator's art, with your family in it</h2>
+            <h2 className="text-2xl font-semibold">The illustrator's art, with your family in it</h2>
             <p className="text-muted-foreground">
-              An illustrator draws every page. From your photo, AI draws a character sheet of each person in that
-              illustrator's style, and you see it before you order. Then only the characters on each page are redrawn
-              from it.
+              Every page starts as a real illustrator's artwork. From your photo, AI draws each person as a character in
+              that illustrator's style, and you approve these character sheets before you order. Only the characters are
+              then redrawn on each page; everything else stays as the illustrator drew it.
             </p>
             <p className="text-muted-foreground">
-              {retentionCopy[retention].landing} and deleted after you order. A person reviews every book before it
+              {retentionCopy[retention].landing} We delete them after you order. A person reviews every book before it
               prints.
             </p>
           </div>
@@ -166,13 +166,12 @@ export function Landing({ retention }: { retention: DataRetention }) {
           <h2 className="text-2xl font-semibold">A printed book, at your door</h2>
           <p className="max-w-3xl text-muted-foreground">
             Read every page as it will print, and change the words if you like. Once we've checked the book, it's
-            printed on demand and shipped to you. Or choose the PDF of the whole book for less, to read on screen or
-            print yourself.
+            printed on demand and shipped to you. Or choose a PDF of the whole book to read on screen or print yourself.
           </p>
         </section>
       </main>
 
-      <footer className="mx-auto w-full max-w-5xl px-6 pb-8 text-sm text-muted-foreground">
+      <footer className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-6 pb-8 text-sm text-muted-foreground">
         <p className="border-t pt-6">
           Lifestory is invite-only for now. Have an invitation? Open the link in your email, or{" "}
           <Link to="/sign-in" className="text-foreground underline underline-offset-4">
@@ -180,7 +179,7 @@ export function Landing({ retention }: { retention: DataRetention }) {
           </Link>
           .
         </p>
-        <PolicyLinks />
+        <PolicyLinks className="border-t-0 pt-0" />
       </footer>
     </div>
   );

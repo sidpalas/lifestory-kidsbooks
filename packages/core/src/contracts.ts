@@ -292,14 +292,16 @@ export type DataRetention = typeof DataRetention.Type;
 export const retentionCopy = {
   zero: {
     consent: "OpenAI checks each photo and draws a character sheet from it under zero data retention",
-    landing: "Your photos are checked by OpenAI under zero data retention, never used to train its models,",
+    landing:
+      "Your photos are sent to OpenAI only to check them and draw the character sheets, under zero data retention: OpenAI doesn't keep them or use them to train its models.",
     policy:
       "We use OpenAI under zero data retention: they don't keep or train on what we send, except that OpenAI keeps an image its safety classifier flags as possible child sexual abuse material, for manual review.",
   },
   standard: {
     consent:
       "OpenAI checks each photo and draws a character sheet from it (OpenAI doesn't train on it, but may keep it for up to 30 days to monitor for abuse)",
-    landing: "Your photos are checked by OpenAI, never used to train its models,",
+    landing:
+      "Your photos are sent to OpenAI only to check them and draw the character sheets. OpenAI doesn't use them to train its models, but may keep them for up to 30 days to monitor for abuse.",
     policy:
       "OpenAI doesn't train on what we send through its API, but may keep it for up to 30 days to monitor for abuse, under OpenAI's standard API terms. We plan to move to zero data retention, where OpenAI keeps nothing (except an image its safety classifier flags as possible child sexual abuse material, for manual review), and will update this policy then.",
   },
