@@ -1,4 +1,8 @@
+import { readFile } from "node:fs/promises";
+import { extname } from "node:path";
+
 import { expect, test } from "@playwright/test";
+import { Effect } from "effect";
 
 // A new account has a family with nobody in it yet; the story's pages show its own characters.
 const newReader = () =>
@@ -62,4 +66,83 @@ test("story assets need a session and a story the user may read", async ({ page,
   expect(ok.headers()["content-security-policy"]).toBe("sandbox");
   expect((await page.request.get("/api/files/stories/story_kite_day/v99/pages/p01/plate.svg")).status()).toBe(404);
   expect((await page.request.get("/api/files/stories/no_such_story/v1/pages/p01/plate.svg")).status()).toBe(404);
+});
+
+test("each story's card shows its cover: the newest published version's page with every role, in stock figures", async ({
+  page,
+}) => {
+  // Imported here, not at the top (AGENTS.md, "Orb size").
+  const { Database, importStoryVersion, makeServerRuntime } = await import("@lifestory/core");
+  const runtime = makeServerRuntime();
+  const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL("manifest.json", fixture), "utf8"));
+  const readAsset = async (asset: string) => ({
+    body: new Uint8Array(await readFile(new URL(asset, fixture))),
+    contentType: { ".svg": "image/svg+xml", ".woff2": "font/woff2" }[extname(asset)] ?? "application/octet-stream",
+  });
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const storyId = `story_e2e_cover_${id}`;
+  const title = `Cover Picnic ${id}`;
+  // Version 2 takes the grown-up off page 1, so page 3 is the first with both roles; version 3 is an unpublished draft.
+  const v2 = structuredClone(manifest);
+  v2.pages[0].illustration.layers = v2.pages[0].illustration.layers.filter(
+    (layer: { slotId: string | null }) => layer.slotId !== "grownup",
+  );
+  try {
+    await runtime.runPromise(
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool.query(
+            "insert into story (id, author_id, slug, title, summary, status, published_at) values ($1, 'user_operator', $2, $3, 'e2e', 'published', now())",
+            [storyId, `e2e-cover-${id}`, title],
+          ),
+        ),
+      ),
+    );
+    for (const [version, versionManifest, publishedAt] of [
+      [1, manifest, new Date("2026-11-20T12:00:00Z")],
+      [2, v2, new Date("2026-11-21T12:00:00Z")],
+      [3, manifest, null],
+    ] as const)
+      await runtime.runPromise(
+        importStoryVersion({
+          id: `${storyId}_v${version}`,
+          storyId,
+          version,
+          manifest: versionManifest,
+          readAsset,
+          publishedAt,
+        }),
+      );
+  } finally {
+    await runtime.dispose();
+  }
+
+  await page.goto(`${newReader()}?returnTo=/stories`);
+  const cover = page.getByTestId("stories").getByRole("listitem").filter({ hasText: title }).getByTestId("story-cover");
+  const files = `/api/files/stories/${storyId}/v2/pages/p03`;
+  await expect(cover.locator("img")).toHaveCount(3);
+  expect(await cover.locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")))).toEqual([
+    `${files}/plate.svg`,
+    `${files}/grownup/stock.svg`,
+    `${files}/hero/stock.svg`,
+  ]);
+  await expect
+    .poll(() =>
+      cover.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).naturalWidth > 0)),
+    )
+    .toBe(true);
+
+  // The page's shape (8.75 in square with bleed), beside the text on a desktop and on a 320 px phone alike.
+  for (const width of [1280, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    const box = (await cover.boundingBox())!;
+    expect(box.width).toBeGreaterThan(80);
+    expect(box.height).toBeCloseTo(box.width, 0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+  // The picture opens the story like its title, without a second link for screen readers.
+  await expect(page.getByTestId("stories").getByRole("link", { name: title })).toHaveCount(1);
+  await cover.click();
+  await expect(page).toHaveURL(new RegExp(`/stories/e2e-cover-${id}$`));
 });

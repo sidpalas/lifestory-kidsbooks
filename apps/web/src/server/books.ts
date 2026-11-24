@@ -28,7 +28,7 @@ import {
   NotFound,
   ProofSummary,
   ResultSchema,
-  StorySummary,
+  StoryListing,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -55,7 +55,7 @@ export const FamilyLibraryResult = ResultSchema(
     /** The people in the family's books, to pick for another book. */
     people: Schema.Array(CastPerson),
     books: Schema.Array(BookSummary),
-    stories: Schema.Array(StorySummary),
+    stories: Schema.Array(StoryListing),
   }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );

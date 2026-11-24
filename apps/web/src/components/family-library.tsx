@@ -1,6 +1,6 @@
 // The active family's books and the stories it can make books of: the lists on Home and on the
 // Stories and Our books pages of the app shell (D48).
-import { type BookSummary, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
+import { type BookSummary, type StoryListing, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 
 import { Button } from "~/components/ui/button";
@@ -68,7 +68,7 @@ export function StoryList({
   books,
   canEdit,
 }: {
-  stories: ReadonlyArray<StorySummary>;
+  stories: ReadonlyArray<StoryListing>;
   books: ReadonlyArray<BookSummary>;
   canEdit: boolean;
 }) {
@@ -77,32 +77,66 @@ export function StoryList({
       {stories.map((story) => {
         const ours = books.filter((book) => book.storySlug === story.slug);
         return (
-          <li key={story.id} className="flex flex-col gap-2 rounded-md border bg-card p-4">
-            <Link to="/stories/$slug" params={{ slug: story.slug }} className="font-semibold hover:underline">
-              {story.title}
-            </Link>
-            <p className="text-sm text-muted-foreground">{story.summary}</p>
-            <p className="text-xs text-muted-foreground">by {story.authorName}</p>
-            <div className="mt-auto pt-1">
-              {ours.length === 1 ? (
-                <Button asChild size="sm">
-                  <Link to="/books/$bookId" params={{ bookId: ours[0]!.id }}>
-                    Open our book
-                  </Link>
-                </Button>
-              ) : ours.length > 1 ? (
-                <Button asChild size="sm">
-                  <Link to="/stories/$slug" params={{ slug: story.slug }}>
-                    Our {ours.length} books
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild size="sm" variant={canEdit ? "default" : "outline"}>
-                  <Link to="/stories/$slug" params={{ slug: story.slug }}>
-                    {canEdit ? "Make a book" : "Preview"}
-                  </Link>
-                </Button>
-              )}
+          <li key={story.id} className="flex gap-3 rounded-md border bg-card p-3 sm:gap-4 sm:p-4">
+            {story.cover && (
+              // The title link names the story; this one only makes the picture clickable too.
+              <Link
+                to="/stories/$slug"
+                params={{ slug: story.slug }}
+                aria-hidden
+                tabIndex={-1}
+                className="w-24 shrink-0 self-start sm:w-32"
+              >
+                <div
+                  data-testid="story-cover"
+                  className="relative w-full overflow-hidden rounded-sm bg-[#fffaf0] shadow-sm ring-1 ring-black/10"
+                  style={{ aspectRatio: `${story.cover.widthIn} / ${story.cover.heightIn}` }}
+                >
+                  {story.cover.layers.map(({ key, rect: [x0, y0, x1, y1] }, i) => (
+                    <img
+                      key={i}
+                      src={`/api/files/${key}`}
+                      alt=""
+                      loading="lazy"
+                      className="absolute"
+                      style={{
+                        left: `${x0 / 10}%`,
+                        top: `${y0 / 10}%`,
+                        width: `${(x1 - x0) / 10}%`,
+                        height: `${(y1 - y0) / 10}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </Link>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <Link to="/stories/$slug" params={{ slug: story.slug }} className="font-semibold hover:underline">
+                {story.title}
+              </Link>
+              <p className="text-sm text-muted-foreground">{story.summary}</p>
+              <p className="text-xs text-muted-foreground">by {story.authorName}</p>
+              <div className="mt-auto pt-1">
+                {ours.length === 1 ? (
+                  <Button asChild size="sm">
+                    <Link to="/books/$bookId" params={{ bookId: ours[0]!.id }}>
+                      Open our book
+                    </Link>
+                  </Button>
+                ) : ours.length > 1 ? (
+                  <Button asChild size="sm">
+                    <Link to="/stories/$slug" params={{ slug: story.slug }}>
+                      Our {ours.length} books
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="sm" variant={canEdit ? "default" : "outline"}>
+                    <Link to="/stories/$slug" params={{ slug: story.slug }}>
+                      {canEdit ? "Make a book" : "Preview"}
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           </li>
         );

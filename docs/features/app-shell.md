@@ -5,7 +5,9 @@
 The navigation around every family page (D48): a sidebar with Home, Stories, Our books, and Sharing (who can open
 the family's books: members and invitations); bottom tabs on phones. Who plays each role is entered per book (D56).
 Home shows a "Next step" card until the family has a book, then
-the newest book ("Pick up where you left off") and the stories. A story card opens the family's book of it, or the
+the newest book ("Pick up where you left off") and the stories. A story card shows the story's cover beside its
+title: the cover page (the first with every role) of its newest published version, with the illustrator's stock
+figures, as the story page draws it; nothing is generated for it. Its button opens the family's book of it, or the
 story page when there are several (D47). Authors and the operator reach Studio (`/author`),
 which has its own dark bar and is only for making stories. The operator also gets Admin (`/admin`), under Studio in
 the sidebar: Families ("Invite a new family") and Authors (who can write stories).
@@ -27,9 +29,9 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 
 ## Verify
 
-`mise run verify -- e2e -- smoke families books milestone1`: signed-in identity and family name in the sidebar,
-stories on Home, Sharing at `/sharing`, books at `/books`, the operator's family
-invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author; on a phone,
+`mise run verify -- e2e -- smoke families books milestone1 stories`: signed-in identity and family name in the sidebar,
+stories on Home, each story card's cover (newest published version's cover page, desktop and 320 px), Sharing at
+`/sharing`, books at `/books`, the operator's family invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author; on a phone,
 the Menu sheet's switcher, Sign out, Studio and Admin links.
 
 ## Gotchas

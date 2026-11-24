@@ -6,6 +6,7 @@ import { Effect } from "effect";
 
 import {
   composePage,
+  coverPage,
   decodeStoryManifest,
   exampleCast,
   isVariableFont,
@@ -15,29 +16,47 @@ import {
   storyAssetKey,
   type StoryManifest,
 } from "./book-format/index.ts";
-import type { StorySummary } from "./contracts.ts";
+import type { StoryListing, StorySummary } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { NotFound } from "./errors.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
 
-/** Published stories, the catalogue a family picks from. */
+/**
+ * Published stories, the catalogue a family picks from, each with the cover of its newest published version: the
+ * cover page's art with the illustrator's stock figures (D56), as the story page shows it. Nothing is drawn for it.
+ */
 export const listPublishedStories = Effect.fn("stories.listPublished")(function* () {
   const rows = yield* Database.query((db) =>
     db
-      .select({
+      .selectDistinctOn([schema.story.title, schema.story.id], {
         id: schema.story.id,
         slug: schema.story.slug,
         title: schema.story.title,
         summary: schema.story.summary,
         authorName: schema.user.name,
+        version: schema.storyVersion.version,
+        manifest: schema.storyVersion.manifest,
       })
       .from(schema.story)
       .innerJoin(schema.user, eq(schema.user.id, schema.story.authorId))
-      .where(eq(schema.story.status, "published"))
-      .orderBy(asc(schema.story.title)),
+      .innerJoin(schema.storyVersion, eq(schema.storyVersion.storyId, schema.story.id))
+      .where(and(eq(schema.story.status, "published"), isNotNull(schema.storyVersion.publishedAt)))
+      .orderBy(asc(schema.story.title), asc(schema.story.id), desc(schema.storyVersion.version)),
   );
-  return rows satisfies ReadonlyArray<StorySummary>;
+  return yield* Effect.forEach(rows, ({ version, manifest: stored, ...story }) =>
+    Effect.gen(function* () {
+      const manifest = yield* decodeStoryManifest(stored).pipe(Effect.orDie);
+      const page = coverPage(manifest) ?? manifest.pages[0];
+      const { trim } = manifest;
+      const cover = page && {
+        widthIn: page.art === "left-half" ? trim.bleedIn + trim.widthIn / 2 : trim.widthIn + 2 * trim.bleedIn,
+        heightIn: trim.heightIn + 2 * trim.bleedIn,
+        layers: composePage({ storyId: story.id, version }, page),
+      };
+      return { ...story, cover: cover ?? null } satisfies StoryListing;
+    }),
+  );
 });
 
 /**
