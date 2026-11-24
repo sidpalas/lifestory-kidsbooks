@@ -4,6 +4,7 @@ import { Result, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
+  agreementIssues,
   composePage,
   exampleCast,
   isVariableFont,
@@ -14,6 +15,8 @@ import {
   StoryDraft,
   StoryManifest,
   staticFontIssues,
+  storyAgreementIssues,
+  tokenIssues,
 } from "../src/book-format/index.ts";
 
 const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
@@ -214,6 +217,65 @@ describe("resolveText", () => {
     // A capitalized field capitalizes the title as it does a pronoun; a title is otherwise printed as typed.
     expect(resolveText(titled, cast)).toBe("Nana hugged Sam's Ada, Ada.");
     expect(resolveText("{{grownup.title}}", cast)).toBe("nana");
+  });
+
+  // Dream Adventure p12 and p21, as the fixed text writes them.
+  const verbs =
+    "that {{hero.they}} {{hero:knows|know}}\nwhat {{hero.they}} {{hero:has|have}} to do. {{hero.They}} {{hero:looks|look}} and {{hero.they}}{{hero:’s|’re}} sure {{grownup.they}} {{grownup:is|are}} too.";
+
+  it.each([
+    ["she/her", "that she knows\nwhat she has to do. She looks and she’s sure they are too."],
+    ["he/him", "that he knows\nwhat he has to do. He looks and he’s sure they are too."],
+    ["they/them", "that they know\nwhat they have to do. They look and they’re sure they are too."],
+  ] as const)("makes verbs agree with %s pronouns, each with its own slot's", (pronouns, expected) => {
+    const cast = { hero: { name: "Ada", pronouns }, grownup: { name: "Sam", pronouns: "they/them" as const } };
+    expect(resolveText(verbs, cast)).toBe(expected);
+    expect(tokenIssues(verbs, new Set(["hero", "grownup"]))).toEqual([]);
+    expect(agreementIssues(verbs)).toEqual([]);
+  });
+
+  it("rejects a verb choice that is malformed or names an unknown slot", () => {
+    const slots = new Set(["hero"]);
+    expect(tokenIssues("{{hero:knows}}", slots)).toEqual([
+      "malformed token: use {{slot.field}}, or {{slot:singular|plural}} for a verb",
+    ]);
+    expect(tokenIssues("{{pet:is|are}}", slots)).toEqual(['{{pet:is|are}}: unknown slot "pet"']);
+    expect(tokenIssues("{{hero:|}}", slots)).toHaveLength(1);
+  });
+});
+
+describe("agreementIssues", () => {
+  it.each([
+    ["{{hero.they}} knows", "{{hero.they}} {{hero:knows|know}}"],
+    ["{{hero.They}} looks under", "{{hero.They}} {{hero:looks|look}}"],
+    ["what {{hero.they}} has to do", "{{hero.they}} {{hero:has|have}}"],
+    ["{{hero.they}} always watches", "{{hero.they}} always {{hero:watches|watch}}"],
+    ["{{hero.they}} cries", "{{hero.they}} {{hero:cries|cry}}"],
+    ["{{hero.they}} doesn’t", "{{hero.they}} {{hero:doesn’t|don’t}}"],
+    ["{{hero.they}}’s here", "{{hero.they}}{{hero:’s|’re}}"],
+    ["{{hero.they}} are", "{{hero.they}} {{hero:is|are}}"],
+    ["{{hero.they}} have", "{{hero.they}} {{hero:has|have}}"],
+    ["{{hero.they}}’ve been", "{{hero.they}}{{hero:’s|’ve}}"],
+    ["{{hero.name}} {{hero:knows|know}}", "write the singular verb"],
+  ])("flags %j and suggests %j", (content, suggestion) => {
+    const issues = agreementIssues(content);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toContain(suggestion);
+  });
+
+  it.each([
+    "{{hero.They}} held on tight, and up it went!",
+    "{{hero.They}} can feel the sleep leaving {{hero.their}} body.",
+    "Maybe the next night {{hero.they}}’ll find {{hero.their}} friend.",
+    "{{hero.name}} looks in {{hero.their}} toys and {{hero.name}} has a friend.",
+    "{{hero.they}} passed {{hero.them}}, so {{hero.they}} {{hero:is|are}} first.",
+    "{{hero.they}}, too, walked home.",
+  ])("accepts %j, which reads right for every pronoun", (content) => {
+    expect(agreementIssues(content)).toEqual([]);
+  });
+
+  it("leaves the sample stories' text alone", () => {
+    expect(storyAgreementIssues(Schema.decodeUnknownSync(StoryManifest)(sample).pages)).toEqual([]);
   });
 });
 

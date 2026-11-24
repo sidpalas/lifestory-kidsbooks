@@ -405,7 +405,7 @@ function TextEditor({
       <p className="text-xs text-muted-foreground">
         Names, titles, and pronouns fill in from the cast: {tokens},{" "}
         {`{{${view.manifest.characterSlots.at(-1)!.slotId}.title}}`} (what the kids call them), {`{{hero.they}}`},{" "}
-        {`{{hero.their}}`}…
+        {`{{hero.their}}`}…; a verb after a pronoun: {`{{hero:knows|know}}`} (she knows, they know).
       </p>
     </div>
   );

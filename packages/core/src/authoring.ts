@@ -20,6 +20,7 @@ import {
   presetFrame,
   type StoryDraft,
   staticFontIssues,
+  storyAgreementIssues,
   storyAssetKey,
 } from "./book-format/index.ts";
 import type { AuthoredStory } from "./contracts.ts";
@@ -440,6 +441,7 @@ const publishIssues = Effect.fn("authoring.publishIssues")(function* (
   return [
     ...missing.map((asset) => `${asset}: file missing; upload it again`),
     ...staticFontIssues(manifest),
+    ...storyAgreementIssues(manifest.pages),
     ...printTrimIssues(manifest.trim),
     ...fonts.filter((font) => font.variable).map((font) => `${font.asset}: variable font; use static instances`),
   ];

@@ -11,6 +11,7 @@ import {
   isVariableFont,
   manifestAssets,
   staticFontIssues,
+  storyAgreementIssues,
   storyAssetKey,
   type StoryManifest,
 } from "./book-format/index.ts";
@@ -217,6 +218,16 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
   if (fontProblems.length > 0) {
     return yield* Effect.die(
       new Error(`story ${input.storyId} v${input.version} has fonts that won't print:\n${fontProblems.join("\n")}`),
+    );
+  }
+  // Verbs must agree with every pronoun the cast may have. Checked here, not when decoding, so versions stored before
+  // the rule stay readable.
+  const agreementProblems = storyAgreementIssues(manifest.pages);
+  if (agreementProblems.length > 0) {
+    return yield* Effect.die(
+      new Error(
+        `story ${input.storyId} v${input.version} has verbs that won't agree:\n${agreementProblems.join("\n")}`,
+      ),
     );
   }
   yield* storeVersionFiles(input.storyId, input.version, files);

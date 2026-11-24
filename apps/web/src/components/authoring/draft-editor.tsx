@@ -4,6 +4,7 @@
 // BookPage renders it (the same component the book editor and the PDF use), with the text live and the pictures as
 // of the last save. Checking runs the publishing checks; publishing makes an immutable story version.
 import {
+  agreementIssues,
   type Age,
   ageOptions,
   type CastMember,
@@ -834,7 +835,8 @@ function RoleEditor({
       </div>
       <p className="text-xs text-muted-foreground" data-testid="role-tokens">
         Tokens: {PRONOUN_FIELDS.map((field) => `{{${slot.slotId}.${field}}}`).join(" ")} · capitalize the field (
-        {`{{${slot.slotId}.They}}`}) to capitalize the word.
+        {`{{${slot.slotId}.They}}`}) to capitalize the word · a verb after a pronoun:{" "}
+        {`{{${slot.slotId}.they}} {{${slot.slotId}:knows|know}}`} (she knows, they know).
       </p>
       <Button
         size="sm"
@@ -978,7 +980,7 @@ function PageTab({
               <FrameFields trim={draft.trim} frame={frame} index={f} onChange={(next) => setFrame(() => next)} />
               {frame.paragraphs.map((block, b) => {
                 const n = first + b + 1;
-                const problems = tokenIssues(block.content, slotIds);
+                const problems = [...tokenIssues(block.content, slotIds), ...agreementIssues(block.content)];
                 return (
                   <div key={b} className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
@@ -1053,7 +1055,8 @@ function PageTab({
         <p className="text-xs text-muted-foreground">
           Drag a frame on the page to move it, drag its edges to resize it, or click it and use the arrow keys (Shift
           moves 0.1 in, Alt resizes). Line breaks you type are kept. Write {"{{role.name}}"}, {"{{role.title}}"}, or a
-          pronoun such as {"{{role.they}}"} where the family's names go; the Roles tab lists each role's tokens.
+          pronoun such as {"{{role.they}}"} where the family's names go, and {"{{role:knows|know}}"} for a verb after a
+          pronoun (she knows, they know); the Roles tab lists each role's tokens.
         </p>
       </section>
 

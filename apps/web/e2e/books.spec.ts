@@ -119,17 +119,21 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   await expect(thumbnails.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // Edit page 1's paragraph: the page shows the draft as it will print, then the saved text after a reload.
+  // Edit page 1's paragraph: the page shows the draft as it will print, then the saved text after a reload. A verb
+  // after a pronoun must suit every pronoun the role may get, so "{{hero.they}} runs" is refused with the token to use.
   const editor = page.getByTestId("editor-page");
   const block = page.getByRole("textbox", { name: "Text block 2" });
-  await block.fill("{{hero.name}} carried {{hero.their}} favourite red kite up the hill.");
-  await expect(editor).toContainText(`${child} carried her favourite red kite up the hill.`);
+  await block.fill("{{hero.name}} carried {{hero.their}} kite, and {{hero.they}} runs up the hill.");
+  await page.getByRole("button", { name: "Save text block 2" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "{{hero.they}} {{hero:runs|run}}" })).toBeVisible();
+  await block.fill("{{hero.name}} carried {{hero.their}} kite, and {{hero.they}} {{hero:runs|run}} up the hill.");
+  await expect(editor).toContainText(`${child} carried her kite, and she runs up the hill.`);
   // The editor shows the page at print size: 8.5 in trim + 2 × 0.125 in bleed = 840 CSS px before scaling.
   expect(await editor.getByTestId("book-page").evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(840);
   await page.getByRole("button", { name: "Save text block 2" }).click();
   await expect(page.getByText("Paragraph 2 · edited")).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId("editor-page")).toContainText(`${child} carried her favourite red kite up the hill.`);
+  await expect(page.getByTestId("editor-page")).toContainText(`${child} carried her kite, and she runs up the hill.`);
   await imagesLoaded(page);
   await evidence(page, "book-editor");
 
@@ -188,13 +192,13 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   await hero.getByRole("button", { name: "Change" }).click();
   await expect(hero.getByLabel("Age").locator("option")).toHaveText(["Young child", "Older child"]);
   await hero.getByLabel("Name").fill(`Bo ${id}`);
-  await hero.getByLabel("Pronouns").selectOption("he/him");
+  await hero.getByLabel("Pronouns").selectOption("they/them");
   await hero.getByLabel("Age").selectOption({ label: "Older child" });
   await hero.getByRole("button", { name: "Save" }).click();
-  await expect(hero).toContainText(`Bo ${id} · he/him · older child`);
+  await expect(hero).toContainText(`Bo ${id} · they/them · older child`);
   await page.reload();
   await expect(allPages.nth(2)).toContainText(`“Same time tomorrow?” asked Grandpa. Bo ${id} nodded, all smiles.`);
-  await expect(page.getByTestId("editor-page")).toContainText(`Bo ${id} carried his favourite red kite up the hill.`);
+  await expect(page.getByTestId("editor-page")).toContainText(`Bo ${id} carried their kite, and they run up the hill.`);
 });
 
 test("a viewer reads the family's books but can't change them", async ({ page, browser }) => {

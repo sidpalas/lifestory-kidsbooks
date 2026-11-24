@@ -14,7 +14,7 @@ import {
   pageText,
   type StoryManifest,
 } from "./book-format/index.ts";
-import { resolveText, tokenIssues } from "./book-format/text.ts";
+import { agreementIssues, resolveText, tokenIssues } from "./book-format/text.ts";
 import { AppConfig } from "./config.ts";
 import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
 import { CastPerson, Hair, PhotoCheckResult } from "./contracts.ts";
@@ -410,7 +410,10 @@ export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
     return;
   }
   if (content.length === 0) return yield* new InvalidInput({ message: "A text block can't be empty." });
-  const issues = tokenIssues(content, new Set(book.manifest.characterSlots.map((slot) => slot.slotId)));
+  const issues = [
+    ...tokenIssues(content, new Set(book.manifest.characterSlots.map((slot) => slot.slotId))),
+    ...agreementIssues(content),
+  ];
   if (issues.length > 0) return yield* new InvalidInput({ message: issues.join("; ") });
   yield* Database.query((db) =>
     db

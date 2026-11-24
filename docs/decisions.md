@@ -234,8 +234,15 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     `a1.small`: a cold preview of the sample (24 recolours) takes about 1.8 s, then about 40 ms.
   - **Text tokens:** `{{slot.name}}`, `{{slot.title}}` (what the children call them, such as "Dad", separate from
     the name and falling back to it when a member has none; Sid, 2026-11-19), and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
-    `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. Pronouns don't fix verb agreement
-    ("they are" against "she is"), so authors write around it, as in past tense.
+    `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. A verb after a pronoun agrees with it
+    through `{{slot:singular|plural}}`: the first choice for she/her and he/him, the second for they/them, as typed
+    (`{{hero.they}} {{hero:knows|know}}`, `{{hero.they}}{{hero:’s|’re}}`). Added for Dream Adventure, whose present
+    tense read "they knows" and "they has" (Sid, 2026-11-24); rejected: per-pronoun copies of a paragraph (three texts
+    to keep in step for one word) and guessing verb forms (English has too many irregular verbs). Publishing,
+    `story:import` and a family's text edits refuse a verb after `{{slot.they}}` that suits only some pronouns
+    ("knows", "has", "is", "’s", or "are", "have"), and a verb choice right after a name, which is always singular;
+    the message gives the token to write. It isn't a decoding rule, so versions stored before it stay readable. A
+    verb without an -s ("they know") can't be told from other words, so it isn't caught.
   - **Layouts** (closed set, format 2; replaced by text frames in format 3, D54): `full-bleed-art/text-bottom`,
     `full-bleed-art/text-top` (text on a light panel so it reads over any art), and `art-left/text-right`. Figure boxes are thousandths of the illustration area.
   - **Validation** checks references across the manifest (slots, page IDs, fonts, tokens, boxes, look options,
@@ -267,8 +274,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Story assets** under `/api/files/stories/<storyId>/v<n>/` follow the story's read rule: published story and
   version, or the caller is the author. File responses carry `Content-Security-Policy: sandbox` and `nosniff`,
   because stored SVGs (and later author uploads) could contain scripts.
-- **Reopen if:** an author needs a text style outside the closed set, or pronoun tokens prove too limiting for real
-  stories (then per-pronoun text variants). Layouts were reopened and replaced by text frames (D54).
+- **Reopen if:** an author needs a text style outside the closed set, or pronoun and verb tokens prove too limiting
+  for real stories (then per-pronoun text variants). Layouts were reopened and replaced by text frames (D54).
 
 ### D25. The Modal function: one A100-80GB, scale to zero, signed submit and callback — Made
 
