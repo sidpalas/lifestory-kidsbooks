@@ -1,22 +1,17 @@
-import { Link, useHydrated } from "@tanstack/react-router";
-import { lazy, Suspense, useState } from "react";
+import { Link } from "@tanstack/react-router";
 
-import characterPicker from "~/assets/marketing/character-picker.webp";
 import moonPicnic from "~/assets/marketing/moon-picnic.webp";
 import paperBoatFamily1 from "~/assets/marketing/paper-boat-family-1.webp";
 import paperBoatFamily2 from "~/assets/marketing/paper-boat-family-2.webp";
 import socialPreview from "~/assets/marketing/social-preview.png";
 import { Button } from "~/components/ui/button";
 
-// The live demo (and the picker it reuses) loads only when a visitor presses "Try it".
-const LandingLookDemo = lazy(() => import("~/components/landing-look-demo"));
-
 // The page signed-out visitors see at /. Its images are marketing copies under src/assets/marketing, not story assets:
 // those stay behind sign-in. Imported, so the build names each file after its content: a replaced image gets a new
 // URL, and browsers and Cloudflare (which keep static images for 4 hours) can't keep showing the old one.
 
 const DESCRIPTION =
-  "Picture books written and illustrated by people, starring your family. Pick how each person looks from options the illustrator approved, and every page is drawn with them.";
+  "Picture books written and illustrated by people, starring your family. Upload a photo of each person, and the illustrator's art is redrawn with them in the book's style.";
 
 export const landingHead = ({ url }: { url: string }) => ({
   meta: [
@@ -42,21 +37,19 @@ export const landingHead = ({ url }: { url: string }) => ({
 const steps = [
   {
     title: "Pick a story",
-    text: "Each book is written and illustrated by people, with a range of looks for every character.",
+    text: "Each book is written and illustrated by people.",
   },
   {
     title: "Add your family",
-    text: "Choose how each person looks: age, face, skin tone, hairstyle, hair colour, and glasses. No photos needed.",
+    text: "Upload one photo per person. You see each of them drawn in the book's style before you order, and can ask for changes.",
   },
   {
     title: "Get your book",
-    text: "Every page is drawn with your family. Tweak the words, then download a print-ready proof.",
+    text: "Every page is drawn with your family. A person checks the whole book before it prints.",
   },
 ];
 
 export function Landing() {
-  const [trying, setTrying] = useState(false);
-  const hydrated = useHydrated();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
@@ -73,8 +66,8 @@ export function Landing() {
               Picture books starring your family
             </h1>
             <p className="text-lg text-muted-foreground">
-              Real stories by human authors and illustrators. You choose how each of your family looks, and every page
-              is drawn with them.
+              Real stories by human authors and illustrators. Add a photo of each of your family, and every page is
+              drawn with them.
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button asChild size="lg">
@@ -125,53 +118,21 @@ export function Landing() {
           </ol>
         </section>
 
-        <section className="grid items-center gap-8 md:grid-cols-2">
-          <div className="flex flex-col gap-3 md:order-2">
-            <h2 className="text-2xl font-semibold">An illustrator's art, extended with AI</h2>
-            <p className="text-muted-foreground">
-              An illustrator draws each story's characters, then works with AI to turn those drawings into many faces,
-              hairstyles, skin tones, and hair colours in the same style. The illustrator approves every option, so each
-              person in your family can look like themselves on every page.
-            </p>
-            <p className="text-muted-foreground">
-              Pick their age, then skin, face, and hair one at a time, with a live preview.
-            </p>
-            {!trying && (
-              <Button variant="outline" className="self-start" disabled={!hydrated} onClick={() => setTrying(true)}>
-                Try it: build a child
-              </Button>
-            )}
-          </div>
-          <img
-            src={characterPicker}
-            alt="The character picker: a portrait of a young child next to choices for age, face, skin tone, and hairstyle"
-            width={1000}
-            height={876}
-            loading="lazy"
-            className="w-full rounded-lg border shadow-sm md:order-1"
-          />
+        <section className="flex flex-col gap-3">
+          <h2 className="text-2xl font-semibold">An illustrator's art, with your family in it</h2>
+          <p className="max-w-3xl text-muted-foreground">
+            An illustrator draws every page. From your photo, AI draws a character sheet of each person in that
+            illustrator's style, and redraws only the characters on each page. Your photos are checked by OpenAI under
+            zero data retention and deleted after you order.
+          </p>
         </section>
-        {trying && (
-          <section
-            aria-labelledby="try-picker"
-            className="-mt-8 flex scroll-mt-4 flex-col gap-3 sm:-mt-10"
-            ref={(node) => node?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          >
-            <h2 id="try-picker" className="text-xl font-semibold">
-              Try the character picker
-            </h2>
-            <Suspense fallback={<p className="text-sm text-muted-foreground">Loading the picker…</p>}>
-              <LandingLookDemo />
-            </Suspense>
-          </section>
-        )}
 
         <section className="grid items-center gap-8 md:grid-cols-2">
           <div className="flex flex-col gap-3 md:order-2">
             <h2 className="text-2xl font-semibold">Your words, ready to print</h2>
             <p className="text-muted-foreground">
               Read each page as it will print and change the text if you like. Then download a print-ready PDF of the
-              whole book, as in <span className="italic">The Moon Picnic</span>.
+              whole book.
             </p>
           </div>
           <img

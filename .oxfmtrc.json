@@ -10,8 +10,7 @@
     "pnpm-lock.yaml",
     "apps/web/src/routeTree.gen.ts",
     "packages/db/migrations/**",
-    "fixtures/stories/**",
-    "packages/core/src/looks/portrait/parts.json"
+    "fixtures/stories/**"
   ],
   "overrides": [
     {

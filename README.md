@@ -1,9 +1,9 @@
 # lifestory-kidsbooks
 
-Custom picture books for families. Human authors and illustrators write the stories and draw the art, including a
-range of looks for each character; parents pick how each family member looks from options the illustrator approved,
-and can edit the text. No photos are uploaded and no AI runs when a family makes a book. See
-[docs/brief.md](docs/brief.md).
+Custom picture books for families. Human authors and illustrators write the stories and draw the art; a parent uploads
+a photo of each family member, approves a character sheet of them drawn in the book's style, and orders the book. Each
+page's characters are then redrawn from those sheets, and a person reviews the book before it prints. See
+[docs/brief.md](docs/brief.md) and the photo-book decisions D56–D58 in [docs/decisions.md](docs/decisions.md).
 
 This is a demo codebase: an open-source, realistic product used to test background coding agents.
 
@@ -11,12 +11,10 @@ This is a demo codebase: an open-source, realistic product used to test backgrou
 
 1. The operator invites a new family; the invitee sets a password and owns a one-person family. An owner invites a
    parent or a view-only member (emails go to `/__dev/mailbox` in development).
-2. Family members become characters in a picker: an age, then one feature at a time in order with a live
-   portrait.
-3. The seeded sample stories "The Moon Picnic" (book format v2, placeholder art, approved variant parts per role) and
-   "The Paper Boat" (the same format with watercolour raster art).
-4. A family picks who plays each role and sees every page with them at once, then makes a personalized book; every
-   page is composed from the approved parts, and a look change shows on every page at once.
+2. Family members become characters: a name, what the kids call them, pronouns, and an age.
+3. The seeded sample story "The Kite Day" (book format 4, placeholder art with stock figures).
+4. A family picks who plays each role and makes a book. Photo books (D56–D58) are being built on top of this: until a
+   book's figures are drawn from its sheets, its pages show the story's stock characters.
 5. The editor shows a page as it will print and edits its text.
 6. The worker renders a print-ready PDF proof with headless Chromium; the parent downloads it and approves it for
    print.
@@ -65,7 +63,7 @@ mise run test:e2e -- milestone1   # only the walk through the whole milestone 1 
 
 `test:e2e` starts its own worker, and a web app unless one is already on :3000. It refuses to start while another
 worker beats on the same database, since that worker would take the tests' tasks with its own provider and origin. Set `E2E_SCREENSHOTS=<dir>` to keep
-screenshots of the picker and the editor and the downloaded proof PDF.
+screenshots of the character form and the editor and the downloaded proof PDF.
 
 CI (`.github/workflows/ci.yml`) runs the same mise tasks.
 
@@ -196,26 +194,20 @@ a story directory under an existing account, usually the operator's. It needs no
 directly:
 
 ```sh
-railway ssh --service web -- node packages/core/src/story-import.ts --author <operator email> fixtures/stories/moon-picnic
+railway ssh --service web -- node packages/core/src/story-import.ts --author <operator email> fixtures/stories/kite-day
 ```
 
-It prints `The Moon Picnic (/stories/the-moon-picnic) v5 is published with 1 additions, by <email>.`; running it again
-changes nothing. To give a published version a new look option (a palette, base, or part it lacks), add the next
-`additions/<n>.json` to its directory and run it again after the change deploys (D41): books draw it at once, with no
-new version. To change anything the version already has, raise `version` in its `story.json` (stored versions never
-change) and run it again. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
+It prints the story, its URL and version, and who published it; running it again changes nothing. To change anything
+the version already has, raise `version` in its `story.json` (stored versions never change) and run it again. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
 
-Production generates story parts with OpenAI (`IMAGE_PROVIDER=openai` in `.railway/railway.ts`; "Generating story
-parts" below). The API key is set once on the web service, never in that file, and the worker references it. Set it
+Production draws character sheets and figures with OpenAI (`IMAGE_PROVIDER=openai` in `.railway/railway.ts`; "Image
+generation" below). The API key is set once on the web service, never in that file, and the worker references it. Set it
 before applying a config that selects OpenAI: both services build the provider when they start and fail without it.
 
 ```sh
 railway variables --service web --set "OPENAI_API_KEY=<key>"
 railway config plan && railway config apply
 ```
-
-To use the fallback instead, change `IMAGE_PROVIDER` to `modal` and add the Modal variables from "Image generation on
-Modal" below, then apply and redeploy both services.
 
 ### Email
 
@@ -252,75 +244,19 @@ jq -n --arg email "$LIFESTORY_AGENT_EMAIL" --arg password "$LIFESTORY_AGENT_PASS
 curl -sf -b /tmp/agent.jar https://lifestory.devopsdirective.com/api/auth/get-session | jq .user.email
 ```
 
-## Image generation on Modal
+## Image generation
 
-Image generation is authoring tooling for illustrators (D26); no family's data reaches it. Development, tests, and CI
-use the fake image provider, which needs no GPU. OpenAI `gpt-image-2.6-sunburst` is the primary provider (D30;
-"Generating story parts" below); the fallback is FLUX 3 Image Klein running on [Modal](https://modal.com) (`modal/flux_klein.py`): the app submits a job, the workflow suspends, and Modal
-calls back `/api/webhooks/modal` when the image is in object storage. Each cold job costs about US$0.09 of A100 time,
-and a warm one about US$0.014. The GPU scales to zero 60 s after the last job (docs/decisions.md D25).
-
-**One-time setup**
-
-1. Accept the FLUX Kommunity License at https://huggingface.co/black-forest-labs/flux-3-image-klein with a Hugging Face
-   account, and create a read-only token for it.
-2. Install the Modal CLI (`uv tool install modal`), then `modal token new` (or set `MODAL_TOKEN_ID` and
-   `MODAL_TOKEN_SECRET`). The workspace needs a payment method on file for GPUs.
-3. Create the two secrets the function reads:
-
-   ```sh
-   modal secret create huggingface HF_TOKEN=hf_...
-   modal secret create lifestory-modal MODAL_CALLBACK_SECRET="$(openssl rand -hex 32)"   # keep this value
-   ```
-
-4. Download the weights (about 40 GB, two minutes, CPU only) onto the Modal Volume:
-   `modal run modal/flux_klein.py::download_weights`.
-
-**Deploy, and redeploy after changing `modal/flux_klein.py`**
-
-```sh
-modal deploy modal/flux_klein.py   # prints the submit endpoint URL
-```
-
-**Try the model without the app**
-
-```sh
-modal run modal/flux_klein.py --prompt "a watercolor fox reading under a tree" --out fox.png
-```
-
-**Point the app at it.** Set these on the web app and the worker, and restart both:
-
-```sh
-IMAGE_PROVIDER=modal
-MODAL_ENDPOINT_URL=https://<workspace>--lifestory-flux-klein-submit.modal.run   # from modal deploy
-MODAL_CALLBACK_SECRET=<the value in the lifestory-modal secret>
-PUBLIC_APP_URL=https://<the app's public origin>                                 # Modal calls back here
-S3_PUBLIC_ENDPOINT=https://<storage as Modal reaches it>                         # if not S3_ENDPOINT
-```
-
-The app needs a public URL for the callback, and Modal must reach object storage through the presigned URLs. With
-SeaweedFS on a laptop, expose both through a tunnel. Signed callbacks that arrive twice are harmless. Generating one
-part in a draft's parts grid runs one real generation. Logs: `modal app logs lifestory-flux-klein`; runs:
-https://modal.com/apps (app `lifestory-flux-klein`).
-
-## Generating story parts
-
-Authoring tooling generates each option's part on a role's base (plan.md, "Authoring-time part generation"; D30,
-D36). The story editor's parts grid generates and reviews them (D37) through `requestPart`, `getPart`, `listParts`,
-`reviewPart`, `approvedParts`, and `withApprovedParts` from `@lifestory/core`, for the author of a draft. The worker
-runs the `part.generate` task: the provider's in-place edit of the base, then the cut-out, which stores RGBA layers
-and review images of the part on the story's lightest and darkest skin under `stories/<storyId>/v<n>/parts/<partId>/`.
-
-The fake provider (the default) answers with a deterministic edit, so the whole path runs locally and in CI
-(`apps/web/e2e/parts.spec.ts`). For real parts, set on the web app and the worker (both build the provider when
-they start) and restart them:
+All generation goes through the `ImageProvider` service (`packages/core/src/generations.ts`). The fake provider (the
+default) answers with deterministic images, so the whole path runs locally and in CI. For real generation (D56), set
+on the web app and the worker (both build the provider when they start) and restart them:
 
 ```sh
 IMAGE_PROVIDER=openai
-OPENAI_API_KEY=<key>                      # every edit is billed, ~US$0.05 each at medium quality
-OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst # the default; a successor gets the assessment's test set first (D30)
-OPENAI_IMAGE_QUALITY=medium               # the default
+OPENAI_API_KEY=<key>                        # every edit is billed
+OPENAI_PHOTO_MODEL=gpt-image-2.5-sunburst   # the default
+OPENAI_IMAGE_QUALITY=medium                 # the default
+OPENAI_ZDR=enabled                          # only once the OpenAI project has zero data retention
 ```
 
-Each part's provider, token usage, and cost are on its `generation` row (`select provider, cost_usd from
-generation`) and in `getPart`. The home page's sample job always uses the fake provider, so it never bills.
+Without `OPENAI_ZDR=enabled` the provider refuses any job that would send a family's photo. Each generation's
+provider, token usage, and cost are on its `generation` row (`select provider, cost_usd from generation`).

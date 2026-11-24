@@ -15,7 +15,6 @@ evidence and a proposal, don't switch on your own.
 | `apps/worker` | Absurd worker. Registers every task from `@lifestory/core` and runs it through the shared runtime. |
 | `packages/core` | `@lifestory/core`, the "shared package" in docs/brief.md: Effect services and layers for config, database, auth, storage, image provider, jobs, domain logic, tasks, seed. `src/contracts.ts` is the browser-safe subset; `src/testing.ts` holds test helpers. |
 | `packages/db` | `@lifestory/db`: Drizzle schema and migrations (including the vendored Absurd SQL). No services or domain logic. |
-| `modal` | Python: FLUX 3 Image Klein on Modal (`modal/flux_klein.py`), the real `ImageProvider` behind `IMAGE_PROVIDER=modal`. |
 | `fixtures/stories` | Sample stories (book format manifest, placeholder art, fonts) that `db:seed` imports. |
 | `compose.yaml` | Postgres 18 and SeaweedFS (S3 API on :8333). |
 | `apps/*/Dockerfile`, `.railway/railway.ts` | Production images (build from the repo root) and the Railway project they deploy to. Redeploying: README "Deploying". |
@@ -37,8 +36,8 @@ Times measured on an `a1.small` orb.
 | `mise run format` | oxfmt formats TS, TSX, JS, JSON, CSS, Markdown, YAML, and TOML in place (D53) | <1 s |
 | `mise run format:check` | oxfmt lists the files `format` would change and fails if there are any; part of `check`, so CI enforces it | <1 s |
 | `mise run test` | Vitest unit tests (`packages/*/test`, `apps/*/test`); most of it is importing modules | ~12 s |
-| `mise run verify -- <command>` | Drive the real app and keep evidence (`docs/features`): `picker` ~20 s, `proof` ~30 s, `looks` ~25 s in dev; `--config image` first builds both images, minutes on `a1.small` (`--no-build` reuses them) | see each |
-| `mise run test:e2e` | Playwright end-to-end tests (28; one test worker where the memory cap is under 6 GiB); `milestone1.spec.ts` walks the whole milestone 1 slice, `parts.spec.ts` generates a part through the worker with the fake provider, `art-import.spec.ts` imports a PSD and a flat page (D42; with `IMAGE_PROVIDER=openai` it runs on real edits, ~US$0.47), `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker, and refuses to run while any other worker beats on the database (the `worker` service, a preview worker with real providers): `amp orb service stop worker` first | 28 tests (`CI=1`, cold Vite cache): 5.5 min on `a1.medium`, 7.2 min capped to 2 CPUs and 3 GiB (2026-11-20; 21 tests took 3.4–3.6 min on `a1.small`); ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
+| `mise run verify -- <command>` | Drive the real app and keep evidence (`docs/features`): `proof` ~30 s, `layout` ~25 s in dev; `--config image` first builds both images, minutes on `a1.small` (`--no-build` reuses them) | see each |
+| `mise run test:e2e` | Playwright end-to-end tests (28; one test worker where the memory cap is under 6 GiB); `milestone1.spec.ts` walks the whole milestone 1 slice, `mise run test:e2e -- milestone1` runs only it. Needs Postgres and SeaweedFS migrated and seeded (`.agents/setup` does that, but doesn't start the app). Reuses a web app on :3000 if one is running (the `web` service), otherwise starts one; always starts its own worker, and refuses to run while any other worker beats on the database (the `worker` service, a preview worker with real providers): `amp orb service stop worker` first | 28 tests (`CI=1`, cold Vite cache): 5.5 min on `a1.medium`, 7.2 min capped to 2 CPUs and 3 GiB (2026-11-20; 21 tests took 3.4–3.6 min on `a1.small`); ~45 s for `milestone1` alone, ~70 s with `E2E_PORT=3100` next to the services (measured 2026-11-19). `CI=1` always starts fresh and fails if :3000 is taken: with services running, add `E2E_PORT=3100` |
 | `.agents/setup` | Orb setup; idempotent | ~13 s warm, most of it `db:seed`; a fresh orb also downloads images, Node, and Chromium |
 | `mise run db:migrate` | Apply Drizzle migrations; idempotent | ~1–2 s |
 | `mise run db:seed` | Seed users, family, sample story; idempotent | ~4–7 s |
@@ -174,8 +173,7 @@ them for the client. Browser code imports only `@lifestory/core/contracts`.
 
 ### Server routes vs server functions
 
-App calls are server functions. Outside callers (Better Auth at `/api/auth/*`, the Modal callback later, file
-downloads) are server routes with `server.handlers`.
+App calls are server functions. Outside callers (Better Auth at `/api/auth/*`, file downloads) are server routes with `server.handlers`.
 
 ### Durable tasks (Absurd)
 
@@ -218,22 +216,19 @@ prefix, and an expiry rule in `packages/core/src/tasks/sweep-storage.ts` if it s
 All generation goes through the `ImageProvider` service, called from tasks with `generateImage(ctx, name, request)`
 (`packages/core/src/generations.ts`): it submits (a step), suspends until the `generation.done:<id>` event, and
 records the outcome in the `generation` table. `FakeImageProvider` (deterministic SVG per key, emits the event
-itself) is the default everywhere; there is no GPU in orbs or CI. `IMAGE_PROVIDER=openai` edits with OpenAI (D30, the primary for
-part generation; README, "Generating story parts"), and `IMAGE_PROVIDER=modal` uses FLUX 3 Klein on Modal, which calls
-back `/api/webhooks/modal`; the README's "Image generation on Modal" has the runbook. Don't run real providers unless
-asked, and keep it to a few dollars: OpenAI bills every edit, Modal spends GPU money.
+itself) is the default everywhere. `IMAGE_PROVIDER=openai` draws character sheets and figures with OpenAI (D56; README,
+"Image generation"); it refuses any job that sends a family's photo unless `OPENAI_ZDR=enabled`. Don't run real
+providers unless asked, and keep it to a few dollars: OpenAI bills every edit.
 
 ### Formatting
 
 oxfmt (`.oxfmtrc.json`, D53) formats every tracked TS, TSX, JS, JSON, CSS, Markdown, YAML, and TOML file; run
 `mise run format` before committing. Its `ignorePatterns` list the tracked files other tools write (the lockfile,
-TanStack's `routeTree.gen.ts`, drizzle-kit's migrations, the story directories under `fixtures/stories`, and the
-portrait `parts.json`): change their generator, not the file. A file a script writes that oxfmt would rewrite
+TanStack's `routeTree.gen.ts`, drizzle-kit's migrations, and the story directories under `fixtures/stories`): change their generator, not the file. A file a script writes that oxfmt would rewrite
 differently goes on that list too. It also sorts imports (side-effect imports stay put) and Tailwind classes
 (in `className` and `cn`/`cva`/`clsx` calls). Code blocks in Markdown stay as written. A Markdown table with a row wider than
 120 columns gets `<!-- oxfmt-ignore -->` on the line before it: aligning it would pad every cell to its column's
-widest one, which more than doubled this file. Python under `modal/` and
-`fixtures/art-sources` isn't formatted. Upgrading oxfmt (0.x, so output can change between versions) goes in its own
+widest one, which more than doubled this file. Python under `fixtures/art-sources` isn't formatted. Upgrading oxfmt (0.x, so output can change between versions) goes in its own
 commit with the files it reformats; add a purely mechanical commit like that to `.git-blame-ignore-revs` after it
 lands, so `git blame` (configured by `.agents/setup`) and GitHub skip it.
 

@@ -1,9 +1,8 @@
 // The active family's characters, books, and the stories it can make books of: the lists on Home and on the
 // Stories, Our books, and Our family pages of the app shell (D48).
-import { type BookSummary, type Character, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
+import { ageLabel, type BookSummary, type Character, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 
-import { portraitUrl } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { deleteBookFn, EditBookResult } from "~/server/books";
 
@@ -26,18 +25,11 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
             <Link
               to="/family/$characterId"
               params={{ characterId: character.id }}
-              className="flex w-24 flex-col items-center gap-1 rounded-md p-1 text-sm hover:bg-accent"
+              className="flex h-[70px] w-28 flex-col items-center justify-center gap-1 rounded-md border p-1 text-sm hover:bg-accent"
             >
-              <img
-                src={portraitUrl(character.look)}
-                alt=""
-                width={61}
-                height={70}
-                className="rounded-md ring-1 ring-black/10"
-              />
               <span className="w-full truncate text-center font-medium">{character.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {character.title ? `${character.title} · ${character.pronouns}` : character.pronouns}
+              <span className="w-full truncate text-center text-xs text-muted-foreground">
+                {[character.title, ageLabel(character.age)].filter(Boolean).join(" · ")}
               </span>
             </Link>
           </li>
@@ -46,7 +38,7 @@ export function FamilyCharacters({ characters, canEdit }: { characters: Readonly
           <li>
             <Link
               to="/family/new"
-              className="flex h-[70px] w-24 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent"
+              className="flex h-[70px] w-28 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent"
             >
               Add someone
             </Link>

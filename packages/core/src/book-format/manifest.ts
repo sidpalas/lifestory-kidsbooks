@@ -1,37 +1,14 @@
-// The book format: what an author publishes, stored as `story_version.manifest`. Format 2 (D29) gives roles a set of
-// ages and draws bases and parts per age and face type; format 3 places text in frames (D54). Stored manifests of
-// earlier formats are upgraded when decoded (upgradeFormat1, upgradeFormat2). See docs/plan.md, "Book format (v1)". Browser-safe: the page component reads it.
+// The book format: what an author publishes, stored as `story_version.manifest`. Format 4 (D56) draws every role
+// from a family member's photo: each figure on a page is the illustrator's bald drawing, which a model redraws as the
+// family member from the book's character sheet. Formats 1–3 (looks and parts, D26) are gone with the parts stories.
+// Browser-safe: the page component reads it.
 //
-// The manifest holds only what the author made. A family's choices (who fills
-// each character slot, text edits) live on their book and are applied when a
-// page is rendered, so one story version serves every family unchanged.
-import { Schema } from "effect";
-import { Effect } from "effect";
+// The manifest holds only what the author made. A family's choices (who fills each role, their sheets, the drawn
+// figures, text edits) live on their book and are applied when a page is rendered, so one story version serves every
+// family unchanged.
+import { Effect, Schema } from "effect";
 
-import {
-  Age,
-  FaceOption,
-  FacialHairOption,
-  faceOptions,
-  DEFAULT_FEATURES,
-  drawnFeatures,
-  FeaturesOption,
-  hasFeatures,
-  LATER_PART_AXES,
-  type LookOption,
-  lookVocabulary,
-  Look,
-  NO_PART_OPTIONS,
-  PartAxis,
-  figurePartAxes,
-  hairAt,
-  offeredAt,
-  optionsAt,
-  RETIRED_OPTIONS,
-  partAxesAt,
-  requiredAt,
-  sameAppearance,
-} from "../looks/vocabulary.ts";
+import { Age } from "./ages.ts";
 import { tokenIssues } from "./text.ts";
 
 /** Slot and page IDs: lowercase, stable across versions, used in object keys and text tokens. */
@@ -88,16 +65,12 @@ export type TextStyle = typeof TextStyle.Type;
 export const PronounSet = Schema.Literals(["she/her", "he/him", "they/them"]);
 export type PronounSet = typeof PronounSet.Type;
 
-/**
- * Who fills a slot: a family member, or the slot's example in a story preview. Text tokens resolve from the name,
- * title, and pronouns; the figures on every page are composed from the look (D26).
- */
+/** Who fills a slot, for the text: a family member, or the slot's stock character in a story preview. */
 export const CastMember = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)),
   /** What the children call them ("Dad", "Nana"), for `{{slot.title}}`; the name stands in when absent. */
   title: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
   pronouns: PronounSet,
-  look: Look,
 });
 export type CastMember = typeof CastMember.Type;
 
@@ -107,101 +80,53 @@ export const CharacterSlot = Schema.Struct({
   label: Schema.String.check(Schema.isMinLength(1)),
   /** Guidance for the parent, e.g. "A child about 5 years old". */
   description: Schema.String,
-  /**
-   * The ages a family member may be to fill the slot (D29). Age is the one axis a story may restrict (D26): every
-   * figure of the slot not pinned to an age supplies a base for every face type (the story's `oneFace` only, when
-   * set) at each of these ages, and every other option in the look vocabulary.
-   */
+  /** The ages a family member may be to fill the slot (D29); the sheet draws them at their own age (D56). */
   ages: Schema.Array(Age).check(Schema.isMinLength(1)),
-  /** Fills the slot in story previews, before a family chooses anyone. */
+  /** The illustrator's character, named in story previews before a family puts itself in the book. */
   example: CastMember,
+  /** What the character wears on the sheet, in words: "a red-and-white striped long-sleeved top and red trousers". */
+  outfit: Schema.String.check(Schema.isMinLength(1)),
+  /** The stock character's sheet, front, three-quarter and back views; absent in a draft until it's made. */
+  stockSheet: Schema.optionalKey(ImageAsset),
 });
 export type CharacterSlot = typeof CharacterSlot.Type;
 
-export const ArtLayer = Schema.Struct({ kind: Schema.Literal("art"), asset: ImageAsset });
-export type ArtLayer = typeof ArtLayer.Type;
-
 const Permille = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000 }));
 
-/** A rectangle [x0, y0, x1, y1] in thousandths of its container (the illustration, or a figure's box). */
+/** A rectangle [x0, y0, x1, y1] in thousandths of the illustration. */
 export const Rect = Schema.Tuple([Permille, Permille, Permille, Permille]).check(
   Schema.makeFilter(([x0, y0, x1, y1]) => (x0 < x1 && y0 < y1) || "must be [x0, y0, x1, y1] with x0 < x1 and y0 < y1"),
 );
 export type Rect = typeof Rect.Type;
 
-/**
- * One base face of a figure, drawn by the illustrator bald and in neutral skin tones, filling the figure's box.
- * Masks are on the same canvas (opaque = in the region) and say what the recolour may touch.
- */
-export const FigureBase = Schema.Struct({
-  /** The age this base draws the character at (D29). */
-  age: Age,
-  face: FaceOption,
-  /** From teen up, the features this base draws (D40); absent means defined. Younger bases have none. */
-  features: Schema.optionalKey(FeaturesOption),
-  asset: ImageAsset,
-  /** Every visible bit of skin: face, neck, arms, hands, legs. Takes the look's skin palette. */
-  skinMask: ImageAsset,
-  /** Eyebrows, which take the look's hair colour. */
-  browMask: Schema.optionalKey(ImageAsset),
-  /**
-   * Colour inside the skin that a gradient map would lose (blush, lips, an open mouth), on the same canvas. Drawn as
-   * the illustrator made it, above the recoloured base and below the parts (Sid, 2026-11-19).
-   */
-  overlay: Schema.optionalKey(ImageAsset),
-  /** Drawn over the parts: hands or props in front of the face. Its skin takes the skin palette too. */
-  occluder: Schema.optionalKey(Schema.Struct({ asset: ImageAsset, skinMask: Schema.optionalKey(ImageAsset) })),
-});
-export type FigureBase = typeof FigureBase.Type;
-
-/** One option's drawing for one base face, cut out and placed within the figure's box. */
-export const Part = Schema.Struct({
-  age: Age,
-  face: FaceOption,
-  /** The features of the base it was drawn on (D40); absent means defined. */
-  features: Schema.optionalKey(FeaturesOption),
-  axis: PartAxis,
-  option: Schema.String,
-  asset: ImageAsset,
-  /** Where the part sits, in thousandths of the figure's box. */
-  at: Rect,
-  /** Which palette recolours the part's neutral tones; `none` leaves it as drawn (glasses). */
-  palette: Schema.Literals(["skin", "hairColour", "none"]),
-  /** Set by the illustrator's review. A story version publishes only when every part is approved (D26). */
-  approved: Schema.Boolean,
-});
-export type Part = typeof Part.Type;
+/** The illustrator's art, as drawn: the plate behind everything, or scenery in front of a figure (an occluder). */
+export const ArtLayer = Schema.Struct({ kind: Schema.Literal("art"), asset: ImageAsset });
+export type ArtLayer = typeof ArtLayer.Type;
 
 /**
- * One appearance of a character on a page (D26): the slot's base faces and option parts, composed per family as
- * base → overlay → parts (in `partOrder`) → occluder, with no AI when a book is made.
+ * One appearance of a role on a page (D56). The illustrator draws the figure bald, on its own layer, cut tight; a
+ * family's book redraws it as their family member from the book's character sheet, on a transparent background,
+ * and lays that layer in its place. Figures on a page must not touch or overlap: each is drawn in its own call.
  */
-export const FigureLayer = Schema.Struct({
-  kind: Schema.Literal("figure"),
+export const PhotoFigure = Schema.Struct({
+  kind: Schema.Literal("photoFigure"),
   slotId: Id,
-  /** Where the figure sits, in thousandths of the illustration. */
+  /** The bald figure, as an RGBA layer covering `box`. Over the plate, it is the model's page reference. */
+  reference: Schema.optionalKey(ImageAsset),
+  /** Where the bald figure sits: the bounding box of its opaque pixels. */
   box: Rect,
-  /**
-   * Draws the role at this age on this page, whatever age the family member is (D29): a baby who grows into a toddler
-   * during the story. Without it the figure draws them at their own age, one of the slot's `ages`.
-   */
-  age: Schema.optionalKey(Age),
-  /**
-   * Mirrors the whole figure left to right within its box (D44): its base, masks, overlay, parts, and occluder, so a
-   * pose facing the other way reuses a drawing and its parts. Parts are generated and placed on the unmirrored base.
-   */
-  flip: Schema.optionalKey(Schema.Boolean),
-  /** False when only a hand or an arm is in frame: then the figure has no head parts. */
-  showsHead: Schema.optionalKey(Schema.Boolean),
-  /** Overrides the manifest's `partOrder` on this appearance, e.g. glasses over hair. */
-  partOrder: Schema.optionalKey(Schema.Array(PartAxis)),
-  /** At least one in a published version; a draft's new figure starts with none. */
-  bases: Schema.Array(FigureBase),
-  parts: Schema.Array(Part),
+  /** The generation window: `box` padded and grown to 2:3 or 3:2 of the page's pixels, fixed at import. */
+  window: Rect,
+  /** The head's box, from which the keep zone's hair zone grows (D56). */
+  head: Rect,
+  /** The stock character on this page, made by the same pipeline from the stock sheet; covers `window`. */
+  stock: Schema.optionalKey(ImageAsset),
+  /** Off only where the illustrator wants the drawn colours kept; on by default (D56). */
+  tint: Schema.optionalKey(Schema.Boolean),
 });
-export type FigureLayer = typeof FigureLayer.Type;
+export type PhotoFigure = typeof PhotoFigure.Type;
 
-export const IllustrationLayer = Schema.Union([ArtLayer, FigureLayer]);
+export const IllustrationLayer = Schema.Union([ArtLayer, PhotoFigure]);
 export type IllustrationLayer = typeof IllustrationLayer.Type;
 
 /** Where a page's illustration sits: the whole page including bleed, or its left half. */
@@ -226,9 +151,9 @@ export const TrimBox = Schema.Struct({
 export type TrimBox = typeof TrimBox.Type;
 
 /**
- * A place for text on a page (format 3): a box inside the safe area holding paragraphs, laid out top to bottom like
- * one column. The text keeps to one edge of the box (`valign`), so a family's longer names grow it away from that
- * edge; text that doesn't fit runs past the box, and the editors say so.
+ * A place for text on a page (D54): a box inside the safe area holding paragraphs, laid out top to bottom like one
+ * column. The text keeps to one edge of the box (`valign`), so a family's longer names grow it away from that edge;
+ * text that doesn't fit runs past the box, and the editors say so.
  */
 export const TextFrame = Schema.Struct({
   /** Stable within the page; the editor names new frames t1, t2, ... */
@@ -250,69 +175,65 @@ export const Page = Schema.Struct({
    */
   frames: Schema.Array(TextFrame),
   illustration: Schema.Struct({
-    /** Bottom to top. Art layers are the illustrator's files and never change; character layers are filled per family. */
+    /**
+     * Bottom to top: the plate, then each figure and any scenery in front of it. Art layers are the illustrator's
+     * files and never change; figures are drawn per family.
+     */
     layers: Schema.Array(IllustrationLayer),
   }),
 });
 export type Page = typeof Page.Type;
 
-/** A gradient map for the recolour: neutral tone (0 = black, 1 = white) to colour, at least two stops. */
-export const Palette = Schema.Array(
-  Schema.Struct({
-    at: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
-    colour: Schema.String.check(Schema.isPattern(/^#[0-9a-f]{6}$/)),
-  }),
-).check(Schema.isMinLength(2));
-export type Palette = typeof Palette.Type;
+/** How a story's characters are drawn from photos (D56). */
+export const PhotoStyle = Schema.Struct({
+  /** A crop of one painted page, which the sheet prompt calls the book's style. */
+  styleReference: ImageAsset,
+  /** The style in words, for every prompt: "thin, slightly grainy pencil outline and soft watercolour colouring". */
+  styleWords: Schema.String.check(Schema.isMinLength(1)),
+  /** The prompt set, pinned per story version so a later prompt change never redraws a published story differently. */
+  promptVersion: Schema.Literal("photo-hero-v1"),
+});
+export type PhotoStyle = typeof PhotoStyle.Type;
 
-export const FORMAT_VERSION = 3;
+export const FORMAT_VERSION = 4;
 
 /** A page's paragraphs in reading order, frame by frame: what a family's text edits address by index. */
 export const pageText = (page: { readonly frames: ReadonlyArray<{ readonly paragraphs: ReadonlyArray<TextBlock> }> }) =>
   page.frames.flatMap((frame) => frame.paragraphs);
 
+/** A page's figures, bottom to top. */
+export const pageFigures = (page: Page): ReadonlyArray<PhotoFigure> =>
+  page.illustration.layers.filter((layer): layer is PhotoFigure => layer.kind === "photoFigure");
+
 const duplicates = (values: ReadonlyArray<string>) => values.filter((value, i) => values.indexOf(value) !== i);
+
+const inside = ([ax0, ay0, ax1, ay1]: Rect, [bx0, by0, bx1, by1]: Rect) =>
+  ax0 >= bx0 && ay0 >= by0 && ax1 <= bx1 && ay1 <= by1;
 
 /**
  * The manifest's shape without its completeness and cross-reference checks: what an author's draft holds while
  * they work on it (D37). Publishing decodes it as a StoryManifest, which adds every check.
  */
 export const StoryDraft = Schema.Struct({
-  /** Readers reject versions they don't know; a later version ships a migration from v1. */
+  /** Readers reject versions they don't know. */
   formatVersion: Schema.Literal(FORMAT_VERSION),
   trim: Trim,
   fonts: Schema.Array(FontFile),
   textStyles: Schema.Struct({ title: TextStyle, body: TextStyle }),
   characterSlots: Schema.Array(CharacterSlot),
-  /** The illustrator's colours for every skin tone and hair colour in the look vocabulary. */
-  palettes: Schema.Struct({
-    skin: Schema.Record(Schema.String, Palette),
-    hairColour: Schema.Record(Schema.String, Palette),
-  }),
-  /** Bottom to top, the part axes drawn between the base face and the occluder. */
-  partOrder: Schema.Array(PartAxis),
-  /**
-   * The one face type the story's art draws (D55), for art styles that don't tell round from oval: every character
-   * is drawn with it whatever their own face type, and figures need bases and parts for it only. Absent: each
-   * character's own face type, so every figure draws both.
-   */
-  oneFace: Schema.optionalKey(FaceOption),
+  /** Absent in a new draft until the author picks the style reference. */
+  photo: Schema.optionalKey(PhotoStyle),
   pages: Schema.Array(Page),
 });
 export type StoryDraft = typeof StoryDraft.Type;
 
-/** The face type a story draws for a character whose own is `face`: the story's one face type if it has one (D55). */
-export const drawnFace = (
-  story: { readonly oneFace?: typeof FaceOption.Type | undefined },
-  face: typeof FaceOption.Type,
-): typeof FaceOption.Type => story.oneFace ?? face;
-
 export const StoryManifest = StoryDraft.check(
-  // References inside the manifest must resolve, so a page never names a slot,
-  // font, or token that doesn't exist. Uploads by any author go through this check.
+  // References inside the manifest must resolve, so a page never names a slot, font, or token that doesn't exist.
+  // Uploads by any author go through this check. Pixel rules (figures that touch) are checked by the import.
   Schema.makeFilter((manifest) => {
     const issues: Array<Schema.FilterIssue> = [];
     if (manifest.pages.length === 0) issues.push({ path: ["pages"], issue: "a story needs at least one page" });
+    if (!manifest.photo) issues.push({ path: ["photo"], issue: "a story needs a style reference for its sheets" });
     const { widthIn, heightIn, safeMarginIn } = manifest.trim;
     if (safeMarginIn * 2 >= Math.min(widthIn, heightIn)) {
       issues.push({ path: ["trim", "safeMarginIn"], issue: "safe margin leaves no room for text" });
@@ -331,40 +252,29 @@ export const StoryManifest = StoryDraft.check(
       issues.push({ path: ["pages"], issue: `duplicate pageId "${id}"` });
     }
     const slots = new Set(slotIds);
-    for (const axis of ["skin", "hairColour"] as const) {
-      for (const option of Object.keys(manifest.palettes[axis])) {
-        if (!lookVocabulary[axis].some((known) => known.id === option)) {
-          issues.push({ path: ["palettes", axis, option], issue: `"${option}" is not a ${axis} option` });
-        }
-      }
-    }
-    if (partOrderIssue(manifest.partOrder))
-      issues.push({ path: ["partOrder"], issue: partOrderIssue(manifest.partOrder)! });
     manifest.characterSlots.forEach((slot, s) => {
-      if (!slot.ages.includes(slot.example.look.age)) {
-        issues.push({
-          path: ["characterSlots", s, "example", "look", "age"],
-          issue: `the example is not one of the slot's ages`,
-        });
-      }
       for (const age of new Set(duplicates(slot.ages)))
         issues.push({ path: ["characterSlots", s, "ages"], issue: `"${age}" twice` });
+      if (!slot.stockSheet)
+        issues.push({ path: ["characterSlots", s, "stockSheet"], issue: "the stock character needs a sheet" });
     });
     manifest.pages.forEach((page, p) => {
       if (page.illustration.layers.length === 0)
         issues.push({ path: ["pages", p, "illustration", "layers"], issue: "a page needs at least one layer" });
+      else if (page.illustration.layers[0]!.kind !== "art")
+        issues.push({ path: ["pages", p, "illustration", "layers", 0], issue: "a page starts with its plate" });
       page.illustration.layers.forEach((layer, l) => {
-        if (layer.kind !== "figure") return;
+        if (layer.kind !== "photoFigure") return;
         const path = ["pages", p, "illustration", "layers", l];
-        if (layer.bases.length === 0)
-          issues.push({ path: [...path, "bases"], issue: "a figure needs at least one base" });
-        const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId);
-        if (!slot) {
+        if (!slots.has(layer.slotId))
           issues.push({ path: [...path, "slotId"], issue: `unknown slot "${layer.slotId}"` });
-          return;
-        }
-        for (const issue of figureIssues(layer, drawnAges(layer, slot)))
-          issues.push({ path: [...path, ...issue.path], issue: issue.issue });
+        if (!inside(layer.box, layer.window))
+          issues.push({ path: [...path, "window"], issue: "the window must contain the figure's box" });
+        if (!inside(layer.head, layer.window))
+          issues.push({ path: [...path, "head"], issue: "the head must be inside the window" });
+        if (!layer.reference)
+          issues.push({ path: [...path, "reference"], issue: "the figure needs its bald reference" });
+        if (!layer.stock) issues.push({ path: [...path, "stock"], issue: "the figure needs its stock drawing" });
       });
       for (const id of new Set(duplicates(page.frames.map((frame) => frame.frameId))))
         issues.push({ path: ["pages", p, "frames"], issue: `duplicate frameId "${id}"` });
@@ -407,9 +317,8 @@ const insideSafeArea = (box: TrimBox, trim: Trim) => {
 };
 
 /**
- * Where format 2's three page layouts put text, as a frame: the editor offers them as starting frames, and format 2
- * pages upgrade to them. "bottom" and "top" fill the safe area on a panel and keep to that edge; "right-half" is the
- * right half's safe area, centred, with no panel (the art fills the left half).
+ * Starting frames the editor offers: "bottom" and "top" fill the safe area on a panel and keep to that edge;
+ * "right-half" is the right half's safe area, centred, with no panel (the art fills the left half).
  */
 export const presetFrame = (
   trim: Trim,
@@ -432,338 +341,26 @@ export const presetFrame = (
       }
     : { frameId, box: safeArea(trim), valign: preset, panel: true, paragraphs };
 
-/** The ages a figure draws its role at: its pinned age, or every age the slot accepts. */
-const drawnAges = (figure: FigureLayer, slot: CharacterSlot): ReadonlyArray<Age> =>
-  figure.age ? [figure.age] : slot.ages;
-
-/** What a figure has extra or misplaced, given the ages it draws. Paths are relative to the figure. */
-/** A `partOrder` lists each part axis once; axes added later may be missing, and go at the bottom (D43). */
-const partOrderIssue = (order: ReadonlyArray<PartAxis>): string | undefined =>
-  new Set(order).size !== order.length ||
-  PartAxis.literals.some((axis) => !order.includes(axis) && !LATER_PART_AXES.includes(axis))
-    ? `must list each of ${PartAxis.literals.filter((axis) => !LATER_PART_AXES.includes(axis)).join(", ")} once${LATER_PART_AXES.map((axis) => `, and ${axis} at most once`).join("")}`
-    : undefined;
-
-const figureIssues = (
-  figure: FigureLayer,
-  ages: ReadonlyArray<Age>,
-): ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; issue: string }> => {
-  const issues: Array<{ path: ReadonlyArray<PropertyKey>; issue: string }> = [];
-  const keys = figure.bases.map(
-    (base) => `${base.age}/${base.face}${hasFeatures(base.age) ? `/${base.features ?? "features:defined"}` : ""}`,
-  );
-  for (const key of new Set(duplicates(keys))) issues.push({ path: ["bases"], issue: `two bases for "${key}"` });
-  figure.bases.forEach((base, b) => {
-    if (!ages.includes(base.age))
-      issues.push({ path: ["bases", b, "age"], issue: `the figure doesn't draw "${base.age}"` });
-    else if (base.features && !hasFeatures(base.age))
-      issues.push({ path: ["bases", b, "features"], issue: `"${base.age}" bases have no features` });
-  });
-  if (figure.partOrder && partOrderIssue(figure.partOrder))
-    issues.push({ path: ["partOrder"], issue: partOrderIssue(figure.partOrder)! });
-  if (figure.showsHead === false) {
-    if (figure.parts.length > 0) issues.push({ path: ["parts"], issue: "a figure without a head has no parts" });
-    return issues;
-  }
-  figure.parts.forEach((part, i) => {
-    if (!ages.includes(part.age))
-      issues.push({ path: ["parts", i, "age"], issue: `the figure doesn't draw "${part.age}"` });
-    else if (part.features && !hasFeatures(part.age))
-      issues.push({ path: ["parts", i, "features"], issue: `"${part.age}" parts have no features` });
-    else if (!partAxesAt(part.age).includes(part.axis))
-      issues.push({ path: ["parts", i, "axis"], issue: `"${part.age}" has no ${part.axis} parts` });
-    // A retired option's parts stay in the versions published with them and are never drawn (D52).
-    if (RETIRED_OPTIONS.has(part.option)) return;
-    const known = lookVocabulary[part.axis].find((option) => option.id === part.option);
-    if (!known || NO_PART_OPTIONS.has(part.option)) {
-      issues.push({
-        path: ["parts", i, "option"],
-        issue: `"${part.option}" is not a ${part.axis} option with a drawing`,
-      });
-    } else if (!offeredAt(known, part.age))
-      issues.push({ path: ["parts", i, "option"], issue: `"${part.option}" isn't offered at "${part.age}"` });
-  });
-  return issues;
-};
-
-/**
- * What a story version published at `publishedAt` lacks from the look vocabulary. Publishing requires none (Sid,
- * 2026-11-19: every story supports every option except faces of another age; a story with `oneFace` draws only that
- * face type, D55), except options added to the
- * vocabulary after `publishedAt` (D43): a version published earlier simply doesn't support them, and a book asks for
- * a stand-in; see `unsupportedOptions`.
- */
-export const vocabularyGaps = (manifest: StoryManifest, publishedAt: Date = new Date()): ReadonlyArray<string> =>
-  coverageGaps(manifest, publishedAt).map((gap) => gap.text);
-
-/**
- * The vocabulary options a story version can't draw anywhere it should, such as a hair colour added after it was
- * published: what its author still has to add (D41), including options its version needn't have had (D43). Missing
- * bases aren't options and aren't listed.
- */
-export const uncoveredOptions = (manifest: StoryManifest): ReadonlyArray<string> => [
-  ...new Set(coverageGaps(manifest).flatMap((gap) => (gap.option ? [gap.option] : []))),
-];
-
-/** Gaps in the vocabulary's coverage; with `publishedAt`, only those in options a version published then must draw. */
-const coverageGaps = (
-  manifest: StoryManifest,
-  publishedAt?: Date,
-): ReadonlyArray<{ readonly text: string; readonly option?: string }> => {
-  const gaps: Array<{ text: string; option?: string }> = [];
-  const required = (option: LookOption) => !publishedAt || requiredAt(option, publishedAt);
-  for (const axis of ["skin", "hairColour"] as const) {
-    for (const option of lookVocabulary[axis]) {
-      if (required(option) && !manifest.palettes[axis][option.id])
-        gaps.push({ text: `no palette for "${option.id}"`, option: option.id });
-    }
-  }
-  for (const page of manifest.pages) {
-    for (const layer of page.illustration.layers) {
-      if (layer.kind !== "figure") continue;
-      const slot = manifest.characterSlots.find((candidate) => candidate.slotId === layer.slotId)!;
-      for (const age of drawnAges(layer, slot)) {
-        // A story drawing one face type needs nothing for the other (D55).
-        for (const face of new Set(faceOptions.map(({ id }) => drawnFace(manifest, id)))) {
-          // From teen up the defined base is required, and a softer one, when drawn, needs its parts too (D40).
-          const soft = layer.bases.some((base) => sameAppearance(base, age, face, "features:soft"));
-          for (const features of hasFeatures(age)
-            ? [DEFAULT_FEATURES, ...(soft ? (["features:soft"] as const) : [])]
-            : [undefined]) {
-            const at = `${age}/${face}${features ? `/${features}` : ""}`;
-            if (!layer.bases.some((base) => sameAppearance(base, age, face, features)))
-              gaps.push({ text: `${page.pageId}/${layer.slotId}: no base for "${at}"` });
-            if (layer.showsHead === false) continue;
-            for (const axis of partAxesAt(age)) {
-              for (const option of optionsAt(axis, age)) {
-                if (NO_PART_OPTIONS.has(option.id) || !required(option)) continue;
-                if (
-                  !layer.parts.some(
-                    (part) =>
-                      sameAppearance(part, age, face, features) && part.axis === axis && part.option === option.id,
-                  )
-                ) {
-                  gaps.push({
-                    text: `${page.pageId}/${layer.slotId}: no part for "${option.id}" on "${at}"`,
-                    option: option.id,
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return gaps;
-};
-
-/**
- * The axes of `look` this story can't draw for `slotId`: "age" when the slot doesn't accept the character's age;
- * otherwise an option with no palette, or a face type or part missing at an age some page draws them at. The book
- * then disables the story for that character or keeps a story-specific override with supported options (Sid,
- * 2026-11-19). Empty means every page composes.
- */
-export const unsupportedOptions = (manifest: StoryManifest, slotId: string, look: Look): ReadonlyArray<keyof Look> => {
-  const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
-  if (!slot) return [];
-  if (!slot.ages.includes(look.age)) return ["age"];
-  const unsupported = new Set<keyof Look>();
-  if (!manifest.palettes.skin[look.skin]) unsupported.add("skin");
-  if (!manifest.palettes.hairColour[look.hairColour]) unsupported.add("hairColour");
-  for (const page of manifest.pages) {
-    for (const layer of page.illustration.layers) {
-      if (layer.kind !== "figure" || layer.slotId !== slotId) continue;
-      const age = layer.age ?? look.age;
-      const face = drawnFace(manifest, look.face);
-      const features = drawnFeatures(layer.bases, age, face, look);
-      if (!layer.bases.some((base) => sameAppearance(base, age, face, features))) {
-        unsupported.add("face");
-        continue; // Parts are drawn per face, so with an unsupported face only the face is the problem.
-      }
-      if (layer.showsHead === false) continue;
-      for (const axis of figurePartAxes(layer.parts, age)) {
-        const option = axis === "hair" ? hairAt(age, look.hair) : look[axis];
-        if (NO_PART_OPTIONS.has(option)) continue;
-        if (
-          !layer.parts.some(
-            (part) => sameAppearance(part, age, face, features) && part.axis === axis && part.option === option,
-          )
-        )
-          unsupported.add(axis);
-      }
-    }
-  }
-  return [...unsupported];
-};
-
-/**
- * Options a book draws for one role instead of the character's own, for axes the pinned story version can't draw
- * (D26: "a story-specific override with a supported option", picked by the parent).
- */
-export const LookOverride = Schema.Struct({
-  // No age: a role's ages say who may play it, so a stand-in age would draw someone else.
-  face: Schema.optionalKey(Look.fields.face),
-  // Never needed today (a story without softer features draws the defined ones, D40), kept so every axis has a key.
-  features: Schema.optionalKey(FeaturesOption),
-  skin: Schema.optionalKey(Look.fields.skin),
-  hair: Schema.optionalKey(Look.fields.hair),
-  hairColour: Schema.optionalKey(Look.fields.hairColour),
-  glasses: Schema.optionalKey(Look.fields.glasses),
-  facialHair: Schema.optionalKey(FacialHairOption),
-});
-export type LookOverride = typeof LookOverride.Type;
-
-export interface CastLook {
-  /** What the pages draw: the character's look, with the override applied to the axes the story can't draw. */
-  readonly look: Look;
-  /** The character's age isn't one the role accepts, so no override helps: someone else plays it (D29). */
-  readonly wrongAge: boolean;
-  /** Axes still unsupported after the override. Empty (and `wrongAge` false) means every page composes. */
-  readonly unsupported: ReadonlyArray<keyof Look>;
-}
-
-/** A character's saved look as one book draws it: `changes` replaces the axes a parent changed for that book (D46). */
-export const withLookChanges = (look: Look, changes: LookOverride): Look => ({ ...look, ...changes });
-
-/**
- * How a character fills `slotId` in this story version (D26). The override replaces only options the story can't
- * draw, so a look edit back to a supported option takes effect again on its own.
- */
-export const castLook = (
-  manifest: StoryManifest,
-  slotId: string,
-  look: Look,
-  override: LookOverride = {},
-): CastLook => {
-  const slot = manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
-  if (slot && !slot.ages.includes(look.age)) return { look, wrongAge: true, unsupported: ["age"] };
-  const patched: { -readonly [K in keyof Look]: Look[K] } = { ...look };
-  for (const axis of unsupportedOptions(manifest, slotId, look)) {
-    const option = axis === "age" ? undefined : override[axis];
-    if (option !== undefined) (patched as Record<keyof Look, string>)[axis] = option;
-  }
-  return { look: patched, wrongAge: false, unsupported: unsupportedOptions(manifest, slotId, patched) };
-};
-
-/** Parts still waiting for the illustrator's approval, by page; a published version must have none. */
-export const unapprovedParts = (manifest: StoryManifest): ReadonlyArray<string> =>
-  manifest.pages.flatMap((page) =>
-    page.illustration.layers.flatMap((layer) =>
-      layer.kind === "figure"
-        ? layer.parts.filter((part) => !part.approved).map((part) => `${page.pageId}: ${part.asset}`)
-        : [],
-    ),
-  );
-
-/**
- * Format 1 (D24) as format 2 (D29): its two ages become buckets (child → young child, adult → adult) and its four
- * faces become face types at those ages, so stored versions keep drawing exactly what they drew. Leaves anything
- * else alone for the schema to judge.
- */
-const format1Faces: Record<string, { readonly age: string; readonly face: string }> = {
-  "face:child-1": { age: "young-child", face: "face:round" },
-  "face:child-2": { age: "young-child", face: "face:oval" },
-  "face:adult-1": { age: "adult", face: "face:oval" },
-  "face:adult-2": { age: "adult", face: "face:round" },
-};
-const format1Ages: Record<string, string> = { child: "young-child", adult: "adult" };
-
-// oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
-const withFace = (item: any) =>
-  item && format1Faces[item.face]
-    ? { age: format1Faces[item.face]!.age, ...item, face: format1Faces[item.face]!.face }
-    : item;
-
-export const upgradeFormat1 = (input: unknown): unknown => {
-  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 1)
-    return input;
-  // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
-  const m = structuredClone(input) as any;
-  m.formatVersion = 2;
-  for (const slot of m.characterSlots ?? []) {
-    if (typeof slot.age === "string") slot.ages = [format1Ages[slot.age] ?? slot.age];
-    delete slot.age;
-    if (slot.example?.look) slot.example.look = withFace(slot.example.look);
-  }
-  for (const page of m.pages ?? []) {
-    for (const layer of page.illustration?.layers ?? []) {
-      if (layer.kind !== "figure") continue;
-      layer.bases = (layer.bases ?? []).map(withFace);
-      layer.parts = (layer.parts ?? []).map(withFace);
-    }
-  }
-  return m;
-};
-
-/** Format 2's page layouts, as the preset frame that holds the page's text and where the art sits. */
-const format2Layouts: Record<string, { readonly preset: "bottom" | "top" | "right-half"; readonly art: ArtArea }> = {
-  "full-bleed-art/text-bottom": { preset: "bottom", art: "full-bleed" },
-  "full-bleed-art/text-top": { preset: "top", art: "full-bleed" },
-  "art-left/text-right": { preset: "right-half", art: "left-half" },
-};
-
-/**
- * Format 3 replaced each page's layout and its list of paragraphs with text frames. A format 2 page becomes one frame
- * at its layout's place (presetFrame) holding its paragraphs in order, so it prints as before and a family's text
- * edits keep their indexes. Format 2 drew a page without text as an empty panel; it now has no frame. Format 2
- * printed a typed line break as a space, so it becomes one.
- */
-export const upgradeFormat2 = (input: unknown): unknown => {
-  if (typeof input !== "object" || input === null || (input as { formatVersion?: unknown }).formatVersion !== 2)
-    return input;
-  // oxlint-disable-next-line typescript/no-explicit-any -- untyped JSON on its way to the schema
-  const m = structuredClone(input) as any;
-  m.formatVersion = 3;
-  for (const page of m.pages ?? []) {
-    const layout = format2Layouts[page.layout];
-    if (!layout || !Array.isArray(page.text) || !m.trim) continue; // Not format 2's shape: the decoder says why.
-    const paragraphs = page.text.map((block: TextBlock) => ({
-      style: block.style,
-      content: typeof block.content === "string" ? block.content.replaceAll("\n", " ") : block.content,
-    }));
-    page.art = layout.art;
-    page.frames = paragraphs.length ? [presetFrame(m.trim, layout.preset, "t1", paragraphs)] : [];
-    delete page.layout;
-    delete page.text;
-  }
-  return m;
-};
-
-const upgrade = (input: unknown) => upgradeFormat2(upgradeFormat1(input));
-
-/** Decodes and validates a manifest of any known format, as the current format; fails with every problem found. */
 export const decodeStoryManifest = (input: unknown) =>
-  Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(upgrade(input)));
+  Effect.suspend(() => Schema.decodeUnknownEffect(StoryManifest)(input));
 
-/** Decodes a draft (D37): the format's shape, upgraded from earlier formats like a manifest, without the publishing checks. */
-export const decodeStoryDraft = (input: unknown) =>
-  Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(upgrade(input)));
+export const decodeStoryDraft = (input: unknown) => Effect.suspend(() => Schema.decodeUnknownEffect(StoryDraft)(input));
 
 /** Decodes a stored story version: published ones as manifests, the author's unpublished draft only by its shape. */
 export const decodeStoryVersion = (input: unknown, publishedAt: Date | null) =>
   publishedAt ? decodeStoryManifest(input) : decodeStoryDraft(input);
 
 /** Every asset the manifest references, each once: what an upload or import must provide. */
-export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> => [
+export const manifestAssets = (manifest: StoryDraft): ReadonlyArray<string> => [
   ...new Set([
     ...manifest.fonts.map((font) => font.asset),
+    ...(manifest.photo ? [manifest.photo.styleReference] : []),
+    ...manifest.characterSlots.flatMap((slot) => (slot.stockSheet ? [slot.stockSheet] : [])),
     ...manifest.pages.flatMap((page) =>
       page.illustration.layers.flatMap((layer) =>
         layer.kind === "art"
           ? [layer.asset]
-          : [
-              ...layer.bases.flatMap((base) => [
-                base.asset,
-                base.skinMask,
-                ...(base.browMask ? [base.browMask] : []),
-                ...(base.overlay ? [base.overlay] : []),
-                ...(base.occluder
-                  ? [base.occluder.asset, ...(base.occluder.skinMask ? [base.occluder.skinMask] : [])]
-                  : []),
-              ]),
-              ...layer.parts.map((part) => part.asset),
-            ],
+          : [...(layer.reference ? [layer.reference] : []), ...(layer.stock ? [layer.stock] : [])],
       ),
     ),
   ]),
@@ -773,6 +370,6 @@ export const manifestAssets = (manifest: StoryManifest): ReadonlyArray<string> =
 export const storyAssetKey = (storyId: string, version: number, asset: string) =>
   `stories/${storyId}/v${version}/${asset}`;
 
-/** The cast a story preview uses: each slot filled by its example character. */
-export const exampleCast = (manifest: StoryManifest): Record<string, CastMember> =>
+/** The cast a story preview uses: each slot filled by its stock character. */
+export const exampleCast = (manifest: StoryDraft): Record<string, CastMember> =>
   Object.fromEntries(manifest.characterSlots.map((slot) => [slot.slotId, slot.example]));

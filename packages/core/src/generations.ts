@@ -14,7 +14,7 @@ const { generation } = schema;
 
 export type GenerationRow = typeof generation.$inferSelect;
 
-/** The `generation` table: one row per provider job, looked up by the Modal callback route. */
+/** The `generation` table: one row per provider job, with what it cost. */
 export class Generations extends Context.Service<
   Generations,
   {
@@ -55,6 +55,7 @@ export interface ImageRequest {
   readonly width: number;
   readonly height: number;
   readonly references?: ReadonlyArray<string>;
+  readonly background?: "transparent" | "opaque";
   /** Object key without extension; the provider's extension is appended. */
   readonly outputKey: string;
 }
@@ -88,6 +89,7 @@ export const generateImage = Effect.fn("generations.generateImage")(function* (
         height: request.height,
         seed: digest(request.key).readUInt32BE(0),
         references: request.references ?? [],
+        ...(request.background ? { background: request.background } : {}),
         outputKey,
       };
       // The row exists before the provider can call back.

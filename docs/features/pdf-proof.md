@@ -18,20 +18,19 @@ for print, or deletes any proof after confirming, an approved one with a stronge
 
 ## Seed data
 
-- Stories `the-moon-picnic` (placeholder SVG art, 6 pages) and `the-paper-boat` (watercolour, 3 pages), from
-  `fixtures/stories`.
+- Story `the-kite-day` (placeholder SVG art, 3 pages, stock figures), from `fixtures/stories`.
 
 ## Verify
 
-`mise run verify -- proof [--story the-moon-picnic|the-paper-boat] [--config dev|image|live]`
+`mise run verify -- proof [--story the-kite-day] [--config dev|image|live]`
 
 Opens an existing book of the story, or makes one from the preview's chosen family members, then presses
 "Make a PDF proof", waits for the worker, downloads the PDF, and checks:
 
 - **print-ready**: `checkPrintReady` against Lulu's requirements, one PDF page per book page.
 - **pixels**: each editor page (full Chromium at 192 dpi with thumbnail scaling undone) against the PDF page
-  (`pdftoppm`), both downscaled to 96 dpi; fails above 10% of pixels off by more than 5%. Measured: 1.1–1.5% on
-  the Moon Picnic, 3.1–4.8% on the painted Paper Boat (resampled edges).
+  (`pdftoppm`), both downscaled to 96 dpi; fails above 10% of pixels off by more than 5%. Measured before photo
+  books: 1.1–1.5% on placeholder SVG art, 3.1–4.8% on painted art (resampled edges).
 - **line breaks** and **word positions**: each word's line, left edge, and top in the editor DOM (every text frame,
   D54) against `pdftotext -bbox`, paired in reading order; fails above 0.5 pt across or 1 pt down from the median
   offset of the word's font size. Measured 0.01 pt across and 0.22–0.43 pt down; without `geometricPrecision`

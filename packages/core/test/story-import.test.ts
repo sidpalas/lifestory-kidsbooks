@@ -9,9 +9,9 @@ import type { StoredObject } from "../src/storage.ts";
 import { importStoryVersion } from "../src/stories.ts";
 import { memoryObjectStorage } from "../src/testing.ts";
 
-const dir = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
+const dir = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
 const read = (asset: string) => readFile(new URL(asset, dir));
-const key = (asset: string) => storyAssetKey("story_moon_picnic", 5, asset);
+const key = (asset: string) => storyAssetKey("story_kite_day", 1, asset);
 
 describe("importStoryVersion", () => {
   it("refuses changed files under a stored version and writes nothing, not even the missing ones", async () => {
@@ -25,13 +25,12 @@ describe("importStoryVersion", () => {
 
     const exit = await Effect.runPromiseExit(
       importStoryVersion({
-        id: "story_moon_picnic_v5",
-        storyId: "story_moon_picnic",
-        version: 5,
+        id: "story_kite_day_v1",
+        storyId: "story_kite_day",
+        version: 1,
         manifest,
         readAsset: async (asset) => ({ body: await read(asset), contentType: "image/svg+xml" }),
-        publishedAt: new Date("2026-11-19T13:00:00Z"),
-        coveredWith: [JSON.parse(await readFile(new URL("additions/1.json", dir), "utf8"))],
+        publishedAt: new Date("2026-11-24T12:00:00Z"),
       }).pipe(
         // The refusal comes before any database access; a query would fail on this empty service.
         Effect.provide(

@@ -1,0 +1,312 @@
+{
+  "formatVersion": 4,
+  "trim": {
+    "widthIn": 8.5,
+    "heightIn": 8.5,
+    "bleedIn": 0.125,
+    "safeMarginIn": 0.5
+  },
+  "fonts": [
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-450-normal.woff2",
+      "weight": "450",
+      "style": "normal",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-700-normal.woff2",
+      "weight": "700",
+      "style": "normal",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+    },
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-ext-450-normal.woff2",
+      "weight": "450",
+      "style": "normal",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
+    },
+    {
+      "family": "Literata",
+      "asset": "fonts/literata-latin-ext-700-normal.woff2",
+      "weight": "700",
+      "style": "normal",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
+    }
+  ],
+  "textStyles": {
+    "title": {
+      "fontFamily": "Literata",
+      "sizePt": 30,
+      "lineHeight": 1.15,
+      "weight": 700,
+      "align": "center"
+    },
+    "body": {
+      "fontFamily": "Literata",
+      "sizePt": 17,
+      "lineHeight": 1.45,
+      "weight": 450,
+      "align": "left"
+    }
+  },
+  "characterSlots": [
+    {
+      "slotId": "hero",
+      "label": "The child",
+      "description": "A child about 5 years old, the main character",
+      "ages": [
+        "young-child",
+        "older-child"
+      ],
+      "example": {
+        "name": "Mia",
+        "pronouns": "she/her"
+      },
+      "outfit": "a red long-sleeved top and blue trousers",
+      "stockSheet": "sheets/hero.svg"
+    },
+    {
+      "slotId": "grownup",
+      "label": "A grown-up",
+      "description": "A parent or grandparent who comes along",
+      "ages": [
+        "adult",
+        "older-adult"
+      ],
+      "example": {
+        "name": "Joe",
+        "title": "Grandpa",
+        "pronouns": "he/him"
+      },
+      "outfit": "a blue jumper and grey trousers",
+      "stockSheet": "sheets/grownup.svg"
+    }
+  ],
+  "photo": {
+    "styleReference": "style/reference.svg",
+    "styleWords": "flat placeholder shapes with a dark outline",
+    "promptVersion": "photo-hero-v1"
+  },
+  "pages": [
+    {
+      "pageId": "p01",
+      "art": "full-bleed",
+      "frames": [
+        {
+          "frameId": "t1",
+          "box": {
+            "xIn": 0.5,
+            "yIn": 0.5,
+            "widthIn": 7.5,
+            "heightIn": 7.5
+          },
+          "valign": "bottom",
+          "panel": true,
+          "paragraphs": [
+            {
+              "style": "title",
+              "content": "The Kite Day"
+            },
+            {
+              "style": "body",
+              "content": "{{hero.name}} and {{grownup.title}} carried the big red kite up the windy hill."
+            }
+          ]
+        }
+      ],
+      "illustration": {
+        "layers": [
+          {
+            "kind": "art",
+            "asset": "pages/p01/plate.svg"
+          },
+          {
+            "kind": "photoFigure",
+            "slotId": "hero",
+            "reference": "pages/p01/hero/reference.svg",
+            "box": [
+              520,
+              420,
+              700,
+              880
+            ],
+            "window": [
+              408,
+              346,
+              812,
+              954
+            ],
+            "head": [
+              567,
+              420,
+              653,
+              572
+            ],
+            "stock": "pages/p01/hero/stock.svg"
+          },
+          {
+            "kind": "photoFigure",
+            "slotId": "grownup",
+            "reference": "pages/p01/grownup/reference.svg",
+            "box": [
+              120,
+              300,
+              360,
+              900
+            ],
+            "window": [
+              0,
+              204,
+              504,
+              996
+            ],
+            "head": [
+              182,
+              300,
+              298,
+              498
+            ],
+            "stock": "pages/p01/grownup/stock.svg"
+          }
+        ]
+      }
+    },
+    {
+      "pageId": "p02",
+      "art": "full-bleed",
+      "frames": [
+        {
+          "frameId": "t1",
+          "box": {
+            "xIn": 0.5,
+            "yIn": 0.5,
+            "widthIn": 7.5,
+            "heightIn": 7.5
+          },
+          "valign": "top",
+          "panel": true,
+          "paragraphs": [
+            {
+              "style": "body",
+              "content": "The wind tugged. {{hero.They}} held on tight, and up it went!"
+            }
+          ]
+        }
+      ],
+      "illustration": {
+        "layers": [
+          {
+            "kind": "art",
+            "asset": "pages/p02/plate.svg"
+          },
+          {
+            "kind": "photoFigure",
+            "slotId": "hero",
+            "reference": "pages/p02/hero/reference.svg",
+            "box": [
+              380,
+              380,
+              600,
+              900
+            ],
+            "window": [
+              261,
+              297,
+              719,
+              983
+            ],
+            "head": [
+              437,
+              380,
+              543,
+              552
+            ],
+            "stock": "pages/p02/hero/stock.svg"
+          }
+        ]
+      }
+    },
+    {
+      "pageId": "p03",
+      "art": "full-bleed",
+      "frames": [
+        {
+          "frameId": "t1",
+          "box": {
+            "xIn": 0.5,
+            "yIn": 0.5,
+            "widthIn": 7.5,
+            "heightIn": 7.5
+          },
+          "valign": "top",
+          "panel": true,
+          "paragraphs": [
+            {
+              "style": "body",
+              "content": "“Same time tomorrow?” asked {{grownup.title}}. {{hero.name}} nodded, all smiles."
+            }
+          ]
+        }
+      ],
+      "illustration": {
+        "layers": [
+          {
+            "kind": "art",
+            "asset": "pages/p03/plate.svg"
+          },
+          {
+            "kind": "photoFigure",
+            "slotId": "grownup",
+            "reference": "pages/p03/grownup/reference.svg",
+            "box": [
+              560,
+              300,
+              800,
+              900
+            ],
+            "window": [
+              416,
+              204,
+              944,
+              996
+            ],
+            "head": [
+              622,
+              300,
+              738,
+              498
+            ],
+            "stock": "pages/p03/grownup/stock.svg"
+          },
+          {
+            "kind": "photoFigure",
+            "slotId": "hero",
+            "reference": "pages/p03/hero/reference.svg",
+            "box": [
+              200,
+              420,
+              380,
+              880
+            ],
+            "window": [
+              88,
+              346,
+              492,
+              954
+            ],
+            "head": [
+              247,
+              420,
+              333,
+              572
+            ],
+            "stock": "pages/p03/hero/stock.svg"
+          }
+        ]
+      }
+    }
+  ]
+}

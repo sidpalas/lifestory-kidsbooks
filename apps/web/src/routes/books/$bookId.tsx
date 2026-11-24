@@ -1,16 +1,12 @@
-// A family's book in the editor: who plays each role, every page composed from the cast's looks with the story's
-// approved parts, and the selected page shown as it will print, where its text can be edited. Server rendering is
+// A family's book in the editor: who plays each role, every page composed for the book, and the selected page shown
+// as it will print, where its text can be edited. Server rendering is
 // off (brief, "Recommended design"): the editor is interactive only, and BookPage measures in physical units.
 import {
   ageLabel,
   type BookRole,
   type BookView,
-  castLook,
   type Character,
   type CharacterSlot,
-  type Look,
-  type LookAxis,
-  lookVocabulary,
   NotAuthenticated,
   NotFound,
   resolveText,
@@ -21,11 +17,9 @@ import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/
 import { Schema } from "effect";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { BookLookPicker, focusById, lookPickerId, lookToggleId } from "~/components/book-look";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
 import { confirmDeleteBook } from "~/components/family-library";
-import { axisLabels, portraitUrl } from "~/components/look-picker";
 import { agesLabel } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
 import { NativeSelect } from "~/components/ui/native-select";
@@ -43,8 +37,6 @@ import {
   requestBookProofFn,
   saveTextEditFn,
   setBookCastFn,
-  setBookLookFn,
-  setLookOverrideFn,
 } from "~/server/books";
 
 export const Route = createFileRoute("/books/$bookId")({
@@ -79,18 +71,8 @@ function BookEditor() {
   const router = useRouter();
   const navigate = Route.useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const [savingLook, setSavingLook] = useState(false);
   /** Paragraphs of the shown page whose frame their text runs past, with this family's names and edits. */
   const [overflowing, setOverflowing] = useState<ReadonlyArray<number>>([]);
-  // Which roles' "look in this book" pickers are open; roles with a look for this book open with the page. Every choice
-  // is saved as it's made, so hiding a picker keeps the book's look.
-  const [styling, setStyling] = useState<ReadonlySet<string>>(
-    () => new Set(view.roles.filter((role) => Object.keys(role.changes).length > 0).map((role) => role.slotId)),
-  );
-  const style = (slotId: string, open: boolean) =>
-    setStyling((current) =>
-      open ? new Set([...current, slotId]) : new Set([...current].filter((id) => id !== slotId)),
-    );
   const { manifest, story, version } = view;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const pageIndex = Math.max(
@@ -175,7 +157,6 @@ function BookEditor() {
           return role ? (
             <RoleCard
               key={slot.slotId}
-              view={view}
               role={role}
               label={slot.label}
               slot={slot}
@@ -184,11 +165,6 @@ function BookEditor() {
               onCast={(characterId) =>
                 run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))
               }
-              onOverride={(override) =>
-                run(() => setLookOverrideFn({ data: { bookId: view.book.id, slotId: slot.slotId, override } }))
-              }
-              styling={styling.has(slot.slotId)}
-              onStyle={(open) => style(slot.slotId, open)}
             />
           ) : null;
         })}
@@ -198,40 +174,6 @@ function BookEditor() {
           {error}
         </p>
       )}
-
-      {manifest.characterSlots.map((slot) => {
-        const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
-        const character = characters.find((candidate) => candidate.id === role?.characterId);
-        return (
-          role &&
-          character &&
-          canEdit &&
-          styling.has(slot.slotId) && (
-            <BookLookPicker
-              key={`${slot.slotId}/${character.id}`}
-              manifest={manifest}
-              slotId={slot.slotId}
-              roleLabel={slot.label}
-              character={character}
-              changes={role.changes}
-              disabled={savingLook}
-              onChange={async (changes) => {
-                setSavingLook(true);
-                try {
-                  await run(() => setBookLookFn({ data: { bookId: view.book.id, slotId: slot.slotId, changes } }));
-                } finally {
-                  setSavingLook(false);
-                }
-              }}
-              onClose={() => {
-                style(slot.slotId, false);
-                focusById(lookToggleId(slot.slotId));
-              }}
-              note="Each choice is saved to this book as you make it, and every page redraws with it; hiding these options keeps it."
-            />
-          )
-        );
-      })}
 
       <section aria-label="Editor" className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
@@ -465,140 +407,58 @@ function TextEditor({
 }
 
 function RoleCard({
-  view,
   role,
   label,
   slot,
   characters,
   canEdit,
   onCast,
-  onOverride,
-  styling,
-  onStyle,
 }: {
-  view: BookView;
   role: BookRole;
   label: string;
   slot: CharacterSlot;
   characters: ReadonlyArray<Character>;
   canEdit: boolean;
   onCast: (characterId: string) => void;
-  onOverride: (override: Partial<Look>) => void;
-  styling: boolean;
-  onStyle: (open: boolean) => void;
 }) {
   const character = characters.find((candidate) => candidate.id === role.characterId);
-  const fits = characters.filter(
-    (candidate) => slot.ages.includes(candidate.look.age) || candidate.id === role.characterId,
-  );
-  // For each unsupported axis, the options this story version can draw for this role, given the rest of the look.
-  const supported = (axis: LookAxis) =>
-    lookVocabulary[axis].filter(
-      (option) =>
-        !castLook(view.manifest, role.slotId, role.member.look, {
-          ...role.override,
-          [axis]: option.id,
-        }).unsupported.includes(axis),
-    );
+  const fits = characters.filter((candidate) => slot.ages.includes(candidate.age) || candidate.id === role.characterId);
 
   return (
-    <div className="flex gap-3 rounded-md border p-3" data-testid={`role-${role.slotId}`}>
-      <img
-        src={portraitUrl(role.member.look)}
-        alt=""
-        width={61}
-        height={70}
-        className="h-[70px] rounded-md ring-1 ring-black/10"
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">{label}:</span>
-          {canEdit ? (
-            <NativeSelect
-              aria-label={`Who plays ${label.toLowerCase()}`}
-              value={role.characterId}
-              onChange={(event) => onCast(event.target.value)}
-            >
-              {fits.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.name}
-                </option>
-              ))}
-            </NativeSelect>
-          ) : (
-            <span>{role.member.name}</span>
-          )}
-          {character && canEdit && (
-            <button
-              type="button"
-              id={lookToggleId(role.slotId)}
-              className="text-xs text-muted-foreground underline"
-              aria-expanded={styling}
-              aria-controls={styling ? lookPickerId(role.slotId) : undefined}
-              onClick={() => onStyle(!styling)}
-            >
-              {styling ? "Hide look options" : "Change look for this book"}
-            </button>
-          )}
-          {character && (
-            <Link
-              to="/family/$characterId"
-              params={{ characterId: character.id }}
-              className="text-xs text-muted-foreground underline"
-            >
-              {canEdit ? "Edit saved look" : "See saved look"}
-            </Link>
-          )}
-        </div>
-        {Object.keys(role.changes).length > 0 && (
-          <p className="text-xs text-muted-foreground" data-testid={`look-note-${role.slotId}`}>
-            This book draws {role.member.name} with a look for this book only, not their saved one.
-          </p>
-        )}
-        {role.wrongAge ? (
-          <p className="text-destructive" role="status">
-            {role.member.name} is {ageLabel(role.member.look.age).toLowerCase()} now, and this role is for{" "}
-            {agesLabel(slot)}, so the pages leave them out. Choose someone else for {label.toLowerCase()}.
-          </p>
-        ) : role.unsupported.length > 0 ? (
-          <div className="flex flex-col gap-2" role="status">
-            <p className="text-destructive">
-              This edition of the story can't draw {role.member.name}'s{" "}
-              {role.unsupported.map((axis) => axisLabels[axis as LookAxis].toLowerCase()).join(" or ")} yet, so the
-              pages leave them out. {canEdit && "Pick what this book shows instead:"}
-            </p>
-            {canEdit &&
-              role.unsupported.map((axis) => (
-                <NativeSelect
-                  key={axis}
-                  aria-label={`${label}: ${axisLabels[axis as LookAxis]} in this book`}
-                  defaultValue=""
-                  onChange={(event) => onOverride({ ...role.override, [axis]: event.target.value })}
-                >
-                  <option value="" disabled>
-                    {axisLabels[axis as LookAxis]}…
-                  </option>
-                  {supported(axis as LookAxis).map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </NativeSelect>
-              ))}
-          </div>
+    <div className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid={`role-${role.slotId}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{label}:</span>
+        {canEdit ? (
+          <NativeSelect
+            aria-label={`Who plays ${label.toLowerCase()}`}
+            value={role.characterId}
+            onChange={(event) => onCast(event.target.value)}
+          >
+            {fits.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </NativeSelect>
         ) : (
-          // The override applies only while the story can't draw the character's own option (D28); once it can, such
-          // as after an addition (D41), the pages draw the character as they are.
-          character &&
-          (Object.keys(role.override) as Array<LookAxis>).some(
-            (axis) => role.member.look[axis] !== ({ ...character.look, ...role.changes } as Look)[axis],
-          ) && (
-            <p className="text-xs text-muted-foreground">
-              This book draws a stand-in for options the story can't draw yet.
-            </p>
-          )
+          <span>{role.member.name}</span>
+        )}
+        {character && (
+          <Link
+            to="/family/$characterId"
+            params={{ characterId: character.id }}
+            className="text-xs text-muted-foreground underline"
+          >
+            {canEdit ? `Edit ${character.name}` : `About ${character.name}`}
+          </Link>
         )}
       </div>
+      {role.wrongAge && character && (
+        <p className="text-destructive" role="status">
+          {role.member.name} is {ageLabel(character.age).toLowerCase()} now, and this role is for {agesLabel(slot)}.
+          Choose someone else for {label.toLowerCase()}.
+        </p>
+      )}
     </div>
   );
 }

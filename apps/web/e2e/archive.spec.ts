@@ -16,9 +16,8 @@ test("an author archives a story: families can't find it or make a book of it, e
     await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
-  const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
+  const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
   const manifest = JSON.parse(await readFile(new URL("manifest.json", fixture), "utf8"));
-  const redHair = JSON.parse(await readFile(new URL("additions/1.json", fixture), "utf8"));
   const readAsset = async (asset: string) => ({
     body: new Uint8Array(await readFile(new URL(asset, fixture))),
     contentType: { ".svg": "image/svg+xml", ".woff2": "font/woff2" }[extname(asset)] ?? "application/octet-stream",
@@ -29,7 +28,7 @@ test("an author archives a story: families can't find it or make a book of it, e
   const title = `Archive Picnic ${id}`;
   const parent = "user_parent";
   const family = "org_example_family";
-  const asset = `/api/files/stories/${storyId}/v1/pages/p01/background.svg`;
+  const asset = `/api/files/stories/${storyId}/v1/pages/p01/plate.svg`;
   const contexts = [] as Array<Awaited<ReturnType<typeof browser.newContext>>>;
   const signedIn = async (email: string, returnTo: string) => {
     const context = await browser.newContext();
@@ -57,24 +56,14 @@ test("an author archives a story: families can't find it or make a book of it, e
         manifest,
         readAsset,
         publishedAt: new Date("2026-11-19T19:00:00Z"),
-        coveredWith: [redHair],
       }),
     );
-    const look = {
-      face: "face:round",
-      features: "features:defined",
-      skin: "skin:s2",
-      hair: "hair:short",
-      hairColour: "hair-colour:brown",
-      glasses: "glasses:none",
-      facialHair: "facial-hair:none",
-    } as const;
     const hero = await run(
       createCharacter(parent, family, {
         name: `Ada ${id}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "young-child" },
+        age: "young-child",
       }),
     );
     const grown = await run(
@@ -82,7 +71,7 @@ test("an author archives a story: families can't find it or make a book of it, e
         name: `Bea ${id}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "adult" },
+        age: "adult",
       }),
     );
     const cast = { hero: hero.id, grownup: grown.id };
@@ -146,7 +135,7 @@ test("an author archives a story: families can't find it or make a book of it, e
         name: `Cy ${id}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "young-child" },
+        age: "young-child",
       }),
     );
     const ownGrown = await run(
@@ -154,7 +143,7 @@ test("an author archives a story: families can't find it or make a book of it, e
         name: `Di ${id}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "adult" },
+        age: "adult",
       }),
     );
     await expect(

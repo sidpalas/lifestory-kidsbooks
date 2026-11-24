@@ -1,6 +1,6 @@
 // PDF proofs (D27): a family asks for a proof of a story with a cast and text edits; the worker renders it with
 // headless Chromium from the app's print page and stores the PDF under the family. A proof records what it shows,
-// so later look or text changes never alter it, and a print order can later reference it by ID.
+// so later text changes never alter it, and a print order can later reference it by ID.
 //
 // Proofs belong to a family's book (books.ts), which passes its cast and text edits as `ProofContent`. A parent
 // approves a book's proof for print; unapproved proofs expire (D31).
@@ -12,16 +12,20 @@ import { alias } from "drizzle-orm/pg-core";
 import { Effect, Schema } from "effect";
 
 import { Auth } from "./auth.ts";
-import { type Page, pageText, resolveText, type StoryManifest } from "./book-format/index.ts";
+import {
+  composePage,
+  decodeStoryManifest,
+  type Page,
+  pageText,
+  resolveText,
+  type StoryManifest,
+} from "./book-format/index.ts";
 import { ProofContent, type ProofSummary } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess, roleCan } from "./families.ts";
 import { Jobs } from "./jobs.ts";
-import { composeIllustration } from "./looks/compose.ts";
-import { resolveIllustration } from "./pages.ts";
 import { ObjectStorage } from "./storage.ts";
-import { withStoredAdditions } from "./stories.ts";
 import { proofObjectKey, renderProof } from "./tasks/render-proof.ts";
 import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
 
@@ -46,7 +50,6 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
   readonly bookId: string;
   readonly storyVersionId: string;
   /** The version's additions the cast was checked against (D41); the proof always draws exactly these. */
-  readonly additionRevision: number;
   readonly content: ProofContent;
   readonly requestedBy: string;
 }) {
@@ -58,7 +61,6 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
       familyId: input.familyId,
       bookId: input.bookId,
       storyVersionId: input.storyVersionId,
-      additionRevision: input.additionRevision,
       content,
       requestedBy: input.requestedBy,
     }),
@@ -193,7 +195,6 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
     db
       .select({
         storyVersionId: schema.proof.storyVersionId,
-        additionRevision: schema.proof.additionRevision,
         storyId: schema.storyVersion.storyId,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
@@ -204,15 +205,13 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
       .where(eq(schema.proof.id, proofId)),
   );
   if (!row) return yield* new NotFound({ entity: "proof", id: proofId });
-  // Exactly the additions the proof was requested with (D41): a later one could change how its cast draws (a softer
-  // base, D40; a stand-in giving way, D28), and a rerendered or approved proof never changes.
-  const { manifest } = yield* withStoredAdditions(row.storyVersionId, row.manifest, row.additionRevision);
+  const manifest: StoryManifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
   const content = yield* Schema.decodeUnknownEffect(ProofContent)(row.content).pipe(Effect.orDie);
-  const pages = yield* Effect.forEach(manifest.pages, (page) =>
-    resolveIllustration(row.storyId, row.version, composeIllustration(manifest, page, content.cast)).pipe(
-      Effect.map((layers) => ({ pageId: page.pageId, layers, text: proofPageText(page, content) })),
-    ),
-  );
+  const pages = manifest.pages.map((page) => ({
+    pageId: page.pageId,
+    layers: composePage({ storyId: row.storyId, version: row.version }, page),
+    text: proofPageText(page, content),
+  }));
   return { storyId: row.storyId, version: row.version, manifest, cast: content.cast, pages };
 });
 

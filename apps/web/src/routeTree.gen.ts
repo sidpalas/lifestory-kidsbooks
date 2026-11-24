@@ -18,7 +18,6 @@ import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as FamilyAdminRouteImport } from './routes/_family/admin'
 import { Route as FamilySharingRouteImport } from './routes/_family/sharing'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiPortraitRouteImport } from './routes/api/portrait'
 import { Route as AuthorIndexRouteImport } from './routes/author/index'
 import { Route as AuthorStoryIdRouteImport } from './routes/author/$storyId'
 import { Route as BooksBookIdRouteImport } from './routes/books/$bookId'
@@ -33,7 +32,6 @@ import { Route as FamilyFamilyNewRouteImport } from './routes/_family/family/new
 import { Route as FamilyStoriesIndexRouteImport } from './routes/_family/stories/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
-import { Route as ApiWebhooksModalRouteImport } from './routes/api/webhooks/modal'
 import { Route as PrintProofsProofIdRouteImport } from './routes/print/proofs.$proofId'
 import { Route as ApiAuthoringStoriesStoryIdAssetsRouteImport } from './routes/api/authoring/stories.$storyId.assets'
 
@@ -79,11 +77,6 @@ const FamilySharingRoute = FamilySharingRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPortraitRoute = ApiPortraitRouteImport.update({
-  id: '/api/portrait',
-  path: '/api/portrait',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthorIndexRoute = AuthorIndexRouteImport.update({
@@ -156,11 +149,6 @@ const ApiFilesSplatRoute = ApiFilesSplatRouteImport.update({
   path: '/api/files/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWebhooksModalRoute = ApiWebhooksModalRouteImport.update({
-  id: '/api/webhooks/modal',
-  path: '/api/webhooks/modal',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrintProofsProofIdRoute = PrintProofsProofIdRouteImport.update({
   id: '/print/proofs/$proofId',
   path: '/print/proofs/$proofId',
@@ -181,7 +169,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof FamilyAdminRoute
   '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
@@ -194,7 +181,6 @@ export interface FileRoutesByFullPath {
   '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books/': typeof FamilyBooksIndexRoute
   '/family/': typeof FamilyFamilyIndexRoute
@@ -209,7 +195,6 @@ export interface FileRoutesByTo {
   '/admin': typeof FamilyAdminRoute
   '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
@@ -222,7 +207,6 @@ export interface FileRoutesByTo {
   '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books': typeof FamilyBooksIndexRoute
   '/family': typeof FamilyFamilyIndexRoute
@@ -239,7 +223,6 @@ export interface FileRoutesById {
   '/_family/admin': typeof FamilyAdminRoute
   '/_family/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/portrait': typeof ApiPortraitRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
@@ -252,7 +235,6 @@ export interface FileRoutesById {
   '/_family/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
-  '/api/webhooks/modal': typeof ApiWebhooksModalRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/_family/books/': typeof FamilyBooksIndexRoute
   '/_family/family/': typeof FamilyFamilyIndexRoute
@@ -269,7 +251,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/sharing'
     | '/api/health'
-    | '/api/portrait'
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
@@ -282,7 +263,6 @@ export interface FileRouteTypes {
     | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
-    | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/books/'
     | '/family/'
@@ -297,7 +277,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/sharing'
     | '/api/health'
-    | '/api/portrait'
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
@@ -310,7 +289,6 @@ export interface FileRouteTypes {
     | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
-    | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/books'
     | '/family'
@@ -326,7 +304,6 @@ export interface FileRouteTypes {
     | '/_family/admin'
     | '/_family/sharing'
     | '/api/health'
-    | '/api/portrait'
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
@@ -339,7 +316,6 @@ export interface FileRouteTypes {
     | '/_family/family/new'
     | '/api/auth/$'
     | '/api/files/$'
-    | '/api/webhooks/modal'
     | '/print/proofs/$proofId'
     | '/_family/books/'
     | '/_family/family/'
@@ -354,7 +330,6 @@ export interface RootRouteChildren {
   _devLogMeOutRoute: typeof _devLogMeOutRoute
   _devMailboxRoute: typeof _devMailboxRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiPortraitRoute: typeof ApiPortraitRoute
   AuthorStoryIdRoute: typeof AuthorStoryIdRoute
   BooksBookIdRoute: typeof BooksBookIdRoute
   InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
@@ -365,7 +340,6 @@ export interface RootRouteChildren {
   _devLogMeInEmailRoute: typeof _devLogMeInEmailRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiFilesSplatRoute: typeof ApiFilesSplatRoute
-  ApiWebhooksModalRoute: typeof ApiWebhooksModalRoute
   PrintProofsProofIdRoute: typeof PrintProofsProofIdRoute
   ApiAuthoringStoriesStoryIdAssetsRoute: typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -433,13 +407,6 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/portrait': {
-      id: '/api/portrait'
-      path: '/api/portrait'
-      fullPath: '/api/portrait'
-      preLoaderRoute: typeof ApiPortraitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/author/': {
@@ -540,13 +507,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFilesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/webhooks/modal': {
-      id: '/api/webhooks/modal'
-      path: '/api/webhooks/modal'
-      fullPath: '/api/webhooks/modal'
-      preLoaderRoute: typeof ApiWebhooksModalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/print/proofs/$proofId': {
       id: '/print/proofs/$proofId'
       path: '/print/proofs/$proofId'
@@ -594,7 +554,6 @@ const rootRouteChildren: RootRouteChildren = {
   _devLogMeOutRoute: _devLogMeOutRoute,
   _devMailboxRoute: _devMailboxRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiPortraitRoute: ApiPortraitRoute,
   AuthorStoryIdRoute: AuthorStoryIdRoute,
   BooksBookIdRoute: BooksBookIdRoute,
   InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
@@ -605,7 +564,6 @@ const rootRouteChildren: RootRouteChildren = {
   _devLogMeInEmailRoute: _devLogMeInEmailRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiFilesSplatRoute: ApiFilesSplatRoute,
-  ApiWebhooksModalRoute: ApiWebhooksModalRoute,
   PrintProofsProofIdRoute: PrintProofsProofIdRoute,
   ApiAuthoringStoriesStoryIdAssetsRoute: ApiAuthoringStoriesStoryIdAssetsRoute,
 }

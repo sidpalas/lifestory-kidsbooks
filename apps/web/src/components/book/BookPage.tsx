@@ -117,7 +117,7 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
         ))}
         {guides &&
           page.illustration.layers.map((layer, i) =>
-            layer.kind === "figure" ? (
+            layer.kind === "photoFigure" ? (
               <FigureBox
                 key={i}
                 box={layer.box}

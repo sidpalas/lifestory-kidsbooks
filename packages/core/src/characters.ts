@@ -17,7 +17,7 @@ const columns = {
   name: schema.character.name,
   title: schema.character.title,
   pronouns: schema.character.pronouns,
-  look: schema.character.look,
+  age: schema.character.age,
 };
 
 /** Rows are written only through saveCharacter, which validates them, so a decode failure is a bug. */

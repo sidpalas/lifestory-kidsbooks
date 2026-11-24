@@ -1,48 +1,23 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { Effect, Result, Schema } from "effect";
+import { Result, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
-  additionIssues,
-  castLook,
-  composeIllustration,
-  mergeAdditions,
-  type StoryAddition,
-  uncoveredOptions,
-  decodeStoryManifest,
+  composePage,
   exampleCast,
   isVariableFont,
   manifestAssets,
   resolvePageText,
   resolveText,
   safeArea,
-  upgradeFormat2,
   StoryDraft,
   StoryManifest,
   staticFontIssues,
-  unapprovedParts,
-  unsupportedOptions,
-  vocabularyGaps,
-  type Look,
-  LookOverride,
-  lookVocabulary,
 } from "../src/book-format/index.ts";
-import { Look as LookSchema } from "../src/looks/vocabulary.ts";
-import { withApprovedParts } from "../src/parts/parts.ts";
 
-const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
-const published = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
-/** The palettes the sample's published version gained since (D41): `additions/1.json` adds red hair. */
-const redHair = JSON.parse(readFileSync(new URL("additions/1.json", fixture), "utf8"));
-/** The sample as books draw it today: its published version with its additions' palettes. */
-const sample = upgradeFormat2({
-  ...published,
-  palettes: { ...published.palettes, hairColour: { ...published.palettes.hairColour, ...redHair.palettes.hairColour } },
-}) as typeof published;
-
-/** When the sample stories were published: before the D43 hairstyles and facial hair joined the vocabulary. */
-const publishedAt = new Date("2026-11-19T19:00:00Z");
+const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
+const sample = JSON.parse(readFileSync(new URL("manifest.json", fixture), "utf8"));
 
 const decode = (input: unknown) => Schema.decodeUnknownResult(StoryManifest)(input);
 const errorOf = (input: unknown) => {
@@ -56,172 +31,90 @@ const variant = (edit: (m: any) => void) => {
   return copy;
 };
 
-describe("StoryManifest", () => {
+describe("StoryManifest (format 4, D56)", () => {
   it("accepts the sample story, and every asset it references is in the fixture", () => {
     const manifest = Schema.decodeUnknownSync(StoryManifest)(sample);
     const assets = manifestAssets(manifest);
-    // 4 fonts (2 weights x 2 subsets), 10 art layers, and per page the figures' bases, masks, parts and occluders (counted by hand):
-    // a figure with a head has 2 bases x (base, skin, brows) + 2 faces x (3 hairstyles + glasses) = 14 files.
-    // p01: 14 + a hand (2 x base, skin) = 18; p05: 28 + a cheese occluder per adult base (asset, skin) = 32.
-    expect(assets).toHaveLength(4 + 10 + 18 + 28 + 28 + 28 + 32 + 28);
-    expect(unapprovedParts(manifest)).toEqual([]);
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
+    // 4 fonts, the style reference, 2 stock sheets, 3 plates, and 5 figures x (reference, stock).
+    expect(assets).toHaveLength(4 + 1 + 2 + 3 + 10);
     expect(assets.filter((asset) => !existsSync(new URL(asset, fixture)))).toEqual([]);
   });
 
-  it("accepts the watercolour sample, whose raster figures cover the vocabulary with approved parts", () => {
-    const dir = new URL("../../../fixtures/stories/paper-boat/", import.meta.url);
-    const stored = Schema.decodeUnknownSync(StoryManifest)(
-      upgradeFormat2(JSON.parse(readFileSync(new URL("manifest.json", dir), "utf8"))),
-    );
-    const manifest = Effect.runSync(
-      mergeAdditions(
-        stored,
-        [1, 2].map((revision) => JSON.parse(readFileSync(new URL(`additions/${revision}.json`, dir), "utf8"))),
-      ),
-    );
-    expect(unapprovedParts(manifest)).toEqual([]);
-    // Revision 2 completes D43 on every pose, not only the options that predate the version. D51's young hairstyles
-    // came later, for the young-child hero only (bald needs no part), and wait for an addition (D41).
-    expect(uncoveredOptions(manifest)).toEqual(["hair:wispy", "hair:soft-curls", "hair:sprout", "hair:puffs"]);
-    expect(vocabularyGaps(manifest, new Date("2026-11-20T00:00:00Z"))).toEqual([]);
-    expect(manifest.trim.safeMarginIn).toBeGreaterThanOrEqual(0.5);
-    expect(manifestAssets(manifest).filter((asset) => !existsSync(new URL(asset, dir)))).toEqual([]);
-  });
-
-  it("rejects a format version it doesn't know", () => {
-    expect(errorOf(variant((m) => (m.formatVersion = 4)))).toContain("formatVersion");
+  it("rejects the parts formats it no longer reads", () => {
+    expect(errorOf(variant((m) => (m.formatVersion = 3)))).toContain("formatVersion");
   });
 
   it.each([
     [
-      "a character layer for an undeclared slot",
+      "a figure for an undeclared slot",
       (m: any) => (m.pages[0].illustration.layers[1].slotId = "dog"),
       'unknown slot "dog"',
     ],
     [
-      "a token for an undeclared slot",
-      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{dog.name}} barked."),
-      'unknown slot "dog"',
+      "a window that doesn't contain the figure",
+      (m: any) => (m.pages[0].illustration.layers[1].window = [530, 430, 690, 870]),
+      "the window must contain the figure's box",
     ],
     [
-      "a token with an unknown field",
-      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{hero.age}} years"),
-      'unknown field "age"',
+      "a head outside the window",
+      (m: any) => (m.pages[0].illustration.layers[1].head = [0, 0, 10, 10]),
+      "the head must be inside the window",
+    ],
+    ["a figure without its stock drawing", (m: any) => delete m.pages[0].illustration.layers[1].stock, "stock drawing"],
+    ["a role without a stock sheet", (m: any) => delete m.characterSlots[0].stockSheet, "needs a sheet"],
+    ["a story without a style reference", (m: any) => delete m.photo, "style reference"],
+    [
+      "a page that doesn't start with its plate",
+      (m: any) => (m.pages[1].illustration.layers = m.pages[1].illustration.layers.toReversed()),
+      "starts with its plate",
     ],
     [
-      "a malformed token",
-      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{hero name}} waved"),
-      "malformed token",
-    ],
-    ["a duplicate page", (m: any) => (m.pages[1].pageId = "p01"), 'duplicate pageId "p01"'],
-    ["a duplicate slot", (m: any) => (m.characterSlots[1].slotId = "hero"), 'duplicate slotId "hero"'],
-    [
-      "a text style with an undeclared font",
-      (m: any) => (m.textStyles.body.fontFamily = "Comic Sans"),
-      'font "Comic Sans" is not in fonts',
-    ],
-    ["an upside-down box", (m: any) => (m.pages[0].illustration.layers[1].box = [760, 250, 430, 690]), "x0 < x1"],
-    ["a box off the illustration", (m: any) => (m.pages[0].illustration.layers[1].box = [0, 0, 1001, 500]), "1000"],
-    [
-      "an asset path that climbs out of the story",
-      (m: any) => (m.pages[0].illustration.layers[0].asset = "../other/art.png"),
-      "relative path",
-    ],
-    ["an absolute asset path", (m: any) => (m.pages[0].illustration.layers[0].asset = "/etc/art.png"), "relative path"],
-    ["a font that isn't woff2", (m: any) => (m.fonts[0].asset = "fonts/literata.ttf"), ".woff2"],
-    [
-      "a base for an age the role doesn't accept",
-      (m: any) => (m.pages[0].illustration.layers[1].bases[0].age = "adult"),
-      `the figure doesn't draw "adult"`,
-    ],
-    [
-      "a base for another age than the figure's pinned one",
-      (m: any) => (m.pages[0].illustration.layers[1].age = "toddler"),
-      `the figure doesn't draw "young-child"`,
-    ],
-    [
-      "a glasses part at an age that has none",
-      (m: any) => {
-        m.characterSlots[0].ages.push("baby");
-        m.pages[0].illustration.layers[1].parts.find((part: any) => part.axis === "glasses").age = "baby";
-      },
-      `"baby" has no glasses parts`,
-    ],
-    [
-      "a hairstyle part at an age that doesn't offer it",
-      (m: any) => {
-        m.characterSlots[0].ages.push("baby");
-        Object.assign(
-          m.pages[0].illustration.layers[1].parts.find((part: any) => part.option === "hair:short"),
-          { age: "baby" },
-        );
-      },
-      `"hair:short" isn't offered at "baby"`,
-    ],
-    [
-      "a part for an option outside the vocabulary",
-      (m: any) => (m.pages[0].illustration.layers[1].parts[0].option = "hair:mohawk"),
-      `"hair:mohawk" is not a hair option`,
-    ],
-    [
-      "a part for an option with nothing to draw",
-      (m: any) =>
-        (m.pages[0].illustration.layers[1].parts.find((part: any) => part.axis === "glasses").option = "glasses:none"),
-      `"glasses:none" is not a glasses option with a drawing`,
-    ],
-    [
-      "parts on a figure without a head",
-      (m: any) => m.pages[0].illustration.layers[3].parts.push(m.pages[0].illustration.layers[1].parts[0]),
-      "a figure without a head has no parts",
-    ],
-    [
-      "an example look of another age",
-      (m: any) => (m.characterSlots[0].example.look.age = "adult"),
-      "the example is not one of the slot's ages",
-    ],
-    ["a role accepting no age", (m: any) => (m.characterSlots[0].ages = []), "ages"],
-    [
-      "a palette for an unknown option",
-      (m: any) => (m.palettes.skin["skin:s9"] = m.palettes.skin["skin:s1"]),
-      `"skin:s9" is not a skin option`,
-    ],
-    ["a part order missing an axis", (m: any) => (m.partOrder = ["hair"]), "must list each of hair, glasses once"],
-    ["a safe margin wider than the page", (m: any) => (m.trim.safeMarginIn = 4.25), "no room for text"],
-    [
-      "a text frame a hundredth of an inch past the left safe margin",
-      (m: any) => (m.pages[0].frames[0].box = { xIn: 0.49, yIn: 1, widthIn: 3, heightIn: 2 }),
-      "the text frame reaches past the safe margin",
-    ],
-    [
-      "a text frame a hundredth of an inch past the bottom safe margin",
-      (m: any) => (m.pages[0].frames[0].box = { xIn: 1, yIn: 6, widthIn: 3, heightIn: 2.01 }),
-      "the text frame reaches past the safe margin",
-    ],
-    ["a text frame without paragraphs", (m: any) => (m.pages[0].frames[0].paragraphs = []), "at least one paragraph"],
-    [
-      "two text frames with one ID",
-      (m: any) => m.pages[0].frames.push(structuredClone(m.pages[0].frames[0])),
-      'duplicate frameId "t1"',
-    ],
-    ["a story without pages", (m: any) => (m.pages = []), "a story needs at least one page"],
-    ["a page without layers", (m: any) => (m.pages[1].illustration.layers = []), "a page needs at least one layer"],
-    [
-      "a figure without bases",
-      (m: any) => (m.pages[0].illustration.layers[1].bases = []),
-      "a figure needs at least one base",
+      "a token naming no role",
+      (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{friend.name}}"),
+      'unknown slot "friend"',
     ],
   ])("rejects %s", (_, edit, message) => {
     expect(errorOf(variant(edit))).toContain(message);
   });
 });
 
-/** A format 2 page with no art. */
-const format2Page = (layout: string, text: unknown[]) => ({
-  pageId: "p01",
-  layout,
-  text,
-  illustration: { layers: [] },
+describe("composePage", () => {
+  const manifest = Schema.decodeUnknownSync(StoryManifest)(sample);
+  const page = manifest.pages[0]!;
+  const story = { storyId: "story_kite_day", version: 1 };
+
+  it("draws the plate whole, and each figure as its stock drawing in its window", () => {
+    expect(composePage(story, page)).toEqual([
+      { key: "stories/story_kite_day/v1/pages/p01/plate.svg", rect: [0, 0, 1000, 1000] },
+      {
+        key: "stories/story_kite_day/v1/pages/p01/hero/stock.svg",
+        rect: page.illustration.layers[1]!.kind === "photoFigure" ? page.illustration.layers[1]!.window : [],
+      },
+      {
+        key: "stories/story_kite_day/v1/pages/p01/grownup/stock.svg",
+        rect: page.illustration.layers[2]!.kind === "photoFigure" ? page.illustration.layers[2]!.window : [],
+      },
+    ]);
+  });
+
+  it("draws a family's figure where there is one, by its place on the page, and the bald reference in a draft without a stock", () => {
+    const draft = {
+      ...page,
+      illustration: {
+        layers: page.illustration.layers.map((l) =>
+          l.kind === "photoFigure" && l.slotId === "grownup" ? { ...l, stock: undefined } : l,
+        ),
+      },
+    } as typeof page;
+    const keys = composePage(story, draft, (_, index) =>
+      index === 0 ? "families/f/books/b/pages/p01-0.png" : undefined,
+    ).map((l) => l.key);
+    expect(keys).toEqual([
+      "stories/story_kite_day/v1/pages/p01/plate.svg",
+      "families/f/books/b/pages/p01-0.png",
+      "stories/story_kite_day/v1/pages/p01/grownup/reference.svg",
+    ]);
+  });
 });
 
 describe("text frames", () => {
@@ -241,62 +134,18 @@ describe("text frames", () => {
     expect(safeArea(manifest.trim)).toEqual({ xIn: 0.5, yIn: 0.5, widthIn: 7.5, heightIn: 7.5 });
     // A family's edits address paragraphs across frames in reading order.
     expect(resolvePageText(manifest.pages[0]!, exampleCast(manifest)).map((block) => block.text)).toEqual([
-      "The Moon Picnic",
+      "The Kite Day",
       expect.any(String),
       "Mia again.\nAnd again.",
     ]);
-  });
-
-  it("upgrades each format 2 layout to one frame at its old text area, holding the page's paragraphs in order", () => {
-    const trim = { widthIn: 8.5, heightIn: 8.5, bleedIn: 0.125, safeMarginIn: 0.5 };
-    const upgraded = upgradeFormat2({
-      formatVersion: 2,
-      trim,
-      pages: [
-        format2Page("full-bleed-art/text-bottom", [
-          { style: "title", content: "A" },
-          { style: "body", content: "One\ntwo" },
-        ]),
-        format2Page("full-bleed-art/text-top", [{ style: "body", content: "B" }]),
-        format2Page("art-left/text-right", [{ style: "body", content: "C" }]),
-        format2Page("full-bleed-art/text-bottom", []),
-      ],
-    }) as any;
-    expect(upgraded.formatVersion).toBe(3);
-    const safe = { xIn: 0.5, yIn: 0.5, widthIn: 7.5, heightIn: 7.5 };
-    expect(upgraded.pages[0]).toEqual({
-      pageId: "p01",
-      art: "full-bleed",
-      illustration: { layers: [] },
-      frames: [
-        {
-          frameId: "t1",
-          box: safe,
-          valign: "bottom",
-          panel: true,
-          // Format 2 printed a typed break as a space; frames keep breaks, so the upgrade makes it one.
-          paragraphs: [
-            { style: "title", content: "A" },
-            { style: "body", content: "One two" },
-          ],
-        },
-      ],
-    });
-    expect(upgraded.pages[1].frames[0]).toMatchObject({ box: safe, valign: "top", panel: true });
-    expect(upgraded.pages[2]).toMatchObject({
-      art: "left-half",
-      frames: [{ box: { xIn: 4.75, yIn: 0.5, widthIn: 3.25, heightIn: 7.5 }, valign: "middle", panel: false }],
-    });
-    expect(upgraded.pages[3].frames).toEqual([]);
-    expect(upgradeFormat2(upgraded)).toBe(upgraded);
   });
 });
 
 describe("StoryDraft", () => {
   // An author's draft (D37) is the format's shape only, so work in progress saves; publishing decodes it as a StoryManifest.
-  it("accepts what publishing rejects: an empty page, a figure with no bases, a token naming no role", () => {
+  it("accepts what publishing rejects: an empty page, a figure with no stock drawing, a token naming no role", () => {
     const draft = variant((m) => {
-      m.pages[0].illustration.layers[1].bases = [];
+      delete m.pages[0].illustration.layers[1].stock;
       m.pages[1].illustration.layers = [];
       m.pages[2].frames[0].paragraphs[0].content = "{{friend.name}}";
     });
@@ -327,10 +176,10 @@ describe("resolveText", () => {
 
   it("previews the sample story with each slot's example character", () => {
     const manifest = Schema.decodeUnknownSync(StoryManifest)(sample);
-    const page = manifest.pages.find((p) => p.pageId === "p03")!;
+    const page = manifest.pages.find((p) => p.pageId === "p02")!;
     expect(resolvePageText(page, exampleCast(manifest))[0]).toEqual({
       style: "body",
-      text: "Grandpa checked the fuel. Mia checked the cocoa. She buckled herself in tight.",
+      text: "The wind tugged. She held on tight, and up it went!",
     });
   });
 
@@ -343,486 +192,6 @@ describe("resolveText", () => {
     // A capitalized field capitalizes the title as it does a pronoun; a title is otherwise printed as typed.
     expect(resolveText(titled, cast)).toBe("Nana hugged Sam's Ada, Ada.");
     expect(resolveText("{{grownup.title}}", cast)).toBe("nana");
-  });
-});
-
-const decoded = (m: unknown) => Schema.decodeUnknownSync(StoryManifest)(m);
-const childLook = (face: Look["face"], hair: Look["hair"], age: Look["age"] = "young-child"): Look => ({
-  age,
-  face,
-  features: "features:defined",
-  skin: "skin:s3",
-  hair,
-  hairColour: "hair-colour:brown",
-  glasses: "glasses:round",
-  facialHair: "facial-hair:none",
-});
-/** The sample with p04's child figure missing the long hairstyle on the oval face, for young children only. */
-const missingLongOval = () =>
-  decoded(
-    variant((m) => {
-      const hero = m.pages[3].illustration.layers.find((layer: any) => layer.slotId === "hero");
-      hero.parts = hero.parts.filter(
-        (part: any) => !(part.age === "young-child" && part.face === "face:oval" && part.option === "hair:long"),
-      );
-    }),
-  );
-
-/** p02's grown-up with a softer adult round-face base and its parts (D40). */
-const withSoft = (dropPart = false) =>
-  decoded(
-    variant((m) => {
-      const grownup = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "grownup");
-      const base = grownup.bases.find((b: any) => b.age === "adult" && b.face === "face:round");
-      grownup.bases.push({ ...base, features: "features:soft", asset: "soft/base.svg" });
-      const parts = grownup.parts.filter((part: any) => part.age === "adult" && part.face === "face:round");
-      grownup.parts.push(
-        ...parts
-          .filter((part: any) => !(dropPart && part.option === "hair:long"))
-          .map((part: any) => ({
-            ...part,
-            features: "features:soft",
-            asset: `soft/${part.option.replace(":", "-")}.svg`,
-          })),
-      );
-    }),
-  );
-const soft = (face: Look["face"], age: Look["age"] = "adult"): Look => ({
-  ...childLook(face, "hair:long", age),
-  features: "features:soft",
-});
-const grownup = (manifest: StoryManifest, look: Look) =>
-  composeIllustration(manifest, manifest.pages[1]!, { grownup: { name: "Sam", pronouns: "she/her", look } })
-    .map((layer) => layer.asset)
-    .filter((asset) => asset.includes("grownup") || asset.startsWith("soft/"));
-
-/** The sample with p02 drawing the hero as a baby, with baby hair parts for `hairParts` (D51). */
-const babyAt = (hairParts: ReadonlyArray<string>) =>
-  decoded(
-    variant((m) => {
-      const p01 = m.pages[0].illustration.layers.find((layer: any) => layer.slotId === "hero");
-      const hero = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "hero");
-      m.characterSlots[0].ages.push("baby");
-      hero.age = "baby";
-      hero.bases = p01.bases
-        .filter((base: any) => base.age === "young-child")
-        .map((base: any) => ({ ...base, age: "baby" }));
-      const long = p01.parts.filter((part: any) => part.age === "young-child" && part.option === "hair:long");
-      hero.parts = hairParts.flatMap((option) => long.map((part: any) => ({ ...part, age: "baby", option })));
-    }),
-  );
-const heroAssets = (manifest: StoryManifest, look: Look) =>
-  composeIllustration(manifest, manifest.pages[1]!, { hero: { name: "Ada", pronouns: "she/her", look } })
-    .map((layer) => layer.asset)
-    .filter((asset) => asset.includes("/hero/"));
-
-describe("looks against a story (D26, D29)", () => {
-  it("reports exactly the axis a story can't draw, and only for the age and face missing its part", () => {
-    const manifest = missingLongOval();
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([
-      'p04/hero: no part for "hair:long" on "young-child/face:oval"',
-    ]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:long"))).toEqual(["hair"]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:long"))).toEqual([]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:curly"))).toEqual([]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:oval", "hair:long", "older-child"))).toEqual([]);
-  });
-
-  it("rejects an age the role doesn't accept and a colour the story has no palette for", () => {
-    const manifest = decoded(variant((m) => delete m.palettes.skin["skin:s5"]));
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual(['no palette for "skin:s5"']);
-    expect(unsupportedOptions(manifest, "hero", { ...childLook("face:round", "hair:short"), skin: "skin:s5" })).toEqual(
-      ["skin"],
-    );
-    // A role accepting young and older children: a teen or a toddler can't play it.
-    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:short", "teen"))).toEqual(["age"]);
-    expect(unsupportedOptions(manifest, "hero", childLook("face:round", "hair:short", "toddler"))).toEqual(["age"]);
-  });
-
-  it("a book's override stands in only for options the story can't draw, and never for another age", () => {
-    const manifest = missingLongOval();
-    const longOval = childLook("face:oval", "hair:long");
-    expect(castLook(manifest, "hero", longOval)).toEqual({ look: longOval, wrongAge: false, unsupported: ["hair"] });
-    // The parent picks a stand-in hairstyle for this book; the other axes stay the character's own.
-    expect(castLook(manifest, "hero", longOval, { hair: "hair:curly", glasses: "glasses:none" })).toEqual({
-      look: { ...longOval, hair: "hair:curly" },
-      wrongAge: false,
-      unsupported: [],
-    });
-    // Once the character's own option is drawable (another face here), the override no longer applies.
-    const longRound = childLook("face:round", "hair:long");
-    expect(castLook(manifest, "hero", longRound, { hair: "hair:curly" }).look).toEqual(longRound);
-    // A stand-in the story can't draw either leaves the axis unsupported.
-    expect(castLook(manifest, "hero", longOval, { hair: "hair:long" }).unsupported).toEqual(["hair"]);
-    // A grown-up can't fill a child's role, whatever the override says.
-    expect(castLook(manifest, "hero", childLook("face:round", "hair:short", "adult"), { face: "face:round" })).toEqual({
-      look: childLook("face:round", "hair:short", "adult"),
-      wrongAge: true,
-      unsupported: ["age"],
-    });
-  });
-
-  it("draws softer features where a story has them, and the defined base where it doesn't (D40)", () => {
-    // Only the adult round face has a softer base; the oval and older adults stay defined only.
-    const manifest = withSoft();
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
-    expect(grownup(manifest, soft("face:round"))).toEqual([
-      "soft/base.svg",
-      "soft/hair-long.svg",
-      "soft/glasses-round.svg",
-    ]);
-    // No softer oval base, so the defined one draws, with nothing reported unsupported.
-    const definedOval = grownup(manifest, { ...soft("face:oval"), features: "features:defined" });
-    expect(grownup(manifest, soft("face:oval"))).toEqual(definedOval);
-    expect(unsupportedOptions(manifest, "grownup", soft("face:oval"))).toEqual([]);
-    // A softer base must have its parts.
-    expect(vocabularyGaps(withSoft(true), publishedAt)).toEqual([
-      'p02/grownup: no part for "hair:long" on "adult/face:round/features:soft"',
-    ]);
-    // Looks saved before the axis existed are the defined ones.
-    const { features: _, ...stored } = soft("face:round");
-    expect(Schema.decodeUnknownSync(LookSchema)(stored).features).toBe("features:defined");
-  });
-
-  it("lets a story published before options joined the vocabulary lack them, and asks a book for a stand-in (D43)", () => {
-    const manifest = decoded(sample);
-    // Its partOrder predates facial hair; a story published today must draw the new options.
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
-    const today = vocabularyGaps(manifest, new Date("2026-11-20T00:00:00Z"));
-    expect(today).toContain('p01/hero: no part for "hair:afro" on "young-child/face:round"');
-    expect(today).toContain('p02/grownup: no part for "facial-hair:beard" on "adult/face:oval/features:defined"');
-    // A bearded grown-up with locs: hair and facial hair are unsupported, and a stand-in hairstyle draws.
-    const look: Look = {
-      ...soft("face:round"),
-      features: "features:defined",
-      hair: "hair:locs",
-      facialHair: "facial-hair:beard",
-    };
-    expect(unsupportedOptions(manifest, "grownup", look)).toEqual(["hair", "facialHair"]);
-    expect(castLook(manifest, "grownup", look, { hair: "hair:short", facialHair: "facial-hair:none" })).toEqual({
-      look: { ...look, hair: "hair:short", facialHair: "facial-hair:none" },
-      wrongAge: false,
-      unsupported: [],
-    });
-    // No facial hair needs no part, and looks saved before the axis existed have none.
-    expect(
-      unsupportedOptions(manifest, "grownup", { ...look, hair: "hair:short", facialHair: "facial-hair:none" }),
-    ).toEqual([]);
-    const { facialHair: _, ...stored } = look;
-    expect(Schema.decodeUnknownSync(LookSchema)(stored).facialHair).toBe("facial-hair:none");
-  });
-
-  it("reads a retired option saved in a look or a book's stand-in as its replacement, and still rejects unknown ones (D52)", () => {
-    const look = { ...soft("face:round"), facialHair: "facial-hair:stubble" };
-    expect(Schema.decodeUnknownSync(LookSchema)(look).facialHair).toBe("facial-hair:none");
-    expect(Schema.decodeUnknownSync(LookOverride)({ facialHair: "facial-hair:stubble" })).toEqual({
-      facialHair: "facial-hair:none",
-    });
-    expect(
-      Result.isFailure(Schema.decodeUnknownResult(LookSchema)({ ...look, facialHair: "facial-hair:goatee" })),
-    ).toBe(true);
-    // A published version keeps its parts for the retired option (Paper Boat's stubble, accepted above); a new part
-    // can't name it, since it isn't offered anywhere.
-    expect(lookVocabulary.facialHair.map((option) => option.id)).not.toContain("facial-hair:stubble");
-  });
-
-  it("draws a figure pinned to an age at that age, whatever age the character is", () => {
-    // p02 draws the hero as a toddler (D29: a character who grows up during the story), with toddler bases and hair
-    // parts that reuse p01's drawings so they can be told apart. Toddlers have no glasses parts.
-    const manifest = decoded(
-      variant((m) => {
-        const p01 = m.pages[0].illustration.layers.find((layer: any) => layer.slotId === "hero");
-        const hero = m.pages[1].illustration.layers.find((layer: any) => layer.slotId === "hero");
-        hero.age = "toddler";
-        hero.bases = p01.bases
-          .filter((base: any) => base.age === "young-child")
-          .map((base: any) => ({ ...base, age: "toddler" }));
-        hero.parts = p01.parts
-          .filter((part: any) => part.age === "young-child" && part.axis === "hair")
-          .map((part: any) => ({ ...part, age: "toddler" }));
-      }),
-    );
-    expect(vocabularyGaps(manifest, publishedAt)).toEqual([]);
-    for (const age of ["young-child", "older-child"] as const) {
-      const look = childLook("face:oval", "hair:long", age);
-      expect(unsupportedOptions(manifest, "hero", look)).toEqual([]);
-      const hero = composeIllustration(manifest, manifest.pages[1]!, {
-        hero: { name: "Ada", pronouns: "she/her", look },
-      })
-        .map((layer) => layer.asset)
-        .filter((asset) => asset.includes("/hero/"));
-      // The toddler base and hairstyle, and no glasses although the look has them.
-      expect(hero).toEqual(["pages/p01/hero/base-child-2.svg", "pages/p01/hero/child-2-long.svg"]);
-    }
-  });
-
-  it("draws a baby bald in a story drawn before babies had hair, and a pinned age's nearest hairstyle (D51)", () => {
-    // p02 draws the hero as a baby. Without baby hair parts (a version from before D51) every look draws bald, as it
-    // did; with them, a young child with short hair is drawn with wispy hair, the nearest a baby has.
-    const before = babyAt([]);
-    // (p01 draws the hero at their own age, where wispy has no part, so only p02 is checked for it.)
-    for (const hair of ["hair:short", "hair:none"] as const)
-      expect(unsupportedOptions(before, "hero", childLook("face:oval", hair))).toEqual([]);
-    for (const hair of ["hair:wispy", "hair:short", "hair:none"] as const) {
-      expect(heroAssets(before, childLook("face:oval", hair))).toEqual(["pages/p01/hero/base-child-2.svg"]);
-    }
-    const after = babyAt(["hair:wispy", "hair:soft-curls"]);
-    expect(heroAssets(after, childLook("face:oval", "hair:short"))).toEqual([
-      "pages/p01/hero/base-child-2.svg",
-      "pages/p01/hero/child-2-long.svg",
-    ]);
-    expect(heroAssets(after, childLook("face:oval", "hair:none"))).toEqual(["pages/p01/hero/base-child-2.svg"]);
-    // A version published since must draw every hairstyle a baby has; one it lacks is reported, the bald one never.
-    expect(uncoveredOptions(after).filter((option) => option.startsWith("hair:"))).not.toContain("hair:none");
-    expect(vocabularyGaps(babyAt(["hair:wispy"]), new Date("2026-12-01T00:00:00Z"))).toContain(
-      'p02/hero: no part for "hair:soft-curls" on "baby/face:oval"',
-    );
-  });
-
-  it("reads a stored format 1 manifest as the format 2 version that draws the same", () => {
-    // Format 1 as stored before D29: one age per role, faces bound to an age.
-    const format1 = variant((m) => {
-      const faces: Record<string, string> = {
-        "young-child/face:round": "face:child-1",
-        "young-child/face:oval": "face:child-2",
-        "adult/face:oval": "face:adult-1",
-        "adult/face:round": "face:adult-2",
-      };
-      const old = (item: any) => {
-        const { age, face, ...rest } = item;
-        return { ...rest, face: faces[`${age}/${face}`] };
-      };
-      m.formatVersion = 1;
-      for (const slot of m.characterSlots) {
-        slot.age = slot.ages[0] === "adult" ? "adult" : "child";
-        delete slot.ages;
-        slot.example.look = old(slot.example.look);
-      }
-      for (const page of m.pages) {
-        for (const layer of page.illustration.layers) {
-          if (layer.kind !== "figure") continue;
-          layer.bases = layer.bases.filter((base: any) => faces[`${base.age}/${base.face}`]).map(old);
-          layer.parts = layer.parts.filter((part: any) => faces[`${part.age}/${part.face}`]).map(old);
-        }
-      }
-    });
-    const upgraded = Effect.runSync(decodeStoryManifest(format1));
-    expect(upgraded.characterSlots.map((slot) => slot.ages)).toEqual([["young-child"], ["adult"]]);
-    const current = decoded(sample);
-    for (const page of current.pages) {
-      expect(
-        composeIllustration(
-          upgraded,
-          upgraded.pages.find((p) => p.pageId === page.pageId)!,
-          exampleCast(upgraded),
-        ),
-      ).toEqual(composeIllustration(current, page, exampleCast(current)));
-    }
-  });
-});
-
-/** The sample declaring that its art draws only round faces (D55); `roundArtOnly` also drops every oval base and part. */
-const roundFaced = (roundArtOnly: boolean) =>
-  decoded(
-    variant((m) => {
-      m.oneFace = "face:round";
-      if (!roundArtOnly) return;
-      for (const page of m.pages)
-        for (const layer of page.illustration.layers) {
-          if (layer.kind !== "figure") continue;
-          layer.bases = layer.bases.filter((base: any) => base.face !== "face:oval");
-          layer.parts = layer.parts.filter((part: any) => part.face !== "face:oval");
-        }
-    }),
-  );
-
-describe("a story whose art draws one face type (D55)", () => {
-  it("publishes with that face type's bases and parts only, and without the field still needs both", () => {
-    expect("oneFace" in decoded(sample)).toBe(false);
-    expect(vocabularyGaps(roundFaced(true), publishedAt)).toEqual([]);
-    const { oneFace: _, ...withoutField } = roundFaced(true);
-    const gaps = vocabularyGaps(decoded(withoutField), publishedAt);
-    expect(gaps).toContain('p01/hero: no base for "young-child/face:oval"');
-    expect(gaps).toContain('p02/grownup: no part for "hair:long" on "adult/face:oval/features:defined"');
-    expect(gaps.every((gap) => gap.includes("face:oval"))).toBe(true);
-  });
-
-  it("draws an oval-faced character with the round art, with nothing unsupported, even where oval art exists", () => {
-    const oval = childLook("face:oval", "hair:long");
-    for (const manifest of [roundFaced(true), roundFaced(false)]) {
-      expect(unsupportedOptions(manifest, "hero", oval)).toEqual([]);
-      expect(castLook(manifest, "hero", oval)).toEqual({ look: oval, wrongAge: false, unsupported: [] });
-      const assets = heroAssets(manifest, oval);
-      expect(assets[0]).toBe("pages/p02/hero/base-child-1.svg");
-      expect(assets).toEqual(heroAssets(manifest, childLook("face:round", "hair:long")));
-    }
-    // Without the field the same look draws the oval base.
-    expect(heroAssets(decoded(sample), oval)[0]).toBe("pages/p02/hero/base-child-2.svg");
-  });
-});
-
-describe("composeIllustration", () => {
-  const manifest = decoded(sample);
-  const cast = exampleCast(manifest);
-
-  it("stacks base, parts in order, then the occluder, each figure between the page's art layers", () => {
-    // p05: background, Mia (curly hair, no glasses), Grandpa Joe (short hair, round glasses, cheese in front).
-    const layers = composeIllustration(manifest, manifest.pages[4]!, cast).map((layer) => layer.asset);
-    expect(layers).toEqual([
-      "pages/p05/background.svg",
-      "pages/p05/hero/base-child-1.svg",
-      "pages/p05/hero/child-1-curly.svg",
-      "pages/p05/grownup/base-adult-2.svg",
-      "pages/p05/grownup/adult-2-short.svg",
-      "pages/p05/grownup/adult-2-glasses-round.svg",
-      "pages/p05/grownup/occluder-adult-2.svg",
-    ]);
-  });
-
-  it("draws a base's overlay as it is, above the recoloured base and below the parts", () => {
-    const withOverlay = decoded(
-      variant((m) => {
-        for (const base of m.pages[4].illustration.layers[2].bases)
-          base.overlay = base.asset.replace(".svg", "-overlay.svg");
-      }),
-    );
-    const layers = composeIllustration(withOverlay, withOverlay.pages[4]!, cast);
-    expect(layers.slice(3, 6).map((layer) => layer.asset)).toEqual([
-      "pages/p05/grownup/base-adult-2.svg",
-      "pages/p05/grownup/base-adult-2-overlay.svg",
-      "pages/p05/grownup/adult-2-short.svg",
-    ]);
-    expect(layers[4]!.recolour).toEqual([]);
-    expect(manifestAssets(withOverlay)).toContain("pages/p05/grownup/base-adult-2-overlay.svg");
-  });
-
-  it("recolours the occluder's skin, so a hand in front of the face matches the face", () => {
-    const layers = composeIllustration(manifest, manifest.pages[4]!, cast);
-    const skin = manifest.palettes.skin["skin:s2"];
-    expect(layers.at(-1)!.recolour).toEqual([{ mask: "pages/p05/grownup/occluder-adult-2-skin.svg", palette: skin }]);
-    expect(layers[3]!.recolour.map((region) => region.mask)).toEqual([
-      "pages/p05/grownup/base-adult-2-skin.svg",
-      "pages/p05/grownup/base-adult-2-brows.svg",
-    ]);
-  });
-
-  it("draws only the recoloured hand when a figure has no head in frame", () => {
-    const layers = composeIllustration(manifest, manifest.pages[0]!, cast);
-    expect(layers.at(-1)).toEqual({
-      asset: "pages/p01/grownup/base-adult-2.svg",
-      rect: [0, 440, 260, 540],
-      recolour: [{ mask: "pages/p01/grownup/base-adult-2-skin.svg", palette: manifest.palettes.skin["skin:s2"] }],
-    });
-  });
-
-  it("places a part inside its figure's box and honours a page's own part order", () => {
-    const edited = decoded(
-      variant((m) => {
-        const curly = m.pages[0].illustration.layers[1].parts.find(
-          (part: any) => part.age === "young-child" && part.asset.endsWith("child-1-curly.svg"),
-        );
-        curly.at = [0, 0, 500, 1000];
-      }),
-    );
-    // Box [430, 250, 760, 690]; the left half of it.
-    const hair = composeIllustration(edited, edited.pages[0]!, cast).find((layer) =>
-      layer.asset.endsWith("child-1-curly.svg"),
-    )!;
-    expect(hair.rect).toEqual([430, 250, 595, 690]);
-
-    // p06 draws glasses under the hair.
-    const withGlasses = {
-      ...cast,
-      hero: { ...cast.hero!, look: { ...cast.hero!.look, glasses: "glasses:round" as const } },
-    };
-    const hero = composeIllustration(manifest, manifest.pages[5]!, withGlasses)
-      .map((layer) => layer.asset)
-      .filter((asset) => asset.includes("/hero/"));
-    expect(hero).toEqual([
-      "pages/p06/hero/base-child-1.svg",
-      "pages/p06/hero/child-1-glasses-round.svg",
-      "pages/p06/hero/child-1-curly.svg",
-    ]);
-  });
-
-  it("mirrors a flipped figure within its box, parts included, and leaves the page's art as it is (D44)", () => {
-    const flipped = decoded(
-      variant((m) => {
-        m.pages[0].illustration.layers[1].flip = true;
-        const curly = m.pages[0].illustration.layers[1].parts.find(
-          (part: any) => part.age === "young-child" && part.asset.endsWith("child-1-curly.svg"),
-        );
-        curly.at = [0, 0, 500, 1000];
-      }),
-    );
-    const layers = composeIllustration(flipped, flipped.pages[0]!, cast);
-    const hero = layers.filter((layer) => layer.asset.includes("/hero/"));
-    // Box [430, 250, 760, 690]: the part drawn on the left half lands on the right half.
-    expect(hero.map((layer) => [layer.asset, layer.rect, layer.flip])).toEqual([
-      ["pages/p01/hero/base-child-1.svg", [430, 250, 760, 690], true],
-      ["pages/p01/hero/child-1-curly.svg", [595, 250, 760, 690], true],
-    ]);
-    expect(layers.filter((layer) => !layer.asset.includes("/hero/")).every((layer) => layer.flip === undefined)).toBe(
-      true,
-    );
-  });
-});
-
-/** An approved generated hair part for p05's grown-up, adult round face (D44 tests). */
-const entry = (partId: string, option: string, features?: "features:soft") => ({
-  partId,
-  pageId: "p05",
-  slotId: "grownup",
-  part: {
-    age: "adult" as const,
-    face: "face:round" as const,
-    ...(features ? { features } : {}),
-    axis: "hair" as const,
-    option,
-    asset: `parts/${partId}/part.png`,
-    at: [200, 0, 800, 400] as const,
-    palette: "hairColour" as const,
-    approved: true,
-  },
-});
-
-describe("generated head-only parts shared across features (D44)", () => {
-  // p05's grown-up gains a softer adult round base; the generator drew short and long hair on the defined one.
-  const manifest = decoded(
-    variant((m) => {
-      const figure = m.pages[4].illustration.layers[2];
-      const defined = figure.bases.find((base: any) => base.age === "adult" && base.face === "face:round");
-      figure.bases.push({ ...defined, features: "features:soft" });
-    }),
-  );
-  const partsOf = (merged: typeof manifest, option: string) => {
-    const figure = merged.pages[4]!.illustration.layers[2];
-    return figure?.kind === "figure"
-      ? figure.parts.filter((part) => part.age === "adult" && part.face === "face:round" && part.option === option)
-      : [];
-  };
-
-  it("lists short hair again for the softer base with the same asset, but not long hair, which touches the shoulders", () => {
-    const merged = withApprovedParts(manifest, [entry("part_short", "hair:short"), entry("part_long", "hair:long")]);
-    expect(partsOf(merged, "hair:short").map((part) => [part.features ?? null, part.asset])).toEqual([
-      [null, "parts/part_short/part.png"],
-      ["features:soft", "parts/part_short/part.png"],
-    ]);
-    expect(partsOf(merged, "hair:long").map((part) => part.features ?? null)).toEqual([null]);
-    const softGaps = vocabularyGaps(merged, publishedAt).filter((gap) => gap.includes("p05") && gap.includes("soft"));
-    expect(softGaps.filter((gap) => /hair:(short|long)/.test(gap))).toEqual([expect.stringContaining("hair:long")]);
-  });
-
-  it("doesn't cover an approved drawing of the other features, or a figure without that base", () => {
-    // Drawn on the softer base, short hair doesn't replace the defined base's approved upload.
-    const fromSoft = withApprovedParts(manifest, [entry("part_soft", "hair:short", "features:soft")]);
-    expect(partsOf(fromSoft, "hair:short").map((part) => [part.features ?? null, part.asset])).toEqual([
-      [null, "pages/p05/grownup/adult-2-short.svg"],
-      ["features:soft", "parts/part_soft/part.png"],
-    ]);
-    // Without a softer base, nothing is added.
-    const plain = withApprovedParts(decoded(sample), [entry("part_short", "hair:short")]);
-    expect(partsOf(plain, "hair:short").map((part) => part.features ?? null)).toEqual([null]);
   });
 });
 
@@ -851,86 +220,5 @@ describe("story fonts for print (D27)", () => {
     expect(isVariableFont(woff2)).toBe(true);
     woff2[54] = 46; // feat instead of fvar
     expect(isVariableFont(woff2)).toBe(false);
-  });
-});
-
-describe("story additions (D41)", () => {
-  const stored = decoded(upgradeFormat2(published));
-  const hero: Look = { ...childLook("face:round", "hair:curly"), hairColour: "hair-colour:red" };
-
-  it("adds red hair to the published sample without a new version, and a book's stand-in gives way to it", () => {
-    // Red, and the options that joined the vocabulary after the sample was published (D43).
-    expect(uncoveredOptions(stored).filter((option) => !/^(hair|facial-hair):/.test(option))).toEqual([
-      "hair-colour:red",
-    ]);
-    // Before: red is unsupported, so the book draws the parent's stand-in (D28).
-    const before = castLook(stored, "hero", hero, { hairColour: "hair-colour:brown" });
-    expect(before.look.hairColour).toBe("hair-colour:brown");
-    expect(before.unsupported).toEqual([]);
-
-    const merged = Effect.runSync(mergeAdditions(stored, [redHair]));
-    expect(uncoveredOptions(merged)).not.toContain("hair-colour:red");
-    expect(vocabularyGaps(merged, publishedAt)).toEqual([]);
-    // After: the same book, same override, now draws red, with the story's own red palette on the hair.
-    const after = castLook(merged, "hero", hero, { hairColour: "hair-colour:brown" });
-    expect(after.look.hairColour).toBe("hair-colour:red");
-    const page = merged.pages[3]!;
-    const layers = composeIllustration(merged, page, { hero: { name: "Ada", pronouns: "she/her", look: after.look } });
-    expect(layers.flatMap((layer) => layer.recolour.map((region) => region.palette))).toContainEqual(
-      redHair.palettes.hairColour["hair-colour:red"],
-    );
-    // Everything else is the published version, untouched.
-    expect({ ...merged, palettes: stored.palettes }).toEqual(stored);
-  });
-
-  it("refuses an addition that replaces anything published, names no figure, or adds a part nobody approved", () => {
-    const heroFigure = stored.pages[3]!.illustration.layers.find(
-      (layer) => layer.kind === "figure" && layer.slotId === "hero",
-    )!;
-    if (heroFigure.kind !== "figure") throw new Error("p04 has a hero");
-    const curly = heroFigure.parts.find((part) => part.option === "hair:curly")!;
-    const addition: StoryAddition = {
-      palettes: { hairColour: { "hair-colour:brown": redHair.palettes.hairColour["hair-colour:red"] } },
-      figures: [
-        {
-          pageId: "p04",
-          slotId: "hero",
-          parts: [{ ...curly, asset: "pages/p04/hero/curly-again.svg" }],
-          bases: [{ ...heroFigure.bases[0]!, asset: "x.svg" }],
-        },
-        { pageId: "p04", slotId: "nobody", parts: [] },
-        {
-          pageId: "p04",
-          slotId: "hero",
-          parts: [
-            { ...curly, option: "hair:long", face: "face:oval", age: "older-child", approved: false, asset: "y.svg" },
-          ],
-        },
-      ],
-    };
-    expect(additionIssues(stored, addition)).toEqual([
-      'palettes.hairColour: "hair-colour:brown" is already published',
-      `p04/hero: a base for "${heroFigure.bases[0]!.age}/${heroFigure.bases[0]!.face}" is already published`,
-      `p04/hero: a part for "hair:curly" on "${curly.age}/${curly.face}" is already published`,
-      "p04/nobody: no such figure",
-      'p04/hero: "hair:long" on "older-child/face:oval" is not approved',
-      'p04/hero: a part for "hair:long" on "older-child/face:oval" is already published',
-    ]);
-    expect(additionIssues(stored, {})).toEqual(["the addition adds nothing"]);
-    // The same addition twice: the second would replace the first.
-    expect(Effect.runSync(Effect.flip(mergeAdditions(stored, [redHair, redHair]))).message).toContain(
-      '"hair-colour:red" is already published',
-    );
-  });
-
-  it("checks the merged manifest like a published one: an option outside the vocabulary fails", () => {
-    const error = Effect.runSync(
-      Effect.flip(
-        mergeAdditions(stored, [
-          { palettes: { hairColour: { "hair-colour:teal": redHair.palettes.hairColour["hair-colour:red"] } } },
-        ]),
-      ),
-    );
-    expect(error.message).toContain('"hair-colour:teal" is not a hairColour option');
   });
 });

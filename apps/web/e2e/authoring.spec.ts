@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 
 // Story authoring (D37), as an author does it: the operator lets an account author; the author starts a story, uploads
-// static fonts and sets text styles, defines a role, lays out a page with plate art, a placed figure (its bases, masks,
-// and every part the look vocabulary needs) and foreground art, writes text with tokens and sees it as BookPage prints
-// it, checks, approves the parts, and publishes version 1. Then a family makes a book of it. Fresh accounts each run.
-const art = (file: string) => resolve("fixtures/stories/moon-picnic", file);
+// static fonts and sets text styles and the photo style (D56), defines a role with its outfit and stock sheet, lays out a
+// page with plate art, a placed figure (its bald reference and stock drawing) and scenery in front, writes text with
+// tokens and sees it as BookPage prints it, checks, and publishes version 1. Then a family makes a book of it. Fresh
+// accounts each run.
+const art = (file: string) => resolve("fixtures/stories/kite-day", file);
 
 /** Saves a screenshot for the report when E2E_SCREENSHOTS names a directory: the whole page, or the viewport (the editor's sticky preview). */
 const evidence = async (page: Page, name: string, fullPage = true) => {
@@ -27,34 +28,12 @@ const save = async (page: Page) => {
   await expect(page.getByTestId("draft-state")).toContainText("Saved");
 };
 
+/** Fills a rectangle field: four numbers in thousandths of the illustration. */
 const setRect = async (page: Page, label: string, rect: readonly [number, number, number, number]) => {
-  for (const [i, side] of (["left", "top", "right", "bottom"] as const).entries()) {
-    await page.getByLabel(`${label} ${side}`, { exact: true }).fill(String(rect[i]));
-  }
+  const fields = page.getByRole("group", { name: new RegExp(`^${label} \\(thousandths`) });
+  for (const [i, side] of (["x0", "y0", "x1", "y1"] as const).entries())
+    await fields.getByLabel(side, { exact: true }).fill(String(rect[i]));
 };
-
-// Where the sample's placeholder hair and glasses sit on each child base, in thousandths of the figure box.
-const faces = [
-  { face: "round face", file: "child-1", hair: [260, 12, 740, 396], glasses: [388, 150, 612, 234] },
-  { face: "oval face", file: "child-2", hair: [294, 3, 706, 406], glasses: [404, 148, 596, 236] },
-] as const;
-const hairstyles = [
-  { label: "Short", file: "short" },
-  { label: "Curly", file: "curly" },
-  { label: "Long", file: "long" },
-  // The sample has no drawings for the hairstyles added later (D43), so they borrow one: the flow is what's tested.
-  { label: "Buzz cut", file: "short" },
-  { label: "Ponytail", file: "long" },
-  { label: "Braids", file: "long" },
-  { label: "Afro", file: "curly" },
-  { label: "Locs", file: "long" },
-  { label: "Bun", file: "curly" },
-  // And the young hairstyles (D51).
-  { label: "Wispy", file: "short" },
-  { label: "Soft curls", file: "curly" },
-  { label: "Top knot", file: "short" },
-  { label: "Puffs", file: "curly" },
-] as const;
 
 test("authoring: an invited author writes, checks, and publishes a story, and a family makes a book of it", async ({
   browser,
@@ -102,6 +81,9 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.getByLabel("Title font").selectOption("Literata");
   await author.getByLabel("Body font").selectOption("Literata");
   await author.getByLabel("Body weight").selectOption("450");
+  // The photo style: a crop of a painted page and the style in words, for every family's sheets.
+  await author.getByLabel("Style reference").setInputFiles(art("style/reference.svg"));
+  await author.getByLabel("The style in words").fill("flat shapes and a thin dark outline");
   await save(author);
   await evidence(author, "author-2-story-and-type");
 
@@ -120,10 +102,14 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   });
   expect(upload.status()).toBe(403);
 
-  // 4. A role: the child, young children only, with Mia as the example who plays it in previews.
+  // 4. A role: the child, young children only, with Mia as the stock character who plays it in previews, her outfit,
+  // and her sheet.
   await author.getByRole("tab", { name: "Roles" }).click();
   await author.getByRole("button", { name: "Add a role" }).click();
   await expect(author.getByTestId("role-hero")).toContainText("{{hero.name}}");
+  await author.getByLabel("Outfit on the sheet").fill("a yellow raincoat and blue boots");
+  await author.getByLabel("Stock character sheet").setInputFiles(art("sheets/hero.svg"));
+  await expect(author.getByTestId("role-hero").getByTestId("uploaded")).toHaveCount(1);
   await save(author);
   await evidence(author, "author-3-roles");
 
@@ -153,93 +139,38 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(frame).toHaveAccessibleName(/^Text frame 2: 4\.00 in from the left, 0\.70 in from the top/);
   await expect(author.getByTestId("draft-preview").getByTestId("text-frame")).toHaveCount(2);
 
-  await author.getByLabel("Add plate art").setInputFiles(art("pages/p01/background.svg"));
+  await author.getByLabel("Add plate art").setInputFiles(art("pages/p01/plate.svg"));
   await expect(author.getByTestId("layer")).toHaveCount(1);
   await author.getByRole("button", { name: "Place The child" }).click();
-  await author.getByLabel("Add foreground art").setInputFiles(art("pages/p01/foreground.svg"));
+  await author.getByLabel("Add scenery in front").setInputFiles(art("pages/p02/plate.svg"));
   await expect(author.getByTestId("layer")).toHaveCount(3);
   await expect(author.getByTestId("layer").nth(2)).toHaveAttribute("data-kind", "art");
-  await setRect(author, "Figure box", [430, 250, 760, 690]);
+  // The scenery was only to show the order; a plate in front would hide everything.
+  await author.getByTestId("layer").nth(2).getByRole("button", { name: "Remove" }).click();
+  await expect(author.getByTestId("layer")).toHaveCount(2);
 
-  // Bases: one per face type at the one age the role accepts, each with its skin and brow masks.
-  for (const { face, file } of faces) {
-    const at = `Young child, ${face}`;
-    await author.getByLabel(`Base drawing: ${at}`).setInputFiles(art(`pages/p01/hero/base-${file}.svg`));
-    await author.getByLabel(`Skin mask: ${at}`).setInputFiles(art(`pages/p01/hero/base-${file}-skin.svg`));
-    await expect(author.getByTestId("base-cell").filter({ hasText: at })).toHaveAttribute("data-ready", "true");
-    await author.getByLabel(`Brow mask: ${at}`).setInputFiles(art(`pages/p01/hero/base-${file}-brows.svg`));
-    await expect(author.getByTestId("base-cell").filter({ hasText: at }).getByTestId("uploaded")).toHaveCount(3);
-  }
-
-  // Parts: one generated by the part pipeline (D36) from the saved base, with the worker's fake provider; the rest
-  // uploaded and placed in the box. Both start unapproved.
-  await expect(author.getByTestId("parts-count")).toHaveText("0 of 28 drawn, 0 waiting for approval");
-  await expect(author.getByRole("button", { name: "Generate 28 missing parts" })).toBeDisabled();
+  // 6. Checking lists what stops publishing: here, the figure's missing stock drawing.
   await save(author);
-  const generatedAt = "Curly, young child, round face";
-  await author.getByRole("button", { name: `Generate ${generatedAt}` }).click();
-  const generatedCell = author.getByTestId("part-cell").filter({ hasText: generatedAt });
-  await expect(generatedCell.getByTestId("generated-part")).toHaveAttribute("data-status", "pending_review", {
-    timeout: 60_000,
-  });
-  await expect(generatedCell).toHaveAttribute("data-state", "unapproved");
-  await expect(generatedCell.getByRole("img", { name: `${generatedAt} on dark skin` })).toBeVisible();
-  for (const { face, file, hair, glasses } of faces) {
-    for (const style of hairstyles) {
-      const at = `${style.label}, young child, ${face}`;
-      if (at === generatedAt) continue;
-      await author.getByLabel(`Upload ${at}`).setInputFiles(art(`pages/p01/hero/${file}-${style.file}.svg`));
-      await expect(author.getByTestId("part-cell").filter({ hasText: at })).toHaveAttribute("data-state", "unapproved");
-      await setRect(author, `Place ${at}`, hair);
-    }
-    const at = `Round glasses, young child, ${face}`;
-    await author.getByLabel(`Upload ${at}`).setInputFiles(art(`pages/p01/hero/${file}-glasses-round.svg`));
-    await expect(author.getByTestId("part-cell").filter({ hasText: at })).toHaveAttribute("data-state", "unapproved");
-    await setRect(author, `Place ${at}`, glasses);
-  }
-  await expect(author.getByTestId("parts-count")).toHaveText("28 of 28 drawn, 28 waiting for approval");
-  await save(author);
-  await imagesLoaded(author);
-  // The example's look (Mia: round face, short brown hair) is composed from the uploaded base and parts.
-  await expect(author.getByTestId("draft-preview").locator("img")).toHaveCount(4);
-  if (process.env.E2E_SCREENSHOTS)
-    await author.getByTestId("figure-hero").screenshot({
-      path: `${process.env.E2E_SCREENSHOTS}/author-4-figure.png`,
-      style: ".sticky { position: static !important }",
-    });
-  await author.evaluate(() => window.scrollTo(0, 0));
-  await evidence(author, "author-4-page", false);
-
-  // The preview follows edits before they're saved: long hair for Mia recomposes her figure, and saving changes nothing.
-  const previewSources = () =>
-    author
-      .getByTestId("draft-preview")
-      .locator("img")
-      .evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")).join());
-  const shortHair = await previewSources();
-  await author.getByRole("tab", { name: "Roles" }).click();
-  await author.getByLabel("Example hairstyle").selectOption("hair:long");
-  await expect(author.getByTestId("draft-state")).toHaveText("Unsaved changes");
-  await expect.poll(previewSources, { timeout: 10_000 }).not.toBe(shortHair);
-  await save(author);
-  await author.getByRole("tab", { name: "Pages" }).click();
-
-  // 6. Checking lists what stops publishing: here, the parts nobody approved yet.
   await author.getByRole("button", { name: "Check" }).click();
   const issues = author.getByTestId("publish-issues");
-  await expect(issues).toHaveAttribute("data-count", "28");
-  await expect(issues).toContainText("not approved: p01: pages/p01/hero/");
+  await expect(issues).toContainText("the figure needs its stock drawing");
   await issues.scrollIntoViewIfNeeded();
   await evidence(author, "author-5-check", false);
 
-  await expect(issues).toContainText("not approved: p01: parts/");
-  await author.getByRole("button", { name: "Approve every uploaded part of this figure" }).click();
-  await expect(author.getByTestId("parts-count")).toHaveText("28 of 28 drawn, 1 waiting for approval");
+  // The figure: its bald reference, cut tight, and the stock character drawn on it, where they sit on the page.
+  const figure = author.getByTestId("figure-fields");
+  await figure.getByLabel("Bald reference (cut tight)").setInputFiles(art("pages/p01/hero/reference.svg"));
+  await figure.getByLabel("Stock drawing (fills the window)").setInputFiles(art("pages/p01/hero/stock.svg"));
+  await expect(figure.getByTestId("uploaded")).toHaveCount(2);
+  await setRect(author, "Figure box", [520, 420, 700, 880]);
+  await setRect(author, "Window", [408, 346, 812, 954]);
+  await setRect(author, "Head", [567, 420, 653, 572]);
   await save(author);
-  // The generated part's review is in story_part: one Approve button, no save needed.
-  await author.getByRole("button", { name: `Approve generated ${generatedAt}` }).click();
-  await expect(generatedCell).toHaveAttribute("data-state", "approved");
-  await expect(author.getByTestId("parts-count")).toHaveText("28 of 28 drawn, 0 waiting for approval");
+  await imagesLoaded(author);
+  // Plate and the stock figure.
+  await expect(author.getByTestId("draft-preview").locator("img")).toHaveCount(2);
+  await author.evaluate(() => window.scrollTo(0, 0));
+  await evidence(author, "author-4-page", false);
   await author.getByRole("button", { name: "Check" }).click();
   await expect(issues).toHaveAttribute("data-count", "0");
   await expect(issues).toContainText("Ready to publish");
@@ -254,13 +185,11 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   expect((await stranger.request.get(`/api/files/stories/${storyId}/v1/${fontAsset}`)).status()).toBe(200);
   await stranger.context().close();
 
-  // 8. A family makes a book of it: the author's own family adds a young child with curly hair and a round face, so
-  // her hair is the generated part the version published.
+  // 8. A family makes a book of it: the author's own family adds a young child.
   await author.goto("/family/new");
   await author.getByLabel("Name").fill(child);
   await author.getByLabel("Pronouns").selectOption("she/her");
-  await author.getByRole("button", { name: "Young child", exact: true }).click();
-  await author.getByRole("button", { name: "Curly hair", exact: true }).click();
+  await author.getByLabel("Age").selectOption("young-child");
   await author.getByRole("button", { name: "Add to the family" }).click();
   await expect(author.getByTestId("characters")).toContainText(child);
 
@@ -281,11 +210,11 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(placed).toHaveCSS("top", "79.2px"); // (0.125 + 0.7) in × 96
   expect(await placed.innerText()).toBe(`Goodnight,\n${child}!`);
   await imagesLoaded(author);
-  // Plate, base, generated curls, foreground: without the published part the figure couldn't be drawn at all.
-  await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(4);
+  // Plate and the stock figure, until the book's figures are drawn from its sheets.
+  await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(2);
   await evidence(author, "author-7-book");
 
-  // 9. Version 2 starts from version 1, generated curls included, and the author previews it with Noor in the role.
+  // 9. Version 2 starts from version 1, and the author previews its text with Noor in the role.
   await author.goto(`/author/${storyId}`);
   await author.getByRole("button", { name: "Start version 2" }).click();
   await author.getByLabel("Preview The child as").selectOption({ label: child });
@@ -293,7 +222,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(draftPreview).toContainText(
     `${child} walked to the end of the garden. She counted the stars with her finger.`,
   );
-  await expect(draftPreview.locator("img")).toHaveCount(4);
+  await expect(draftPreview.locator("img")).toHaveCount(2);
   await imagesLoaded(author);
   await evidence(author, "author-8-preview-as", false);
   await author.context().close();

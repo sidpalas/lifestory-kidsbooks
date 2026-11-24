@@ -43,14 +43,14 @@ describe("generateImage", () => {
     const exit = await run("task-1", state);
 
     expect(exit).toEqual(
-      Exit.succeed({ generationId: task1Generation, key: "test/task-1.svg", contentType: "image/svg+xml" }),
+      Exit.succeed({ generationId: task1Generation, key: "test/task-1.png", contentType: "image/png" }),
     );
-    expect(state.objects.get("test/task-1.svg")?.body.byteLength).toBeGreaterThan(0);
+    expect(state.objects.get("test/task-1.png")?.body.byteLength).toBeGreaterThan(0);
     expect(state.rows.get(task1Generation)).toMatchObject({
       provider: "fake",
       status: "succeeded",
       eventName: `generation.done:${task1Generation}`,
-      objectKey: "test/task-1.svg",
+      objectKey: "test/task-1.png",
     });
   });
 
@@ -61,7 +61,7 @@ describe("generateImage", () => {
     const rerun = await run("task-1", state);
 
     expect(rerun).toEqual(first);
-    expect([...state.objects.keys()]).toEqual(["test/task-1.svg"]);
+    expect([...state.objects.keys()]).toEqual(["test/task-1.png"]);
     expect([...state.rows.keys()]).toEqual([task1Generation]);
   });
 

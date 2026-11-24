@@ -12,21 +12,30 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const PROOF_TTL_MS = 30 * DAY_MS;
 
 const FAMILY_KEY = /^families\/([^/]+)\//;
+const STORY_KEY = /^stories\/([^/]+)\//;
 // families/<familyId>/proofs/<proofId>.pdf, as written by the render task.
 const PROOF_KEY = /^families\/[^/]+\/proofs\/([^/]+)\.pdf$/;
 
 /**
  * The keys the sweep deletes (D31): every `samples/` file the removed worker check left, everything under
- * `families/<id>/` of a family that no longer exists, and proof PDFs whose proof row is gone (`liveProofs` holds the IDs that have one).
- * Anything else, including keys it doesn't recognise, stays.
+ * `families/<id>/` of a family that no longer exists, proof PDFs whose proof row is gone, and everything under
+ * `stories/<id>/` of a story that no longer exists (the parts stories D56 removed), once a day old, since an import
+ * writes a new story's files before its row. Anything else, including keys it doesn't recognise, stays.
  */
 export const expiredKeys = (
   objects: ReadonlyArray<ListedObject>,
-  live: { readonly families: ReadonlySet<string>; readonly proofs: ReadonlySet<string> },
+  live: {
+    readonly families: ReadonlySet<string>;
+    readonly proofs: ReadonlySet<string>;
+    readonly stories: ReadonlySet<string>;
+  },
+  now = Date.now(),
 ) =>
   objects
-    .filter(({ key }) => {
+    .filter(({ key, lastModified }) => {
       if (key.startsWith("samples/")) return true;
+      const storyId = STORY_KEY.exec(key)?.[1];
+      if (storyId !== undefined) return !live.stories.has(storyId) && lastModified.getTime() < now - DAY_MS;
       const familyId = FAMILY_KEY.exec(key)?.[1];
       if (familyId === undefined) return false;
       if (!live.families.has(familyId)) return true;
@@ -56,10 +65,15 @@ export const sweepStorage = defineTask({
             .delete(schema.proof)
             .where(and(isNull(schema.proof.approvedAt), lt(schema.proof.createdAt, new Date(now - PROOF_TTL_MS)))),
         );
-        const objects = [...(yield* storage.list("samples/")), ...(yield* storage.list("families/"))];
+        const objects = [
+          ...(yield* storage.list("samples/")),
+          ...(yield* storage.list("families/")),
+          ...(yield* storage.list("stories/")),
+        ];
         const familyIds = [...new Set(objects.flatMap(({ key }) => FAMILY_KEY.exec(key)?.[1] ?? []))];
         const proofIds = [...new Set(objects.flatMap(({ key }) => PROOF_KEY.exec(key)?.[1] ?? []))];
-        const [families, proofs] = yield* Effect.all([
+        const storyIds = [...new Set(objects.flatMap(({ key }) => STORY_KEY.exec(key)?.[1] ?? []))];
+        const [families, proofs, stories] = yield* Effect.all([
           familyIds.length === 0
             ? Effect.succeed([])
             : Database.query((db) =>
@@ -73,11 +87,21 @@ export const sweepStorage = defineTask({
             : Database.query((db) =>
                 db.select({ id: schema.proof.id }).from(schema.proof).where(inArray(schema.proof.id, proofIds)),
               ),
+          storyIds.length === 0
+            ? Effect.succeed([])
+            : Database.query((db) =>
+                db.select({ id: schema.story.id }).from(schema.story).where(inArray(schema.story.id, storyIds)),
+              ),
         ]);
-        const keys = expiredKeys(objects, {
-          families: new Set(families.map((row) => row.id)),
-          proofs: new Set(proofs.map((row) => row.id)),
-        });
+        const keys = expiredKeys(
+          objects,
+          {
+            families: new Set(families.map((row) => row.id)),
+            proofs: new Set(proofs.map((row) => row.id)),
+            stories: new Set(stories.map((row) => row.id)),
+          },
+          now,
+        );
         const samples = keys.filter((key) => key.startsWith("samples/"));
         if (samples.length > 0) {
           yield* Database.query((db) =>

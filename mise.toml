@@ -114,5 +114,5 @@ depends = ["typecheck", "lint", "format:check", "test"]
 # ---- Verification -------------------------------------------------------------
 
 [tasks.verify]
-description = "Drive the real app and keep evidence (docs/features/README.md): mise run verify -- <doctor|up|picker|proof|looks|e2e> [--config dev|image|live]"
+description = "Drive the real app and keep evidence (docs/features/README.md): mise run verify -- <doctor|up|proof|layout|e2e> [--config dev|image|live]"
 run = "node apps/web/scripts/verify/main.ts"

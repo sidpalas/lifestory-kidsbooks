@@ -9,7 +9,6 @@ import {
   jsonb,
   pgEnum,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   unique,
@@ -57,8 +56,6 @@ export const storyVersion = pgTable(
     version: integer("version").notNull(),
     /** Validated by StoryManifest on the way in and decoded on the way out. */
     manifest: jsonb("manifest").notNull(),
-    /** Draft-only source pages, proposed casting and extraction review. Not used when composing books. */
-    casting: jsonb("casting").notNull().default([]),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     revision: integer("revision").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -69,28 +66,6 @@ export const storyVersion = pgTable(
     uniqueIndex("story_version_one_draft")
       .on(t.storyId)
       .where(sql`${t.publishedAt} is null`),
-  ],
-);
-
-// What an author added to a published version without a new one (D41): palettes, bases, and parts for options the
-// version lacks, never a change to what it already has. Append-only and never changed, like the version: revision
-// n is the nth addition, a book draws the version with all of them, and a proof records the revision it drew
-// (proof.addition_revision). Files live under the version's folder, next to its own.
-export const storyVersionAddition = pgTable(
-  "story_version_addition",
-  {
-    storyVersionId: text("story_version_id")
-      .notNull()
-      .references(() => storyVersion.id, { onDelete: "restrict" }),
-    revision: integer("revision").notNull(),
-    /** A StoryAddition (packages/core/src/book-format/additions.ts), checked against the version when added. */
-    addition: jsonb("addition").notNull(),
-    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.storyVersionId, t.revision] }),
-    check("story_version_addition_revision_positive", sql`${t.revision} > 0`),
   ],
 );
 

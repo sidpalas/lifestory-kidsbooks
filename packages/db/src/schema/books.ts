@@ -1,7 +1,6 @@
-// What a family owns (docs/plan.md, "Data model"): its members as drawn characters, and its personalized books.
-// A book pins one story version and stores only who fills each role and the family's text edits; pages are
-// composed from those when they're shown or printed, so a look change applies everywhere at once.
-import { index, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+// What a family owns (docs/plan.md, "Data model"): its members, and its personalized books. A book pins one story
+// version and stores who fills each role and the family's text edits (D56).
+import { index, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { organization } from "./auth.ts";
 import { storyVersion } from "./stories.ts";
@@ -14,7 +13,7 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-/** A family member as drawn in books (D26): a name, an optional title, pronouns, and a look from the shared vocabulary. No photos. */
+/** A family member: a name, an optional title, pronouns and an age (D29). Photos belong to a book, never here (D56). */
 export const character = pgTable(
   "character",
   {
@@ -27,8 +26,8 @@ export const character = pgTable(
     title: text("title"),
     /** One of the book format's pronoun sets ("she/her", "he/him", "they/them"). */
     pronouns: text("pronouns").notNull(),
-    /** One option ID per axis (packages/core looks/vocabulary.ts), decoded with the Look schema. */
-    look: jsonb("look").notNull(),
+    /** One of the seven age buckets (packages/core book-format/ages.ts). */
+    age: text("age").notNull(),
     ...timestamps,
   },
   (t) => [index("character_family_idx").on(t.familyId)],
@@ -63,17 +62,6 @@ export const bookCast = pgTable(
       .notNull()
       // "no action", not "restrict": deleting a family cascades to its books and characters in one statement.
       .references(() => character.id, { onDelete: "no action" }),
-    /**
-     * Options this book draws instead of the character's own, for axes the pinned story version can't draw (D26:
-     * "a story-specific override with a supported option"). Applies only while the character's option is unsupported.
-     */
-    lookOverride: jsonb("look_override"),
-    /**
-     * Options this book draws instead of the character's saved ones, whatever the story can draw (D46): the parent
-     * styles them for this book without changing the family member. Only the changed axes, never age; the rest
-     * follows the saved look. Stand-ins (`look_override`) apply on top, for options still undrawable.
-     */
-    lookChanges: jsonb("look_changes"),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.bookId, t.slotId] }), index("book_cast_character_idx").on(t.characterId)],

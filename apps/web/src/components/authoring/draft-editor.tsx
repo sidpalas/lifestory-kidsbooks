@@ -1,25 +1,22 @@
-// The story draft editor (D37): story details, trim, fonts and text styles; roles with their accepted ages, pronoun
-// tokens, and example character; pages with their layout, text, art layers and figures. The selected page shows as
+// The story draft editor (D37): story details, the photo style (D56), trim, fonts and text styles; roles with their
+// accepted ages, pronoun tokens, stock character, outfit and sheet; pages with their layout, text, art layers and
+// figures (book format 4: each figure's bald reference, stock drawing, box, window and head). The selected page shows as
 // BookPage renders it (the same component the book editor and the PDF use), with the text live and the pictures as
 // of the last save. Checking runs the publishing checks; publishing makes an immutable story version.
 import {
   type Age,
   ageOptions,
   type CastMember,
-  type Casting,
   type Character,
   type CharacterSlot,
   DraftChanged,
   type DraftView,
   exampleCast,
-  faceOptions,
-  type FigureLayer,
   type IllustrationLayer,
-  type LookAxis,
-  type LookOption,
-  lookVocabulary,
   type Page,
+  type PhotoFigure,
   PronounSet,
+  type Rect,
   resolvePageText,
   type StoryDraft,
   StoryNotPublishable,
@@ -39,32 +36,20 @@ import { NativeSelect } from "~/components/ui/native-select";
 import {
   CheckDraftResult,
   checkDraftFn,
-  DraftPartResult,
-  DraftPartsRequestResult,
-  DraftResult,
-  getDraftFn,
   PreviewDraftResult,
   previewDraftFn,
   PublishDraftResult,
   publishDraftFn,
-  requestDraftPartsFn,
-  reviewDraftPartFn,
   SaveDraftResult,
   saveDraftFn,
 } from "~/server/authoring";
 
-import { ArtImport } from "./art-import";
-import { CastingTab } from "./casting";
 import { type DraftFiles, draftFileUrl, message, NumberField, UploadField } from "./fields";
-import { FigureEditor, type Generation } from "./figure-editor";
-import { ReviewTab } from "./review";
 import { FRAME_PRESETS, FrameFields, type FramePreset, newFrame, nextFrameId, TextFrameOverlay } from "./text-frames";
 
 type Change = (edit: (draft: StoryDraft) => StoryDraft) => void;
 
 const tabs = [
-  { id: "casting", label: "Casting" },
-  { id: "review", label: "Review" },
   { id: "story", label: "Story and type" },
   { id: "roles", label: "Roles" },
   { id: "pages", label: "Pages" },
@@ -77,7 +62,6 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   const router = useRouter();
   const [view, setView] = useState(initial);
   const revision = useRef(initial.revision);
-  const [casting, setCasting] = useState<Casting>(initial.casting);
   const [draft, setDraft] = useState<StoryDraft>(initial.draft);
   const [title, setTitle] = useState(initial.story.title);
   const [summary, setSummary] = useState(initial.story.summary);
@@ -85,7 +69,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ readonly error: boolean; readonly text: string } | null>(null);
   const [issues, setIssues] = useState<ReadonlyArray<string> | null>(null);
-  const [tab, setTab] = useState<Tab>(initial.casting.length ? "casting" : "story");
+  const [tab, setTab] = useState<Tab>("story");
   const [selected, setSelected] = useState(initial.draft.pages[0]?.pageId ?? "");
   /** Text frames of the selected page whose text runs past them in the preview. */
   const [overflowing, setOverflowing] = useState<ReadonlyArray<number>>([]);
@@ -110,94 +94,28 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
               name: character.name,
               ...(character.title ? { title: character.title } : {}),
               pronouns: character.pronouns,
-              look: character.look,
             }
           : example,
       ];
     }),
-  );
-  const looksKey = JSON.stringify(
-    Object.fromEntries(Object.entries(cast).map(([slotId, member]) => [slotId, member.look])),
   );
 
   // The pictures follow unsaved edits: the server composes the draft as it is here, a moment after the last change.
   // Only the newest answer is shown, so a slow one can't overwrite a later edit.
   const [preview, setPreview] = useState(initial.pages);
   const previewSeq = useRef(0);
-  const partsKey = view.parts.map((part) => `${part.id}:${part.status}`).join();
   useEffect(() => {
     const seq = ++previewSeq.current;
     const timer = setTimeout(() => {
-      void previewDraftFn({ data: { storyId: initial.story.id, draft, looks: JSON.parse(looksKey) } })
+      void previewDraftFn({ data: { storyId: initial.story.id, draft } })
         .then((result) => {
           if (seq === previewSeq.current) setPreview(unwrapResult(PreviewDraftResult)(result));
         })
         .catch(() => {});
     }, 250);
     return () => clearTimeout(timer);
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- partsKey: the server merges generated parts in, so a review recomposes too
-  }, [initial.story.id, draft, looksKey, partsKey]);
+  }, [initial.story.id, draft]);
 
-  // Generated parts (D37) live in story_part, not in the saved manifest: reloading the view picks up their status and
-  // recomposes the pictures with them. Unsaved edits stay as they are, and so does the revision this editor last loaded
-  // or saved: the draft it holds is that revision's, so a save made elsewhere meanwhile still fails the next save or
-  // publish with DraftChanged instead of being overwritten.
-  const refresh = async () => {
-    const next = unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: files.storyId } }));
-    const kept = { ...next, revision: revision.current };
-    setView(kept);
-    return kept;
-  };
-  const generationFor = (pageId: string, slotId: string): Generation => {
-    const twice =
-      (draft.pages.find((p) => p.pageId === pageId)?.illustration.layers ?? []).filter(
-        (l) => l.kind === "figure" && l.slotId === slotId,
-      ).length > 1;
-    return {
-      parts: view.parts.filter((part) => part.pageId === pageId && part.slotId === slotId),
-      blocked: twice
-        ? "Generation needs one figure of this role on the page."
-        : dirty
-          ? "Save first: parts are generated from the saved draft."
-          : busy
-            ? "Working…"
-            : null,
-      generate: (requests) =>
-        void (async () => {
-          setBusy(true);
-          setStatus(null);
-          try {
-            unwrapResult(DraftPartsRequestResult)(
-              await requestDraftPartsFn({
-                data: { storyId: files.storyId, requests: requests.map((request) => ({ pageId, slotId, ...request })) },
-              }),
-            );
-            // Parts generate on the worker; follow them until none is still generating (up to 5 minutes).
-            for (let i = 0; i < 300; i++) {
-              const next = await refresh();
-              if (!next.parts.some((part) => part.status === "generating")) break;
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-          } catch (cause) {
-            setStatus({ error: true, text: `Couldn't generate: ${message(cause)}` });
-          } finally {
-            setBusy(false);
-          }
-        })(),
-      review: (partId, decision) =>
-        void (async () => {
-          try {
-            unwrapResult(DraftPartResult)(
-              await reviewDraftPartFn({ data: { storyId: files.storyId, partId, decision } }),
-            );
-            setIssues(null);
-            await refresh();
-          } catch (cause) {
-            setStatus({ error: true, text: message(cause) });
-          }
-        })(),
-    };
-  };
   const addPage = () => {
     const pageId = nextPageId(draft);
     change((d) => ({
@@ -211,7 +129,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
     setTab("pages");
   };
 
-  const persist = async (nextDraft: StoryDraft, nextCasting: Casting) => {
+  const persist = async (nextDraft: StoryDraft) => {
     setBusy(true);
     setStatus(null);
     try {
@@ -221,7 +139,6 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             storyId: files.storyId,
             revision: revision.current,
             draft: nextDraft,
-            casting: nextCasting,
             title,
             summary,
           },
@@ -230,7 +147,6 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
       revision.current = next.revision;
       setView(next);
       setDraft(next.draft);
-      setCasting(next.casting);
       setDirty(false);
       setStatus({ error: false, text: "Saved." });
       return true;
@@ -239,7 +155,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         error: true,
         text:
           cause instanceof DraftChanged
-            ? "This draft changed somewhere else (another tab, or generated parts). Reload the page to see it; edits here aren't saved."
+            ? "This draft changed somewhere else (another tab). Reload the page to see it; edits here aren't saved."
             : `Couldn't save: ${message(cause)}`,
       });
       return false;
@@ -281,7 +197,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   };
 
   return (
-    <div className={`grid gap-6 ${tab === "casting" || tab === "review" ? "" : "lg:grid-cols-[minmax(0,1fr)_auto]"}`}>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
       <StoryFonts fonts={draft.fonts} assetUrl={(asset) => draftFileUrl(files.storyId, files.version, asset)} />
       <div className="flex min-w-0 flex-col gap-4">
         <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background py-2">
@@ -304,7 +220,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
           <span className="text-xs text-muted-foreground" data-testid="draft-state">
             {dirty ? "Unsaved changes" : `Saved · revision ${view.revision}`}
           </span>
-          <Button size="sm" onClick={() => void persist(draft, casting)} disabled={busy || !dirty}>
+          <Button size="sm" onClick={() => void persist(draft)} disabled={busy || !dirty}>
             Save draft
           </Button>
         </div>
@@ -334,39 +250,9 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
             }}
           />
         )}
-        {tab === "casting" && (
-          <CastingTab
-            files={files}
-            draft={draft}
-            casting={casting}
-            onChange={(next) => {
-              setCasting(next);
-              setDirty(true);
-              setIssues(null);
-            }}
-            persist={persist}
-          />
-        )}
-        {tab === "review" && (
-          <ReviewTab
-            files={files}
-            draft={draft}
-            parts={view.parts}
-            dirty={dirty}
-            refresh={refresh}
-            persist={(next) => persist(next, casting)}
-          />
-        )}
-        {tab === "roles" && <RolesTab draft={draft} change={change} />}
+        {tab === "roles" && <RolesTab files={files} draft={draft} change={change} />}
         {tab === "pages" && page && (
-          <PageTab
-            files={files}
-            draft={draft}
-            page={page}
-            change={change}
-            generationFor={generationFor}
-            overflowing={overflowing}
-          />
+          <PageTab files={files} draft={draft} page={page} change={change} overflowing={overflowing} />
         )}
         {tab === "pages" && !page && (
           <Button className="self-start" onClick={addPage}>
@@ -377,9 +263,9 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         <section aria-label="Publish" className="flex flex-col gap-2 rounded-md border p-4">
           <h3 className="font-semibold">Check and publish version {view.version}</h3>
           <p className="text-xs text-muted-foreground">
-            Publishing runs the book format's checks: every reference resolves, every look option has a palette or an
-            approved part on every figure, every file is uploaded, and fonts are static. A published version never
-            changes; later edits go into the next version.
+            Publishing runs the book format's checks: every reference resolves, every role has a stock sheet and every
+            figure a stock drawing, every file is uploaded, and fonts are static. A published version never changes;
+            later edits go into the next version.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void check()} disabled={busy || dirty}>
@@ -411,10 +297,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
         </section>
       </div>
 
-      <aside
-        className={`${tab === "casting" || tab === "review" ? "hidden" : "flex"} flex-col gap-3 lg:sticky lg:top-4 lg:self-start`}
-        aria-label="Page preview"
-      >
+      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="Page preview">
         {/* As wide as the preview, not as all the tabs in one row: with 24 pages that squeezed the editor to nothing. */}
         <div className="flex w-0 min-w-full flex-wrap gap-1" role="tablist" aria-label="Pages">
           {draft.pages.map((candidate, i) => (
@@ -493,7 +376,7 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
                 >
                   <option value="">{slot.example.name} (example)</option>
                   {characters
-                    .filter((character) => slot.ages.includes(character.look.age))
+                    .filter((character) => slot.ages.includes(character.age))
                     .map((character) => (
                       <option key={character.id} value={character.id}>
                         {character.name}
@@ -503,7 +386,8 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
               </label>
             ))}
             <p className="text-xs text-muted-foreground">
-              Family members of the ages a role accepts. Only the preview changes; families see the example.
+              Family members of the ages a role accepts, for the text. Only the preview changes; families see the
+              example.
             </p>
           </fieldset>
         )}
@@ -566,31 +450,40 @@ function StoryTab({
             onChange={(event) => setSummary(event.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Face types the art draws
-          <NativeSelect
-            aria-label="Face types the art draws"
-            value={draft.oneFace ?? ""}
-            onChange={(event) => {
-              const oneFace = event.target.value as StoryDraft["oneFace"] | "";
-              change((d) => {
-                const next = { ...d };
-                delete next.oneFace;
-                return oneFace ? { ...next, oneFace } : next;
-              });
-            }}
-          >
-            <option value="">Round and oval (each character&apos;s own)</option>
-            {faceOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label.replace(/ face$/, "")} only
-              </option>
-            ))}
-          </NativeSelect>
-          <span className="text-xs font-normal text-muted-foreground">
-            One face type draws every character with it, whatever their own, and needs bases and parts for it only.
-          </span>
-        </label>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label="Photo style">
+        <h3 className="font-semibold">Photo style</h3>
+        <p className="text-xs text-muted-foreground">
+          Each family's character sheets are drawn from their photo in this story's style: a crop of one painted page,
+          and the style in words (D56).
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <UploadField
+            files={files}
+            folder="style"
+            label="Style reference"
+            asset={draft.photo?.styleReference}
+            onUploaded={(styleReference) =>
+              change((d) => ({
+                ...d,
+                photo: { styleWords: "", promptVersion: "photo-hero-v1", ...d.photo, styleReference },
+              }))
+            }
+          />
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            The style in words
+            <Input
+              aria-label="The style in words"
+              placeholder="thin pencil outline and soft watercolour colouring"
+              value={draft.photo?.styleWords ?? ""}
+              disabled={!draft.photo}
+              onChange={(event) =>
+                change((d) => (d.photo ? { ...d, photo: { ...d.photo, styleWords: event.target.value } } : d))
+              }
+            />
+          </label>
+        </div>
       </section>
 
       <section className="flex flex-col gap-2" aria-label="Trim">
@@ -765,17 +658,6 @@ function StoryTab({
 
 // ---- Roles ---------------------------------------------------------------------------
 
-const axisLabels: Record<LookAxis, string> = {
-  age: "Age",
-  face: "Face",
-  features: "Features",
-  skin: "Skin tone",
-  hair: "Hairstyle",
-  hairColour: "Hair colour",
-  glasses: "Extras",
-  facialHair: "Facial hair",
-};
-
 const newSlot = (draft: StoryDraft): CharacterSlot => {
   const used = new Set(draft.characterSlots.map((slot) => slot.slotId));
   const slotId = used.has("hero") ? `role-${draft.characterSlots.length + 1}` : "hero";
@@ -784,32 +666,20 @@ const newSlot = (draft: StoryDraft): CharacterSlot => {
     label: slotId === "hero" ? "The child" : "Another character",
     description: "",
     ages: ["young-child"],
-    example: {
-      name: "Mia",
-      pronouns: "she/her",
-      look: {
-        age: "young-child",
-        face: "face:round",
-        features: "features:defined",
-        skin: "skin:s3",
-        hair: "hair:short",
-        hairColour: "hair-colour:brown",
-        glasses: "glasses:none",
-        facialHair: "facial-hair:none",
-      },
-    },
+    example: { name: "Mia", pronouns: "she/her" },
+    outfit: "",
   };
 };
 
-function RolesTab({ draft, change }: { draft: StoryDraft; change: Change }) {
+function RolesTab({ files, draft, change }: { files: DraftFiles; draft: StoryDraft; change: Change }) {
   return (
     <div className="flex flex-col gap-4" data-testid="roles-tab">
       <p className="text-sm text-muted-foreground">
-        Each role is played by a family member. A role accepts some ages and covers every other look option. The example
-        character plays it in previews.
+        Each role is played by a family member of an age it accepts, drawn from their photo. The stock character plays
+        it in previews; its sheet and outfit guide every family's sheet.
       </p>
       {draft.characterSlots.map((slot, index) => (
-        <RoleEditor key={index} slot={slot} index={index} change={change} />
+        <RoleEditor key={index} files={files} slot={slot} index={index} change={change} />
       ))}
       <Button
         variant="outline"
@@ -822,7 +692,17 @@ function RolesTab({ draft, change }: { draft: StoryDraft; change: Change }) {
   );
 }
 
-function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: number; change: Change }) {
+function RoleEditor({
+  files,
+  slot,
+  index,
+  change,
+}: {
+  files: DraftFiles;
+  slot: CharacterSlot;
+  index: number;
+  change: Change;
+}) {
   const setSlot = (edit: (slot: CharacterSlot) => CharacterSlot) =>
     change((d) => {
       const next = edit(d.characterSlots[index]!);
@@ -836,7 +716,9 @@ function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: numbe
               ...page,
               illustration: {
                 layers: page.illustration.layers.map((layer) =>
-                  layer.kind === "figure" && layer.slotId === slot.slotId ? { ...layer, slotId: next.slotId } : layer,
+                  layer.kind === "photoFigure" && layer.slotId === slot.slotId
+                    ? { ...layer, slotId: next.slotId }
+                    : layer,
                 ),
               },
             }))
@@ -846,9 +728,7 @@ function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: numbe
   const toggleAge = (age: Age, on: boolean) =>
     setSlot((s) => {
       const ages = ageOptions.map((option) => option.id).filter((id) => (id === age ? on : s.ages.includes(id)));
-      if (ages.length === 0) return s;
-      const exampleAge = ages.includes(s.example.look.age) ? s.example.look.age : ages[0]!;
-      return { ...s, ages, example: { ...s.example, look: { ...s.example.look, age: exampleAge } } };
+      return ages.length === 0 ? s : { ...s, ages };
     });
   const { title: _, ...withoutTitle } = slot.example;
 
@@ -934,31 +814,23 @@ function RoleEditor({ slot, index, change }: { slot: CharacterSlot; index: numbe
           </NativeSelect>
         </label>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
-        {(Object.keys(axisLabels) as Array<LookAxis>).map((axis) => (
-          <label key={axis} className="flex flex-col gap-1 text-xs font-medium">
-            Example {axisLabels[axis].toLowerCase()}
-            <NativeSelect
-              aria-label={`Example ${axisLabels[axis].toLowerCase()}`}
-              className="h-8"
-              value={slot.example.look[axis]}
-              onChange={(event) =>
-                setSlot((s) => ({
-                  ...s,
-                  example: { ...s.example, look: { ...s.example.look, [axis]: event.target.value } },
-                }))
-              }
-            >
-              {(lookVocabulary[axis] as ReadonlyArray<LookOption>)
-                .filter((option) => axis !== "age" || slot.ages.includes(option.id as Age))
-                .map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-            </NativeSelect>
-          </label>
-        ))}
+      <div className="grid gap-2 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Outfit on the sheet
+          <Input
+            className="h-8"
+            placeholder="a red-and-white striped top and red trousers"
+            value={slot.outfit}
+            onChange={(event) => setSlot((s) => ({ ...s, outfit: event.target.value }))}
+          />
+        </label>
+        <UploadField
+          files={files}
+          folder="sheets"
+          label="Stock character sheet"
+          asset={slot.stockSheet}
+          onUploaded={(stockSheet) => setSlot((s) => ({ ...s, stockSheet }))}
+        />
       </div>
       <p className="text-xs text-muted-foreground" data-testid="role-tokens">
         Tokens: {PRONOUN_FIELDS.map((field) => `{{${slot.slotId}.${field}}}`).join(" ")} · capitalize the field (
@@ -983,14 +855,12 @@ function PageTab({
   draft,
   page,
   change,
-  generationFor,
   overflowing,
 }: {
   files: DraftFiles;
   draft: StoryDraft;
   page: Page;
   change: Change;
-  generationFor: (pageId: string, slotId: string) => Generation;
   overflowing: ReadonlyArray<number>;
 }) {
   const index = draft.pages.indexOf(page);
@@ -999,7 +869,7 @@ function PageTab({
     change((d) => ({ ...d, pages: d.pages.map((p) => (p.pageId === page.pageId ? edit(p) : p)) }));
   const setLayers = (edit: (layers: ReadonlyArray<IllustrationLayer>) => ReadonlyArray<IllustrationLayer>) =>
     setPage((p) => ({ ...p, illustration: { layers: edit(p.illustration.layers) } }));
-  const firstFigure = page.illustration.layers.findIndex((layer) => layer.kind === "figure");
+  const firstFigure = page.illustration.layers.findIndex((layer) => layer.kind === "photoFigure");
   const move = (from: number, to: number) =>
     setLayers((layers) => {
       if (to < 0 || to >= layers.length) return layers;
@@ -1187,8 +1057,6 @@ function PageTab({
         </p>
       </section>
 
-      <ArtImport files={files} page={page} slots={draft.characterSlots} oneFace={draft.oneFace} onApply={setPage} />
-
       <section className="flex flex-col gap-3" aria-label="Illustration layers">
         <h3 className="font-semibold">Illustration, bottom to top</h3>
         <ol className="flex flex-col gap-3">
@@ -1204,7 +1072,7 @@ function PageTab({
                   {layer.kind === "art"
                     ? firstFigure === -1 || l < firstFigure
                       ? "Plate (behind the characters)"
-                      : "Foreground (in front of the characters)"
+                      : "Scenery in front of the characters"
                     : `Figure: ${draft.characterSlots.find((s) => s.slotId === layer.slotId)?.label ?? layer.slotId}`}
                 </span>
                 <span className="flex-1" />
@@ -1240,16 +1108,11 @@ function PageTab({
                   }
                 />
               ) : (
-                <FigureEditor
+                <FigureFields
                   files={files}
                   pageId={page.pageId}
                   figure={layer}
-                  slots={draft.characterSlots}
-                  oneFace={draft.oneFace}
-                  generation={generationFor(page.pageId, layer.slotId)}
-                  onChange={(figure: FigureLayer) =>
-                    setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))
-                  }
+                  onChange={(figure) => setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))}
                 />
               )}
             </li>
@@ -1263,7 +1126,7 @@ function PageTab({
             asset={undefined}
             onUploaded={(asset) =>
               setLayers((layers) => {
-                const at = layers.findIndex((layer) => layer.kind === "figure");
+                const at = layers.findIndex((layer) => layer.kind === "photoFigure");
                 const next = [...layers];
                 next.splice(at === -1 ? layers.length : at, 0, { kind: "art", asset });
                 return next;
@@ -1273,7 +1136,7 @@ function PageTab({
           <UploadField
             files={files}
             folder={`pages/${page.pageId}`}
-            label="Add foreground art"
+            label="Add scenery in front"
             asset={undefined}
             onUploaded={(asset) => setLayers((layers) => [...layers, { kind: "art", asset }])}
           />
@@ -1291,14 +1154,14 @@ function PageTab({
                     onClick={() =>
                       setLayers((layers) => {
                         // Above the plate and the other figures, below any foreground art added after them.
-                        const lastFigure = layers.findLastIndex((layer) => layer.kind === "figure");
+                        const lastFigure = layers.findLastIndex((layer) => layer.kind === "photoFigure");
                         const next = [...layers];
                         next.splice(lastFigure === -1 ? layers.length : lastFigure + 1, 0, {
-                          kind: "figure",
+                          kind: "photoFigure",
                           slotId: slot.slotId,
                           box: [350, 300, 650, 900],
-                          bases: [],
-                          parts: [],
+                          window: [300, 250, 700, 950],
+                          head: [420, 300, 580, 450],
                         });
                         return next;
                       })
@@ -1312,6 +1175,73 @@ function PageTab({
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** A rectangle in thousandths of the illustration, as four numbers. */
+function RectField({ label, value, onChange }: { label: string; value: Rect; onChange: (rect: Rect) => void }) {
+  return (
+    <fieldset className="flex flex-col gap-1 text-xs">
+      <legend className="font-medium">{label} (thousandths: x0, y0, x1, y1)</legend>
+      <div className="grid grid-cols-4 gap-1">
+        {value.map((n, i) => (
+          <NumberField
+            key={i}
+            label={["x0", "y0", "x1", "y1"][i]!}
+            value={n}
+            onChange={(next) => onChange(value.map((v, j) => (j === i ? Math.round(next) : v)) as unknown as Rect)}
+          />
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * A figure of book format 4 (D56): the illustrator's bald drawing cut tight, the stock character drawn on it, where it
+ * sits, the window a family's drawing of it fills, and its head. The art import fills these from a layered file.
+ */
+function FigureFields({
+  files,
+  pageId,
+  figure,
+  onChange,
+}: {
+  files: DraftFiles;
+  pageId: string;
+  figure: PhotoFigure;
+  onChange: (figure: PhotoFigure) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3" data-testid="figure-fields">
+      <div className="grid gap-3 md:grid-cols-2">
+        <UploadField
+          files={files}
+          folder={`pages/${pageId}/${figure.slotId}`}
+          label="Bald reference (cut tight)"
+          asset={figure.reference}
+          onUploaded={(reference) => onChange({ ...figure, reference })}
+        />
+        <UploadField
+          files={files}
+          folder={`pages/${pageId}/${figure.slotId}`}
+          label="Stock drawing (fills the window)"
+          asset={figure.stock}
+          onUploaded={(stock) => onChange({ ...figure, stock })}
+        />
+      </div>
+      <RectField label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
+      <RectField label="Window" value={figure.window} onChange={(window) => onChange({ ...figure, window })} />
+      <RectField label="Head" value={figure.head} onChange={(head) => onChange({ ...figure, head })} />
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={figure.tint !== false}
+          onChange={(event) => onChange({ ...figure, tint: event.target.checked })}
+        />
+        Match the drawn figure's colour to the illustrator's (tint)
+      </label>
     </div>
   );
 }

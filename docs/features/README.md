@@ -41,16 +41,16 @@ Show the user the images from that directory; a PASS line with no evidence looke
 
 ### Characters
 
-- [character-picker](character-picker.md): age, then one feature at a time in order, live portrait. `verify picker`.
+- Family members: name, what the kids call them, pronouns, and an age (D29). Covered by `e2e -- books milestone1`;
+  no map file yet. Their likeness comes from a photo per book (photo-books).
 
 ### Stories and books
 
-- [story-looks](story-looks.md): a story's figures on every skin and hair colour. `verify looks`.
 - [text-frames](text-frames.md): text placed in frames the author drags, resizes, and types positions for (D54).
   `verify e2e -- authoring`, `verify proof`.
 - [page-previews](page-previews.md): pages fit phones and desktop in the book editor, story page, and draft
   preview, keeping their shape. `verify layout`.
-- Personalized book, look change on every page, text editor: covered by `e2e -- milestone1 books`; no map file yet.
+- Book of a story, its cast, and the text editor: covered by `e2e -- milestone1 books`; no map file yet.
 - [photo-books](photo-books.md): photos per role, the check, sheets and preview rounds, the order, page changes and
   our review (D56–D58; being built, replaces looks and parts). `verify e2e -- photo-book` once its spec lands.
 
@@ -60,13 +60,10 @@ Show the user the images from that directory; a PASS line with no evidence looke
 
 ### Authoring (operator and authors)
 
-- [authoring-casting](authoring-casting.md): source page upload, editable casting, approved extraction and a shared
-  plate for multiple characters. `verify e2e -- art-import`.
-- [authoring-parts](authoring-parts.md): tiled part generation, head-only sharing, consistency references and
-  mirrored figures (D44). `verify e2e -- parts authoring`.
+- Story editor (D37, book format 4): photo style, roles with outfit and stock sheet, pages with plate, figures and
+  scenery, check and publish. Covered by `e2e -- authoring drafts`; no map file yet.
 - [story-archive](story-archive.md): an author archives or restores a published story; existing books keep
   working. `verify e2e -- archive`.
-- Art import and published additions: covered by `e2e -- art-import story-additions`; no map file yet.
 
 ### Whole suite
 

@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
 // The whole milestone 1 slice (docs/brief.md, "Milestone 1 scope"), in order, as the people in it do it: the operator
-// invites a family, its owner invites a view-only grandparent, adds family members in the picker, makes a book of the
-// sample story with them, changes a look and sees it on every page, edits a page's text, then downloads the PDF proof
+// invites a family, its owner invites a view-only grandparent, adds family members with their ages, makes a book of the
+// sample story with them, edits a page's text, then downloads the PDF proof
 // and approves it, and the grandparent reads the book and the approved proof without being able to change them.
 // The other specs cover each part's edge cases. Every run uses fresh accounts, so runs don't depend on each other.
 const PASSWORD = "a-long-test-password";
@@ -35,13 +35,6 @@ const emailedLink = async (page: Page, to: string) => {
   return url.pathname + url.search;
 };
 
-/** The image URLs of every page in the editor's page list, per page. */
-const pageSources = (page: Page) =>
-  page
-    .getByRole("region", { name: "All pages" })
-    .getByTestId("book-page")
-    .evaluateAll((pages) => pages.map((el) => [...el.querySelectorAll("img")].map((img) => img.getAttribute("src"))));
-
 // Chromium writes page dictionaries and font names uncompressed, so the PDF's structure can be read from its bytes.
 const pdfFacts = (pdf: Buffer) => {
   const text = pdf.toString("latin1");
@@ -54,7 +47,7 @@ const pdfFacts = (pdf: Buffer) => {
   };
 };
 
-test("milestone 1: invite, family, viewer, characters, a personalized book, a look change, a text edit, an approved PDF proof", async ({
+test("milestone 1: invite, family, viewer, characters, a book, a text edit, an approved PDF proof", async ({
   browser,
 }) => {
   test.setTimeout(180_000);
@@ -107,22 +100,12 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await gran.goto("/sharing");
   await expect(gran.getByTestId("family-panel")).toContainText("You're a viewer");
 
-  // 3. The owner adds two family members in the picker: an age, then one feature at a time, with the portrait
-  // following each choice.
+  // 3. The owner adds two family members: a name, pronouns, what the kids call them, and an age (D29).
   await owner.goto("/family/new");
   await owner.getByLabel("Name").fill(child);
   await owner.getByLabel("Pronouns").selectOption("she/her");
-  await owner.getByRole("button", { name: "Young child", exact: true }).click();
-  const preview = owner.getByTestId("look-preview");
-  const curly = await preview.getAttribute("src");
-  await owner.getByRole("button", { name: "Long hair" }).click();
-  await expect(preview).not.toHaveAttribute("src", curly!);
-  await owner.getByRole("button", { name: "Round glasses" }).click();
-  await expect(owner.getByTestId("look-summary")).toHaveText(
-    "Young child, round face, brown skin, long black hair, glasses",
-  );
-  await imagesLoaded(owner);
-  await evidence(owner, "m1-picker");
+  await owner.getByLabel("Age").selectOption("young-child");
+  await evidence(owner, "m1-character");
   await owner.getByRole("button", { name: "Add to the family" }).click();
   await expect(owner.getByTestId("characters")).toContainText(child);
 
@@ -130,14 +113,12 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await owner.getByLabel("Name").fill(grownup);
   await owner.getByLabel("Pronouns").selectOption("he/him");
   await owner.getByLabel(/What the kids call them/).fill("Dad");
-  await owner.getByRole("button", { name: "Adult", exact: true }).click();
-  for (const name of ["Very light skin", "Oval face", "Short hair", "Blonde hair colour", "Round glasses"])
-    await owner.getByRole("button", { name, exact: true }).click();
+  await owner.getByLabel("Age").selectOption("adult");
   await owner.getByRole("button", { name: "Add to the family" }).click();
   await expect(owner.getByTestId("characters")).toContainText(grownup);
 
-  // 4. A personalized book of the sample story: every page is composed with them, and the text names them.
-  await owner.goto("/stories/the-moon-picnic");
+  // 4. A book of the sample story: the text names them.
+  await owner.goto("/stories/the-kite-day");
   const make = owner.getByRole("list", { name: "Roles" });
   await make.getByLabel(/The child/).selectOption({ label: child });
   await make.getByLabel(/A grown-up/).selectOption({ label: grownup });
@@ -145,45 +126,25 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await expect(owner).toHaveURL(/\/books\/book_/);
   const bookPath = new URL(owner.url()).pathname;
   const allPages = owner.getByRole("region", { name: "All pages" }).getByTestId("book-page");
-  await expect(allPages).toHaveCount(6);
-  await expect(allPages.nth(2)).toContainText(
-    `Dad checked the fuel. ${child} checked the cocoa. She buckled herself in tight.`,
-  );
+  await expect(allPages).toHaveCount(3);
+  await expect(allPages.nth(2)).toContainText(`“Same time tomorrow?” asked Dad. ${child} nodded, all smiles.`);
   await imagesLoaded(owner);
 
-  // 5. A look change applies on every page right away: Ada is on all six, so each page gets a recoloured layer.
-  const before = await pageSources(owner);
-  await owner.getByTestId("role-hero").getByRole("link", { name: "Edit saved look" }).click();
-  await owner.getByRole("button", { name: "Blonde hair colour" }).click();
-  await owner.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns to Our family; opening the book sooner can read the look from before the save.
-  await expect(owner).toHaveURL(/\/family$/);
-  await owner.goto(bookPath);
-  await expect(allPages).toHaveCount(6);
-  await imagesLoaded(owner);
-  const after = await pageSources(owner);
-  expect(
-    after
-      .map((sources, page) => sources.filter((src, layer) => src !== before[page]![layer]).length)
-      .every((changed) => changed >= 1),
-  ).toBe(true);
-  expect(after.flat()).toHaveLength(before.flat().length);
-
-  // 6. Edit page 1's paragraph in the editor, which shows the page as it will print (8.5 in trim + bleed = 840 px).
+  // 5. Edit page 1's paragraph in the editor, which shows the page as it will print (8.5 in trim + bleed = 840 px).
   const editor = owner.getByTestId("editor-page");
   expect(await editor.getByTestId("book-page").evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(840);
   await owner
     .getByRole("textbox", { name: "Text block 2" })
-    .fill("{{hero.name}} packed the basket with {{grownup.title}}'s moon cheese.");
-  await expect(editor).toContainText(`${child} packed the basket with Dad's moon cheese.`);
+    .fill("{{hero.name}} and {{grownup.title}} carried the kite up the hill.");
+  await expect(editor).toContainText(`${child} and Dad carried the kite up the hill.`);
   await owner.getByRole("button", { name: "Save text block 2" }).click();
   await expect(owner.getByText("Paragraph 2 · edited")).toBeVisible();
   await owner.reload();
-  await expect(owner.getByTestId("editor-page")).toContainText(`${child} packed the basket with Dad's moon cheese.`);
+  await expect(owner.getByTestId("editor-page")).toContainText(`${child} and Dad carried the kite up the hill.`);
   await imagesLoaded(owner);
   await evidence(owner, "m1-editor");
 
-  // 7. A PDF proof of the whole book: the worker renders it, the owner downloads it, checks it, and approves it.
+  // 6. A PDF proof of the whole book: the worker renders it, the owner downloads it, checks it, and approves it.
   const proofs = owner.getByRole("region", { name: "PDF proofs" });
   await proofs.getByRole("button", { name: "Make a PDF proof" }).click();
   const proof = proofs.getByTestId("proof").first();
@@ -192,12 +153,12 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
   await expect(proof).toHaveAttribute("data-approved", "false");
   await expect(proof).toContainText("unless approved");
   const downloading = owner.waitForEvent("download");
-  await proof.getByRole("link", { name: /Download PDF \(6 pages/ }).click();
+  await proof.getByRole("link", { name: /Download PDF \(3 pages/ }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/^proof_[\w-]+\.pdf$/);
   const pdf = readFileSync((await download.path())!);
   // One PDF page per book page, each 8.5 in trim + 0.125 in bleed per side = 630 pt, in the story's own font.
-  expect(pdfFacts(pdf)).toEqual(expect.objectContaining({ pages: 6, mediaBoxes: ["/MediaBox [0 0 630 630]"] }));
+  expect(pdfFacts(pdf)).toEqual(expect.objectContaining({ pages: 3, mediaBoxes: ["/MediaBox [0 0 630 630]"] }));
   expect(pdfFacts(pdf).fonts).toContain("Literata-Regular");
   if (process.env.E2E_SCREENSHOTS) await download.saveAs(`${process.env.E2E_SCREENSHOTS}/m1-proof.pdf`);
 
@@ -209,8 +170,8 @@ test("milestone 1: invite, family, viewer, characters, a personalized book, a lo
 
   // The grandparent reads the book with the edit and the approval, downloads the proof, and can change nothing.
   await gran.goto(bookPath);
-  await expect(gran.getByRole("region", { name: "All pages" }).getByTestId("book-page")).toHaveCount(6);
-  await expect(gran.getByTestId("editor-page")).toContainText(`${child} packed the basket with Dad's moon cheese.`);
+  await expect(gran.getByRole("region", { name: "All pages" }).getByTestId("book-page")).toHaveCount(3);
+  await expect(gran.getByTestId("editor-page")).toContainText(`${child} and Dad carried the kite up the hill.`);
   await expect(gran.getByText("you're a viewer")).toBeVisible();
   await expect(gran.getByRole("button", { name: /Save text/ })).toHaveCount(0);
   const granProof = gran.getByRole("region", { name: "PDF proofs" }).getByTestId("proof").first();

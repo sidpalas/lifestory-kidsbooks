@@ -6,7 +6,7 @@
 // Locally, `mise run story:import -- --author ... <dir>` wraps the same command and loads .env.
 // Idempotent: running it again changes nothing. A story that exists with another author, or a
 // version that exists with a different manifest, stops it without changing anything.
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -16,7 +16,7 @@ import { Effect, Schema } from "effect";
 
 import { Database } from "./database.ts";
 import { makeServerRuntime } from "./runtime.ts";
-import { importStoryVersion, publishStoryAddition } from "./stories.ts";
+import { importStoryVersion } from "./stories.ts";
 
 /** story.json: what a story directory says about the story itself; manifest.json holds the version's content. */
 const StoryFile = Schema.Struct({
@@ -41,26 +41,9 @@ const contentTypes: Record<string, string> = {
 const readJson = (dir: string, name: string) =>
   Effect.promise(async () => JSON.parse(await readFile(resolve(dir, name), "utf8")) as unknown);
 
-/** additions/1.json, 2.json, ... (D41), in order; a gap in the numbers is a mistake in the directory. */
-const readAdditions = (dir: string) =>
-  Effect.promise(async () => {
-    const names = await readdir(resolve(dir, "additions")).catch(() => [] as Array<string>);
-    const numbers = names
-      .flatMap((name) => /^(\d+)\.json$/.exec(name)?.[1] ?? [])
-      .map(Number)
-      .toSorted((a, b) => a - b);
-    if (numbers.some((n, i) => n !== i + 1))
-      throw new Error(`${dir}/additions: expected 1.json to ${numbers.length}.json, found ${names.join(", ")}`);
-    return Promise.all(
-      numbers.map(async (n) => JSON.parse(await readFile(resolve(dir, "additions", `${n}.json`), "utf8")) as unknown),
-    );
-  });
-
 /**
  * Records the story, owned by `authorId`, as published, imports its manifest as version
- * `story.json#version` (validated, every part approved, assets uploaded under the story's prefix), then
- * adds the version's additions from `additions/<n>.json` (D41), so new options reach a published version
- * without a new one.
+ * `story.json#version` (validated, book format 4, assets uploaded under the story's prefix).
  */
 export const importStoryDirectory = Effect.fn("stories.importDirectory")(function* (dir: string, authorId: string) {
   const story = yield* Schema.decodeUnknownEffect(StoryFile)(yield* readJson(dir, "story.json")).pipe(Effect.orDie);
@@ -86,7 +69,6 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
   if (!stored) return yield* Effect.die(new Error(`another story already has the slug "${story.slug}"`));
   if (stored.authorId !== authorId)
     return yield* Effect.die(new Error(`story ${story.id} already exists with another author`));
-  const additions = yield* readAdditions(dir);
   const readAsset = async (asset: string) => ({
     body: await readFile(resolve(dir, asset)),
     contentType: contentTypes[extname(asset)] ?? "application/octet-stream",
@@ -99,12 +81,8 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
     manifest: yield* readJson(dir, "manifest.json"),
     readAsset,
     publishedAt,
-    coveredWith: additions,
   });
-  for (const [i, addition] of additions.entries()) {
-    yield* publishStoryAddition({ storyVersionId, revision: i + 1, addition, readAsset, createdBy: authorId });
-  }
-  return { ...story, additions: additions.length };
+  return story;
 });
 
 if (import.meta.main) {
@@ -122,9 +100,7 @@ if (import.meta.main) {
     if (!author) throw new Error(`no account for ${email}; create it first (operator-create.ts, or an invitation)`);
     for (const dir of positionals) {
       const story = await runtime.runPromise(importStoryDirectory(dir, author.id));
-      console.log(
-        `${story.title} (/stories/${story.slug}) v${story.version} is published with ${story.additions} additions, by ${email}.`,
-      );
+      console.log(`${story.title} (/stories/${story.slug}) v${story.version} is published, by ${email}.`);
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

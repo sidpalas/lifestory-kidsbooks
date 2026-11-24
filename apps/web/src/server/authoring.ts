@@ -1,22 +1,13 @@
 import {
-  artImportStatus,
-  requestCasting,
-  castingStatus,
   Auth,
   canAuthor,
-  requestArtImport,
   checkDraft,
   createStory,
   getDraft,
   grantAuthor,
   listAuthoredStories,
   listAuthors,
-  listDraftParts,
-  draftPartPlan,
-  draftUploadReview,
   previewDraft,
-  requestDraftParts,
-  reviewDraftPart,
   publishDraft,
   revokeAuthor,
   saveDraft,
@@ -28,24 +19,16 @@ import {
 // Permission checks happen in @lifestory/core (authoring.ts). File uploads are a server route
 // (routes/api/authoring/stories.$storyId.assets.ts), since they carry bytes.
 import {
-  ArtImportRequest,
-  Casting,
-  CastingStatus,
   AuthoredStory,
   DraftChanged,
   DraftView,
   Forbidden,
   InvalidInput,
   NotAuthenticated,
-  Look,
   NotFound,
-  PartDecision,
-  PartRequest,
   ResultSchema,
   StoryDraft,
   StoryNotPublishable,
-  StoryPart,
-  ImportStatus,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -112,7 +95,6 @@ export const saveDraftFn = createServerFn({ method: "POST" })
         storyId: Schema.String,
         revision: Schema.Number,
         draft: StoryDraft,
-        casting: Schema.optionalKey(Casting),
         title: Text(120),
         summary: Schema.Trim.check(Schema.isMaxLength(500)),
       }),
@@ -227,164 +209,14 @@ export const revokeAuthorFn = createServerFn({ method: "POST" })
   );
 
 // Generated parts of the draft (D36): request one, watch them generate, and review them.
-const PartFailures = Schema.Union([NotAuthenticated, Forbidden, NotFound, InvalidInput]);
-
-export const DraftPartResult = ResultSchema(StoryPart, PartFailures);
-
-const { storyVersionId: _, ...requestFields } = PartRequest.fields;
-
-export const DraftPartPlanResult = ResultSchema(
-  Schema.Struct({
-    requests: Schema.Array(Schema.Struct(requestFields)),
-    blocked: Schema.Array(Schema.String),
-    estimateUsd: Schema.Number,
-  }),
-  DraftFailures,
-);
-export const draftPartPlanFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(StoryId))
-  .handler(({ data }) =>
-    runEffect(DraftPartPlanResult, currentUser.pipe(Effect.flatMap((user) => draftPartPlan(user, data.storyId)))),
-  );
-
-export const UploadReviewResult = ResultSchema(
-  Schema.Struct({ light: Schema.String, dark: Schema.String }),
-  DraftFailures,
-);
-export const draftUploadReviewFn = createServerFn({ method: "GET" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({ storyId: Schema.String, pageId: Schema.String, slotId: Schema.String, asset: Schema.String }),
-    ),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      UploadReviewResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => draftUploadReview(user, data.storyId, data.pageId, data.slotId, data.asset)),
-      ),
-    ),
-  );
-
-export const DraftPartsRequestResult = ResultSchema(Schema.Array(StoryPart), PartFailures);
-
-/** Parts of one figure, generated together: one tiled edit per option for up to four of its bases (D44). */
-export const requestDraftPartsFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({
-        storyId: Schema.String,
-        requests: Schema.Array(Schema.Struct(requestFields)).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-      }),
-    ),
-  )
-  .handler(({ data: { storyId, requests } }) =>
-    runEffect(
-      DraftPartsRequestResult,
-      currentUser.pipe(Effect.flatMap((user) => requestDraftParts(user, storyId, requests))),
-    ),
-  );
-
-export const reviewDraftPartFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({
-        storyId: Schema.String,
-        partId: Schema.String,
-        decision: PartDecision,
-        reason: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(500))),
-      }),
-    ),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      DraftPartResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => reviewDraftPart(user, data.storyId, data.partId, data.decision, data.reason)),
-      ),
-    ),
-  );
-
-export const DraftPartsResult = ResultSchema(Schema.Array(StoryPart), DraftFailures);
-
-export const listDraftPartsFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(StoryId))
-  .handler(({ data }) =>
-    runEffect(DraftPartsResult, currentUser.pipe(Effect.flatMap((user) => listDraftParts(user, data.storyId)))),
-  );
-
 export const PreviewDraftResult = ResultSchema(DraftView.fields.pages, DraftFailures);
 
-/** The editor's live preview of unsaved changes, optionally with family members' looks in roles; saves nothing. */
+/** The editor's live preview of unsaved changes; saves nothing. */
 export const previewDraftFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({
-        storyId: Schema.String,
-        draft: StoryDraft,
-        looks: Schema.Record(Schema.String, Look),
-        candidateId: Schema.optionalKey(Schema.String),
-      }),
-    ),
-  )
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, draft: StoryDraft })))
   .handler(({ data }) =>
     runEffect(
       PreviewDraftResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft, data.looks, data.candidateId)),
-      ),
-    ),
-  );
-
-// Importing art made outside the app: start an import of uploaded art, and follow it.
-export const ArtImportStartResult = ResultSchema(Schema.Struct({ taskId: Schema.String }), PartFailures);
-
-export const requestArtImportFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, request: ArtImportRequest })))
-  .handler(({ data }) =>
-    runEffect(
-      ArtImportStartResult,
-      currentUser.pipe(Effect.flatMap((user) => requestArtImport(user, data.storyId, data.request))),
-    ),
-  );
-
-export const ArtImportStatusResult = ResultSchema(ImportStatus, DraftFailures);
-
-export const artImportStatusFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, taskId: Schema.String })))
-  .handler(({ data }) =>
-    runEffect(
-      ArtImportStatusResult,
-      currentUser.pipe(Effect.flatMap((user) => artImportStatus(user, data.storyId, data.taskId))),
-    ),
-  );
-
-export const requestCastingFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({
-        storyId: Schema.String,
-        pageId: Schema.String,
-        mode: Schema.Literals(["detect", "extract"]),
-        requestId: Text(80),
-      }),
-    ),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      ArtImportStartResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => requestCasting(user, data.storyId, data.pageId, data.mode, data.requestId)),
-      ),
-    ),
-  );
-
-export const CastingStatusResult = ResultSchema(CastingStatus, DraftFailures);
-export const castingStatusFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, taskId: Schema.String })))
-  .handler(({ data }) =>
-    runEffect(
-      CastingStatusResult,
-      currentUser.pipe(Effect.flatMap((user) => castingStatus(user, data.storyId, data.taskId))),
+      currentUser.pipe(Effect.flatMap((user) => previewDraft(user, data.storyId, data.draft))),
     ),
   );

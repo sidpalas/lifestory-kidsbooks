@@ -24,7 +24,7 @@ The sample stories are format 2 and read as one frame per page. Start a version 
 
 - `mise run verify -- e2e --ci -- authoring`: adds a second frame, places it by inch field and keyboard, publishes,
   and checks the family's book draws it at that position with its line break.
-- `mise run verify -- proof --story the-paper-boat`: words in frames on the same lines and within 0.5 pt (x) and
+- `mise run verify -- proof --story the-kite-day`: words in frames on the same lines and within 0.5 pt (x) and
   1 pt (y) in the PDF.
 
 ## Gotchas

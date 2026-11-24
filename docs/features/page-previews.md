@@ -22,7 +22,7 @@ one the run says so and checks the other two.
 
 ## Verify
 
-`mise run verify -- layout --story the-paper-boat [--as operator@lifestory.dev]` at 320, 390, and 1280 px: each
+`mise run verify -- layout [--story the-kite-day] [--as operator@lifestory.dev]` at 320, 390, and 1280 px: each
 preview shows the page's whole shape, stays on screen, overlaps no other, and the page doesn't scroll sideways.
 A preview in a strip that scrolls sideways (the book editor's) needs to fit the strip, not the screen. Screenshots
 per view and width. `e2e -- books` asserts the same for the book editor at 320 px, and that changing pages from the

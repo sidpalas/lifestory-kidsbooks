@@ -6,7 +6,7 @@ const now = Date.parse("2026-11-19T12:00:00Z");
 const at = (ms: number) => new Date(now - ms);
 
 describe("expiredKeys", () => {
-  it("deletes leftover samples, the files of families that are gone, and proof PDFs without a proof, nothing else", () => {
+  it("deletes leftover samples, files of families and stories that are gone, and proof PDFs without a proof, nothing else", () => {
     const objects = [
       // The worker check that wrote samples is gone; whatever it left goes, however new.
       { key: "samples/new.svg", lastModified: at(0) },
@@ -18,15 +18,20 @@ describe("expiredKeys", () => {
       { key: "families/fam_1/other/proof_expired.png", lastModified: at(0) },
       { key: "families/fam_12/proofs/proof_b.pdf", lastModified: at(0) },
       { key: "families/fam_12/other/c.png", lastModified: at(0) },
-      // Story assets are never swept, however old.
+      // A live story's assets stay, however old. A story that's gone (D56's removed parts stories) loses its files
+      // once they're a day old; newer ones may belong to an import that hasn't written its row yet.
       { key: "stories/s1/v1/pages/p01/background.png", lastModified: at(365 * 24 * 60 * 60 * 1000) },
+      { key: "stories/s12/v1/pages/p01/background.png", lastModified: at(25 * 60 * 60 * 1000) },
+      { key: "stories/s12/v2/manifest-new.png", lastModified: at(23 * 60 * 60 * 1000) },
     ];
 
-    expect(expiredKeys(objects, { families: new Set(["fam_1"]), proofs: new Set(["proof_a", "proof_b"]) })).toEqual([
+    const live = { families: new Set(["fam_1"]), proofs: new Set(["proof_a", "proof_b"]), stories: new Set(["s1"]) };
+    expect(expiredKeys(objects, live, now)).toEqual([
       "samples/new.svg",
       "families/fam_1/proofs/proof_expired.pdf",
       "families/fam_12/proofs/proof_b.pdf",
       "families/fam_12/other/c.png",
+      "stories/s12/v1/pages/p01/background.png",
     ]);
   });
 });

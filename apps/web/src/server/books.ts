@@ -15,8 +15,6 @@ import {
   requestBookProof,
   saveTextEdit,
   setBookCast,
-  setBookLook,
-  setLookOverride,
   updateCharacter,
 } from "@lifestory/core";
 // Characters and personalized books. The domain logic and every family role check are in @lifestory/core
@@ -29,7 +27,6 @@ import {
   CharacterInput,
   Forbidden,
   InvalidInput,
-  LookOverride,
   NotAuthenticated,
   JobError,
   NotFound,
@@ -130,7 +127,6 @@ export const createBookFn = createServerFn({ method: "POST" })
       Schema.Struct({
         slug: Schema.String,
         cast: Schema.Record(Schema.String, Schema.String),
-        looks: Schema.optional(Schema.Record(Schema.String, LookOverride)),
         /** The family's books of this story the person saw and chose to make another copy next to. */
         existing: Schema.optional(Schema.Array(Schema.String)),
       }),
@@ -179,35 +175,6 @@ export const setBookCastFn = createServerFn({ method: "POST" })
       EditBookResult,
       currentUser.pipe(
         Effect.flatMap((user) => setBookCast(user.id, data)),
-        done,
-      ),
-    ),
-  );
-
-export const setLookOverrideFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, override: LookOverride })),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      EditBookResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => setLookOverride(user.id, data)),
-        done,
-      ),
-    ),
-  );
-
-/** How this book draws a role's character instead of their saved look (D46); `{}` goes back to the saved look. */
-export const setBookLookFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, changes: LookOverride })),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      EditBookResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => setBookLook(user.id, data)),
         done,
       ),
     ),

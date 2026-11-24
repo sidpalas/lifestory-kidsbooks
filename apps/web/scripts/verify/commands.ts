@@ -26,23 +26,11 @@ export const commands: ReadonlyArray<CommandInfo> = [
     writes: false,
   },
   {
-    name: "picker",
-    summary: "Character picker: age, then one feature at a time in order; the portrait follows each choice",
-    configs: ["dev", "image", "live"],
-    writes: false,
-  },
-  {
     name: "proof",
     summary:
       "PDF proof of a family book: the worker renders it, it is print-ready, and every page matches the editor by pixels and line positions",
     configs: ["dev", "image", "live"],
     writes: true,
-  },
-  {
-    name: "looks",
-    summary: "A story's figures on the lightest and darkest skin with every hair colour, as a contact sheet",
-    configs: ["dev", "image", "live"],
-    writes: false,
   },
   {
     name: "layout",

@@ -1,9 +1,9 @@
-// Adding or changing a family member: name, what the children call them, pronouns, and a look from the picker. Viewers see it read-only.
-import { type Character, defaultLook, type Look, PronounSet, unwrapResult } from "@lifestory/core/contracts";
+// Adding or changing a family member: name, what the children call them, pronouns, and an age (the roles they may
+// fill). Their likeness comes from a photo per book (D56), not from here. Viewers see it read-only.
+import { Age, ageOptions, type Character, PronounSet, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { LookPicker, withPronounFeatures } from "~/components/look-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -33,7 +33,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
   const [name, setName] = useState(character?.name ?? "");
   const [title, setTitle] = useState(character?.title ?? "");
   const [pronouns, setPronouns] = useState<PronounSet>(character?.pronouns ?? "she/her");
-  const [look, setLook] = useState<Look>(character?.look ?? defaultLook);
+  const [age, setAge] = useState<Age>(character?.age ?? "adult");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const locked = !hydrated || !canEdit;
@@ -44,7 +44,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
     try {
       unwrapResult(SaveCharacterResult)(
         await saveCharacterFn({
-          data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, look } },
+          data: { characterId: character?.id, character: { name, title: title.trim() || null, pronouns, age } },
         }),
       );
       await router.navigate({ to: "/family" });
@@ -103,11 +103,7 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
               id="character-pronouns"
               value={pronouns}
               disabled={locked}
-              onChange={(event) => {
-                const next = event.target.value as PronounSet;
-                setPronouns(next);
-                setLook((current) => withPronounFeatures(current, next));
-              }}
+              onChange={(event) => setPronouns(event.target.value as PronounSet)}
             >
               {PronounSet.literals.map((set) => (
                 <option key={set} value={set}>
@@ -116,18 +112,27 @@ export function CharacterForm({ character, canEdit }: { character?: Character; c
               ))}
             </NativeSelect>
           </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="character-age">Age</Label>
+            <NativeSelect
+              id="character-age"
+              value={age}
+              disabled={locked}
+              onChange={(event) => setAge(event.target.value as Age)}
+            >
+              {ageOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label} ({option.years})
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
         </div>
-        <LookPicker look={look} pronouns={pronouns} onChange={setLook} disabled={locked} />
         {canEdit && (
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={locked || saving || name.trim() === ""}>
               {character ? "Save changes" : "Add to the family"}
             </Button>
-            {character && (
-              <p className="text-xs text-muted-foreground">
-                Every book with {character.name} redraws from the new look.
-              </p>
-            )}
           </div>
         )}
         {error && (

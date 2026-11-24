@@ -1,18 +1,17 @@
-// A family's personalized books (plan.md, "Data model" and "Composing pages"). A book pins one story version and
-// stores only who fills each role, overrides for options that version can't draw, and text edits. Pages are composed
-// from those and the characters' current looks every time they're shown, so a look change applies to every page of
-// every book at once, and nothing is rendered or invalidated (D26: no AI, no GPU when a book is made).
+// A family's personalized books (D56). A book pins one story version and stores who fills each role and the family's
+// text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
+// figure until its own is drawn.
 import { schema } from "@lifestory/db";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import {
+  ageLabel,
   type CastMember,
-  castLook,
-  LookOverride,
+  composePage,
+  decodeStoryManifest,
   pageText,
   type StoryManifest,
-  withLookChanges,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
 import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
@@ -20,17 +19,10 @@ import { Character as CharacterSchema } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
-import { composeIllustration } from "./looks/compose.ts";
-import { ageLabel, type Look } from "./looks/vocabulary.ts";
-import { resolveIllustration } from "./pages.ts";
 import { createProof, proofSummaries, releaseDeletedProof } from "./proofs.ts";
-import { readableStoryVersion, withStoredAdditions } from "./stories.ts";
+import { readableStoryVersion } from "./stories.ts";
 
 const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
-const decodeOverride = Schema.decodeUnknownEffect(LookOverride);
-/** No row value for no changes, so "drawn as saved" has one representation. */
-const lookChangesOrNull = (changes: LookOverride | undefined) =>
-  changes && Object.keys(changes).length > 0 ? changes : null;
 
 const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
   ids.length === 0
@@ -43,42 +35,27 @@ const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
             name: schema.character.name,
             title: schema.character.title,
             pronouns: schema.character.pronouns,
-            look: schema.character.look,
+            age: schema.character.age,
           })
           .from(schema.character)
           .where(and(eq(schema.character.familyId, familyId), inArray(schema.character.id, [...ids]))),
       ).pipe(Effect.flatMap((rows) => Effect.forEach(rows, (row) => decodeCharacter(row).pipe(Effect.orDie))));
 
-/**
- * Fails with InvalidInput when `changes` asks for an option the story can't draw for the role (D46): a per-book look
- * offers only what the story draws, so it never needs a stand-in.
- */
-const checkLookChanges = (manifest: StoryManifest, slotId: string, look: Look, changes: LookOverride) => {
-  const missing = castLook(manifest, slotId, withLookChanges(look, changes)).unsupported.filter(
-    (axis) => axis in changes,
-  );
-  return missing.length > 0
-    ? Effect.fail(new InvalidInput({ message: `This story can't draw that ${missing.join(", ")} yet.` }))
-    : Effect.void;
-};
-
-/** Every role filled by a character of the book's family, of the role's age, with look changes the story draws. */
+/** Every role filled by a character of the book's family, of an age the role accepts. */
 const checkCast = Effect.fn("books.checkCast")(function* (
   manifest: StoryManifest,
   familyId: string,
   cast: Readonly<Record<string, string>>,
-  looks: Readonly<Record<string, LookOverride>> = {},
 ) {
   const characters = yield* familyCharacters(familyId, Object.values(cast));
   for (const slot of manifest.characterSlots) {
     const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
     if (!character) return yield* new InvalidInput({ message: `Choose who plays ${slot.label.toLowerCase()}.` });
-    if (castLook(manifest, slot.slotId, character.look).wrongAge) {
+    if (!slot.ages.includes(character.age)) {
       return yield* new InvalidInput({
         message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.`,
       });
     }
-    yield* checkLookChanges(manifest, slot.slotId, character.look, looks[slot.slotId] ?? {});
   }
   for (const slotId of Object.keys(cast)) {
     if (!manifest.characterSlots.some((slot) => slot.slotId === slotId))
@@ -136,15 +113,13 @@ export const createBook = Effect.fn("books.create")(function* (
   input: {
     readonly slug: string;
     readonly cast: Readonly<Record<string, string>>;
-    /** Per role, how this book draws its character differently from their saved look (D46). */
-    readonly looks?: Readonly<Record<string, LookOverride>>;
     /** The family's books of this story the person saw and chose to make another copy next to. */
     readonly existing?: ReadonlyArray<string>;
   },
 ) {
   yield* requireFamilyAccess(userId, familyId, "edit");
   const { story, storyVersionId, manifest } = yield* readableStoryVersion(userId, input.slug);
-  yield* checkCast(manifest, familyId, input.cast, input.looks);
+  yield* checkCast(manifest, familyId, input.cast);
   const id = `book_${crypto.randomUUID()}`;
   const unseen = yield* Database.query((db) =>
     db.transaction(async (tx) => {
@@ -169,7 +144,6 @@ export const createBook = Effect.fn("books.create")(function* (
           bookId: id,
           slotId,
           characterId,
-          lookChanges: lookChangesOrNull(input.looks?.[slotId]),
         })),
       );
       return null;
@@ -208,9 +182,8 @@ const loadBook = Effect.fn("books.load")(function* (bookId: string) {
       .where(eq(schema.book.id, bookId)),
   );
   if (!row) return yield* new NotFound({ entity: "book", id: bookId });
-  // A book follows its version's additions as they're published (D41): an option the version gains draws at once.
-  const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
-  return { ...row, manifest, additionRevision };
+  const manifest: StoryManifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
+  return { ...row, manifest };
 });
 
 /** A book the user may read (`access` "read") or edit, with its manifest. Non-members get NotFound. */
@@ -221,10 +194,8 @@ const bookFor = Effect.fn("books.bookFor")(function* (userId: string, bookId: st
 });
 
 /**
- * Everything BookPage needs for every page of a book: the cast's current looks (with this book's overrides) composed
- * from the story version's approved parts, and each text block with the family's edit applied. A role whose
- * character this version can't draw is left out of the pictures until the parent picks an override; its name and
- * pronouns still fill the text.
+ * Everything BookPage needs for every page of a book: each page's illustration, with the stock figures until the
+ * book's own are drawn (D56), and each text block with the family's edit applied.
  */
 export const getBook = Effect.fn("books.get")(function* (userId: string, bookId: string) {
   const { book, canEdit } = yield* bookFor(userId, bookId, "read");
@@ -243,9 +214,6 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     const row = castRows.find((candidate) => candidate.slotId === slot.slotId);
     const character = characters.find((candidate) => candidate.id === row?.characterId);
     if (!row || !character) continue;
-    const override = row.lookOverride ? yield* decodeOverride(row.lookOverride).pipe(Effect.orDie) : {};
-    const changes = row.lookChanges ? yield* decodeOverride(row.lookChanges).pipe(Effect.orDie) : {};
-    const fill = castLook(manifest, slot.slotId, withLookChanges(character.look, changes), override);
     roles.push({
       slotId: slot.slotId,
       characterId: character.id,
@@ -253,37 +221,21 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
         name: character.name,
         ...(character.title ? { title: character.title } : {}),
         pronouns: character.pronouns,
-        look: fill.look,
       },
-      override,
-      changes,
-      wrongAge: fill.wrongAge,
-      unsupported: [...fill.unsupported],
+      wrongAge: !slot.ages.includes(character.age),
     });
   }
   const cast: Record<string, CastMember> = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
-  const drawable = Object.fromEntries(
-    roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]),
-  );
 
-  const pages = yield* Effect.forEach(manifest.pages, (page) =>
-    resolveIllustration(book.storyId, book.version, composeIllustration(manifest, page, drawable)).pipe(
-      Effect.map((layers) => ({
-        pageId: page.pageId,
-        layers,
-        text: pageText(page).map((block, blockIndex) => {
-          const edited =
-            edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
-          return {
-            style: block.style,
-            original: block.content,
-            edited,
-            text: resolveText(edited ?? block.content, cast),
-          };
-        }),
-      })),
-    ),
-  );
+  const pages = manifest.pages.map((page) => ({
+    pageId: page.pageId,
+    layers: composePage({ storyId: book.storyId, version: book.version }, page),
+    text: pageText(page).map((block, blockIndex) => {
+      const edited =
+        edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
+      return { style: block.style, original: block.content, edited, text: resolveText(edited ?? block.content, cast) };
+    }),
+  }));
   const view: BookView = {
     book: { id: book.id, familyId: book.familyId, title: book.title },
     story: { id: book.storyId, slug: book.slug, title: book.storyTitle, authorName: book.authorName },
@@ -296,7 +248,7 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
   return { view, canEdit };
 });
 
-/** Puts another family member in a role. Any override or look change for the previous character is dropped. */
+/** Puts another family member in a role. */
 export const setBookCast = Effect.fn("books.setCast")(function* (
   userId: string,
   input: { readonly bookId: string; readonly slotId: string; readonly characterId: string },
@@ -316,64 +268,8 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
       .values({ bookId: input.bookId, slotId: input.slotId, characterId: input.characterId })
       .onConflictDoUpdate({
         target: [schema.bookCast.bookId, schema.bookCast.slotId],
-        set: { characterId: input.characterId, lookOverride: null, lookChanges: null },
+        set: { characterId: input.characterId },
       }),
-  );
-});
-
-/**
- * Sets the options this book draws for a role in place of ones its story version can't draw (D26). Fails with
- * InvalidInput when the override still leaves the role undrawable.
- */
-export const setLookOverride = Effect.fn("books.setLookOverride")(function* (
-  userId: string,
-  input: { readonly bookId: string; readonly slotId: string; readonly override: LookOverride },
-) {
-  const { book } = yield* bookFor(userId, input.bookId, "edit");
-  const [row] = yield* Database.query((db) =>
-    db
-      .select()
-      .from(schema.bookCast)
-      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
-  );
-  if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
-  const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
-  const changes = row.lookChanges ? yield* decodeOverride(row.lookChanges).pipe(Effect.orDie) : {};
-  const fill = castLook(book.manifest, input.slotId, withLookChanges(character!.look, changes), input.override);
-  if (fill.wrongAge || fill.unsupported.length > 0) {
-    return yield* new InvalidInput({ message: `This story still can't draw: ${fill.unsupported.join(", ")}.` });
-  }
-  yield* Database.query((db) =>
-    db
-      .update(schema.bookCast)
-      .set({ lookOverride: input.override })
-      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
-  );
-});
-
-/**
- * Sets how this book draws a role's character instead of their saved look (D46): `changes` holds the axes it draws
- * differently, and `{}` goes back to the saved look. The family member doesn't change, and other books don't either.
- */
-export const setBookLook = Effect.fn("books.setLook")(function* (
-  userId: string,
-  input: { readonly bookId: string; readonly slotId: string; readonly changes: LookOverride },
-) {
-  const { book } = yield* bookFor(userId, input.bookId, "edit");
-  const [row] = yield* Database.query((db) =>
-    db
-      .select()
-      .from(schema.bookCast)
-      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
-  );
-  if (!row) return yield* new NotFound({ entity: "role", id: input.slotId });
-  const [character] = yield* familyCharacters(book.familyId, [row.characterId]);
-  yield* checkLookChanges(book.manifest, input.slotId, character!.look, input.changes);
-  yield* Database.query((db) =>
-    db
-      .update(schema.bookCast)
-      .set({ lookChanges: lookChangesOrNull(input.changes) })
-      .where(and(eq(schema.bookCast.bookId, input.bookId), eq(schema.bookCast.slotId, input.slotId))),
   );
 });
 
@@ -425,10 +321,9 @@ export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
 export const requestBookProof = Effect.fn("books.requestProof")(function* (userId: string, bookId: string) {
   const { book } = yield* bookFor(userId, bookId, "edit");
   const { view } = yield* getBook(userId, bookId);
-  const undrawable = view.roles.filter((role) => role.wrongAge || role.unsupported.length > 0);
-  if (undrawable.length > 0 || view.roles.length < view.manifest.characterSlots.length) {
+  if (view.roles.some((role) => role.wrongAge) || view.roles.length < view.manifest.characterSlots.length) {
     return yield* new InvalidInput({
-      message: "Every role needs someone the story can draw before the book can be printed.",
+      message: "Every role needs a family member of an age it accepts before the book can be printed.",
     });
   }
   const edits = yield* Database.query((db) =>
@@ -445,7 +340,6 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
     familyId: book.familyId,
     bookId,
     storyVersionId: book.storyVersionId,
-    additionRevision: book.additionRevision,
     content: { cast: view.cast, textEdits: edits },
     requestedBy: userId,
   });

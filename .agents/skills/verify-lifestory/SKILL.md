@@ -1,6 +1,6 @@
 ---
 name: verify-lifestory
-description: Run the Lifestory app (dev server, production images, or the live site as the agent family) and prove a feature works with screenshots, PDFs, and pass/fail checks. Use before handing back any change to lifestory-kidsbooks, after a deploy, or to reproduce a report about the picker, books, looks, or PDF proofs.
+description: Run the Lifestory app (dev server, production images, or the live site as the agent family) and prove a feature works with screenshots, PDFs, and pass/fail checks. Use before handing back any change to lifestory-kidsbooks, after a deploy, or to reproduce a report about family members, books, page previews, or PDF proofs.
 ---
 
 # Verify Lifestory

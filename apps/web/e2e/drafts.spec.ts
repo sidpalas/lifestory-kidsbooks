@@ -7,7 +7,7 @@ import { Effect } from "effect";
 
 // A story draft's revision check (D37): a save or publish made from an older revision fails with DraftChanged instead
 // of overwriting a save made elsewhere; a published version can't be saved; only its author edits a draft.
-const fixture = new URL("../../../fixtures/stories/moon-picnic/", import.meta.url);
+const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
 const operator: SessionUser = {
   id: "user_operator",
   name: "Sid (operator)",
@@ -24,14 +24,14 @@ const parent: SessionUser = {
 };
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-test("a draft open in one tab doesn't overwrite a save made in another after reloading its parts", async ({ page }) => {
+test("a draft open in one tab doesn't overwrite a save made in another", async ({ page }) => {
   test.setTimeout(120_000);
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
   const core = await import("@lifestory/core");
   const runtime = core.makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   try {
-    // A draft of the sample story by the operator, with one generated part.
+    // A draft of the sample story by the operator.
     const suffix = unique();
     const storyId = `story_e2e_drafts_${suffix}`;
     await run(
@@ -58,58 +58,23 @@ test("a draft open in one tab doesn't overwrite a save made in another after rel
         }),
       }),
     );
-    const [part] = await run(
-      core.requestParts(operator.id, [
-        {
-          storyVersionId: `sv_e2e_drafts_${suffix}`,
-          pageId: "p01",
-          slotId: "hero",
-          age: "young-child",
-          face: "face:round",
-          axis: "hair",
-          option: "hair:curly",
-          zone: [250, 0, 750, 420],
-        },
-      ]),
-    );
-    await expect
-      .poll(async () => (await run(core.getPart(operator.id, part!.id))).status, { timeout: 30_000 })
-      .toBe("pending_review");
-    // A part that reads as generating (no task to say otherwise) keeps the Review tab reloading the draft every 2 s.
-    await run(
-      core.Database.use(({ pool }) =>
-        Effect.promise(() =>
-          pool.query("update story_part set status = 'generating', task_id = null where id = $1", [part!.id]),
-        ),
-      ),
-    );
-
     const opened = await run(core.getDraft(operator, storyId));
     await page.goto(`/__dev/log-me-in/operator@lifestory.dev?returnTo=/author/${storyId}`);
     await expect(page.getByTestId("draft-state")).toHaveText(`Saved · revision ${opened.revision}`, {
       timeout: 30_000,
     });
-    await page.getByRole("tab", { name: "Review" }).click();
 
-    // Another tab saves the draft; then this one reloads it for its parts.
+    // Another tab saves the draft.
     await run(
       core.saveDraft(operator, storyId, {
         revision: opened.revision,
         draft: opened.draft,
-        casting: opened.casting,
         title: `Saved elsewhere ${suffix}`,
         summary: opened.story.summary,
       }),
     );
-    for (let i = 0; i < 2; i++) {
-      const reload = await page.waitForRequest((r) => r.method() === "GET" && r.url().includes("_serverFn"), {
-        timeout: 10_000,
-      });
-      await reload.response();
-    }
 
     // Its next save is refused rather than overwriting the other tab's.
-    await page.getByRole("tab", { name: "Story and type" }).click();
     await page.getByLabel("Title", { exact: true }).fill(`Saved here ${suffix}`);
     await page.getByRole("button", { name: "Save draft" }).click();
     await expect(page.getByText(/This draft changed somewhere else/)).toBeVisible();
@@ -136,7 +101,6 @@ test("the server keeps a draft's revision check, published versions, and drafts 
       core.saveDraft(user, storyId, {
         revision,
         draft: opened.draft,
-        casting: opened.casting,
         title,
         summary: opened.story.summary,
       });
@@ -157,7 +121,7 @@ test("the server keeps a draft's revision check, published versions, and drafts 
       core.Database.use(({ pool }) =>
         Effect.promise(() =>
           pool.query(
-            "select s.id, v.manifest::text as manifest from story s join story_version v on v.story_id = s.id where s.slug = 'the-moon-picnic' and v.published_at is not null order by v.version desc limit 1",
+            "select s.id, v.manifest::text as manifest from story s join story_version v on v.story_id = s.id where s.slug = 'the-kite-day' and v.published_at is not null order by v.version desc limit 1",
           ),
         ),
       ),

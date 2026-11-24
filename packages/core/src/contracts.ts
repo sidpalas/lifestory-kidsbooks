@@ -2,24 +2,11 @@
 // Nothing here may import Node-only modules: the browser bundle imports this file.
 import { Schema } from "effect";
 
-import {
-  CastMember,
-  Look,
-  LookOverride,
-  PronounSet,
-  StoryDraft,
-  StoryManifest,
-  TextStyleName,
-} from "./book-format/index.ts";
-import { Casting } from "./imports/casting-contract.ts";
-import { StoryPart } from "./parts/contract.ts";
+import { Age, CastMember, PronounSet, StoryDraft, StoryManifest, TextStyleName } from "./book-format/index.ts";
 
 export * from "./book-format/index.ts";
 export * from "./errors.ts";
 export * from "./rpc.ts";
-export * from "./parts/contract.ts";
-export * from "./imports/contract.ts";
-export * from "./imports/casting-contract.ts";
 
 /** Better Auth's minimum, and what every password form checks before submitting. */
 export const MIN_PASSWORD_LENGTH = 12;
@@ -72,7 +59,7 @@ export const InvitationDetails = Schema.Struct({
 });
 export type InvitationDetails = typeof InvitationDetails.Type;
 
-/** A family member as drawn in books (D26): name, title, and pronouns for the text, a look for the pictures. */
+/** A family member (D56): name, title, and pronouns for the text, and an age for the roles they may fill. */
 export const Character = Schema.Struct({
   id: Schema.String,
   familyId: Schema.String,
@@ -80,7 +67,7 @@ export const Character = Schema.Struct({
   /** What the children call them, such as "Dad" or "Nana"; null when they go by their name. */
   title: Schema.NullOr(Schema.String),
   pronouns: PronounSet,
-  look: Look,
+  age: Age,
 });
 export type Character = typeof Character.Type;
 
@@ -88,7 +75,7 @@ export const CharacterInput = Schema.Struct({
   name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(60)),
   title: Schema.NullOr(Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(30))),
   pronouns: PronounSet,
-  look: Look,
+  age: Age,
 });
 export type CharacterInput = typeof CharacterInput.Type;
 
@@ -104,34 +91,15 @@ export const BookSummary = Schema.Struct({
 });
 export type BookSummary = typeof BookSummary.Type;
 
-/** How one character fills one role of a book (castLook in the book format). */
+/** Who fills one role of a book. */
 export const BookRole = Schema.Struct({
   slotId: Schema.String,
   characterId: Schema.String,
-  /** The character, with the look the pages draw. */
   member: CastMember,
-  override: LookOverride,
-  /** How this book draws the character differently from their saved look (D46); already in `member.look`. */
-  changes: LookOverride,
+  /** The character's age isn't one the role accepts; set when their age changed after the book was made. */
   wrongAge: Schema.Boolean,
-  unsupported: Schema.Array(Schema.String),
 });
 export type BookRole = typeof BookRole.Type;
-
-/**
- * Who fills one role of a story preview: a family member (`characterId`), or the role's example character with a
- * look being tried (`characterId` null). Like a book's role, one the story can't draw is left out of the pictures.
- */
-export const PreviewRole = Schema.Struct({
-  slotId: Schema.String,
-  characterId: Schema.NullOr(Schema.String),
-  /** The member's look, as `member.look` draws it, with these axes changed for this book (D46). */
-  member: CastMember,
-  changes: LookOverride,
-  wrongAge: Schema.Boolean,
-  unsupported: Schema.Array(Schema.String),
-});
-export type PreviewRole = typeof PreviewRole.Type;
 
 /** A text block of a book page: the story's content, the family's edit if any, and the text as printed. */
 export const BookTextBlock = Schema.Struct({
@@ -153,7 +121,7 @@ export const BookView = Schema.Struct({
   roles: Schema.Array(BookRole),
   /** Who fills each slot, for the text tokens and BookPage's guides. */
   cast: Schema.Record(Schema.String, CastMember),
-  /** Each page's illustration as storage keys (a role that can't be drawn is left out) and its text. */
+  /** Each page's illustration as storage keys and its text. */
   pages: Schema.Array(
     Schema.Struct({
       pageId: Schema.String,
@@ -194,7 +162,7 @@ export const ProofSummary = Schema.Struct({
   approvedBy: Schema.NullOr(Schema.String),
   /** When an unapproved proof is deleted (ISO 8601, D31); null once approved. */
   expiresAt: Schema.NullOr(Schema.String),
-  /** Who fills each slot, by name, in slot order, so proofs of different looks can be told apart. */
+  /** Who fills each slot, by name, in slot order, so proofs of different casts can be told apart. */
   castNames: Schema.Array(Schema.String),
 });
 export type ProofSummary = typeof ProofSummary.Type;
@@ -208,14 +176,10 @@ export const AuthoredStory = Schema.Struct({
   status: Schema.String,
   draftVersion: Schema.NullOr(Schema.Number),
   publishedVersion: Schema.NullOr(Schema.Number),
-  /** How many additions the newest published version has (D41). */
-  additions: Schema.Number,
-  /** Look options the newest published version can't draw yet, with its additions: what the author still has to add. */
-  missingOptions: Schema.Array(Schema.String),
 });
 export type AuthoredStory = typeof AuthoredStory.Type;
 
-/** A story draft in the authoring editor (D37): its manifest as saved, its generated parts, and every page composed for the slots' examples. */
+/** A story draft in the authoring editor (D37): its manifest as saved, and every page composed with the stock figures. */
 export const DraftView = Schema.Struct({
   story: Schema.Struct({
     id: Schema.String,
@@ -227,10 +191,7 @@ export const DraftView = Schema.Struct({
   storyVersionId: Schema.String,
   version: Schema.Number,
   revision: Schema.Number,
-  /** As saved, without generated parts; the pictures in `pages` include them. */
   draft: StoryDraft,
-  casting: Casting,
-  parts: Schema.Array(StoryPart),
   pages: Schema.Array(
     Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) }),
   ),

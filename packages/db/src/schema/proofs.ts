@@ -24,8 +24,6 @@ export const proof = pgTable(
     storyVersionId: text("story_version_id")
       .notNull()
       .references(() => storyVersion.id, { onDelete: "restrict" }),
-    /** How many of the version's additions (D41) the proof draws: those it was requested with, never later ones. */
-    additionRevision: integer("addition_revision").notNull().default(0),
     /** ProofContent (packages/core/src/proofs.ts): the cast and text edits the PDF shows. */
     content: jsonb("content").notNull(),
     status: proofStatus("status").notNull().default("rendering"),

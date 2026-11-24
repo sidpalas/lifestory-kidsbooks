@@ -18,7 +18,7 @@ of it, which stay archived until restored. Nothing is deleted.
 
 ## Seed data
 
-None archived. The e2e spec imports a fresh copy of The Moon Picnic for the operator each run; never archive the
+None archived. The e2e spec imports a fresh copy of The Kite Day for the operator each run; never archive the
 seeded stories or production ones to try it.
 
 ## Verify

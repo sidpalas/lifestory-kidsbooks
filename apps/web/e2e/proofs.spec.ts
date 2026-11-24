@@ -22,15 +22,6 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  const look = {
-    face: "face:round",
-    features: "features:defined",
-    skin: "skin:s3",
-    hair: "hair:curly",
-    hairColour: "hair-colour:black",
-    glasses: "glasses:round",
-    facialHair: "facial-hair:none",
-  } as const;
   let bookId = "";
   try {
     const [parent, family] = ["user_parent", "org_example_family"];
@@ -39,7 +30,7 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
         name: `Ivy ${suffix}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "young-child" },
+        age: "young-child",
       }),
     );
     const grown = await run(
@@ -47,13 +38,13 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
         name: `Ray ${suffix}`,
         title: "Dad",
         pronouns: "he/him",
-        look: { ...look, age: "adult" },
+        age: "adult",
       }),
     );
     // Another copy next to the family's books of the story from earlier tests and runs (D47).
     const existing = (await run(listBooks(parent, family))).books.map((book) => book.id);
     ({ id: bookId } = await run(
-      createBook(parent, family, { slug: "the-moon-picnic", cast: { hero: hero.id, grownup: grown.id }, existing }),
+      createBook(parent, family, { slug: "the-kite-day", cast: { hero: hero.id, grownup: grown.id }, existing }),
     ));
   } finally {
     await runtime.dispose();
@@ -67,7 +58,7 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
   // The worker renders it with headless Chromium; the list polls until it's ready.
   await expect(proofs.first()).toHaveAttribute("data-status", "ready", { timeout: 60_000 });
   await expect(proofs.first()).toContainText(`Ivy ${suffix} & Ray ${suffix}`);
-  await expect(proofs.first()).toContainText("6 pages");
+  await expect(proofs.first()).toContainText("3 pages");
 
   const href = await proofs
     .first()
@@ -82,13 +73,13 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
   // per side with TrimBox and BleedBox, nothing transparent, fonts embedded, art at 300 ppi.
   const pdf = await download.body();
   const facts = pdfFacts(pdf);
-  expect(facts.pages).toBe(6);
+  expect(facts.pages).toBe(3);
   expect(facts.fonts).toContain("Literata-Regular");
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
   const { checkPrintReady } = await import("@lifestory/core");
   const printReady = await checkPrintReady(pdf, { widthIn: 8.5, heightIn: 8.5 });
   expect(printReady.issues).toEqual([]);
-  expect(printReady.images).toHaveLength(6);
+  expect(printReady.images).toHaveLength(3);
   expect(printReady.images.every((image) => image.ppi === 300)).toBe(true);
 
   // The grandparent is a viewer in the same family: they can download proofs but not make them.
@@ -136,22 +127,13 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
   };
   try {
     const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-    const look = {
-      face: "face:round",
-      features: "features:defined",
-      skin: "skin:s3",
-      hair: "hair:curly",
-      hairColour: "hair-colour:black",
-      glasses: "glasses:round",
-      facialHair: "facial-hair:none",
-    } as const;
     const [parent, family] = ["user_parent", "org_example_family"];
     const hero = await run(
       core.createCharacter(parent, family, {
         name: `Nell ${suffix}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "young-child" },
+        age: "young-child",
       }),
     );
     const grown = await run(
@@ -159,13 +141,13 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
         name: `Abe ${suffix}`,
         title: "Dad",
         pronouns: "he/him",
-        look: { ...look, age: "adult" },
+        age: "adult",
       }),
     );
     const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
     const { id: bookId } = await run(
       core.createBook(parent, family, {
-        slug: "the-moon-picnic",
+        slug: "the-kite-day",
         cast: { hero: hero.id, grownup: grown.id },
         existing,
       }),
@@ -280,22 +262,13 @@ test("deleting a book deletes its proofs' PDFs, and no PDF is served without its
     );
   try {
     const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-    const look = {
-      face: "face:round",
-      features: "features:defined",
-      skin: "skin:s3",
-      hair: "hair:curly",
-      hairColour: "hair-colour:black",
-      glasses: "glasses:none",
-      facialHair: "facial-hair:none",
-    } as const;
     const [parent, family] = ["user_parent", "org_example_family"];
     const hero = await run(
       core.createCharacter(parent, family, {
         name: `Wren ${suffix}`,
         title: null,
         pronouns: "she/her",
-        look: { ...look, age: "young-child" },
+        age: "young-child",
       }),
     );
     const grown = await run(
@@ -303,13 +276,13 @@ test("deleting a book deletes its proofs' PDFs, and no PDF is served without its
         name: `Otto ${suffix}`,
         title: "Dad",
         pronouns: "he/him",
-        look: { ...look, age: "adult" },
+        age: "adult",
       }),
     );
     const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
     const { id: bookId } = await run(
       core.createBook(parent, family, {
-        slug: "the-moon-picnic",
+        slug: "the-kite-day",
         cast: { hero: hero.id, grownup: grown.id },
         existing,
       }),

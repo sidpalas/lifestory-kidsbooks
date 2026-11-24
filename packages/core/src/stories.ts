@@ -1,32 +1,22 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, isNotNull, lte, or } from "drizzle-orm";
-import { Effect, Schema } from "effect";
+import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
+import { Effect } from "effect";
 
 import {
-  additionAssets,
-  type CastMember,
-  castLook,
+  composePage,
   decodeStoryManifest,
-  type LookOverride,
-  withLookChanges,
-  mergeAdditions,
-  StoryAddition,
+  exampleCast,
   isVariableFont,
   manifestAssets,
-  storyAssetKey,
   staticFontIssues,
-  unapprovedParts,
-  vocabularyGaps,
+  storyAssetKey,
   type StoryManifest,
 } from "./book-format/index.ts";
-import type { Character, PreviewRole, StorySummary } from "./contracts.ts";
+import type { StorySummary } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { NotFound } from "./errors.ts";
-import { composeIllustration } from "./looks/compose.ts";
-import type { Look } from "./looks/vocabulary.ts";
-import { resolveIllustration } from "./pages.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
 
@@ -59,38 +49,6 @@ const readableBy = (userId: string) =>
     or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")),
   );
 
-const decodeAddition = Schema.decodeUnknownEffect(StoryAddition);
-
-/**
- * A published version as books draw it (D41): its stored manifest with its additions merged in, up to `upTo` (a
- * proof's pinned revision) or all of them. Returns the revision it merged up to. Every stored manifest and addition
- * was checked when published, so a failure here is a bug.
- */
-export const withStoredAdditions = Effect.fn("stories.withStoredAdditions")(function* (
-  storyVersionId: string,
-  stored: unknown,
-  upTo?: number,
-) {
-  const manifest = yield* decodeStoryManifest(stored).pipe(Effect.orDie);
-  const rows = yield* Database.query((db) =>
-    db
-      .select({ revision: schema.storyVersionAddition.revision, addition: schema.storyVersionAddition.addition })
-      .from(schema.storyVersionAddition)
-      .where(
-        and(
-          eq(schema.storyVersionAddition.storyVersionId, storyVersionId),
-          upTo === undefined ? undefined : lte(schema.storyVersionAddition.revision, upTo),
-        ),
-      )
-      .orderBy(asc(schema.storyVersionAddition.revision)),
-  );
-  const additions = yield* Effect.forEach(rows, (row) => decodeAddition(row.addition).pipe(Effect.orDie));
-  return {
-    manifest: yield* mergeAdditions(manifest, additions).pipe(Effect.orDie),
-    additionRevision: rows.at(-1)?.revision ?? 0,
-  };
-});
-
 /** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
 export const readableStoryVersion = Effect.fn("stories.readableVersion")(function* (userId: string, slug: string) {
   const [row] = yield* Database.query((db) =>
@@ -114,7 +72,7 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
       .limit(1),
   );
   if (!row) return yield* new NotFound({ entity: "story", id: slug });
-  const { manifest, additionRevision } = yield* withStoredAdditions(row.storyVersionId, row.manifest);
+  const manifest: StoryManifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
   const { storyVersionId, version, manifest: _, status, ...story } = row;
   // Only its author reads an archived story (D49), to preview it; nobody makes a book of it.
   return {
@@ -123,80 +81,21 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
     storyVersionId,
     version,
     manifest,
-    additionRevision,
   };
 });
 
-/** What a story preview casts: see previewRoles. */
-export interface PreviewChoice {
-  readonly cast?: Readonly<Record<string, string>>;
-  readonly looks?: Readonly<Record<string, Look>>;
-  /** Per role, how the book would draw its family member differently from their saved look (D46); not saved. */
-  readonly changes?: Readonly<Record<string, LookOverride>>;
-}
-
 /**
- * Who a story preview casts in each role. `looks[slotId]` tries a look on the role's example character;
- * otherwise `cast[slotId]` names one of `characters`; a role with neither gets the first family member of an age it
- * accepts, and the example when nobody fits. So a family sees itself in a story before making the book.
+ * A story with the newest version `userId` may read, for previewing its pages: the illustrator's stock characters on
+ * every page (D56), named by each role's example. Fails with NotFound when the story doesn't exist or isn't visible
+ * to the user.
  */
-export const previewRoles = (
-  manifest: StoryManifest,
-  characters: ReadonlyArray<Character>,
-  choice: PreviewChoice,
-): Array<PreviewRole> =>
-  manifest.characterSlots.map((slot) => {
-    const tried = choice.looks?.[slot.slotId];
-    const chosen = choice.cast?.[slot.slotId];
-    const character = tried
-      ? undefined
-      : chosen
-        ? characters.find((candidate) => candidate.id === chosen)
-        : characters.find((candidate) => slot.ages.includes(candidate.look.age));
-    const changes = (character && choice.changes?.[slot.slotId]) || {};
-    const member: CastMember = character
-      ? {
-          name: character.name,
-          ...(character.title ? { title: character.title } : {}),
-          pronouns: character.pronouns,
-          look: withLookChanges(character.look, changes),
-        }
-      : { ...slot.example, look: tried ?? slot.example.look };
-    const fill = castLook(manifest, slot.slotId, member.look);
-    return {
-      slotId: slot.slotId,
-      characterId: character?.id ?? null,
-      member,
-      changes,
-      wrongAge: fill.wrongAge,
-      unsupported: [...fill.unsupported],
-    };
-  });
-
-/**
- * A story with the newest version `userId` may read, for previewing its pages with the roles `previewRoles` picks
- * from the family's `characters`. Every page's illustration comes back composed, as storage keys; a role the story
- * can't draw is left out of the pictures, as in a book (D28), and its name still fills the text. Fails with
- * NotFound when the story doesn't exist or isn't visible to the user.
- */
-export const getStoryPreview = Effect.fn("stories.getPreview")(function* (
-  userId: string,
-  slug: string,
-  characters: ReadonlyArray<Character>,
-  choice: PreviewChoice = {},
-) {
+export const getStoryPreview = Effect.fn("stories.getPreview")(function* (userId: string, slug: string) {
   const { story, archived, version, manifest } = yield* readableStoryVersion(userId, slug);
-  const roles = previewRoles(manifest, characters, choice);
-  const cast = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
-  const drawable = Object.fromEntries(
-    roles.filter((role) => !role.wrongAge && role.unsupported.length === 0).map((role) => [role.slotId, role.member]),
-  );
-  const pages = yield* Effect.forEach(manifest.pages, (page) =>
-    resolveIllustration(story.id, version, composeIllustration(manifest, page, drawable)).pipe(
-      Effect.map((layers) => ({ pageId: page.pageId, layers })),
-    ),
-  );
-  return { story, archived, version, manifest, roles, cast, pages };
+  const pages = manifest.pages.map((page) => ({
+    pageId: page.pageId,
+    layers: composePage({ storyId: story.id, version }, page),
+  }));
+  return { story, archived, version, manifest, cast: exampleCast(manifest), pages };
 });
 
 // No ".." anywhere: some S3 servers normalize paths, which would let a key climb out of the story.
@@ -257,17 +156,11 @@ export interface StoryVersionImport {
   /** Reads an asset the manifest references, by its path in the manifest. */
   readonly readAsset: (asset: string) => Promise<{ readonly body: Uint8Array; readonly contentType: string }>;
   readonly publishedAt: Date | null;
-  /**
-   * The additions the version is published with (D41), from the same story directory. Publishing checks that the
-   * version covers the vocabulary with them merged in, so a fresh import of an older version plus its additions
-   * passes the check that a stored version and its additions pass.
-   */
-  readonly coveredWith?: ReadonlyArray<unknown>;
 }
 
 /**
  * Writes a version's files under its folder. A version's files never change once written, like its manifest: books,
- * proofs, and the recolour cache were made from them. Every file is compared before anything is written, so a
+ * proofs, and figures were drawn from them. Every file is compared before anything is written, so a
  * refused write changes nothing; only files still missing (an import that stopped partway) are uploaded.
  */
 const storeVersionFiles = Effect.fn("stories.storeVersionFiles")(function* (
@@ -301,23 +194,6 @@ const storeVersionFiles = Effect.fn("stories.storeVersionFiles")(function* (
  */
 export const importStoryVersion = Effect.fn("stories.importVersion")(function* (input: StoryVersionImport) {
   const manifest: StoryManifest = yield* decodeStoryManifest(input.manifest).pipe(Effect.orDie);
-  if (input.publishedAt) {
-    // Publishing needs every part approved and the whole look vocabulary covered (D26), counting its additions (D41),
-    // except options added to the vocabulary after it was published (D43).
-    const additions = yield* Effect.forEach(input.coveredWith ?? [], (addition) =>
-      decodeAddition(addition).pipe(Effect.orDie),
-    );
-    const covered = yield* mergeAdditions(manifest, additions).pipe(Effect.orDie);
-    const problems = [
-      ...unapprovedParts(manifest).map((part) => `not approved: ${part}`),
-      ...vocabularyGaps(covered, input.publishedAt),
-    ];
-    if (problems.length > 0) {
-      return yield* Effect.die(
-        new Error(`story ${input.storyId} v${input.version} can't be published:\n${problems.join("\n")}`),
-      );
-    }
-  }
   // The trim must suit the printer: Lulu's bleed and safe margin (D35). Checked here, like fonts below, so versions
   // stored before the rule stay readable.
   const trimProblems = printTrimIssues(manifest.trim);
@@ -360,96 +236,11 @@ export const importStoryVersion = Effect.fn("stories.importVersion")(function* (
       .from(schema.storyVersion)
       .where(and(eq(schema.storyVersion.storyId, input.storyId), eq(schema.storyVersion.version, input.version)));
   });
-  // jsonb doesn't keep key order, so compare structurally, and decode the stored one the same way: a manifest stored
-  // before a field with a default existed (a look's features, D40) is the same manifest.
+  // jsonb doesn't keep key order, so compare structurally, and decode the stored one the same way.
   const storedManifest = stored ? yield* decodeStoryManifest(stored.manifest).pipe(Effect.orDie) : undefined;
   if (!isDeepStrictEqual(storedManifest, manifest)) {
     return yield* Effect.die(
       new Error(`story ${input.storyId} v${input.version} already exists with a different manifest; add a new version`),
-    );
-  }
-});
-
-/**
- * Adds addition `revision` to a published story version (D41): palettes, bases, and parts for options it lacks,
- * never a change to what it has. Revisions count up from 1 without gaps. Idempotent like importStoryVersion: an
- * existing revision is left as it is, and one stored with different content or files is a defect, because books
- * and proofs were drawn from it. Its files go under the version's folder, compared before anything is written.
- */
-export const publishStoryAddition = Effect.fn("stories.publishAddition")(function* (input: {
-  readonly storyVersionId: string;
-  readonly revision: number;
-  /** Unvalidated addition JSON, as an author would upload it. */
-  readonly addition: unknown;
-  readonly readAsset: StoryVersionImport["readAsset"];
-  readonly createdBy: string | null;
-}) {
-  const addition = yield* decodeAddition(input.addition).pipe(Effect.orDie);
-  const [version] = yield* Database.query((db) =>
-    db
-      .select({
-        storyId: schema.storyVersion.storyId,
-        version: schema.storyVersion.version,
-        manifest: schema.storyVersion.manifest,
-      })
-      .from(schema.storyVersion)
-      .where(and(eq(schema.storyVersion.id, input.storyVersionId), isNotNull(schema.storyVersion.publishedAt))),
-  );
-  if (!version) return yield* Effect.die(new Error(`${input.storyVersionId} isn't a published story version`));
-  const label = `story ${version.storyId} v${version.version} addition ${input.revision}`;
-  const before = yield* withStoredAdditions(input.storyVersionId, version.manifest, input.revision - 1);
-  const [existing] = yield* Database.query((db) =>
-    db
-      .select({ addition: schema.storyVersionAddition.addition })
-      .from(schema.storyVersionAddition)
-      .where(
-        and(
-          eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId),
-          eq(schema.storyVersionAddition.revision, input.revision),
-        ),
-      ),
-  );
-  if (!existing && before.additionRevision !== input.revision - 1) {
-    return yield* Effect.die(
-      new Error(
-        `${label}: the version has ${before.additionRevision} additions; the next is ${before.additionRevision + 1}`,
-      ),
-    );
-  }
-  // The format's checks and the additive ones (nothing replaced, parts approved) on the version as it stood.
-  yield* mergeAdditions(before.manifest, [addition]).pipe(
-    Effect.mapError((error) => new Error(`${label} can't be added: ${error.message}`)),
-    Effect.orDie,
-  );
-  const files = yield* Effect.forEach(additionAssets(addition), (asset) =>
-    Effect.promise(() => input.readAsset(asset)).pipe(Effect.map((file) => ({ asset, ...file }))),
-  );
-  yield* storeVersionFiles(version.storyId, version.version, files);
-  const encoded = yield* Schema.encodeEffect(StoryAddition)(addition).pipe(Effect.orDie);
-  const [stored] = yield* Database.query(async (db) => {
-    await db
-      .insert(schema.storyVersionAddition)
-      .values({
-        storyVersionId: input.storyVersionId,
-        revision: input.revision,
-        addition: encoded,
-        createdBy: input.createdBy,
-      })
-      .onConflictDoNothing();
-    return db
-      .select({ addition: schema.storyVersionAddition.addition })
-      .from(schema.storyVersionAddition)
-      .where(
-        and(
-          eq(schema.storyVersionAddition.storyVersionId, input.storyVersionId),
-          eq(schema.storyVersionAddition.revision, input.revision),
-        ),
-      );
-  });
-  const storedAddition = yield* decodeAddition(stored?.addition).pipe(Effect.orDie);
-  if (!isDeepStrictEqual(storedAddition, addition)) {
-    return yield* Effect.die(
-      new Error(`${label} already exists with different content; add the next revision instead`),
     );
   }
 });

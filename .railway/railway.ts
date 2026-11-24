@@ -19,9 +19,9 @@ export default defineRailway(() => {
     S3_SECRET_ACCESS_KEY: ref(data, "SECRET_ACCESS_KEY"),
     // Railway buckets use virtual-hosted-style URLs.
     S3_FORCE_PATH_STYLE: "false",
-    // OpenAI edits story parts (D30, D36); "modal" is the fallback and needs its MODAL_* variables instead.
+    // OpenAI draws character sheets and figures (D56); photos go to it only with OPENAI_ZDR=enabled.
     IMAGE_PROVIDER: "openai",
-    // Casting suggestions read uploaded page art with OpenAI vision (OPENAI_CASTING_MODEL defaults to gpt-6.2-sol).
+    // Unused since casting suggestions were removed with the parts system; drop it with the next variable change.
     CASTING_PROVIDER: "openai",
   };
 

@@ -11,8 +11,6 @@ import {
   NotAuthenticated,
   CastMember,
   Forbidden,
-  Look,
-  LookOverride,
   NotFound,
   ResultSchema,
   StoryManifest,
@@ -20,7 +18,6 @@ import {
   FamilyMembership,
   BookSummary,
   Character,
-  PreviewRole,
   TextStyleName,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
@@ -80,8 +77,7 @@ export const StoryPreviewResult = ResultSchema(
     archived: Schema.Boolean,
     version: Schema.Number,
     manifest: StoryManifest,
-    /** Who fills each role in this preview, and whether the story can draw them. */
-    roles: Schema.Array(PreviewRole),
+    /** The stock characters' names and pronouns, for the text. */
     cast: Schema.Record(Schema.String, CastMember),
     /** Each page's composed illustration, as storage keys placed in the illustration area. */
     pages: Schema.Array(
@@ -97,18 +93,9 @@ export const StoryPreviewResult = ResultSchema(
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
 
-export const PreviewChoice = Schema.Struct({
-  /** A family member per role, by character ID. */
-  cast: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-  /** A look tried on a role's example character; wins over `cast`. */
-  looks: Schema.optional(Schema.Record(Schema.String, Look)),
-  /** How the book would draw a role's family member differently from their saved look (D46); not saved. */
-  changes: Schema.optional(Schema.Record(Schema.String, LookOverride)),
-});
-
-/** A story's pages with the family's members in its roles, or the examples with looks being tried. */
+/** A story's pages with its stock characters (D56), and the active family's members and books of it. */
 export const getStoryPreviewFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String, ...PreviewChoice.fields })))
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ slug: Schema.String })))
   .handler(async ({ data }) =>
     runEffect(
       StoryPreviewResult,
@@ -119,11 +106,7 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
           ? yield* listCharacters(user.id, active.id)
           : { characters: [], canEdit: false };
         const { books } = active ? yield* listBooks(user.id, active.id) : { books: [] };
-        const preview = yield* getStoryPreview(user.id, data.slug, characters, {
-          cast: data.cast,
-          looks: data.looks,
-          changes: data.changes,
-        });
+        const preview = yield* getStoryPreview(user.id, data.slug);
         return { ...preview, characters, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
       }),
     ),
