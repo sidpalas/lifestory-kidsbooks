@@ -1,5 +1,6 @@
 import {
   activeFamily,
+  AppConfig,
   Auth,
   canAuthor,
   getStoryPreview,
@@ -18,6 +19,7 @@ import {
   FamilyMembership,
   BookSummary,
   CastPerson,
+  DataRetention,
   TextStyleName,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
@@ -42,12 +44,28 @@ export const HomeResult = ResultSchema(
 const currentUser = Auth.use((auth) => auth.requireUser(getRequest().headers));
 
 /** What the signed-out landing page needs from the server: its absolute URL, for its link preview tags. */
-export const LandingResult = ResultSchema(Schema.Struct({ url: Schema.String }), Schema.Never);
+export const LandingResult = ResultSchema(
+  Schema.Struct({ url: Schema.String, retention: DataRetention }),
+  Schema.Never,
+);
 
 export const getLanding = createServerFn({ method: "GET" }).handler(() =>
   runEffect(
     LandingResult,
-    Auth.use((auth) => Effect.succeed({ url: auth.appUrl("/") })),
+    Effect.gen(function* () {
+      const auth = yield* Auth;
+      return { url: auth.appUrl("/"), retention: (yield* AppConfig).dataRetention };
+    }),
+  ),
+);
+
+export const RetentionResult = ResultSchema(DataRetention, Schema.Never);
+
+/** What OpenAI keeps of photos (OPENAI_DATA_RETENTION), for the policies' wording. Public, like the policies. */
+export const getRetentionFn = createServerFn({ method: "GET" }).handler(() =>
+  runEffect(
+    RetentionResult,
+    AppConfig.use((config) => Effect.succeed(config.dataRetention)),
   ),
 );
 

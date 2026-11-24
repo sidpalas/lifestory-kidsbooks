@@ -1,3 +1,4 @@
+import { type DataRetention, retentionCopy } from "@lifestory/core/contracts";
 import { Link } from "@tanstack/react-router";
 
 import characterSheet from "~/assets/marketing/character-sheet.webp";
@@ -52,7 +53,7 @@ const steps = [
   },
 ];
 
-export function Landing() {
+export function Landing({ retention }: { retention: DataRetention }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
@@ -131,8 +132,8 @@ export function Landing() {
               from it.
             </p>
             <p className="text-muted-foreground">
-              Your photos are checked by OpenAI, never used to train its models, and deleted after you order. A person
-              reviews every book before it prints.
+              {retentionCopy[retention].landing} and deleted after you order. A person reviews every book before it
+              prints.
             </p>
           </div>
           <figure className="flex flex-col gap-3">

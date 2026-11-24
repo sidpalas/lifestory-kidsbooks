@@ -30,7 +30,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return Route.useLoaderData().signedIn ? <Home /> : <Landing />;
+  const data = Route.useLoaderData();
+  return data.signedIn ? <Home /> : <Landing retention={data.retention} />;
 }
 
 // Home (D48): while a family is getting started, the next step first; then the book they made last, then stories.

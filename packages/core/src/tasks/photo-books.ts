@@ -244,28 +244,14 @@ export const checkPhoto = defineTask({
         Effect.gen(function* () {
           const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName);
           return input ? yield* (yield* PhotoCheck).moderate(input) : null;
-        }).pipe(
-          // The check won't send photos at all (OPENAI_ZDR not enabled): refuse now rather than retry for ever.
-          Effect.catchTag("PhotoCheckFailed", (error) =>
-            error.message.startsWith("refused:") ? Effect.succeed("unavailable" as const) : Effect.die(error),
-          ),
-          Effect.orDie,
-        ),
+        }).pipe(Effect.orDie),
       );
       // Replaced by a newer upload meanwhile: that upload's check decides.
       if (!moderation) return { status: "stale" as const };
-      const refusedFirst =
-        moderation === "unavailable"
-          ? [
-              {
-                code: "unavailable",
-                message: "We can't check photos yet, so photo books aren't open. Please try again later.",
-              },
-            ]
-          : moderationRefusals(moderation);
+      const refusedFirst = moderationRefusals(moderation);
 
       const report: PhotoReport | null =
-        moderation === "unavailable" || refusedFirst.length > 0
+        refusedFirst.length > 0
           ? null
           : yield* step(
               ctx,

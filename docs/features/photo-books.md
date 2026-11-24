@@ -43,10 +43,10 @@ deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a
 
 ## Gotchas
 
-- Real providers need `OPENAI_ZDR=enabled`; without it the worker refuses to send a photo, and the check refuses it
-  at once. Production sets it while Sid is the only user, before the OpenAI project is under zero data retention
-  (Sid, 2026-11-24), so the policies, consent and landing page describe OpenAI's standard 30-day retention. When ZDR
-  is on for the project, change that wording (search "30 days") and bump `POLICY_VERSION`. Don't run them unless asked: a book costs about US$1.24 worst case.
+- `OPENAI_DATA_RETENTION` (`standard` or `zero`) states what the OpenAI project keeps; it blocks nothing (Sid,
+  2026-11-24). The policies (`{{openai-retention}}`), the consent statement and the landing page take their retention
+  sentence from `retentionCopy` by it, and each consent records `<POLICY_VERSION>/standard` or `/zero`. Production
+  says `standard` until zero data retention is on for the project. Don't run them unless asked: a book costs about US$1.24 worst case.
 - Photos are deleted right after the order by default. If the parent opts in to photo review, the operator sees
   them beside the sheets, and they go at approval, refusal, or 30 days after the order.
 - Figures on one page must not touch or overlap; the import refuses such pages.

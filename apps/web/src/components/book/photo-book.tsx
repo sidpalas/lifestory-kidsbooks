@@ -4,6 +4,7 @@
 import {
   type BookView,
   consentStatements,
+  type DataRetention,
   type Hair,
   hairColours,
   hairLengths,
@@ -90,7 +91,7 @@ export function PhotoBookSteps({ view, canEdit }: { view: BookView; canEdit: boo
   if (flow.status === "draft") {
     if (!canEdit)
       return <Notice title="Being made">Someone in your family is putting the family into this book.</Notice>;
-    if (!flow.consented) return <ConsentStep bookId={view.book.id} />;
+    if (!flow.consented) return <ConsentStep bookId={view.book.id} retention={flow.retention} />;
     return (
       <div className="flex flex-col gap-6">
         <PhotoStep view={view} />
@@ -151,17 +152,18 @@ const Policies = () => (
   </span>
 );
 
-function ConsentStep({ bookId }: { bookId: string }) {
+function ConsentStep({ bookId, retention }: { bookId: string; retention: DataRetention }) {
+  const statements = consentStatements(retention);
   const [ticked, setTicked] = useState<ReadonlyArray<string>>([]);
   const { error, pending, run } = useStep();
-  const ready = consentStatements.every((s) => !s.required || ticked.includes(s.id));
+  const ready = statements.every((s) => !s.required || ticked.includes(s.id));
   return (
     <section className="flex flex-col gap-3 rounded-md border p-4 text-sm" data-testid="book-step">
       <h2 className="text-base font-semibold">Before you add photos</h2>
       <p className="text-muted-foreground">
         You'll add one photo of each person, and we draw them into the story. <Policies />
       </p>
-      {consentStatements.map((statement) => (
+      {statements.map((statement) => (
         <label key={statement.id} className="flex items-start gap-2">
           <input
             type="checkbox"

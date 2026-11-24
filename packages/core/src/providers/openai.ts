@@ -2,8 +2,8 @@
 // several reference images in order. The API is synchronous, so submit calls it, stores the output, and emits
 // `generation.done` itself, like the fake provider. The model is configuration (OPENAI_PHOTO_MODEL): it must be one
 // OpenAI lists as eligible for zero data retention, and OpenAI retires models, so a successor is measured on the
-// same test set first. A job that sends a family's photo is refused unless OPENAI_ZDR=enabled says the project is
-// under zero data retention.
+// same test set first. OPENAI_DATA_RETENTION states what the project keeps; the copy about photos follows it
+// (AppConfig.dataRetention).
 import type { JsonObject } from "absurd-sdk";
 import { Config, Effect, Layer, Redacted } from "effect";
 
@@ -39,9 +39,6 @@ export const openAICost = (model: string, usage: OpenAIUsage | undefined): numbe
   return Math.round(dollars * 1e6) / 1e6;
 };
 
-/** A family's photo, by its object key (D56): `families/<familyId>/books/<bookId>/photos/...`. */
-export const isPhotoKey = (key: string) => /^families\/[^/]+\/books\/[^/]+\/photos\//.test(key);
-
 /**
  * Below Absurd's 120 s task lease, so a slow call fails the step and is retried instead of a second worker
  * claiming the task while the first call is still running (and paid for).
@@ -53,7 +50,6 @@ export const OpenAIImageProvider = Layer.effect(
   Effect.gen(function* () {
     const apiKey = yield* Config.Redacted("OPENAI_API_KEY");
     const model = yield* Config.String("OPENAI_PHOTO_MODEL").pipe(Config.withDefault("gpt-image-2.5-sunburst"));
-    const zdr = (yield* Config.String("OPENAI_ZDR").pipe(Config.withDefault("off"))) === "enabled";
     const quality = yield* Config.Literals(["low", "medium", "high"], "OPENAI_IMAGE_QUALITY").pipe(
       Config.withDefault("medium" as const),
     );
@@ -68,15 +64,6 @@ export const OpenAIImageProvider = Layer.effect(
         Effect.gen(function* () {
           const fail = (message: string) => new GenerationFailed({ generationId: job.generationId, message });
           const finish = (outcome: GenerationOutcome) => jobs.emit(generationEvent(job.generationId), outcome);
-
-          if (!zdr && job.references.some(isPhotoKey)) {
-            yield* finish({
-              generationId: job.generationId,
-              status: "failed",
-              message: "refused: a family's photo goes to OpenAI only with OPENAI_ZDR=enabled",
-            });
-            return { externalId: null };
-          }
 
           // A rerun of the submit step after the image was stored must not pay for it again.
           const existing = yield* storage.get(job.outputKey).pipe(Effect.option);

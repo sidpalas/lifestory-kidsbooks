@@ -255,8 +255,9 @@ IMAGE_PROVIDER=openai
 OPENAI_API_KEY=<key>                        # every edit is billed
 OPENAI_PHOTO_MODEL=gpt-image-2.5-sunburst   # the default
 OPENAI_IMAGE_QUALITY=medium                 # the default
-OPENAI_ZDR=enabled                          # only once the OpenAI project has zero data retention
+OPENAI_DATA_RETENTION=standard              # "zero" only once the OpenAI project has zero data retention
 ```
 
-Without `OPENAI_ZDR=enabled` the provider refuses any job that would send a family's photo. Each generation's
+`OPENAI_DATA_RETENTION` doesn't block anything: it states what the OpenAI project keeps, and the policies,
+the consent statement and the landing page describe that retention (`retentionCopy` in `packages/core/src/contracts.ts`). Each generation's
 provider, token usage, and cost are on its `generation` row (`select provider, cost_usd from generation`).

@@ -30,11 +30,7 @@ We don't keep a face template or any biometric identifier, and we don't use your
   photos only when you allowed it at the photo step.
 - Our processors:
   - **OpenAI** checks each photo and draws the character sheets and pages. Each photo is sent to OpenAI twice (the
-    check and the sheet) and never for pages. OpenAI doesn't train on what we send through its API, but while we're
-    testing Lifestory we use OpenAI's standard API terms, under which OpenAI may keep what we send for up to 30 days
-    to monitor for abuse. We'll move to zero data retention, where OpenAI keeps nothing (except an image its safety
-    classifier flags as possible child sexual abuse material, for manual review), before inviting families beyond
-    friends and family, and update this policy then.
+    check and the sheet) and never for pages. {{openai-retention}}
   - **Resend** sends our emails.
   - **Railway** hosts the app, its database and its file storage, encrypted in transit and at rest.
 

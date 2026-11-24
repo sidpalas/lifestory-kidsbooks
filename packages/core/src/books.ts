@@ -15,6 +15,7 @@ import {
   type StoryManifest,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
+import { AppConfig } from "./config.ts";
 import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
 import { CastPerson, Hair, PhotoCheckResult } from "./contracts.ts";
 import { Database } from "./database.ts";
@@ -338,8 +339,10 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
       },
     ];
   });
+  const { dataRetention } = yield* AppConfig;
   const flow: BookFlow = {
     status: book.status,
+    retention: dataRetention,
     photoReview: book.photoReview,
     consented: consents.length > 0,
     likenessStatus: book.likenessStatus,

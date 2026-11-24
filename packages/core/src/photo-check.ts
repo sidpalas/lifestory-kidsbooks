@@ -1,7 +1,6 @@
 // The photo check (D56): each uploaded photo is moderated, then looked at by a small vision model, and the rules below
 // decide in code whether it can make a character sheet. `PHOTO_CHECK=fake` (the default) looks at nothing and refuses
-// a photo whose file name contains `two-faces`, so tests and orbs make no API calls; `openai` calls OpenAI, which
-// receives a family's photo only with OPENAI_ZDR=enabled.
+// a photo whose file name contains `two-faces`, so tests and orbs make no API calls; `openai` calls OpenAI.
 import type { JsonObject } from "absurd-sdk";
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import sharp from "sharp";
@@ -184,15 +183,10 @@ export const OpenAIPhotoCheck = Layer.effect(
   Effect.gen(function* () {
     const apiKey = yield* Config.Redacted("OPENAI_API_KEY");
     const model = yield* Config.String("OPENAI_CHECK_MODEL").pipe(Config.withDefault("gpt-5.4-mini"));
-    const zdr = (yield* Config.String("OPENAI_ZDR").pipe(Config.withDefault("off"))) === "enabled";
     const endpoint = yield* Config.String("OPENAI_BASE_URL").pipe(Config.withDefault("https://api.openai.com/v1"));
 
     const post = (path: string, body: unknown) =>
       Effect.gen(function* () {
-        if (!zdr)
-          return yield* new PhotoCheckFailed({
-            message: "refused: a family's photo goes to OpenAI only with OPENAI_ZDR=enabled",
-          });
         const response = yield* Effect.tryPromise({
           try: () =>
             fetch(`${endpoint}${path}`, {

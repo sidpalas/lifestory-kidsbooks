@@ -379,8 +379,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Storage and processors:** sheets, the cover and preview
   rounds live under `…/books/<bookId>/likeness/` and pages, both versions of a changed one, under `…/pages/`, all
   deleted with the book. Only the worker reads photos and only OpenAI receives them, twice (the check and the
-  sheet), never for pages. The operator sees them only on an opted-in book, through `reviewBook` (D57). The worker refuses to send a photo unless
-  `OPENAI_ZDR=enabled` is set for the OpenAI project it uses (a safety setting, not a launch gate). Under ZDR OpenAI
+  sheet), never for pages. The operator sees them only on an opted-in book, through `reviewBook` (D57).
+  `OPENAI_DATA_RETENTION` (`standard` or `zero`) states what the OpenAI project keeps, and the policies, consent and
+  landing page describe it; it blocks no request (Sid, 2026-11-24, replacing an `OPENAI_ZDR` guard that refused to
+  send photos without zero data retention), so the app can be tested before ZDR is on without claiming it. Under ZDR OpenAI
   still keeps an image its classifier flags as potential CSAM, for manual review; the policies say so (D58).
 - **Book format 4:** a page's figure is `{ kind: "photoFigure", slotId, reference, stock, window, head, tint }`; a slot
   gains a stock outfit and a stock sheet; a story gains `photo` (style reference and prompt version, pinned per

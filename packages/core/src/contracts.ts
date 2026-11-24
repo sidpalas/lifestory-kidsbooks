@@ -280,25 +280,54 @@ export type PhotoCheckResult = typeof PhotoCheckResult.Type;
 /** The policies' version (D58), recorded with each consent; change it whenever a policy's text changes. */
 export const POLICY_VERSION = "2026-11-24";
 
+/**
+ * What OpenAI keeps of what we send (D56), as OPENAI_DATA_RETENTION states it for the OpenAI project: "standard"
+ * (OpenAI's API terms: no training, kept up to 30 days for abuse monitoring) or "zero" (zero data retention). The
+ * policies, the consent statement and the landing page say the same; each consent records which one the parent read.
+ */
+export const DataRetention = Schema.Literals(["standard", "zero"]);
+export type DataRetention = typeof DataRetention.Type;
+
+/** The retention sentences, for each state; `{{openai-retention}}` in the policies' Markdown is `policy`. */
+export const retentionCopy = {
+  zero: {
+    consent: "OpenAI checks each photo and draws a character sheet from it under zero data retention",
+    landing: "Your photos are checked by OpenAI under zero data retention, never used to train its models,",
+    policy:
+      "We use OpenAI under zero data retention: they don't keep or train on what we send, except that OpenAI keeps an image its safety classifier flags as possible child sexual abuse material, for manual review.",
+  },
+  standard: {
+    consent:
+      "OpenAI checks each photo and draws a character sheet from it (OpenAI doesn't train on it, but may keep it for up to 30 days to monitor for abuse)",
+    landing: "Your photos are checked by OpenAI, never used to train its models,",
+    policy:
+      "OpenAI doesn't train on what we send through its API, but may keep it for up to 30 days to monitor for abuse, under OpenAI's standard API terms. We plan to move to zero data retention, where OpenAI keeps nothing (except an image its safety classifier flags as possible child sexual abuse material, for manual review), and will update this policy then.",
+  },
+} as const satisfies Record<DataRetention, unknown>;
+
+/** The policy version a consent records: the text's date and the retention it described. */
+export const policyVersion = (retention: DataRetention) => `${POLICY_VERSION}/${retention}`;
+
 /** What the parent agrees to at the photo step (D58); the last is optional. */
-export const consentStatements = [
-  { id: "adult", required: true, text: "I'm 18 or older." },
-  {
-    id: "rights",
-    required: true,
-    text: "I have the right to use each photo: I'm the parent or guardian of any child in it, and any adult in it agreed.",
-  },
-  {
-    id: "processing",
-    required: true,
-    text: "I understand how photos are used: OpenAI checks each photo and draws a character sheet from it (OpenAI doesn't train on it, but may keep it for up to 30 days while Lifestory is in testing), and the photos are deleted once I order the book, or after 24 hours if I don't.",
-  },
-  {
-    id: "photo-review",
-    required: false,
-    text: "Optional: Lifestory's team may see the photos while reviewing my book, to judge the likeness. They're deleted when the book is approved, or 30 days after the order at most.",
-  },
-] as const;
+export const consentStatements = (retention: DataRetention) =>
+  [
+    { id: "adult", required: true, text: "I'm 18 or older." },
+    {
+      id: "rights",
+      required: true,
+      text: "I have the right to use each photo: I'm the parent or guardian of any child in it, and any adult in it agreed.",
+    },
+    {
+      id: "processing",
+      required: true,
+      text: `I understand how photos are used: ${retentionCopy[retention].consent}, and the photos are deleted once I order the book, or after 24 hours if I don't.`,
+    },
+    {
+      id: "photo-review",
+      required: false,
+      text: "Optional: Lifestory's team may see the photos while reviewing my book, to judge the likeness. They're deleted when the book is approved, or 30 days after the order at most.",
+    },
+  ] as const;
 
 /** How many rounds of changes a parent may ask for on the sheets, and how many pages they may change (D56, D57). */
 export const MAX_LIKENESS_ROUNDS = 2;
@@ -320,6 +349,8 @@ const Layer = Schema.Struct({ key: Schema.String, rect: Rect });
 /** A photo book's progress (D56, D57): what each step of the book page shows. */
 export const BookFlow = Schema.Struct({
   status: BookStatus,
+  /** What OpenAI keeps of the photos, for the consent statement. */
+  retention: DataRetention,
   photoReview: Schema.Boolean,
   consented: Schema.Boolean,
   likenessStatus: Schema.Literals(["waiting", "drawing", "ready", "failed"]),

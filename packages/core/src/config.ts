@@ -1,5 +1,7 @@
 import { Config, Context, Effect, Layer, Redacted } from "effect";
 
+import { DataRetention } from "./contracts.ts";
+
 /** Process configuration, read once from the environment. See .env.example. */
 export class AppConfig extends Context.Service<
   AppConfig,
@@ -18,6 +20,8 @@ export class AppConfig extends Context.Service<
     };
     /** The web app's origin as the worker reaches it; headless Chromium opens print pages there for PDF proofs. */
     readonly printAppUrl: string;
+    /** What the OpenAI project keeps of what we send (OPENAI_DATA_RETENTION); the copy about photos follows it. */
+    readonly dataRetention: DataRetention;
     /** The commit this process runs, reported by /api/health; null when the host doesn't say. */
     readonly version: string | null;
   }
@@ -37,6 +41,9 @@ export class AppConfig extends Context.Service<
           secretAccessKey: yield* Config.Redacted("S3_SECRET_ACCESS_KEY"),
           forcePathStyle: yield* Config.Boolean("S3_FORCE_PATH_STYLE").pipe(Config.withDefault(true)),
         },
+        dataRetention: yield* Config.Literals(DataRetention.literals, "OPENAI_DATA_RETENTION").pipe(
+          Config.withDefault("standard" as const),
+        ),
         printAppUrl: yield* Config.String("PRINT_APP_URL").pipe(Config.withDefault("http://localhost:3000")),
         // Any host can set APP_VERSION; Railway sets RAILWAY_GIT_COMMIT_SHA itself on deploys from GitHub.
         version: yield* Config.String("APP_VERSION").pipe(

@@ -7,7 +7,8 @@ import { Effect } from "effect";
 
 import { Auth, type SessionUser } from "./auth.ts";
 import { bookFlow, loadBook } from "./books.ts";
-import { consentStatements, type Hair, MAX_LIKENESS_ROUNDS, MAX_PAGE_CHANGES, POLICY_VERSION } from "./contracts.ts";
+import { AppConfig } from "./config.ts";
+import { consentStatements, type Hair, MAX_LIKENESS_ROUNDS, MAX_PAGE_CHANGES, policyVersion } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -48,9 +49,12 @@ export const recordConsent = Effect.fn("bookFlow.consent")(function* (
 ) {
   const book = yield* editableBook(userId, input.bookId);
   yield* requireStatus(book, ["draft"], "This book is already ordered.");
-  const missing = consentStatements.filter((s) => s.required && !input.statements.includes(s.id));
+  const { dataRetention } = yield* AppConfig;
+  const missing = consentStatements(dataRetention).filter((s) => s.required && !input.statements.includes(s.id));
   if (missing.length > 0) return yield* new InvalidInput({ message: "Tick each statement to go on." });
-  const statements = consentStatements.filter((s) => input.statements.includes(s.id)).map((s) => s.id);
+  const statements = consentStatements(dataRetention)
+    .filter((s) => input.statements.includes(s.id))
+    .map((s) => s.id);
   const photoReview = statements.includes("photo-review");
   const id = `consent_${crypto.randomUUID()}`;
   yield* Database.query((db) =>
@@ -62,7 +66,7 @@ export const recordConsent = Effect.fn("bookFlow.consent")(function* (
         bookId: book.id,
         statements,
         photoReview,
-        policyVersion: POLICY_VERSION,
+        policyVersion: policyVersion(dataRetention),
       });
       await tx.update(schema.book).set({ photoReview }).where(eq(schema.book.id, book.id));
       await tx.update(schema.bookLikeness).set({ consentId: id }).where(eq(schema.bookLikeness.bookId, book.id));
@@ -81,6 +85,7 @@ export const withdrawPhotoReview = Effect.fn("bookFlow.withdrawPhotoReview")(fun
 ) {
   const book = yield* editableBook(userId, bookId);
   if (!book.photoReview) return;
+  const { dataRetention } = yield* AppConfig;
   yield* requireStatus(
     book,
     ["draft", "ordered", "making", "changes", "in_review"],
@@ -93,9 +98,11 @@ export const withdrawPhotoReview = Effect.fn("bookFlow.withdrawPhotoReview")(fun
         userId,
         familyId: book.familyId,
         bookId,
-        statements: consentStatements.filter((s) => s.required).map((s) => s.id),
+        statements: consentStatements(dataRetention)
+          .filter((s) => s.required)
+          .map((s) => s.id),
         photoReview: false,
-        policyVersion: POLICY_VERSION,
+        policyVersion: policyVersion(dataRetention),
       });
       await tx.update(schema.book).set({ photoReview: false }).where(eq(schema.book.id, bookId));
     }),
