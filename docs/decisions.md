@@ -21,7 +21,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D3. Better Auth; a family is an organization; operator via the admin plugin without impersonation — Decided
 
-- **Changed by D56–D57 (Sid, 2026-11-24):** photos are uploaded now, kept until the order and never longer than 24 h, and the operator reviews family books through `reviewBook` (D57), named in the policies (D58). Still no impersonation.
+- **Changed by D56–D57 (Sid, 2026-11-24):** photos are uploaded now, kept until the book is approved for print (24 h for a draft that is never ordered), and the operator reviews family books through `reviewBook` (D57), named in the policies (D58). Still no impersonation.
 - **Why:** brief. Accounts hold details about children (names, ages, looks; no photos since D26), so nobody, the
   operator included, may sign in as someone else.
 - **How:** family roles `owner`, `parent` (edit books; the app calls it Editor, since a relative or friend can hold
@@ -306,11 +306,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     role's age, front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
     owns it, because it carries that story's style.
   - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
-    from the sheets (`likeness.revise`). **Proposed by the spike; needs Sid's OK**, since Sid first chose a fresh
-    sheet from the photo each round. Drift test, three rounds: chained edits kept outline overlap ≥ 0.994 with body
+    from the sheets (`likeness.revise`). **Approved by Sid (2026-11-24)** over his first choice of a
+    fresh sheet from the photo each round, on this evidence. Drift test, three rounds: chained edits kept outline overlap ≥ 0.994 with body
     change ≤ 14/255; fresh sheets fell to 0.797 overlap with ≤ 77/255 and drew a different-looking child each round.
     The mode and prompt are configuration, so the fresh-sheet path stays available. After about 5 edits, the sheet
-    is rebuilt once from the photo with the latest sheet as a reference (untested; only before the order).
+    is rebuilt once from the photo with the latest sheet as a reference (untested; possible until the photos are deleted at approval, so it also serves the operator's character fixes, D57).
   - **Each figure on each page** is redrawn from the page reference (plate plus the bald figure, cropped to the
     figure's window) and the approved sheet, on a transparent background, never from the photo. The model draws
     what the figure wears and holds; only scenery occluders are composited over it. Production checks: retry an
@@ -353,16 +353,21 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
   | `likeness.preview` | the last photo passing | a sheet per role, then the cover, one call per figure; keyed by book |
   | `likeness.revise` | each change round | one sheet edit per note, then the cover; keyed by book and round |
-  | `book.make` | the order (D57) | delete any photo left (backstop), spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
+  | `book.make` | the order (D57) | spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
   | `page.figure` | `book.make`, a page change, the operator's redo | generate, the checks above, tint, store; keyed by book, page, slot and version |
-  | `storage.sweep` | the worker, every 6 h (D31) | adds photo objects older than 24 h and unordered drafts older than 24 h |
+  | `book.release` | the operator's approval (D57) | delete the book's photos and record when; when print ordering arrives, sending the file to the printer becomes the step before it |
+  | `storage.sweep` | the worker, every 6 h (D31) | adds unordered drafts older than 24 h (with their photos), photos of approved or refused books, and photos 30 days after the order |
 
   `page.import` (D42) and `proof.render` (D27) stay tasks. Every image call goes through `generateImage(ctx, …)`
   (D13, D14), so a retry never pays twice. The order, consent, notes, choosing a page version, sending for review,
   and the operator's approve or refuse are single transactions in server functions.
 
 - **Photos, privacy and storage:** photos live at `families/<familyId>/books/<bookId>/photos/<slotId>/<uploadId>`
-  and are deleted at the order, on refusal, or 24 h after upload, whichever is first. Sheets, the cover and preview
+  and are deleted when the operator approves the book for print (`book.release`), at once when the check or the
+  operator refuses, with a draft that is never ordered after 24 h, and in any case 30 days after the order (the
+  30 days are Made; Sid can veto). Sid (2026-11-24): the order and the deletion needn't be tied, since generation and
+  review run after the order; delete once the parent's and operator's approvals are locked in and the file goes to
+  the printer. Sheets, the cover and preview
   rounds live under `…/books/<bookId>/likeness/` and pages, both versions of a changed one, under `…/pages/`, all
   deleted with the book. Only the worker reads photos and only OpenAI receives them, twice (the check and the
   sheet), never for pages; the operator never sees them. The worker refuses to send a photo unless
@@ -386,9 +391,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   alone, US$1.55 with a grandparent on 4 pages.
 - **Why:** families want their own child, and composed parts didn't look good enough after long testing. A sheet
   in the middle removed page-to-page drift on all 15 test pages, where pages drawn straight from the photo drifted
-  in hair colour, length and freckles, and it lets the photo be deleted before any page is drawn.
+  in hair colour, length and freckles, and no page needs the photo, so a page change or a redo never reads it.
 - **Rejected:** composable figure, hair and accessory layers with recolour (D26's system); pages straight from the
-  photo; page changes as edits of the current page; preview rounds as fresh sheets (pending Sid's OK above); a
+  photo; page changes as edits of the current page; preview rounds as fresh sheets (the drift test above); a
   third-party photo-quality API (another vendor and agreement).
 - **Reopen if:** a real child's photo comes out clearly worse than the adult photos tested (to be tried once ZDR is
   active), authors need touching figures (then test both figures in one call), the check refuses good photos, or a
@@ -400,19 +405,20 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   Drafts are hidden from Our books and from D47's list, and the sweep deletes a draft older than 24 h whole.
 - **The order:** "Make my book", with every sheet approved, records a `book_order` row (price snapshot, status; no
   payment provider yet, payment is settled by hand while the app is invite-only) and moves the book to `ordered`.
-  The same request deletes the book's photos and records when; `book.make`'s first step deletes any left, and the
-  24 h sweep is the last backstop (Made; Sid can veto). Then `book.make` draws every page from the approved sheets
+  The photos stay (D56: until approval, at most 30 days). Then `book.make` draws every page from the approved sheets
   in about a minute.
 - **Page changes:** the parent reads the whole book and asks for a change on up to 3 pages. Each redraws that
   page's figure from the approved sheet, the page reference and the note added to the prompt (`page.figure` with
   the next version), not as an edit of the current page, since each edit pass changes the figure 12–20/255. The
   parent then keeps the original or uses the new version, so a change never makes a page worse. A note about the
   character as a whole ("her hair is wrong everywhere") can't be fixed page by page; the screen says so and points
-  the parent to us, and the operator decides whether to redraw the sheet and the book at our cost. Text edits and
+  the parent to us, and the operator decides whether to rebuild the sheet from the photo and redraw the book, at our
+  cost. Text edits and
   proofs work as today; a proof pins the chosen version of every page's art.
 - **Send for review:** the parent approves a proof (D32) and sends the book for review. The operator's queue under
   `/admin` shows the approved sheets beside every page with the parent's notes; the operator redoes a page, refuses
-  the book with a note that is emailed to the family, or approves it, which makes the approved proof the print file.
+  the book with a note that is emailed to the family, or approves it, which makes the approved proof the print file and spawns `book.release` to delete the photos. A
+  refusal deletes them too.
 - **Operator access:** the operator reads family books only through `reviewBook(bookId)` in `packages/core`, and
   sees the sheets and pages, never the photos. There is no view log in v1; when reviewers beyond the founders join,
   that function writes a `review_access` row and nothing else changes. Still no impersonation (D3).
@@ -1079,7 +1085,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 ### D31. Object keys live under their owner's prefix; the app sweeps expired objects; no family deletion yet — Decided (Sid, 2026-11-19)
 
-- **Changed by D56–D57 (Sid, 2026-11-24):** new objects live under `families/<familyId>/books/<bookId>/` (photos, likeness, pages), and the sweep deletes photos and unordered drafts older than 24 h.
+- **Changed by D56–D57 (Sid, 2026-11-24):** new objects live under `families/<familyId>/books/<bookId>/` (photos, likeness, pages), and the sweep deletes unordered drafts older than 24 h and photos of approved or refused books or 30 days after the order.
 - **What:** every object key starts with its owner: `families/<familyId>/` (proof PDFs, anything holding family
   data), `stories/<storyId>/v<n>/` (story assets and the recolour cache). The bucket listing is the inventory; no
   table records each object. The `storage.sweep` task deletes everything under `families/<id>/` once that family no
