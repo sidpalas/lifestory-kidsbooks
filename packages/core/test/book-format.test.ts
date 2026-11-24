@@ -73,8 +73,30 @@ describe("StoryManifest (format 4, D56)", () => {
       (m: any) => (m.pages[0].frames[0].paragraphs[1].content = "{{friend.name}}"),
       'unknown slot "friend"',
     ],
+    [
+      "figures whose padded boxes meet, though their boxes don't overlap",
+      (m: any) =>
+        Object.assign(m.pages[0].illustration.layers[2], {
+          box: [300, 300, 505, 900],
+          window: [200, 200, 600, 1000],
+          head: [350, 300, 450, 500],
+        }),
+      'figures "hero" and "grownup" touch or overlap',
+    ],
   ])("rejects %s", (_, edit, message) => {
     expect(errorOf(variant(edit))).toContain(message);
+  });
+
+  it("accepts figures just over two gaps apart", () => {
+    // The hero's box starts at x 520; a grown-up ending at 499 leaves 21, more than the two 10s of padding.
+    const apart = variant((m) =>
+      Object.assign(m.pages[0].illustration.layers[2], {
+        box: [300, 300, 499, 900],
+        window: [200, 200, 600, 1000],
+        head: [350, 300, 450, 500],
+      }),
+    );
+    expect(errorOf(apart)).toBe("decoded without error");
   });
 });
 

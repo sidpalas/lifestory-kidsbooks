@@ -211,6 +211,19 @@ const inside = ([ax0, ay0, ax1, ay1]: Rect, [bx0, by0, bx1, by1]: Rect) =>
   ax0 >= bx0 && ay0 >= by0 && ax1 <= bx1 && ay1 <= by1;
 
 /**
+ * How far apart, in thousandths of the illustration, two figures' boxes must stay (D56): each figure is drawn in its
+ * own call, so figures that touch or overlap (a hug, held hands) can't be drawn. Each box is padded by this much.
+ */
+export const FIGURE_GAP = 10;
+
+/** Whether two figures' boxes, each padded by FIGURE_GAP, meet. */
+export const figuresMeet = ([ax0, ay0, ax1, ay1]: Rect, [bx0, by0, bx1, by1]: Rect) =>
+  ax0 - FIGURE_GAP < bx1 + FIGURE_GAP &&
+  bx0 - FIGURE_GAP < ax1 + FIGURE_GAP &&
+  ay0 - FIGURE_GAP < by1 + FIGURE_GAP &&
+  by0 - FIGURE_GAP < ay1 + FIGURE_GAP;
+
+/**
  * The manifest's shape without its completeness and cross-reference checks: what an author's draft holds while
  * they work on it (D37). Publishing decodes it as a StoryManifest, which adds every check.
  */
@@ -229,7 +242,7 @@ export type StoryDraft = typeof StoryDraft.Type;
 
 export const StoryManifest = StoryDraft.check(
   // References inside the manifest must resolve, so a page never names a slot, font, or token that doesn't exist.
-  // Uploads by any author go through this check. Pixel rules (figures that touch) are checked by the import.
+  // Uploads by any author go through this check, including that figures on a page stay apart (FIGURE_GAP).
   Schema.makeFilter((manifest) => {
     const issues: Array<Schema.FilterIssue> = [];
     if (manifest.pages.length === 0) issues.push({ path: ["pages"], issue: "a story needs at least one page" });
@@ -276,6 +289,16 @@ export const StoryManifest = StoryDraft.check(
           issues.push({ path: [...path, "reference"], issue: "the figure needs its bald reference" });
         if (!layer.stock) issues.push({ path: [...path, "stock"], issue: "the figure needs its stock drawing" });
       });
+      const figures = pageFigures(page);
+      figures.forEach((a, i) =>
+        figures.slice(i + 1).forEach((b) => {
+          if (figuresMeet(a.box, b.box))
+            issues.push({
+              path: ["pages", p, "illustration", "layers"],
+              issue: `figures "${a.slotId}" and "${b.slotId}" touch or overlap; characters on a page must stay apart`,
+            });
+        }),
+      );
       for (const id of new Set(duplicates(page.frames.map((frame) => frame.frameId))))
         issues.push({ path: ["pages", p, "frames"], issue: `duplicate frameId "${id}"` });
       page.frames.forEach((frame, f) => {
