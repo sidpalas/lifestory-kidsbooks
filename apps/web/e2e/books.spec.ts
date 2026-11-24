@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
-import { markDrawn, markShownBookDrawn } from "./drawn.ts";
+import { giveSheets, markDrawn, markShownBookDrawn } from "./drawn.ts";
 import { expectFieldsAligned } from "./layout.ts";
 
 // Personalized books, who plays each role, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
@@ -225,8 +225,24 @@ test("a viewer reads the family's books but can't change them", async ({ page, b
   );
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
-  await markShownBookDrawn(page);
+  const bookId = await markShownBookDrawn(page);
   const bookUrl = new URL(page.url()).pathname;
+  // A drawn book without sheets (one made before photo books) shows none; with them, each role shows its own.
+  await expect(page.getByRole("button", { name: /character sheet/ })).toHaveCount(0);
+  const sheets = await giveSheets(bookId, ["hero", "grownup"]);
+  await page.reload();
+  const heroSheet = page.getByTestId("role-hero").getByRole("button", { name: `${child}'s character sheet` });
+  await expect(heroSheet).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("img", { name: `${child}'s character sheet` })).toHaveCount(0);
+  await heroSheet.click();
+  const shown = page.getByTestId("role-hero").getByRole("img", { name: `${child}'s character sheet` });
+  await expect(shown).toHaveAttribute("src", `/api/files/${sheets.hero}`);
+  await expect(page.getByTestId("role-grownup").getByRole("button", { name: /character sheet/ })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await imagesLoaded(page);
+  await evidence(page, "book-sheet-open");
 
   const viewer = await browser.newPage();
   await viewer.goto(`/__dev/log-me-in/grandparent@lifestory.dev?returnTo=${bookUrl}`);
@@ -236,6 +252,14 @@ test("a viewer reads the family's books but can't change them", async ({ page, b
   await expect(viewer.getByRole("textbox", { name: "Text block 1" })).toHaveAttribute("readonly", "");
   await expect(viewer.getByTestId("role-hero")).toContainText(child);
   await expect(viewer.getByTestId("role-hero").getByRole("button", { name: "Change" })).toHaveCount(0);
+  // The viewer sees the sheets too; someone outside the family can't load them.
+  await viewer.getByRole("button", { name: `${child}'s character sheet` }).click();
+  await expect(viewer.getByRole("img", { name: `${child}'s character sheet` })).toBeVisible();
+  expect((await viewer.request.get(`/api/files/${sheets.hero}`)).status()).toBe(200);
+  const outsider = await browser.newPage();
+  await outsider.goto(`/__dev/log-me-in/outsider-${id}@lifestory.dev?returnTo=/`);
+  expect((await outsider.request.get(`/api/files/${sheets.hero}`)).status()).toBe(404);
+  await outsider.close();
   // The viewer previews the story but can't make or delete books.
   await viewer.goto("/stories/the-kite-day");
   await expect(viewer.getByTestId("story-books")).toContainText(child);

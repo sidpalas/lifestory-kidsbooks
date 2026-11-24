@@ -154,12 +154,18 @@ function BookEditor() {
       <section aria-label="Cast" className="grid items-start gap-3 md:grid-cols-2">
         {manifest.characterSlots.map((slot) => {
           const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
+          // The sheets the order approved (D57); before it, the preview step shows the sheets still being changed.
+          const sheetKey =
+            view.flow.status === "draft"
+              ? null
+              : view.flow.likenesses.find((likeness) => likeness.slotId === slot.slotId)?.sheetKey;
           return role ? (
             <RoleCard
               key={slot.slotId}
               role={role}
               label={slot.label}
               slot={slot}
+              sheetUrl={sheetKey ? `/api/files/${sheetKey}` : null}
               canEdit={canEdit}
               onSave={(person) =>
                 run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, person } }))
@@ -411,47 +417,78 @@ function TextEditor({
   );
 }
 
-/** Who plays a role, and for an owner or editor, a form to change their name, title, pronouns or age. */
+/**
+ * Who plays a role, with their approved character sheet once the book is ordered (a thumbnail that opens it across
+ * the card), and for an owner or editor, a form to change their name, title, pronouns or age.
+ */
 function RoleCard({
   role,
   label,
   slot,
+  sheetUrl,
   canEdit,
   onSave,
 }: {
   role: BookRole;
   label: string;
   slot: CharacterSlot;
+  sheetUrl: string | null;
   canEdit: boolean;
   onSave: (person: CastPerson) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [edited, setPerson] = useState(() => draftOf(role.person));
   const { person } = role;
+  const sheetAlt = `${person.name}'s character sheet`;
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid={`role-${role.slotId}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{label}:</span>
-        <span>
-          {person.name}
-          <span className="text-muted-foreground">
-            {" · "}
-            {[person.title, person.pronouns, ageLabel(person.age).toLowerCase()].filter(Boolean).join(" · ")}
-          </span>
-        </span>
-        {canEdit && !editing && (
+      <div className="flex items-center gap-3">
+        {sheetUrl && (
           <button
             type="button"
-            className="text-xs text-muted-foreground underline"
-            onClick={() => {
-              setPerson(draftOf(person));
-              setEditing(true);
-            }}
+            aria-expanded={sheetOpen}
+            aria-label={sheetAlt}
+            onClick={() => setSheetOpen(!sheetOpen)}
+            className="shrink-0 overflow-hidden rounded ring-1 ring-black/10 hover:ring-black/40"
           >
-            Change
+            <img src={sheetUrl} alt="" className="aspect-[3/2] w-20 object-cover sm:w-24" />
           </button>
         )}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="font-medium">{label}:</span>
+          <span>
+            {person.name}
+            <span className="text-muted-foreground">
+              {" · "}
+              {[person.title, person.pronouns, ageLabel(person.age).toLowerCase()].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+          {canEdit && !editing && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline"
+              onClick={() => {
+                setPerson(draftOf(person));
+                setEditing(true);
+              }}
+            >
+              Change
+            </button>
+          )}
+        </div>
       </div>
+      {sheetUrl && sheetOpen && (
+        <figure className="flex flex-col gap-1">
+          <img src={sheetUrl} alt={sheetAlt} className="w-full rounded ring-1 ring-black/10" />
+          <figcaption className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+            <span>Every page of this book is drawn from this sheet.</span>
+            <a href={sheetUrl} target="_blank" rel="noreferrer" className="underline">
+              Open full size
+            </a>
+          </figcaption>
+        </figure>
+      )}
       {editing && (
         <form
           className="flex flex-col gap-2"

@@ -21,6 +21,43 @@ export const markDrawn = async (...bookIds: ReadonlyArray<string>) => {
   }
 };
 
+/**
+ * Gives a book a stored character sheet per role, as the photo steps leave one (an SVG naming the role, 3:2 like a
+ * real sheet). Returns each role's sheet key.
+ */
+export const giveSheets = async (bookId: string, slotIds: ReadonlyArray<string>) => {
+  const { Database, ObjectStorage, makeServerRuntime } = await import("@lifestory/core");
+  const runtime = makeServerRuntime();
+  try {
+    return await runtime.runPromise(
+      Effect.gen(function* () {
+        const { pool } = yield* Database;
+        const storage = yield* ObjectStorage;
+        const [{ family_id }] = yield* Effect.promise(() =>
+          pool.query("select family_id from book where id = $1", [bookId]).then((result) => result.rows),
+        );
+        const keys: Record<string, string> = {};
+        for (const slotId of slotIds) {
+          const key = `families/${family_id}/books/${bookId}/likeness/${slotId}/sheet-e2e.svg`;
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><rect width="1536" height="1024" fill="#f4e8d0"/><text x="768" y="540" font-size="120" text-anchor="middle">${slotId} sheet</text></svg>`;
+          yield* storage.put(key, new TextEncoder().encode(svg), "image/svg+xml");
+          yield* Effect.promise(() =>
+            pool.query(
+              `insert into book_likeness (book_id, slot_id, sheet_key) values ($1, $2, $3)
+               on conflict (book_id, slot_id) do update set sheet_key = excluded.sheet_key`,
+              [bookId, slotId, key],
+            ),
+          );
+          keys[slotId] = key;
+        }
+        return keys;
+      }) as Effect.Effect<Record<string, string>, never, ServerServices>,
+    );
+  } finally {
+    await runtime.dispose();
+  }
+};
+
 /** The book the page shows (/books/<id>), marked drawn and reloaded. */
 export const markShownBookDrawn = async (page: Page) => {
   await page.waitForURL(/\/books\/book_/);

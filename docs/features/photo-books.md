@@ -17,6 +17,8 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 - `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
   (`POST /api/books/<id>/photos`, resized to 1536 px in the browser), the sheets and cover with two change rounds,
   "Make my book", then the page-change form under each page and "Send for review". Proofs appear from page changes on.
+  From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card
+  (with a full-size link), for every family member, viewers included; display only, never a printed page.
 - The draft book's photo, preview and order steps, then its page-change and review steps: owner and editor. Drafts
   are hidden from Our books and from the story page's list of the family's books.
 - `/policies/terms`, `/policies/privacy`, `/policies/child-safety` (D58), public, from `apps/web/src/policies/*.md`

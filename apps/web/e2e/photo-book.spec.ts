@@ -142,9 +142,29 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     expect(sheets.find((row) => row.slot_id === "hero")!.sheet_key).toMatch(/sheet-r2\.png$/);
     expect(sheets.find((row) => row.slot_id === "grownup")!.sheet_key).not.toMatch(/sheet-r/);
 
+    // Until the order, the sheets show only in the preview step, not with the cast.
+    await expect(page.getByTestId("role-hero").getByRole("button", { name: /character sheet/ })).toHaveCount(0);
+
     // The order draws every page and deletes the photos (no photo review opted in).
     await makeAndWait(page);
     expect(await photosOf(bookId)).toBe(0);
+    // The cast then shows each role's approved sheet: the hero's from the last round, the grown-up's first sheet.
+    for (const [slotId, name] of [
+      ["hero", child],
+      ["grownup", grownup],
+    ] as const) {
+      await page
+        .getByTestId(`role-${slotId}`)
+        .getByRole("button", { name: `${name}'s character sheet` })
+        .click();
+      const sheet = page.getByRole("img", { name: `${name}'s character sheet` });
+      await expect(sheet).toHaveAttribute(
+        "src",
+        `/api/files/${sheets.find((row) => row.slot_id === slotId)!.sheet_key}`,
+      );
+      expect((await page.request.get((await sheet.getAttribute("src"))!)).status()).toBe(200);
+    }
+    await evidence(page, "photo-cast-sheets");
     const art = await sql<{ n: number }>("select count(*)::int as n from book_page_art where book_id = $1", [bookId]);
     expect(art[0]!.n).toBe(5);
 
@@ -195,6 +215,8 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(operator.page.getByTestId("review-status")).toContainText("approved");
     await page.reload();
     await expect(page.getByTestId("book-step")).toContainText("Approved for print");
+    await page.getByRole("button", { name: `${child}'s character sheet` }).click();
+    await expect(page.getByRole("img", { name: `${child}'s character sheet` })).toBeVisible();
 
     // A second book, opted in to photo review: the order keeps the photos, the operator sees them, approval deletes them.
     const second = await startBook(page, child, grownup);
