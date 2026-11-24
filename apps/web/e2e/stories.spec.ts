@@ -55,6 +55,36 @@ test("a family member previews the sample story's pages at print size, with the 
   await expect(page.getByTestId("trim-guide")).toHaveCount(0);
 });
 
+test("the story page lays pages out as the book's spreads: the cover alone, then 2 facing 3", async ({ page }) => {
+  await page.goto(`${newReader()}?returnTo=/stories/the-kite-day`);
+  const spreads = page.getByTestId("spread");
+  await expect(spreads).toHaveCount(2);
+  await expect(spreads.nth(0).getByTestId("book-page")).toHaveCount(1);
+  await expect(spreads.nth(0)).toContainText("Page 1");
+  await expect(spreads.nth(1).getByTestId("book-page")).toHaveCount(2);
+  await expect(spreads.nth(1)).toContainText("Page 2");
+  await expect(spreads.nth(1)).toContainText("Page 3");
+
+  const boxes = async () =>
+    page
+      .getByTestId("book-page")
+      .evaluateAll((els) => els.map((el) => el.parentElement!.parentElement!.getBoundingClientRect().toJSON()));
+  const section = (await page.getByRole("region", { name: "Pages" }).boundingBox())!;
+
+  // Desktop: the cover sits in the middle of its own row; page 2 meets page 3 at the gutter, side by side.
+  const [cover, left, right] = await boxes();
+  expect(Math.abs(cover.x + cover.width / 2 - (section.x + section.width / 2))).toBeLessThan(2);
+  expect(left.y).toBeGreaterThan(cover.bottom);
+  expect(right.y).toBeCloseTo(left.y, 0);
+  expect(right.x).toBeCloseTo(left.right, 0);
+
+  // Phone: the pages stack in book order, each fitting the screen.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await boxes())[2]!.y > (await boxes())[1]!.bottom).toBe(true);
+  for (const box of await boxes()) expect(box.right).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
 test("story assets need a session and a story the user may read", async ({ page, request }) => {
   const asset = "/api/files/stories/story_kite_day/v1/pages/p01/plate.svg";
   expect((await request.get(asset)).status()).toBe(401);

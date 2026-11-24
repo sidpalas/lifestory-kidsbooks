@@ -11,7 +11,9 @@ The page inside never reflows: screen and print keep the same line breaks.
 
 - `/books/<bookId>`: the editor's page and, under it, the "All pages" strip of thumbnails that scrolls sideways,
   with Previous and Next above the page; owners and viewers of the family.
-- `/stories/<slug>`: the story's pages with the chosen cast; any signed-in account.
+- `/stories/<slug>`: the story's pages with the chosen cast; any signed-in account. Laid out as the printed book's
+  spreads: page 1 (the cover) alone in its row, then each even page facing the next (2–3 … 16–17), meeting at the
+  gutter; on a phone the pages stack. `e2e -- stories` checks the cover's row and the pairing at desktop and phone.
 - `/author/<storyId>`: the draft preview; the story's authors.
 
 ## Seed data
