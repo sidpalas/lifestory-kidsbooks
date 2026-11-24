@@ -1,0 +1,21 @@
+{
+  "story": {
+    "id": "story_dream_adventure",
+    "slug": "dream-adventure",
+    "title": "Dream Adventure",
+    "summary": "Your child and Tiny the elephant are best buddies. One morning Tiny is gone, so your child goes looking through their dreams: the sea, the jungle, and the moon.",
+    "version": 1,
+    "publishedAt": "2026-11-24T21:00:00Z"
+  },
+  "slot": {
+    "slotId": "hero",
+    "label": "The child",
+    "description": "A child about 3 to 10 years old, the main character on every page",
+    "ages": ["young-child", "older-child"],
+    "example": { "name": "Sid", "pronouns": "he/him" },
+    "outfit": "a red-and-white striped long-sleeved top and red trousers"
+  },
+  "styleWords": "thin, slightly grainy pencil outline and soft watercolour colouring",
+  "styleReferencePage": "p23",
+  "panelPages": ["p22"]
+}

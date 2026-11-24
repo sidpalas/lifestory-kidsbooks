@@ -200,6 +200,26 @@ railway ssh --service web -- node packages/core/src/story-import.ts --author <op
 It prints the story, its URL and version, and who published it; running it again changes nothing. To change anything
 the version already has, raise `version` in its `story.json` (stored versions never change) and run it again. Locally: `mise run story:import -- --author <email> fixtures/stories/<story>`.
 
+A real book's art (tens of MB) stays out of this public repository. The illustrator's PSDs are exported on the Mac
+that has them, as a layer export: `export.json`, `text-layout.json`, `assets/fonts/` and `pages/<pageId>/` with
+`plate.jpg`, `hero.png` and `occluders/` (Dream Adventure's came from thread
+T-01a1fe52-571e-740b-9ac7-821990daba31). Only the converter, `packages/core/src/story-from-export.ts`, and the
+story's settings, `fixtures/art-sources/<story>.json`, are committed. The converter builds a story directory outside
+the repository and validates its manifest, including that figures on a page stay apart:
+
+```sh
+node packages/core/src/story-from-export.ts --export <export dir> --config fixtures/art-sources/dream-adventure.json \
+  --sheet <stock sheet image> --out .amp/in/dream-adventure [--stock <dir of pNN.png stock figures>]
+```
+
+To publish it in production, copy the directory into the web container over the bot's SSH key, then import it from
+there; this writes production data, so it needs a request in the thread:
+
+```sh
+tar -C .amp/in -cz dream-adventure | ssh <ssh options above> <web service-instance ID>@ssh.railway.com \
+  'rm -rf /tmp/dream-adventure && tar -C /tmp -xz && node packages/core/src/story-import.ts --author <operator email> /tmp/dream-adventure'
+```
+
 Production draws character sheets and figures with OpenAI (`IMAGE_PROVIDER=openai` in `.railway/railway.ts`; "Image
 generation" below). The API key is set once on the web service, never in that file, and the worker references it. Set it
 before applying a config that selects OpenAI: both services build the provider when they start and fail without it.
