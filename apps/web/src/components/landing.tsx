@@ -29,7 +29,7 @@ export const landingHead = ({ url }: { url: string }) => ({
     {
       property: "og:image:alt",
       content:
-        "A page of The Dream Adventure with the illustrator's placeholder child, and the same page drawn from a photo",
+        "A page of The Dream Adventure with the illustrator's placeholder child, and the same page drawn from a photo of Sid, one of Lifestory's founders",
     },
     { name: "twitter:card", content: "summary_large_image" },
   ],
@@ -90,7 +90,7 @@ export function Landing() {
               />
               <img
                 src={dreamAfter}
-                alt="The same page with a freckled boy with strawberry-blond hair, drawn from a photo"
+                alt="The same page with a freckled boy with strawberry-blond hair, drawn from a photo of Sid, one of Lifestory's founders"
                 width={720}
                 height={720}
                 fetchPriority="high"
@@ -99,7 +99,7 @@ export function Landing() {
             </div>
             <figcaption className="text-center text-sm text-muted-foreground">
               A page of <span className="italic">The Dream Adventure</span>: the illustrator's placeholder, and the same
-              page drawn from a parent's photo.
+              page drawn from a photo of Sid, one of Lifestory's founders.
             </figcaption>
           </figure>
         </section>
@@ -126,8 +126,8 @@ export function Landing() {
             <h2 className="text-2xl font-semibold">An illustrator's art, with your family in it</h2>
             <p className="text-muted-foreground">
               An illustrator draws every page. From your photo, AI draws a character sheet of each person in that
-              illustrator's style, at the age the story needs, and you see it before you order. Then only the characters
-              on each page are redrawn from it.
+              illustrator's style, and you see it before you order. Then only the characters on each page are redrawn
+              from it.
             </p>
             <p className="text-muted-foreground">
               Your photos are checked by OpenAI under zero data retention and deleted after you order. A person reviews
@@ -138,7 +138,7 @@ export function Landing() {
             <div className="grid grid-cols-[1fr_2fr] items-center gap-3">
               <img
                 src={parentPhoto}
-                alt="A photo of a grown man with strawberry-blond hair"
+                alt="A photo of Sid, one of Lifestory's founders"
                 width={480}
                 height={501}
                 loading="lazy"
@@ -146,7 +146,7 @@ export function Landing() {
               />
               <img
                 src={characterSheet}
-                alt="His character sheet: a freckled six-year-old in a striped top, drawn from the front, three-quarter view, and back"
+                alt="Sid's character sheet: a freckled six-year-old in a striped top, drawn from the front, three-quarter view, and back"
                 width={960}
                 height={640}
                 loading="lazy"
@@ -154,7 +154,8 @@ export function Landing() {
               />
             </div>
             <figcaption className="text-center text-sm text-muted-foreground">
-              One photo, and the character sheet drawn from it as a six-year-old.
+              Sid, one of Lifestory's founders, and his character sheet. To try it on a story about a child, we asked
+              for him as a six-year-old.
             </figcaption>
           </figure>
         </section>
