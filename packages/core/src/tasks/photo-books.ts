@@ -244,13 +244,28 @@ export const checkPhoto = defineTask({
         Effect.gen(function* () {
           const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName);
           return input ? yield* (yield* PhotoCheck).moderate(input) : null;
-        }).pipe(Effect.orDie),
+        }).pipe(
+          // The check won't send photos at all (OPENAI_ZDR not enabled): refuse now rather than retry for ever.
+          Effect.catchTag("PhotoCheckFailed", (error) =>
+            error.message.startsWith("refused:") ? Effect.succeed("unavailable" as const) : Effect.die(error),
+          ),
+          Effect.orDie,
+        ),
       );
       // Replaced by a newer upload meanwhile: that upload's check decides.
       if (!moderation) return { status: "stale" as const };
+      const refusedFirst =
+        moderation === "unavailable"
+          ? [
+              {
+                code: "unavailable",
+                message: "We can't check photos yet, so photo books aren't open. Please try again later.",
+              },
+            ]
+          : moderationRefusals(moderation);
 
       const report: PhotoReport | null =
-        moderationRefusals(moderation).length > 0
+        moderation === "unavailable" || refusedFirst.length > 0
           ? null
           : yield* step(
               ctx,
@@ -273,7 +288,7 @@ export const checkPhoto = defineTask({
           const slot = book.manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
           const result: PhotoCheckResult = report
             ? judgePhoto(report, { ages: slot?.ages ?? [] }, row.hair as Hair | null)
-            : { status: "refused", refusals: moderationRefusals(moderation), warnings: [], report: null };
+            : { status: "refused", refusals: refusedFirst, warnings: [], report: null };
           if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey!).pipe(Effect.orDie);
           yield* Database.query((db) =>
             db

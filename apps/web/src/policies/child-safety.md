@@ -12,7 +12,9 @@ Version 2026-11-24. This text hasn't been reviewed by a lawyer yet.
 
 ## What AI receives
 
-Each photo goes to OpenAI twice, for the check and the sheet, under zero data retention (see the privacy policy).
+Each photo goes to OpenAI twice, for the check and the sheet. OpenAI doesn't train on it, but while we're testing it
+may keep it for up to 30 days to monitor for abuse; we'll move to zero data retention before opening more widely (see
+the privacy policy).
 Nothing else about your family goes with it beyond the age and hair you chose.
 
 ## Human review

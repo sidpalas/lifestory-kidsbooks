@@ -291,7 +291,7 @@ export const consentStatements = [
   {
     id: "processing",
     required: true,
-    text: "I understand how photos are used: OpenAI checks each photo and draws a character sheet from it under zero data retention, and the photos are deleted once I order the book, or after 24 hours if I don't.",
+    text: "I understand how photos are used: OpenAI checks each photo and draws a character sheet from it (OpenAI doesn't train on it, but may keep it for up to 30 days while Lifestory is in testing), and the photos are deleted once I order the book, or after 24 hours if I don't.",
   },
   {
     id: "photo-review",

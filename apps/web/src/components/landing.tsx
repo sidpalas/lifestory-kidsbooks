@@ -131,8 +131,8 @@ export function Landing() {
               from it.
             </p>
             <p className="text-muted-foreground">
-              Your photos are checked by OpenAI under zero data retention and deleted after you order. A person reviews
-              every book before it prints.
+              Your photos are checked by OpenAI, never used to train its models, and deleted after you order. A person
+              reviews every book before it prints.
             </p>
           </div>
           <figure className="flex flex-col gap-3">

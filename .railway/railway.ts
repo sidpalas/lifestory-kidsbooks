@@ -19,10 +19,13 @@ export default defineRailway(() => {
     S3_SECRET_ACCESS_KEY: ref(data, "SECRET_ACCESS_KEY"),
     // Railway buckets use virtual-hosted-style URLs.
     S3_FORCE_PATH_STYLE: "false",
-    // OpenAI draws character sheets and figures (D56); photos go to it only with OPENAI_ZDR=enabled.
+    // OpenAI checks photos and draws character sheets and figures (D56). Photos go to it only with OPENAI_ZDR=enabled.
+    // Enabled while Sid is the only user, before the OpenAI project is under zero data retention (Sid, 2026-11-24).
+    // The policies, consent statement and landing page describe OpenAI's standard 30-day retention until ZDR is on for
+    // the project; then update that wording (search "30 days") and bump POLICY_VERSION.
     IMAGE_PROVIDER: "openai",
-    // Unused since casting suggestions were removed with the parts system; drop it with the next variable change.
-    CASTING_PROVIDER: "openai",
+    PHOTO_CHECK: "openai",
+    OPENAI_ZDR: "enabled",
   };
 
   // Each push to main deploys both services, after CI passes (checkSuites).

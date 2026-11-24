@@ -8,7 +8,7 @@ character sheet per role and a cover (`likeness.preview`), up to two rounds of n
 opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
 `page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
 proof and sends the book for review. The operator redoes a page, refuses the book with a note, or approves it for
-print (`book.release`). Built on the fakes; the Crosby import and a real-provider run are still to come.
+print (`book.release`). Built on the fakes; the Dream Adventure import and a real-provider run are still to come.
 
 ## Routes and roles
 
@@ -28,7 +28,7 @@ print (`book.release`). Built on the fakes; the Crosby import and a real-provide
 
 ## Seed data
 
-- `fixtures/stories/kite-day` (The Kite Day): the placeholder format 4 story. Crosby's Dream Adventure comes with
+- `fixtures/stories/kite-day` (The Kite Day): the placeholder format 4 story. Dream Adventure comes with
   its import.
 - The fake `PhotoCheck` refuses any photo whose file name contains `two-faces`.
 - `IMAGE_PROVIDER=fake` and the fake `PhotoCheck` are the defaults; no API calls in orbs or CI.
@@ -43,8 +43,10 @@ deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a
 
 ## Gotchas
 
-- Real providers need `OPENAI_ZDR=enabled` for the OpenAI project in use; without it the worker refuses to send a
-  photo. Don't run them unless asked: a book costs about US$1.24 worst case.
+- Real providers need `OPENAI_ZDR=enabled`; without it the worker refuses to send a photo, and the check refuses it
+  at once. Production sets it while Sid is the only user, before the OpenAI project is under zero data retention
+  (Sid, 2026-11-24), so the policies, consent and landing page describe OpenAI's standard 30-day retention. When ZDR
+  is on for the project, change that wording (search "30 days") and bump `POLICY_VERSION`. Don't run them unless asked: a book costs about US$1.24 worst case.
 - Photos are deleted right after the order by default. If the parent opts in to photo review, the operator sees
   them beside the sheets, and they go at approval, refusal, or 30 days after the order.
 - Figures on one page must not touch or overlap; the import refuses such pages.

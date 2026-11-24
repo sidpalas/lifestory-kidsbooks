@@ -16,7 +16,7 @@ import type { Stack } from "./stack.ts";
 
 /** A pixel differs when any channel is off by more than 5%. */
 const PIXEL_TOLERANCE = 13;
-/** Anti-aliased and resampled edges differ by up to ~5% on painted art (Crosby's watercolour pages); a missing or wrongly drawn figure differs far more. Text drift is the word check's job. */
+/** Anti-aliased and resampled edges differ by up to ~5% on painted art (Dream Adventure's watercolour pages); a missing or wrongly drawn figure differs far more. Text drift is the word check's job. */
 const MAX_DIFF_SHARE = 0.1;
 /** A word's left edge may move this much between screen and print (pt); c9a06f1 measured 0.01. */
 const MAX_WORD_SHIFT_PT = 0.5;

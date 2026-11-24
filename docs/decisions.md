@@ -330,7 +330,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   - **Illustrator rules (authoring docs):** cut each figure's layer tight, with no band of background around it;
     where scenery covers the body (a blanket over the torso), put it in a scenery occluder that also covers the
     shoulder and neck edge, so anything the model invents underneath stays hidden; draw a clear boundary between
-    body and scenery (Sid wants Crosby's p04 redrawn this way).
+    body and scenery (Sid wants Dream Adventure's p04 redrawn this way).
   - **Tint, on for every figure:** match the layer's RGB mean to the illustrator's bald figure on that page, and
     scale its contrast by that figure's std ÷ the layer's std, clamped to 0.6–1.2. It blended on the night pages
     p04 and p23; a multiply from the plate around the figure came out muddy.
