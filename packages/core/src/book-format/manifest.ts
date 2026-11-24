@@ -190,8 +190,12 @@ export const PhotoStyle = Schema.Struct({
   styleReference: ImageAsset,
   /** The style in words, for every prompt: "thin, slightly grainy pencil outline and soft watercolour colouring". */
   styleWords: Schema.String.check(Schema.isMinLength(1)),
-  /** The prompt set, pinned per story version so a later prompt change never redraws a published story differently. */
-  promptVersion: Schema.Literal("photo-hero-v1"),
+  /**
+   * The prompt set, pinned per story version so a later prompt change never redraws a published story differently.
+   * v1 dresses each figure as on the sheet; v2 keeps the clothes the illustrator drew on each page (a space suit, rain
+   * gear) and takes only the person from the sheet.
+   */
+  promptVersion: Schema.Literals(["photo-hero-v1", "photo-hero-v2"]),
 });
 export type PhotoStyle = typeof PhotoStyle.Type;
 

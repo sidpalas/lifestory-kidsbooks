@@ -281,7 +281,7 @@ export const convertExport = async (options: {
       fonts,
       textStyles: layout.textStyles,
       characterSlots: [{ ...config.slot, stockSheet: sheetAsset }],
-      photo: { styleReference, styleWords: config.styleWords, promptVersion: "photo-hero-v1" },
+      photo: { styleReference, styleWords: config.styleWords, promptVersion: "photo-hero-v2" },
       pages,
     }),
   );

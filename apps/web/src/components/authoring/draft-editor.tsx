@@ -467,7 +467,7 @@ function StoryTab({
             onUploaded={(styleReference) =>
               change((d) => ({
                 ...d,
-                photo: { styleWords: "", promptVersion: "photo-hero-v1", ...d.photo, styleReference },
+                photo: { styleWords: "", promptVersion: "photo-hero-v2", ...d.photo, styleReference },
               }))
             }
           />
