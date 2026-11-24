@@ -1112,7 +1112,9 @@ function PageTab({
                   files={files}
                   pageId={page.pageId}
                   figure={layer}
-                  onChange={(figure) => setLayers((layers) => layers.map((x, i) => (i === l ? figure : x)))}
+                  onChange={(update) =>
+                    setLayers((layers) => layers.map((x, i) => (i === l && x.kind === "photoFigure" ? update(x) : x)))
+                  }
                 />
               )}
             </li>
@@ -1211,7 +1213,8 @@ function FigureFields({
   files: DraftFiles;
   pageId: string;
   figure: PhotoFigure;
-  onChange: (figure: PhotoFigure) => void;
+  /** Applied to the layer as it is when the change lands: two uploads finishing out of order both keep. */
+  onChange: (change: (figure: PhotoFigure) => PhotoFigure) => void;
 }) {
   return (
     <div className="flex flex-col gap-3" data-testid="figure-fields">
@@ -1221,24 +1224,32 @@ function FigureFields({
           folder={`pages/${pageId}/${figure.slotId}`}
           label="Bald reference (cut tight)"
           asset={figure.reference}
-          onUploaded={(reference) => onChange({ ...figure, reference })}
+          onUploaded={(reference) => onChange((current) => ({ ...current, reference }))}
         />
         <UploadField
           files={files}
           folder={`pages/${pageId}/${figure.slotId}`}
           label="Stock drawing (fills the window)"
           asset={figure.stock}
-          onUploaded={(stock) => onChange({ ...figure, stock })}
+          onUploaded={(stock) => onChange((current) => ({ ...current, stock }))}
         />
       </div>
-      <RectField label="Figure box" value={figure.box} onChange={(box) => onChange({ ...figure, box })} />
-      <RectField label="Window" value={figure.window} onChange={(window) => onChange({ ...figure, window })} />
-      <RectField label="Head" value={figure.head} onChange={(head) => onChange({ ...figure, head })} />
+      <RectField
+        label="Figure box"
+        value={figure.box}
+        onChange={(box) => onChange((current) => ({ ...current, box }))}
+      />
+      <RectField
+        label="Window"
+        value={figure.window}
+        onChange={(window) => onChange((current) => ({ ...current, window }))}
+      />
+      <RectField label="Head" value={figure.head} onChange={(head) => onChange((current) => ({ ...current, head }))} />
       <label className="flex items-center gap-2 text-xs">
         <input
           type="checkbox"
           checked={figure.tint !== false}
-          onChange={(event) => onChange({ ...figure, tint: event.target.checked })}
+          onChange={(event) => onChange((current) => ({ ...current, tint: event.target.checked }))}
         />
         Match the drawn figure's colour to the illustrator's (tint)
       </label>
