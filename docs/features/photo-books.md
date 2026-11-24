@@ -4,11 +4,11 @@
 
 A parent puts their family into a story (D56): one photo per role, checked in seconds (`photo.check`), then a
 character sheet per role and a cover (`likeness.preview`), up to two rounds of notes that edit the sheets
-(`likeness.revise`), and "Make my book", which is the order (D57). The order draws every figure on every page from
-the approved sheets (`book.make`, `page.figure`). The parent then changes up to 3 pages, keeping the original or the
-new version of each, approves a proof and sends the book for review. The operator redoes a page, refuses the book
-with a note, or approves it for print, which deletes the photos (`book.release`). Being built: phases 3–9 of the
-"Photo books: plan and UX" artifact.
+(`likeness.revise`), and "Make my book", which is the order (D57). The order deletes the photos, unless the parent
+opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
+`page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
+proof and sends the book for review. The operator redoes a page, refuses the book with a note, or approves it for
+print (`book.release`). Being built: phases 3–9 of the "Photo books: plan and UX" artifact.
 
 ## Routes and roles
 
@@ -18,7 +18,7 @@ with a note, or approves it for print, which deletes the photos (`book.release`)
   are hidden from Our books and from the story page's list of the family's books.
 - Policies: terms, privacy policy, child safety and AI policy, linked from the footer, account setup, the photo
   step and the order step (D58).
-- `/admin` review queue: the operator only, through `reviewBook`; it shows sheets and pages, never photos.
+- `/admin` review queue: the operator only, through `reviewBook`; it shows sheets and pages, and photos only on an opted-in book.
 
 ## Seed data
 
@@ -29,16 +29,17 @@ with a note, or approves it for print, which deletes the photos (`book.release`)
 ## Verify
 
 `mise run verify -- e2e -- photo-book` once `photo-book.spec.ts` lands: a two-role book through the check with one
-bad photo, two rounds, the order, three page changes with keep and use-new, a proof, operator approval with the
-photos gone from storage afterwards, and the 24 h sweep of an abandoned draft. A dedicated `verify` command with
-screenshots of each step comes with the parent screens.
+bad photo, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
+proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
+deletes, and the 24 h sweep of an abandoned draft. A dedicated `verify` command with screenshots of each step comes
+with the parent screens.
 
 ## Gotchas
 
 - Real providers need `OPENAI_ZDR=enabled` for the OpenAI project in use; without it the worker refuses to send a
   photo. Don't run them unless asked: a book costs about US$1.24 worst case.
-- Photos stay through generation, page changes and review, and are deleted at the operator's approval
-  (`book.release`), on a refusal, with a 24 h-old unordered draft, or 30 days after the order.
+- Photos are deleted right after the order by default. If the parent opts in to photo review, the operator sees
+  them beside the sheets, and they go at approval, refusal, or 30 days after the order.
 - Figures on one page must not touch or overlap; the import refuses such pages.
 - A generated figure is clipped to its keep zone (the bald figure dilated, plus a hair zone above the head), not its
   box: on p04 the model redrew the elephant behind the hero inside the box. Pages that lose many pixels to the clip
