@@ -60,7 +60,8 @@ test("the story page lays pages out as the book's spreads: the cover alone, then
   const spreads = page.getByTestId("spread");
   await expect(spreads).toHaveCount(2);
   await expect(spreads.nth(0).getByTestId("book-page")).toHaveCount(1);
-  await expect(spreads.nth(0)).toContainText("Page 1");
+  await expect(spreads.nth(0)).toContainText("Cover");
+  await expect(spreads.nth(0)).not.toContainText("Page 1");
   await expect(spreads.nth(1).getByTestId("book-page")).toHaveCount(2);
   await expect(spreads.nth(1)).toContainText("Page 2");
   await expect(spreads.nth(1)).toContainText("Page 3");

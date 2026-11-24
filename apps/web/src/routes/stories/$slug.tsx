@@ -126,7 +126,7 @@ function StoryPreview() {
                         i === 0 ? "md:text-center" : i % 2 === 0 && "md:text-right",
                       )}
                     >
-                      Page {i + 1}
+                      {i === 0 ? "Cover" : `Page ${i + 1}`}
                     </p>
                   </div>
                 </div>
