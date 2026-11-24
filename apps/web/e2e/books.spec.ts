@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
-// Characters, personalized books, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
+// Personalized books, who plays each role, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
 // "The Example Family"; the seeded grandparent is a viewer in it. Names are unique per run.
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
@@ -19,21 +19,21 @@ const imagesLoaded = (page: Page) =>
     )
     .toBe(0);
 
-/** Adds a family member with an age (D29); their likeness comes from a photo per book (D56). */
-const addCharacter = async (
-  page: Page,
-  name: string,
-  pronouns: string,
-  age: string,
-  refine: (page: Page) => Promise<void> = async () => {},
-) => {
-  await page.goto("/family/new");
-  await page.getByLabel("Name").fill(name);
-  await page.getByLabel("Pronouns").selectOption(pronouns);
-  await page.getByLabel("Age").selectOption(age.toLowerCase().replace(" ", "-"));
-  await refine(page);
-  await page.getByRole("button", { name: "Add to the family" }).click();
-  await expect(page.getByTestId("characters")).toContainText(name);
+type Person = { name: string; title?: string; pronouns: string; age: string };
+
+/** Fills one role on the story page: who plays it (D56; no separate family members since Sid, 2026-11-24). */
+const fillRole = async (page: Page, slotId: string, person: Person) => {
+  const role = page.getByTestId(`role-${slotId}`);
+  await role.getByLabel("Name").fill(person.name);
+  if (person.title) await role.getByLabel(/What the kids call them/).fill(person.title);
+  await role.getByLabel("Pronouns").selectOption(person.pronouns);
+  await role.getByLabel("Age").selectOption({ label: person.age });
+};
+
+/** Fills both roles of The Kite Day. */
+const castKiteDay = async (page: Page, hero: Person, grownup: Person) => {
+  await fillRole(page, "hero", hero);
+  await fillRole(page, "grownup", grownup);
 };
 
 /**
@@ -49,7 +49,7 @@ const pageSources = (page: Page) =>
     .getByTestId("book-page")
     .evaluateAll((pages) => pages.map((el) => [...el.querySelectorAll("img")].map((img) => img.getAttribute("src"))));
 
-test("a parent adds family members, makes a book of them, edits a page's text, and an age change asks for another cast", async ({
+test("a parent says who plays each role, makes a book, edits a page's text, and changes who plays a role", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -60,19 +60,19 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   // book refuses when the family's books changed since the page loaded (D47).
   await page.goto(`/__dev/log-me-in/ada-${id}@lifestory.dev?returnTo=/`);
 
-  await addCharacter(page, child, "she/her", "Young child");
+  // Make a book: each role gets a person of an age it accepts (the grown-up's role offers only adult and older adult).
   // A title, separate from the name, is what the children call them; stories write it as {{grownup.title}}.
-  await addCharacter(page, grownup, "they/them", "Older adult", async () => {
-    await page.getByLabel(/What the kids call them/).fill("Grandpa");
-  });
-  await expect(page.getByTestId("characters")).toContainText("Grandpa · Older adult");
-
-  // Make a book: each role is filled by a family member of an age it accepts (the grown-up's role takes adults and
-  // older adults).
   await page.goto("/stories/the-kite-day");
-  const make = page.getByRole("list", { name: "Roles" });
-  await make.getByLabel(/The child/).selectOption({ label: child });
-  await make.getByLabel(/A grown-up/).selectOption({ label: grownup });
+  await expect(page.getByTestId("role-grownup").getByLabel("Age").locator("option")).toHaveText([
+    "Adult",
+    "Older adult",
+  ]);
+  await expect(makeBook(page)).toBeDisabled();
+  await castKiteDay(
+    page,
+    { name: child, pronouns: "she/her", age: "Young child" },
+    { name: grownup, title: "Grandpa", pronouns: "they/them", age: "Older adult" },
+  );
   // The story's pages show its own characters (D56): a plate and one stock figure per appearance, 8 images.
   await expect(page.getByTestId("pages-heading")).toHaveText("The pages with Mia and Joe");
   const preview = page.getByRole("region", { name: "Pages" }).getByTestId("book-page");
@@ -81,7 +81,6 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   await expect.poll(() => preview.locator("img").count()).toBe(8);
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
-  const bookUrl = page.url();
 
   const allPages = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
   await expect(allPages).toHaveCount(3);
@@ -180,31 +179,32 @@ test("a parent adds family members, makes a book of them, edits a page's text, a
   if (process.env.E2E_SCREENSHOTS)
     (await import("node:fs")).writeFileSync(`${process.env.E2E_SCREENSHOTS}/book-proof.pdf`, await pdf.body());
 
-  // Ada grows up: the child's role accepts young and older children, not adults, so the editor asks for someone
-  // else; the text still names her (D26, D29: no fallback to another age).
-  await page
-    .getByTestId("role-hero")
-    .getByRole("link", { name: `Edit ${child}` })
-    .click();
-  await page.getByLabel("Age").selectOption("adult");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  // Saving returns to Our family; opening the book sooner can read the age from before the save.
-  await expect(page).toHaveURL(/\/family$/);
-  await page.goto(bookUrl);
-  await expect(page.getByTestId("role-hero").getByRole("status")).toContainText("Choose someone else for the child");
+  // Changing who plays a role renames them on every page, and the role still offers only its own ages.
+  const hero = page.getByTestId("role-hero");
+  await expect(hero).toContainText(`${child} · she/her · young child`);
+  await hero.getByRole("button", { name: "Change" }).click();
+  await expect(hero.getByLabel("Age").locator("option")).toHaveText(["Young child", "Older child"]);
+  await hero.getByLabel("Name").fill(`Bo ${id}`);
+  await hero.getByLabel("Pronouns").selectOption("he/him");
+  await hero.getByLabel("Age").selectOption({ label: "Older child" });
+  await hero.getByRole("button", { name: "Save" }).click();
+  await expect(hero).toContainText(`Bo ${id} · he/him · older child`);
+  await page.reload();
+  await expect(allPages.nth(2)).toContainText(`“Same time tomorrow?” asked Grandpa. Bo ${id} nodded, all smiles.`);
+  await expect(page.getByTestId("editor-page")).toContainText(`Bo ${id} carried his favourite red kite up the hill.`);
 });
 
-test("a viewer reads the family's characters and books but can't change them", async ({ page, browser }) => {
+test("a viewer reads the family's books but can't change them", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const id = unique();
   const child = `Kit ${id}`;
   await page.goto("/__dev/log-me-in/parent@lifestory.dev?returnTo=/");
-  await addCharacter(page, child, "he/him", "Older child");
-  await addCharacter(page, `Lee ${id}`, "she/her", "Adult");
   await page.goto("/stories/the-kite-day");
-  const make = page.getByRole("list", { name: "Roles" });
-  await make.getByLabel(/The child/).selectOption({ label: child });
-  await make.getByLabel(/A grown-up/).selectOption({ label: `Lee ${id}` });
+  await castKiteDay(
+    page,
+    { name: child, pronouns: "he/him", age: "Older child" },
+    { name: `Lee ${id}`, pronouns: "she/her", age: "Adult" },
+  );
   await makeBook(page).click();
   await expect(page).toHaveURL(/\/books\/book_/);
   const bookUrl = new URL(page.url()).pathname;
@@ -215,12 +215,9 @@ test("a viewer reads the family's characters and books but can't change them", a
   await expect(viewer.getByText("you're a viewer")).toBeVisible();
   await expect(viewer.getByRole("button", { name: /Save text/ })).toHaveCount(0);
   await expect(viewer.getByRole("textbox", { name: "Text block 1" })).toHaveAttribute("readonly", "");
-  await viewer.goto("/family");
-  await expect(viewer.getByTestId("characters")).toContainText(child);
-  await expect(viewer.getByRole("link", { name: "Add someone" })).toHaveCount(0);
-  await viewer.getByRole("link", { name: new RegExp(child) }).click();
-  await expect(viewer.getByRole("button", { name: "Save changes" })).toHaveCount(0);
-  // The viewer previews the story with the family but can't make or delete books.
+  await expect(viewer.getByTestId("role-hero")).toContainText(child);
+  await expect(viewer.getByTestId("role-hero").getByRole("button", { name: "Change" })).toHaveCount(0);
+  // The viewer previews the story but can't make or delete books.
   await viewer.goto("/stories/the-kite-day");
   await expect(viewer.getByTestId("story-books")).toContainText(child);
   await expect(makeBook(viewer)).toHaveCount(0);
@@ -247,8 +244,6 @@ test("a viewer reads the family's characters and books but can't change them", a
   await remove.click();
   await confirm;
   await expect(remove).toHaveCount(0);
-  await page.goto("/family");
-  await expect(page.getByTestId("characters")).toContainText(child);
   await page.goto(bookUrl);
   await expect(page.getByText(/not found/i)).toBeVisible();
   await expect(page.getByRole("region", { name: "All pages" })).toHaveCount(0);
@@ -267,12 +262,12 @@ test("a family with a book of the story is sent to it instead of silently making
     const page = await context.newPage();
     // A new account comes with its own family, which has no books yet.
     await page.goto(`/__dev/log-me-in/${email}?returnTo=/`);
-    await addCharacter(page, child, "she/her", "Young child");
-    await addCharacter(page, grownup, "he/him", "Adult");
+    const people = [
+      { name: child, pronouns: "she/her", age: "Young child" },
+      { name: grownup, pronouns: "he/him", age: "Adult" },
+    ] as const;
     await page.goto("/stories/the-kite-day");
-    const roles = page.getByRole("list", { name: "Roles" });
-    await roles.getByLabel(/The child/).selectOption({ label: child });
-    await roles.getByLabel(/A grown-up/).selectOption({ label: grownup });
+    await castKiteDay(page, ...people);
     await expect(page.getByTestId("story-books")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Make the book" })).toBeEnabled();
     const storyUrl = page.url();
@@ -280,6 +275,7 @@ test("a family with a book of the story is sent to it instead of silently making
     // A second tab still shows the page from before the book existed.
     const stale = await context.newPage();
     await stale.goto(storyUrl);
+    await castKiteDay(stale, ...people);
     await expect(stale.getByRole("button", { name: "Make the book" })).toBeEnabled();
 
     await page.getByRole("button", { name: "Make the book" }).click();
@@ -325,17 +321,10 @@ test("a family with a book of the story is sent to it instead of silently making
         ),
       ),
     );
-    const { rows: members } = await runtime.runPromise(
-      Database.use(({ pool }) =>
-        Effect.promise(() =>
-          pool.query<{ id: string; name: string }>("select id, name from character where family_id = $1", [
-            owner!.familyId,
-          ]),
-        ),
-      ),
-    );
-    const idOf = (name: string) => members.find((member) => member.name === name)!.id;
-    const cast = { hero: idOf(child), grownup: idOf(grownup) };
+    const cast = {
+      hero: { name: child, title: null, pronouns: "she/her", age: "young-child" },
+      grownup: { name: grownup, title: null, pronouns: "he/him", age: "adult" },
+    } as const;
     const bookId = bookPath.split("/").at(-1)!;
     const attempts = await Promise.all(
       [0, 1].map(() =>
@@ -353,6 +342,12 @@ test("a family with a book of the story is sent to it instead of silently making
     await expect(page.getByTestId("story-books")).toContainText("Your family already has 2 books of this story");
     await expect(page.getByTestId("story-books").getByRole("link")).toHaveCount(2);
     await expect(page.getByRole("link", { name: "Open our book" })).toHaveCount(0);
+    // People from the family's books are offered, so another copy needn't be typed again.
+    const pick = page.getByLabel("The child: someone from your other books");
+    await expect(pick.locator("option")).toHaveText(["Choose…", child]);
+    await pick.selectOption({ label: child });
+    await expect(page.getByTestId("role-hero").getByLabel("Name")).toHaveValue(child);
+    await page.getByLabel("A grown-up: someone from your other books").selectOption({ label: grownup });
     await page.getByRole("button", { name: "Make another copy" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     const newest = new URL(page.url()).pathname;

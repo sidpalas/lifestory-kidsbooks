@@ -38,12 +38,12 @@ function Home() {
   const data = Route.useLoaderData();
   if (!data.signedIn) throw new Error("Home renders only for signed-in visitors");
   const { shell, library } = data;
-  const { characters, books, stories, canEdit } = library;
+  const { books, stories, canEdit } = library;
   const latest = books[0]; // The library lists books newest first.
   return (
     <AppShell shell={shell}>
       <ShellPage title="Home">
-        {canEdit && (characters.length === 0 || books.length === 0) && <NextStep hasFamily={characters.length > 0} />}
+        {canEdit && books.length === 0 && <NextStep />}
         {latest && (
           <section className="flex flex-col gap-3" aria-labelledby="latest-book">
             <h2 id="latest-book" className="text-lg font-semibold">
@@ -75,10 +75,9 @@ function Home() {
   );
 }
 
-/** Getting started, shown until the family has someone in it and a book (Sid, D48). */
-function NextStep({ hasFamily }: { hasFamily: boolean }) {
-  const steps = ["Add your family", "Make your first book", "Check the words and print a proof"];
-  const current = hasFamily ? 1 : 0;
+/** Getting started, shown until the family has a book (Sid, D48). */
+function NextStep() {
+  const steps = ["Choose a story", "Put your family in it", "Check the words and print a proof"];
   return (
     <section
       className="flex flex-col gap-4 rounded-lg border bg-card p-5"
@@ -88,32 +87,28 @@ function NextStep({ hasFamily }: { hasFamily: boolean }) {
       <div className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">Next step</p>
         <h2 id="next-step" className="text-xl font-semibold">
-          {hasFamily ? "Choose a story and make your first book" : "Add your first family member"}
+          Choose a story and make your first book
         </h2>
         <p className="text-sm text-muted-foreground">
-          {hasFamily
-            ? "Pick who plays each part, and every page is drawn with them."
-            : "Choose how they look: age, face, skin tone, hair, and glasses. No photos needed."}
+          Say who plays each part, with a photo of each of them, and every page is drawn with them.
         </p>
       </div>
       <ol className="grid grid-cols-3 gap-2 text-xs">
         {steps.map((step, index) => (
           <li
             key={step}
-            aria-current={index === current ? "step" : undefined}
+            aria-current={index === 0 ? "step" : undefined}
             className={cn(
               "border-t-4 pt-2",
-              index < current && "border-primary",
-              index === current && "border-primary font-semibold text-primary",
-              index > current && "border-border text-muted-foreground",
+              index === 0 ? "border-primary font-semibold text-primary" : "border-border text-muted-foreground",
             )}
           >
-            {index < current ? `${step} · done` : step}
+            {step}
           </li>
         ))}
       </ol>
       <Button asChild className="self-start">
-        {hasFamily ? <Link to="/stories">Choose a story</Link> : <Link to="/family/new">Add someone</Link>}
+        <Link to="/stories">Choose a story</Link>
       </Button>
     </section>
   );

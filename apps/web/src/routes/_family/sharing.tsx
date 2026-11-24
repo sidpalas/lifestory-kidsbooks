@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_family/sharing")({
         title="Sharing"
         description={
           active
-            ? `Who can open ${active.name}'s books. Being here doesn't put anyone in a book; add them in Our family for that.`
+            ? `Who can open ${active.name}'s books. Being here doesn't put anyone in a book; you say who plays each part when you make one.`
             : undefined
         }
       >

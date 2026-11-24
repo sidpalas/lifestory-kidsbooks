@@ -65,25 +65,9 @@ export const layout = async (stack: Stack, report: Report, options: { story: str
     const existing = page.getByTestId("story-books").getByRole("link").first();
     if (await existing.count()) await existing.click();
     else {
-      // Cast each role with the first family member it accepts, adding a child and a grown-up if nobody fits.
-      const roles = page.getByRole("list", { name: "Roles" }).locator("select");
-      const family = () =>
-        roles.evaluateAll((selects) =>
-          selects.map(
-            (select) => select.querySelector<HTMLOptionElement>('optgroup[label="Your family"] option')?.value ?? null,
-          ),
-        );
-      if ((await family()).includes(null)) {
-        for (const age of ["Young child", "Adult"]) {
-          await page.goto("/family/new");
-          await page.getByLabel("Name").fill(`Layout ${age}`);
-          await page.getByRole("button", { name: age, exact: true }).click();
-          await page.getByRole("button", { name: "Add to the family" }).click();
-          await page.getByTestId("characters").waitFor();
-        }
-        await page.goto(storyUrl);
-      }
-      for (const [i, value] of (await family()).entries()) if (value) await roles.nth(i).selectOption(value);
+      // Cast each role with a placeholder person of the first age it accepts.
+      for (const role of await page.getByRole("list", { name: "Roles" }).getByRole("listitem").all())
+        await role.getByLabel("Name").fill("Layout");
       await page.getByRole("button", { name: "Make the book", exact: true }).click();
     }
     await page.waitForURL(/\/books\/book_/);

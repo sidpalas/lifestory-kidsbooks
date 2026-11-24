@@ -29,13 +29,13 @@ export const Route = createFileRoute("/author/$storyId")({
         versions.draftVersion === null
           ? null
           : unwrapResult(DraftResult)(await getDraftFn({ data: { storyId: params.storyId } }));
-      // Family members the author can preview roles as; an author without a family to read just has none.
-      const characters = draft
+      // People from the author's family's books, to preview roles as; an author without a family just has none.
+      const people = draft
         ? await getFamilyLibrary()
-            .then((r) => unwrapResult(FamilyLibraryResult)(r).characters)
+            .then((r) => unwrapResult(FamilyLibraryResult)(r).people)
             .catch(() => [])
         : [];
-      return { versions, draft, characters };
+      return { versions, draft, people };
     } catch (error) {
       if (error instanceof NotAuthenticated) throw redirect({ to: "/sign-in" });
       if (error instanceof NotFound || error instanceof Forbidden) throw notFound();
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/author/$storyId")({
 });
 
 function AuthorStory() {
-  const { versions, draft, characters } = Route.useLoaderData();
+  const { versions, draft, people } = Route.useLoaderData();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   // Disabled from the click until the editor opens, so a second click can't start another request.
@@ -85,7 +85,7 @@ function AuthorStory() {
           )}
         </header>
         {draft ? (
-          <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} characters={characters} />
+          <DraftEditor key={`${draft.story.id}:${draft.version}`} initial={draft} people={people} />
         ) : (
           <section className="flex flex-col gap-3" data-testid="published-versions">
             {latest && (

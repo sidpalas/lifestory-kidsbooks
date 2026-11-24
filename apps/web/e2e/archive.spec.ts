@@ -12,8 +12,7 @@ test("an author archives a story: families can't find it or make a book of it, e
 }) => {
   test.setTimeout(120_000);
   // Imported here, not at the top (AGENTS.md, "Orb size").
-  const { createBook, createCharacter, Database, importStoryVersion, makeServerRuntime } =
-    await import("@lifestory/core");
+  const { createBook, Database, importStoryVersion, makeServerRuntime } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const fixture = new URL("../../../fixtures/stories/kite-day/", import.meta.url);
@@ -58,23 +57,19 @@ test("an author archives a story: families can't find it or make a book of it, e
         publishedAt: new Date("2026-11-19T19:00:00Z"),
       }),
     );
-    const hero = await run(
-      createCharacter(parent, family, {
-        name: `Ada ${id}`,
-        title: null,
-        pronouns: "she/her",
-        age: "young-child",
-      }),
-    );
-    const grown = await run(
-      createCharacter(parent, family, {
-        name: `Bea ${id}`,
-        title: null,
-        pronouns: "she/her",
-        age: "adult",
-      }),
-    );
-    const cast = { hero: hero.id, grownup: grown.id };
+    const hero = {
+      name: `Ada ${id}`,
+      title: null,
+      pronouns: "she/her",
+      age: "young-child",
+    } as const;
+    const grown = {
+      name: `Bea ${id}`,
+      title: null,
+      pronouns: "she/her",
+      age: "adult",
+    } as const;
+    const cast = { hero: hero, grownup: grown };
     // The family made a book before the story was archived.
     const { id: bookId } = await run(createBook(parent, family, { slug, cast }));
 
@@ -130,24 +125,20 @@ test("an author archives a story: families can't find it or make a book of it, e
       ),
     );
     const ownFamily = own[0].organization_id as string;
-    const ownHero = await run(
-      createCharacter("user_operator", ownFamily, {
-        name: `Cy ${id}`,
-        title: null,
-        pronouns: "she/her",
-        age: "young-child",
-      }),
-    );
-    const ownGrown = await run(
-      createCharacter("user_operator", ownFamily, {
-        name: `Di ${id}`,
-        title: null,
-        pronouns: "she/her",
-        age: "adult",
-      }),
-    );
+    const ownHero = {
+      name: `Cy ${id}`,
+      title: null,
+      pronouns: "she/her",
+      age: "young-child",
+    } as const;
+    const ownGrown = {
+      name: `Di ${id}`,
+      title: null,
+      pronouns: "she/her",
+      age: "adult",
+    } as const;
     await expect(
-      run(createBook("user_operator", ownFamily, { slug, cast: { hero: ownHero.id, grownup: ownGrown.id } })),
+      run(createBook("user_operator", ownFamily, { slug, cast: { hero: ownHero, grownup: ownGrown } })),
     ).rejects.toThrow("is archived");
     await author.goto(`/stories/${slug}`);
     await expect(author.getByTestId("story-archived")).toContainText("Archived.");

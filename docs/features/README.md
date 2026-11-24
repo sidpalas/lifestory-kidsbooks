@@ -35,14 +35,15 @@ Show the user the images from that directory; a PASS line with no evidence looke
 
 ### Accounts and families
 
-- [app-shell](app-shell.md): sidebar, Home's next step, Stories, Our books, Our family, Sharing, Studio.
+- [app-shell](app-shell.md): sidebar, Home's next step, Stories, Our books, Sharing, Studio.
   `verify e2e -- smoke families books`.
 - Sign in, invitations, set password, viewer role: covered by `e2e -- families milestone1`; no map file yet.
 
 ### Characters
 
-- Family members: name, what the kids call them, pronouns, and an age (D29). Covered by `e2e -- books milestone1`;
-  no map file yet. Their likeness comes from a photo per book (photo-books).
+- Who plays each role: a name, what the kids call them, pronouns, and an age the role accepts (D29, D56), entered
+  per book on the story page and changeable in the book editor; people from the family's earlier books are offered.
+  Covered by `e2e -- books milestone1`; no map file yet. Their likeness comes from a photo per book (photo-books).
 
 ### Stories and books
 

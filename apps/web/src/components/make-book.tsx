@@ -1,12 +1,14 @@
-// Who's in a story: choose a family member for each role, then make the book. A role accepts some character ages
-// (D29), so only family members of those ages are offered. The pages show the illustrator's stock characters; a
-// family's book draws its own people from their photos (D56).
+// Who's in a story: for each role, the person's name, what the kids call them, pronouns and an age the role accepts
+// (D29), typed in or picked from the family's earlier books; then make the book. The pages show the illustrator's stock
+// characters; a family's book draws its own people from their photos (D56).
 import {
   ageLabel,
   BookExists,
   type BookSummary,
-  type Character,
+  Age,
+  type CastPerson,
   type CharacterSlot,
+  PronounSet,
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
@@ -14,17 +16,125 @@ import { useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { createBookFn, CreateBookResult } from "~/server/books";
 
 /** "young child or older child". */
 export const agesLabel = (slot: CharacterSlot) => slot.ages.map((age) => ageLabel(age).toLowerCase()).join(" or ");
 
+/** Suggestions only: families use many words and spellings, so the field takes any text. */
+const titleSuggestions = [
+  "Mum",
+  "Mom",
+  "Dad",
+  "Mama",
+  "Papa",
+  "Grandma",
+  "Grandpa",
+  "Nana",
+  "Granny",
+  "Auntie",
+  "Uncle",
+];
+
+/** A person in progress: the title as typed, empty for none. */
+export type PersonDraft = { name: string; title: string; pronouns: PronounSet; age: Age };
+
+export const draftOf = (person: CastPerson): PersonDraft => ({ ...person, title: person.title ?? "" });
+export const blankFor = (slot: CharacterSlot): PersonDraft => ({
+  name: "",
+  title: "",
+  pronouns: slot.example.pronouns,
+  age: slot.ages[0]!,
+});
+export const personOf = (draft: PersonDraft): CastPerson => ({
+  name: draft.name.trim(),
+  title: draft.title.trim() || null,
+  pronouns: draft.pronouns,
+  age: draft.age,
+});
+
+/** Who plays one role: name, what the kids call them, pronouns, and one of the ages the role accepts. */
+export function PersonFields({
+  slot,
+  value,
+  onChange,
+  disabled,
+}: {
+  slot: CharacterSlot;
+  value: PersonDraft;
+  onChange: (next: PersonDraft) => void;
+  disabled?: boolean;
+}) {
+  const id = (field: string) => `${slot.slotId}-${field}`;
+  return (
+    <fieldset className="grid gap-2 sm:grid-cols-2" disabled={disabled} aria-label={slot.label}>
+      <label htmlFor={id("name")} className="flex flex-col gap-1 text-xs font-medium">
+        Name
+        <Input
+          id={id("name")}
+          value={value.name}
+          required
+          maxLength={60}
+          onChange={(event) => onChange({ ...value, name: event.target.value })}
+        />
+      </label>
+      <label htmlFor={id("title")} className="flex flex-col gap-1 text-xs font-medium">
+        <span>
+          What the kids call them <span className="font-normal text-muted-foreground">(optional)</span>
+        </span>
+        <Input
+          id={id("title")}
+          value={value.title}
+          maxLength={30}
+          list="person-titles"
+          placeholder="Dad, Nana…"
+          onChange={(event) => onChange({ ...value, title: event.target.value })}
+        />
+      </label>
+      <label htmlFor={id("pronouns")} className="flex flex-col gap-1 text-xs font-medium">
+        Pronouns
+        <NativeSelect
+          id={id("pronouns")}
+          value={value.pronouns}
+          onChange={(event) => onChange({ ...value, pronouns: event.target.value as PronounSet })}
+        >
+          {PronounSet.literals.map((set) => (
+            <option key={set} value={set}>
+              {set}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
+      <label htmlFor={id("age")} className="flex flex-col gap-1 text-xs font-medium">
+        Age
+        <NativeSelect
+          id={id("age")}
+          value={value.age}
+          onChange={(event) => onChange({ ...value, age: event.target.value as Age })}
+        >
+          {slot.ages.map((age) => (
+            <option key={age} value={age}>
+              {ageLabel(age)}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
+      <datalist id="person-titles">
+        {titleSuggestions.map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
+        ))}
+      </datalist>
+    </fieldset>
+  );
+}
+
 export function StoryCast({
   slug,
   version,
   slots,
-  characters,
+  people,
   books,
   canEdit,
   archived,
@@ -33,7 +143,8 @@ export function StoryCast({
   /** The story version the page shows, which a new book would pin. */
   version: number;
   slots: ReadonlyArray<CharacterSlot>;
-  characters: ReadonlyArray<Character>;
+  /** The people in the family's books, to pick instead of typing them again. */
+  people: ReadonlyArray<CastPerson>;
   /** The family's books of this story already made, newest first. */
   books: ReadonlyArray<BookSummary>;
   canEdit: boolean;
@@ -44,12 +155,11 @@ export function StoryCast({
   const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [making, setMaking] = useState(false);
-  const fits = (slot: CharacterSlot) => characters.filter((character) => slot.ages.includes(character.age));
-  // Each role starts with the first family member who fits it.
-  const [cast, setCast] = useState<Record<string, string>>(() =>
-    Object.fromEntries(slots.flatMap((slot) => (fits(slot)[0] ? [[slot.slotId, fits(slot)[0]!.id]] : []))),
+  const [cast, setCast] = useState<Record<string, PersonDraft>>(() =>
+    Object.fromEntries(slots.map((slot) => [slot.slotId, blankFor(slot)])),
   );
-  const everyoneFromFamily = slots.every((slot) => cast[slot.slotId]);
+  const fits = (slot: CharacterSlot) => people.filter((person) => slot.ages.includes(person.age));
+  const everyoneNamed = slots.every((slot) => cast[slot.slotId]!.name.trim() !== "");
 
   const create = async () => {
     setMaking(true);
@@ -57,7 +167,8 @@ export function StoryCast({
     try {
       // The books this page lists: the server makes the book only if the family has no other (D47).
       const existing = books.map((book) => book.id);
-      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast, existing } }));
+      const chosen = Object.fromEntries(slots.map((slot) => [slot.slotId, personOf(cast[slot.slotId]!)]));
+      const { id } = unwrapResult(CreateBookResult)(await createBookFn({ data: { slug, cast: chosen, existing } }));
       await router.navigate({ to: "/books/$bookId", params: { bookId: id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -76,7 +187,7 @@ export function StoryCast({
         </CardTitle>
         <CardDescription>
           {canEdit
-            ? "Choose who plays each part. The pages below show the story's own characters."
+            ? "Say who plays each part. The pages below show the story's own characters; your book draws your family from their photos."
             : "You're a viewer in this family, so an owner or editor makes the book."}
         </CardDescription>
       </CardHeader>
@@ -106,39 +217,48 @@ export function StoryCast({
             </ul>
           </div>
         )}
-        <ul className="grid gap-3 md:grid-cols-2" aria-label="Roles">
-          {slots.map((slot) => (
-            <li key={slot.slotId} className="flex min-w-0 flex-col gap-1.5 rounded-md border p-3 text-sm">
-              <label htmlFor={`cast-${slot.slotId}`} className="font-medium">
-                {slot.label} <span className="font-normal text-muted-foreground">({agesLabel(slot)})</span>
-              </label>
-              {fits(slot).length > 0 ? (
-                <NativeSelect
-                  id={`cast-${slot.slotId}`}
-                  className="w-full min-w-0"
-                  value={cast[slot.slotId]}
-                  disabled={!hydrated || !canEdit}
-                  onChange={(event) => setCast((current) => ({ ...current, [slot.slotId]: event.target.value }))}
-                >
-                  {fits(slot).map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.name}
-                    </option>
-                  ))}
-                </NativeSelect>
-              ) : (
-                <p className="text-xs text-muted-foreground" data-testid={`cast-warning-${slot.slotId}`}>
-                  Nobody in your family is a {agesLabel(slot)} yet.{" "}
-                  {canEdit && (
-                    <Link to="/family/new" className="underline">
-                      Add someone
-                    </Link>
-                  )}
+        {canEdit && (
+          <ul className="grid gap-3 md:grid-cols-2" aria-label="Roles">
+            {slots.map((slot) => (
+              <li
+                key={slot.slotId}
+                className="flex min-w-0 flex-col gap-2 rounded-md border p-3 text-sm"
+                data-testid={`role-${slot.slotId}`}
+              >
+                <p className="font-medium">
+                  {slot.label} <span className="font-normal text-muted-foreground">({agesLabel(slot)})</span>
                 </p>
-              )}
-            </li>
-          ))}
-        </ul>
+                {fits(slot).length > 0 && (
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span className="text-muted-foreground">Someone from your other books</span>
+                    <NativeSelect
+                      aria-label={`${slot.label}: someone from your other books`}
+                      value=""
+                      disabled={!hydrated}
+                      onChange={(event) => {
+                        const person = fits(slot)[Number(event.target.value)];
+                        if (person) setCast((current) => ({ ...current, [slot.slotId]: draftOf(person) }));
+                      }}
+                    >
+                      <option value="">Choose…</option>
+                      {fits(slot).map((person, i) => (
+                        <option key={i} value={i}>
+                          {person.title ? `${person.name} (${person.title})` : person.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </label>
+                )}
+                <PersonFields
+                  slot={slot}
+                  value={cast[slot.slotId]!}
+                  disabled={!hydrated}
+                  onChange={(next) => setCast((current) => ({ ...current, [slot.slotId]: next }))}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
         {canEdit && !archived && (
           <div className="flex flex-wrap items-center gap-3">
             {only && (
@@ -152,13 +272,11 @@ export function StoryCast({
               type="button"
               variant={books.length === 0 ? "default" : "outline"}
               onClick={create}
-              disabled={!hydrated || !everyoneFromFamily || making}
+              disabled={!hydrated || !everyoneNamed || making}
             >
               {books.length === 0 ? "Make the book" : "Make another copy"}
             </Button>
-            {!everyoneFromFamily && (
-              <p className="text-xs text-muted-foreground">Add someone from your family for every part first.</p>
-            )}
+            {!everyoneNamed && <p className="text-xs text-muted-foreground">Name someone for every part first.</p>}
           </div>
         )}
         {error && (

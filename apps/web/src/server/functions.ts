@@ -4,7 +4,7 @@ import {
   canAuthor,
   getStoryPreview,
   listBooks,
-  listCharacters,
+  listCastPeople,
   printableProof,
 } from "@lifestory/core";
 import {
@@ -17,7 +17,7 @@ import {
   StorySummary,
   FamilyMembership,
   BookSummary,
-  Character,
+  CastPerson,
   TextStyleName,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
@@ -83,8 +83,8 @@ export const StoryPreviewResult = ResultSchema(
     pages: Schema.Array(
       Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })) }),
     ),
-    /** The active family's members, who can fill the roles, and whether the user may make books in it. */
-    characters: Schema.Array(Character),
+    /** The people in the family's books, to pick from, and whether the user may make books in the family. */
+    people: Schema.Array(CastPerson),
     canEdit: Schema.Boolean,
     /** The family's books of this story, newest first. */
     books: Schema.Array(BookSummary),
@@ -102,12 +102,10 @@ export const getStoryPreviewFn = createServerFn({ method: "GET" })
       Effect.gen(function* () {
         const user = yield* currentUser;
         const { active } = yield* activeFamily(user);
-        const { characters, canEdit } = active
-          ? yield* listCharacters(user.id, active.id)
-          : { characters: [], canEdit: false };
-        const { books } = active ? yield* listBooks(user.id, active.id) : { books: [] };
+        const people = active ? yield* listCastPeople(user.id, active.id) : [];
+        const { books, canEdit } = active ? yield* listBooks(user.id, active.id) : { books: [], canEdit: false };
         const preview = yield* getStoryPreview(user.id, data.slug);
-        return { ...preview, characters, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
+        return { ...preview, people, canEdit, books: books.filter((book) => book.storySlug === data.slug) };
       }),
     ),
   );

@@ -290,10 +290,15 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **What changed (Sid, 2026-11-24):** parents upload one photo per character, and a model draws that person into
   the book in the story's style. This supersedes D26 (no photos, no AI at book time) and the looks system built on
   it (D28, D29's face types, D40, D41, D43, D44, D46, D50, D51, D52, D55), part generation (D30, D36), and Klein on
-  Modal (D5, D25). Every parts story is a test and is deleted (below). Characters keep name, title, pronouns and
-  age, and D29's seven age buckets stay: a role's `ages` now feed the sheet prompt ("a young child of about six").
+  Modal (D5, D25). Every parts story is a test and is deleted (below). D29's seven age buckets stay: a role's
+  `ages` now feed the sheet prompt ("a young child of about six").
+- **No separate family members (Sid, 2026-11-24):** with no look to build, a person is a name, an optional title,
+  pronouns and an age, quick to type where the photo goes. So the Our family page and the `character` table go, and
+  each book's cast holds those four for each role (migration 0018 copies them from the characters books pointed to).
+  A book keeps the age it was made with, which is the age its sheet draws. Making another book offers the people from
+  the family's earlier books, so nobody is typed twice. Supersedes D48's Our family page.
 - **The parent's path:** the story page shows the illustrator's stock characters. "Put your family in this book"
-  makes a draft book. The parent picks a family member for each role (every role, not only the hero) and uploads
+  makes a draft book. The parent says who plays each role (every role, not only the hero) and uploads
   one photo each, with hair chips. Each photo is checked in about 3 s. About 45 s after the last one passes, the
   parent sees each character sheet and a cover with everyone on it, and can ask for up to two rounds of changes,
   one note per character. "Make my book" places the order (D57).
@@ -927,6 +932,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   operator's cards styled like family content. Five layouts were compared (sidebar, bookshelf, three tabs, next
   step, family first); Sid chose the sidebar and kept the next-step card "at the top of the homepage during user
   onboarding, basically until they have added a character and made at least one book".
+- **Changed by D56 (Sid, 2026-11-24):** Our family and its pages are gone; each book holds who plays its roles.
 - **What:** the sidebar lists Home, Stories, Our books, Our family, and Sharing, with
   the family switcher (only past one family, D3) at the top and who's signed in at the foot. Pages:
   `/` (Home), `/stories`, `/books`, `/family` (Our family: the people who star in the books, with its new and edit

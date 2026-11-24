@@ -1,6 +1,6 @@
-// The active family's characters, books, and the stories it can make books of: the lists on Home and on the
-// Stories, Our books, and Our family pages of the app shell (D48).
-import { ageLabel, type BookSummary, type Character, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
+// The active family's books and the stories it can make books of: the lists on Home and on the
+// Stories and Our books pages of the app shell (D48).
+import { type BookSummary, type StorySummary, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 
 import { Button } from "~/components/ui/button";
@@ -9,46 +9,12 @@ import { deleteBookFn, EditBookResult } from "~/server/books";
 /** Asks, then deletes a book with its text edits and proofs. Resolves true once it's gone. */
 export const confirmDeleteBook = async (book: { id: string; title: string; cast: string }) => {
   const sure = window.confirm(
-    `Delete "${book.title}" with ${book.cast}? Its text edits and PDF proofs are deleted too. Everyone in Our family stays.`,
+    `Delete "${book.title}" with ${book.cast}? Its text edits and PDF proofs are deleted too.`,
   );
   if (!sure) return false;
   unwrapResult(EditBookResult)(await deleteBookFn({ data: { bookId: book.id } }));
   return true;
 };
-
-export function FamilyCharacters({ characters, canEdit }: { characters: ReadonlyArray<Character>; canEdit: boolean }) {
-  return (
-    <>
-      <ul className="flex flex-wrap gap-3" data-testid="characters">
-        {characters.map((character) => (
-          <li key={character.id}>
-            <Link
-              to="/family/$characterId"
-              params={{ characterId: character.id }}
-              className="flex h-[70px] w-28 flex-col items-center justify-center gap-1 rounded-md border p-1 text-sm hover:bg-accent"
-            >
-              <span className="w-full truncate text-center font-medium">{character.name}</span>
-              <span className="w-full truncate text-center text-xs text-muted-foreground">
-                {[character.title, ageLabel(character.age)].filter(Boolean).join(" · ")}
-              </span>
-            </Link>
-          </li>
-        ))}
-        {canEdit && (
-          <li>
-            <Link
-              to="/family/new"
-              className="flex h-[70px] w-28 items-center justify-center rounded-md border border-dashed text-sm hover:bg-accent"
-            >
-              Add someone
-            </Link>
-          </li>
-        )}
-      </ul>
-      {characters.length === 0 && !canEdit && <p className="text-sm text-muted-foreground">No characters yet.</p>}
-    </>
-  );
-}
 
 export function FamilyBooks({ books, canEdit }: { books: ReadonlyArray<BookSummary>; canEdit: boolean }) {
   const router = useRouter();

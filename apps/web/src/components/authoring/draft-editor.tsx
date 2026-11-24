@@ -7,7 +7,7 @@ import {
   type Age,
   ageOptions,
   type CastMember,
-  type Character,
+  type CastPerson,
   type CharacterSlot,
   DraftChanged,
   type DraftView,
@@ -58,7 +58,7 @@ type Tab = (typeof tabs)[number]["id"];
 
 const PRONOUN_FIELDS = ["name", "title", "they", "them", "their", "theirs", "themself"] as const;
 
-export function DraftEditor({ initial, characters }: { initial: DraftView; characters: ReadonlyArray<Character> }) {
+export function DraftEditor({ initial, people }: { initial: DraftView; people: ReadonlyArray<CastPerson> }) {
   const router = useRouter();
   const [view, setView] = useState(initial);
   const revision = useRef(initial.revision);
@@ -81,9 +81,9 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
   };
   const page = draft.pages.find((candidate) => candidate.pageId === selected) ?? draft.pages[0];
 
-  // "Preview as": a family member plays a role in the preview only; the role's example is what's saved.
+  // "Preview as": someone from the family's books plays a role in the preview only; the role's example is saved.
   const [standIns, setStandIns] = useState<Record<string, string>>({});
-  const standIn = (slotId: string) => characters.find((character) => character.id === standIns[slotId]);
+  const standIn = (slotId: string) => (standIns[slotId] ? people[Number(standIns[slotId])] : undefined);
   const cast: Record<string, CastMember> = Object.fromEntries(
     Object.entries(exampleCast(draft)).map(([slotId, example]) => {
       const character = standIn(slotId);
@@ -375,19 +375,19 @@ export function DraftEditor({ initial, characters }: { initial: DraftView; chara
                   onChange={(event) => setStandIns({ ...standIns, [slot.slotId]: event.target.value })}
                 >
                   <option value="">{slot.example.name} (example)</option>
-                  {characters
-                    .filter((character) => slot.ages.includes(character.age))
-                    .map((character) => (
-                      <option key={character.id} value={character.id}>
-                        {character.name}
+                  {people.map((person, i) =>
+                    slot.ages.includes(person.age) ? (
+                      <option key={i} value={i}>
+                        {person.name}
                       </option>
-                    ))}
+                    ) : null,
+                  )}
                 </NativeSelect>
               </label>
             ))}
             <p className="text-xs text-muted-foreground">
-              Family members of the ages a role accepts, for the text. Only the preview changes; families see the
-              example.
+              People from your family's books of the ages a role accepts, for the text. Only the preview changes;
+              families see the example.
             </p>
           </fieldset>
         )}

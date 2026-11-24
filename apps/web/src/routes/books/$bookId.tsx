@@ -5,7 +5,7 @@ import {
   ageLabel,
   type BookRole,
   type BookView,
-  type Character,
+  type CastPerson,
   type CharacterSlot,
   NotAuthenticated,
   NotFound,
@@ -20,9 +20,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { ProofPanel } from "~/components/book/ProofPanel";
 import { confirmDeleteBook } from "~/components/family-library";
-import { agesLabel } from "~/components/make-book";
+import { draftOf, PersonFields, personOf } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
-import { NativeSelect } from "~/components/ui/native-select";
 import {
   ApproveProofResult,
   approveProofFn,
@@ -66,7 +65,7 @@ const deleteProof = async (proofId: string) => {
 };
 
 function BookEditor() {
-  const { view, canEdit, characters } = Route.useLoaderData();
+  const { view, canEdit } = Route.useLoaderData();
   const { page: selected } = Route.useSearch();
   const router = useRouter();
   const navigate = Route.useNavigate();
@@ -151,7 +150,7 @@ function BookEditor() {
         )}
       </header>
 
-      <section aria-label="Cast" className="grid gap-3 md:grid-cols-2">
+      <section aria-label="Cast" className="grid items-start gap-3 md:grid-cols-2">
         {manifest.characterSlots.map((slot) => {
           const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
           return role ? (
@@ -160,10 +159,9 @@ function BookEditor() {
               role={role}
               label={slot.label}
               slot={slot}
-              characters={characters}
               canEdit={canEdit}
-              onCast={(characterId) =>
-                run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, characterId } }))
+              onSave={(person) =>
+                run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, person } }))
               }
             />
           ) : null;
@@ -406,58 +404,66 @@ function TextEditor({
   );
 }
 
+/** Who plays a role, and for an owner or editor, a form to change their name, title, pronouns or age. */
 function RoleCard({
   role,
   label,
   slot,
-  characters,
   canEdit,
-  onCast,
+  onSave,
 }: {
   role: BookRole;
   label: string;
   slot: CharacterSlot;
-  characters: ReadonlyArray<Character>;
   canEdit: boolean;
-  onCast: (characterId: string) => void;
+  onSave: (person: CastPerson) => Promise<void>;
 }) {
-  const character = characters.find((candidate) => candidate.id === role.characterId);
-  const fits = characters.filter((candidate) => slot.ages.includes(candidate.age) || candidate.id === role.characterId);
-
+  const [editing, setEditing] = useState(false);
+  const [edited, setPerson] = useState(() => draftOf(role.person));
+  const { person } = role;
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid={`role-${role.slotId}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{label}:</span>
-        {canEdit ? (
-          <NativeSelect
-            aria-label={`Who plays ${label.toLowerCase()}`}
-            value={role.characterId}
-            onChange={(event) => onCast(event.target.value)}
-          >
-            {fits.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </NativeSelect>
-        ) : (
-          <span>{role.member.name}</span>
-        )}
-        {character && (
-          <Link
-            to="/family/$characterId"
-            params={{ characterId: character.id }}
+        <span>
+          {person.name}
+          <span className="text-muted-foreground">
+            {" · "}
+            {[person.title, person.pronouns, ageLabel(person.age).toLowerCase()].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+        {canEdit && !editing && (
+          <button
+            type="button"
             className="text-xs text-muted-foreground underline"
+            onClick={() => {
+              setPerson(draftOf(person));
+              setEditing(true);
+            }}
           >
-            {canEdit ? `Edit ${character.name}` : `About ${character.name}`}
-          </Link>
+            Change
+          </button>
         )}
       </div>
-      {role.wrongAge && character && (
-        <p className="text-destructive" role="status">
-          {role.member.name} is {ageLabel(character.age).toLowerCase()} now, and this role is for {agesLabel(slot)}.
-          Choose someone else for {label.toLowerCase()}.
-        </p>
+      {editing && (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            await onSave(personOf(edited));
+            setEditing(false);
+          }}
+        >
+          <PersonFields slot={slot} value={edited} onChange={setPerson} />
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={edited.name.trim() === ""}>
+              Save
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
     </div>
   );

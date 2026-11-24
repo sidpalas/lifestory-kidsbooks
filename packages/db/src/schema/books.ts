@@ -1,5 +1,6 @@
-// What a family owns (docs/plan.md, "Data model"): its members, and its personalized books. A book pins one story
-// version and stores who fills each role and the family's text edits (D56).
+// What a family owns (docs/plan.md, "Data model"): its personalized books. A book pins one story version and stores
+// who fills each role, by name, title, pronouns and age, and the family's text edits (D56; no separate family members
+// since Sid, 2026-11-24).
 import { index, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { organization } from "./auth.ts";
@@ -12,26 +13,6 @@ const timestamps = {
     .defaultNow()
     .$onUpdate(() => new Date()),
 };
-
-/** A family member: a name, an optional title, pronouns and an age (D29). Photos belong to a book, never here (D56). */
-export const character = pgTable(
-  "character",
-  {
-    id: text("id").primaryKey(),
-    familyId: text("family_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    /** What the children call them ("Dad", "Nana"), for the `{{slot.title}}` text token; null to use the name. */
-    title: text("title"),
-    /** One of the book format's pronoun sets ("she/her", "he/him", "they/them"). */
-    pronouns: text("pronouns").notNull(),
-    /** One of the seven age buckets (packages/core book-format/ages.ts). */
-    age: text("age").notNull(),
-    ...timestamps,
-  },
-  (t) => [index("character_family_idx").on(t.familyId)],
-);
 
 /** A family's personalized copy of one story version. */
 export const book = pgTable(
@@ -50,7 +31,7 @@ export const book = pgTable(
   (t) => [index("book_family_idx").on(t.familyId)],
 );
 
-/** Who fills each of the story's roles in a book. */
+/** Who fills each of the story's roles in a book: the person as the text names them, and their age for the sheet. */
 export const bookCast = pgTable(
   "book_cast",
   {
@@ -58,13 +39,16 @@ export const bookCast = pgTable(
       .notNull()
       .references(() => book.id, { onDelete: "cascade" }),
     slotId: text("slot_id").notNull(),
-    characterId: text("character_id")
-      .notNull()
-      // "no action", not "restrict": deleting a family cascades to its books and characters in one statement.
-      .references(() => character.id, { onDelete: "no action" }),
+    name: text("name").notNull(),
+    /** What the children call them ("Dad", "Nana"), for the `{{slot.title}}` text token; null to use the name. */
+    title: text("title"),
+    /** One of the book format's pronoun sets ("she/her", "he/him", "they/them"). */
+    pronouns: text("pronouns").notNull(),
+    /** One of the seven age buckets (packages/core book-format/ages.ts), one the role accepts. */
+    age: text("age").notNull(),
     ...timestamps,
   },
-  (t) => [primaryKey({ columns: [t.bookId, t.slotId] }), index("book_cast_character_idx").on(t.characterId)],
+  (t) => [primaryKey({ columns: [t.bookId, t.slotId] })],
 );
 
 /** A family's replacement for one text block of one page; no row means the story's text. */

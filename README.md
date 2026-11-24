@@ -11,7 +11,7 @@ This is a demo codebase: an open-source, realistic product used to test backgrou
 
 1. The operator invites a new family; the invitee sets a password and owns a one-person family. An owner invites a
    parent or a view-only member (emails go to `/__dev/mailbox` in development).
-2. Family members become characters: a name, what the kids call them, pronouns, and an age.
+2. For each role of a book, the parent says who plays it: a name, what the kids call them, pronouns, and an age.
 3. The seeded sample story "The Kite Day" (book format 4, placeholder art with stock figures).
 4. A family picks who plays each role and makes a book. Photo books (D56–D58) are being built on top of this: until a
    book's figures are drawn from its sheets, its pages show the story's stock characters.

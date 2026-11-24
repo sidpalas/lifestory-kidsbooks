@@ -59,25 +59,17 @@ export const InvitationDetails = Schema.Struct({
 });
 export type InvitationDetails = typeof InvitationDetails.Type;
 
-/** A family member (D56): name, title, and pronouns for the text, and an age for the roles they may fill. */
-export const Character = Schema.Struct({
-  id: Schema.String,
-  familyId: Schema.String,
-  name: Schema.String,
-  /** What the children call them, such as "Dad" or "Nana"; null when they go by their name. */
-  title: Schema.NullOr(Schema.String),
-  pronouns: PronounSet,
-  age: Age,
-});
-export type Character = typeof Character.Type;
-
-export const CharacterInput = Schema.Struct({
+/**
+ * Who plays a role in one book (D56; no separate family members since Sid, 2026-11-24): a name, what the children
+ * call them, pronouns for the text, and an age the role accepts, which the character sheet draws them at.
+ */
+export const CastPerson = Schema.Struct({
   name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(60)),
   title: Schema.NullOr(Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(30))),
   pronouns: PronounSet,
   age: Age,
 });
-export type CharacterInput = typeof CharacterInput.Type;
+export type CastPerson = typeof CastPerson.Type;
 
 /** A family's book, as listed. */
 export const BookSummary = Schema.Struct({
@@ -91,13 +83,11 @@ export const BookSummary = Schema.Struct({
 });
 export type BookSummary = typeof BookSummary.Type;
 
-/** Who fills one role of a book. */
+/** Who fills one role of a book: the person as entered, and as the text names them. */
 export const BookRole = Schema.Struct({
   slotId: Schema.String,
-  characterId: Schema.String,
+  person: CastPerson,
   member: CastMember,
-  /** The character's age isn't one the role accepts; set when their age changed after the book was made. */
-  wrongAge: Schema.Boolean,
 });
 export type BookRole = typeof BookRole.Type;
 

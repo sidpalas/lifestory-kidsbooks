@@ -24,7 +24,7 @@ for print, or deletes any proof after confirming, an approved one with a stronge
 
 `mise run verify -- proof [--story the-kite-day] [--config dev|image|live]`
 
-Opens an existing book of the story, or makes one from the preview's chosen family members, then presses
+Opens an existing book of the story, or makes one with a placeholder cast, then presses
 "Make a PDF proof", waits for the worker, downloads the PDF, and checks:
 
 - **print-ready**: `checkPrintReady` against Lulu's requirements, one PDF page per book page.

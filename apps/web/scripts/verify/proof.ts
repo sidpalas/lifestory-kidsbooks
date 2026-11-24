@@ -126,7 +126,12 @@ export const proof = async (stack: Stack, report: Report, options: { story: stri
     });
     const existing = page.getByTestId("story-books").getByRole("link").first();
     if (await existing.count()) await existing.click();
-    else await page.getByRole("button", { name: "Make the book", exact: true }).click();
+    else {
+      // A placeholder person in each role, of the first age it accepts.
+      for (const role of await page.getByRole("list", { name: "Roles" }).getByRole("listitem").all())
+        await role.getByLabel("Name").fill("Proof");
+      await page.getByRole("button", { name: "Make the book", exact: true }).click();
+    }
     await page.waitForURL(/\/books\/book_/);
     const sheets = page.getByRole("region", { name: "All pages" }).getByTestId("book-page");
     await sheets.first().waitFor();

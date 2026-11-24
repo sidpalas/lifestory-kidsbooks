@@ -26,9 +26,6 @@ import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$tok
 import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
 import { Route as FamilyBooksIndexRouteImport } from './routes/_family/books/index'
-import { Route as FamilyFamilyIndexRouteImport } from './routes/_family/family/index'
-import { Route as FamilyFamilyCharacterIdRouteImport } from './routes/_family/family/$characterId'
-import { Route as FamilyFamilyNewRouteImport } from './routes/_family/family/new'
 import { Route as FamilyStoriesIndexRouteImport } from './routes/_family/stories/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
@@ -119,21 +116,6 @@ const FamilyBooksIndexRoute = FamilyBooksIndexRouteImport.update({
   path: '/books/',
   getParentRoute: () => FamilyRoute,
 } as any)
-const FamilyFamilyIndexRoute = FamilyFamilyIndexRouteImport.update({
-  id: '/family/',
-  path: '/family/',
-  getParentRoute: () => FamilyRoute,
-} as any)
-const FamilyFamilyCharacterIdRoute = FamilyFamilyCharacterIdRouteImport.update({
-  id: '/family/$characterId',
-  path: '/family/$characterId',
-  getParentRoute: () => FamilyRoute,
-} as any)
-const FamilyFamilyNewRoute = FamilyFamilyNewRouteImport.update({
-  id: '/family/new',
-  path: '/family/new',
-  getParentRoute: () => FamilyRoute,
-} as any)
 const FamilyStoriesIndexRoute = FamilyStoriesIndexRouteImport.update({
   id: '/stories/',
   path: '/stories/',
@@ -177,13 +159,10 @@ export interface FileRoutesByFullPath {
   '/__dev/': typeof _devIndexRoute
   '/author/': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/family/$characterId': typeof FamilyFamilyCharacterIdRoute
-  '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books/': typeof FamilyBooksIndexRoute
-  '/family/': typeof FamilyFamilyIndexRoute
   '/stories/': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -203,13 +182,10 @@ export interface FileRoutesByTo {
   '/__dev': typeof _devIndexRoute
   '/author': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/family/$characterId': typeof FamilyFamilyCharacterIdRoute
-  '/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books': typeof FamilyBooksIndexRoute
-  '/family': typeof FamilyFamilyIndexRoute
   '/stories': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -231,13 +207,10 @@ export interface FileRoutesById {
   '/__dev/': typeof _devIndexRoute
   '/author/': typeof AuthorIndexRoute
   '/__dev/log-me-in/$email': typeof _devLogMeInEmailRoute
-  '/_family/family/$characterId': typeof FamilyFamilyCharacterIdRoute
-  '/_family/family/new': typeof FamilyFamilyNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/files/$': typeof ApiFilesSplatRoute
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/_family/books/': typeof FamilyBooksIndexRoute
-  '/_family/family/': typeof FamilyFamilyIndexRoute
   '/_family/stories/': typeof FamilyStoriesIndexRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
@@ -259,13 +232,10 @@ export interface FileRouteTypes {
     | '/__dev/'
     | '/author/'
     | '/__dev/log-me-in/$email'
-    | '/family/$characterId'
-    | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/print/proofs/$proofId'
     | '/books/'
-    | '/family/'
     | '/stories/'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesByTo: FileRoutesByTo
@@ -285,13 +255,10 @@ export interface FileRouteTypes {
     | '/__dev'
     | '/author'
     | '/__dev/log-me-in/$email'
-    | '/family/$characterId'
-    | '/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/print/proofs/$proofId'
     | '/books'
-    | '/family'
     | '/stories'
     | '/api/authoring/stories/$storyId/assets'
   id:
@@ -312,13 +279,10 @@ export interface FileRouteTypes {
     | '/__dev/'
     | '/author/'
     | '/__dev/log-me-in/$email'
-    | '/_family/family/$characterId'
-    | '/_family/family/new'
     | '/api/auth/$'
     | '/api/files/$'
     | '/print/proofs/$proofId'
     | '/_family/books/'
-    | '/_family/family/'
     | '/_family/stories/'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesById: FileRoutesById
@@ -465,27 +429,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FamilyBooksIndexRouteImport
       parentRoute: typeof FamilyRoute
     }
-    '/_family/family/': {
-      id: '/_family/family/'
-      path: '/family'
-      fullPath: '/family/'
-      preLoaderRoute: typeof FamilyFamilyIndexRouteImport
-      parentRoute: typeof FamilyRoute
-    }
-    '/_family/family/$characterId': {
-      id: '/_family/family/$characterId'
-      path: '/family/$characterId'
-      fullPath: '/family/$characterId'
-      preLoaderRoute: typeof FamilyFamilyCharacterIdRouteImport
-      parentRoute: typeof FamilyRoute
-    }
-    '/_family/family/new': {
-      id: '/_family/family/new'
-      path: '/family/new'
-      fullPath: '/family/new'
-      preLoaderRoute: typeof FamilyFamilyNewRouteImport
-      parentRoute: typeof FamilyRoute
-    }
     '/_family/stories/': {
       id: '/_family/stories/'
       path: '/stories'
@@ -527,20 +470,14 @@ declare module '@tanstack/react-router' {
 interface FamilyRouteChildren {
   FamilyAdminRoute: typeof FamilyAdminRoute
   FamilySharingRoute: typeof FamilySharingRoute
-  FamilyFamilyCharacterIdRoute: typeof FamilyFamilyCharacterIdRoute
-  FamilyFamilyNewRoute: typeof FamilyFamilyNewRoute
   FamilyBooksIndexRoute: typeof FamilyBooksIndexRoute
-  FamilyFamilyIndexRoute: typeof FamilyFamilyIndexRoute
   FamilyStoriesIndexRoute: typeof FamilyStoriesIndexRoute
 }
 
 const FamilyRouteChildren: FamilyRouteChildren = {
   FamilyAdminRoute: FamilyAdminRoute,
   FamilySharingRoute: FamilySharingRoute,
-  FamilyFamilyCharacterIdRoute: FamilyFamilyCharacterIdRoute,
-  FamilyFamilyNewRoute: FamilyFamilyNewRoute,
   FamilyBooksIndexRoute: FamilyBooksIndexRoute,
-  FamilyFamilyIndexRoute: FamilyFamilyIndexRoute,
   FamilyStoriesIndexRoute: FamilyStoriesIndexRoute,
 }
 

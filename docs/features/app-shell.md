@@ -2,8 +2,9 @@
 
 ## What it is
 
-The navigation around every family page (D48): a sidebar with Home, Stories, Our books, Our family (the people
-who star in the books), and Sharing (who can open them: members and invitations); bottom tabs on phones. Home shows a "Next step" card until the family has a character and a book, then
+The navigation around every family page (D48): a sidebar with Home, Stories, Our books, and Sharing (who can open
+the family's books: members and invitations); bottom tabs on phones. Who plays each role is entered per book (D56).
+Home shows a "Next step" card until the family has a book, then
 the newest book ("Pick up where you left off") and the stories. A story card opens the family's book of it, or the
 story page when there are several (D47). Authors and the operator reach Studio (`/author`),
 which has its own dark bar and is only for making stories. The operator also gets Admin (`/admin`), under Studio in
@@ -11,8 +12,7 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 
 ## Routes and roles
 
-- `/` (Home; signed-out visitors get the landing page), `/stories`, `/books`, `/family` (Our family), `/family/new`,
-  `/family/<id>`, `/sharing`, `/admin`. All under the `_family` layout route except Home, which renders the shell itself.
+- `/` (Home; signed-out visitors get the landing page), `/stories`, `/books`, `/sharing`, `/admin`. All under the `_family` layout route except Home, which renders the shell itself.
 - Viewers see the same places without edit actions. Studio only for authors and
   the operator. Admin only for the operator: its loader lists authors, which the server refuses with `Forbidden` for
   anyone else, so the page is not found; inviting a family and granting or removing authors check the role again.
@@ -23,12 +23,12 @@ the sidebar: Families ("Invite a new family") and Authors (who can write stories
 ## Seed data
 
 - `parent@lifestory.dev` (owner), `grandparent@lifestory.dev` (viewer), `operator@lifestory.dev` (Studio, Admin).
-- A new account from `/__dev/log-me-in/<email>` has no characters or books, so it shows the next-step card.
+- A new account from `/__dev/log-me-in/<email>` has no books, so it shows the next-step card.
 
 ## Verify
 
 `mise run verify -- e2e -- smoke families books milestone1`: signed-in identity and family name in the sidebar,
-stories on Home, Sharing at `/sharing`, Our family at `/family`, books at `/books`, the operator's family
+stories on Home, Sharing at `/sharing`, books at `/books`, the operator's family
 invite and author grants in Admin, and `/admin` not found for a parent and for a non-operator author; on a phone,
 the Menu sheet's switcher, Sign out, Studio and Admin links.
 

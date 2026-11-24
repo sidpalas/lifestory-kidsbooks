@@ -18,33 +18,29 @@ test("a parent makes a print-ready PDF proof of a book, and only the family down
 }) => {
   // A book of the sample story with two new family members, made directly (books.spec.ts makes one in the UI).
   // Imported here, not at the top, so Playwright's runner doesn't load @lifestory/core to list the tests (parts.spec.ts).
-  const { createBook, createCharacter, listBooks, makeServerRuntime } = await import("@lifestory/core");
+  const { createBook, listBooks, makeServerRuntime } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   const run = <A, E>(effect: Effect.Effect<A, E, ServerServices>) => runtime.runPromise(effect);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   let bookId = "";
   try {
     const [parent, family] = ["user_parent", "org_example_family"];
-    const hero = await run(
-      createCharacter(parent, family, {
-        name: `Ivy ${suffix}`,
-        title: null,
-        pronouns: "she/her",
-        age: "young-child",
-      }),
-    );
-    const grown = await run(
-      createCharacter(parent, family, {
-        name: `Ray ${suffix}`,
-        title: "Dad",
-        pronouns: "he/him",
-        age: "adult",
-      }),
-    );
+    const hero = {
+      name: `Ivy ${suffix}`,
+      title: null,
+      pronouns: "she/her",
+      age: "young-child",
+    } as const;
+    const grown = {
+      name: `Ray ${suffix}`,
+      title: "Dad",
+      pronouns: "he/him",
+      age: "adult",
+    } as const;
     // Another copy next to the family's books of the story from earlier tests and runs (D47).
     const existing = (await run(listBooks(parent, family))).books.map((book) => book.id);
     ({ id: bookId } = await run(
-      createBook(parent, family, { slug: "the-kite-day", cast: { hero: hero.id, grownup: grown.id }, existing }),
+      createBook(parent, family, { slug: "the-kite-day", cast: { hero: hero, grownup: grown }, existing }),
     ));
   } finally {
     await runtime.dispose();
@@ -128,27 +124,23 @@ test("a parent deletes proofs, rendering, failed, ready, or approved after a str
   try {
     const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     const [parent, family] = ["user_parent", "org_example_family"];
-    const hero = await run(
-      core.createCharacter(parent, family, {
-        name: `Nell ${suffix}`,
-        title: null,
-        pronouns: "she/her",
-        age: "young-child",
-      }),
-    );
-    const grown = await run(
-      core.createCharacter(parent, family, {
-        name: `Abe ${suffix}`,
-        title: "Dad",
-        pronouns: "he/him",
-        age: "adult",
-      }),
-    );
+    const hero = {
+      name: `Nell ${suffix}`,
+      title: null,
+      pronouns: "she/her",
+      age: "young-child",
+    } as const;
+    const grown = {
+      name: `Abe ${suffix}`,
+      title: "Dad",
+      pronouns: "he/him",
+      age: "adult",
+    } as const;
     const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
     const { id: bookId } = await run(
       core.createBook(parent, family, {
         slug: "the-kite-day",
-        cast: { hero: hero.id, grownup: grown.id },
+        cast: { hero: hero, grownup: grown },
         existing,
       }),
     );
@@ -263,27 +255,23 @@ test("deleting a book deletes its proofs' PDFs, and no PDF is served without its
   try {
     const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     const [parent, family] = ["user_parent", "org_example_family"];
-    const hero = await run(
-      core.createCharacter(parent, family, {
-        name: `Wren ${suffix}`,
-        title: null,
-        pronouns: "she/her",
-        age: "young-child",
-      }),
-    );
-    const grown = await run(
-      core.createCharacter(parent, family, {
-        name: `Otto ${suffix}`,
-        title: "Dad",
-        pronouns: "he/him",
-        age: "adult",
-      }),
-    );
+    const hero = {
+      name: `Wren ${suffix}`,
+      title: null,
+      pronouns: "she/her",
+      age: "young-child",
+    } as const;
+    const grown = {
+      name: `Otto ${suffix}`,
+      title: "Dad",
+      pronouns: "he/him",
+      age: "adult",
+    } as const;
     const existing = (await run(core.listBooks(parent, family))).books.map((book) => book.id);
     const { id: bookId } = await run(
       core.createBook(parent, family, {
         slug: "the-kite-day",
-        cast: { hero: hero.id, grownup: grown.id },
+        cast: { hero: hero, grownup: grown },
         existing,
       }),
     );

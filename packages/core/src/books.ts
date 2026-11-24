@@ -1,8 +1,8 @@
-// A family's personalized books (D56). A book pins one story version and stores who fills each role and the family's
-// text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
+// A family's personalized books (D56). A book pins one story version and stores who fills each role (name, title,
+// pronouns, age) and the family's text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
 // figure until its own is drawn.
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import {
@@ -14,46 +14,27 @@ import {
   type StoryManifest,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
-import type { BookRole, BookSummary, BookView, Character } from "./contracts.ts";
-import { Character as CharacterSchema } from "./contracts.ts";
+import type { BookRole, BookSummary, BookView } from "./contracts.ts";
+import { CastPerson } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
 import { createProof, proofSummaries, releaseDeletedProof } from "./proofs.ts";
 import { readableStoryVersion } from "./stories.ts";
 
-const decodeCharacter = Schema.decodeUnknownEffect(CharacterSchema);
+/** Every role filled, by a person of an age the role accepts, and no role the story lacks. */
+const decodePerson = Schema.decodeUnknownEffect(CastPerson);
 
-const familyCharacters = (familyId: string, ids: ReadonlyArray<string>) =>
-  ids.length === 0
-    ? Effect.succeed([] as ReadonlyArray<Character>)
-    : Database.query((db) =>
-        db
-          .select({
-            id: schema.character.id,
-            familyId: schema.character.familyId,
-            name: schema.character.name,
-            title: schema.character.title,
-            pronouns: schema.character.pronouns,
-            age: schema.character.age,
-          })
-          .from(schema.character)
-          .where(and(eq(schema.character.familyId, familyId), inArray(schema.character.id, [...ids]))),
-      ).pipe(Effect.flatMap((rows) => Effect.forEach(rows, (row) => decodeCharacter(row).pipe(Effect.orDie))));
-
-/** Every role filled by a character of the book's family, of an age the role accepts. */
 const checkCast = Effect.fn("books.checkCast")(function* (
   manifest: StoryManifest,
-  familyId: string,
-  cast: Readonly<Record<string, string>>,
+  cast: Readonly<Record<string, CastPerson>>,
 ) {
-  const characters = yield* familyCharacters(familyId, Object.values(cast));
   for (const slot of manifest.characterSlots) {
-    const character = characters.find((candidate) => candidate.id === cast[slot.slotId]);
-    if (!character) return yield* new InvalidInput({ message: `Choose who plays ${slot.label.toLowerCase()}.` });
-    if (!slot.ages.includes(character.age)) {
+    const person = cast[slot.slotId];
+    if (!person) return yield* new InvalidInput({ message: `Say who plays ${slot.label.toLowerCase()}.` });
+    if (!slot.ages.includes(person.age)) {
       return yield* new InvalidInput({
-        message: `${character.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(", ")}.`,
+        message: `${person.name} can't play ${slot.label.toLowerCase()}: the role is for ${slot.ages.map((age) => ageLabel(age).toLowerCase()).join(" or ")}.`,
       });
     }
   }
@@ -61,6 +42,43 @@ const checkCast = Effect.fn("books.checkCast")(function* (
     if (!manifest.characterSlots.some((slot) => slot.slotId === slotId))
       return yield* new InvalidInput({ message: `The story has no role "${slotId}".` });
   }
+});
+
+const castMember = (person: CastPerson): CastMember => ({
+  name: person.name,
+  ...(person.title ? { title: person.title } : {}),
+  pronouns: person.pronouns,
+});
+
+/**
+ * The people in the family's books, newest first and each once (by name, title, pronouns and age), so a parent making
+ * another book can pick them instead of typing them again.
+ */
+export const listCastPeople = Effect.fn("books.listCastPeople")(function* (userId: string, familyId: string) {
+  yield* requireFamilyAccess(userId, familyId, "read");
+  const rows = yield* Database.query((db) =>
+    db
+      .select({
+        name: schema.bookCast.name,
+        title: schema.bookCast.title,
+        pronouns: schema.bookCast.pronouns,
+        age: schema.bookCast.age,
+      })
+      .from(schema.bookCast)
+      .innerJoin(schema.book, eq(schema.book.id, schema.bookCast.bookId))
+      .where(eq(schema.book.familyId, familyId))
+      .orderBy(desc(schema.book.createdAt)),
+  );
+  const seen = new Set<string>();
+  const people: Array<CastPerson> = [];
+  for (const row of rows) {
+    const person = yield* decodePerson(row).pipe(Effect.orDie);
+    const key = JSON.stringify(person);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    people.push(person);
+  }
+  return people;
 });
 
 /** The family's books, newest first, for any member. */
@@ -74,13 +92,12 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
         storySlug: schema.story.slug,
         storyTitle: schema.story.title,
         version: schema.storyVersion.version,
-        name: schema.character.name,
+        name: schema.bookCast.name,
       })
       .from(schema.book)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
       .innerJoin(schema.story, eq(schema.story.id, schema.storyVersion.storyId))
       .leftJoin(schema.bookCast, eq(schema.bookCast.bookId, schema.book.id))
-      .leftJoin(schema.character, eq(schema.character.id, schema.bookCast.characterId))
       .where(eq(schema.book.familyId, familyId))
       .orderBy(asc(schema.book.createdAt), asc(schema.bookCast.slotId)),
   );
@@ -101,8 +118,8 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
 });
 
 /**
- * Starts a family's book of the newest version of a story the user may read, with a character in every role.
- * Fails with InvalidInput when a role is empty or its character is another age than the role, and with BookExists
+ * Starts a family's book of the newest version of a story the user may read, with a person in every role.
+ * Fails with InvalidInput when a role is empty or its person is another age than the role, and with BookExists
  * when the family has a book of the story, of any version, that isn't in `existing`: a person makes another copy only
  * after seeing every one the family has. Checked under a lock per family and story, so a double click or a second tab
  * makes one book, not two. Existing books are never changed.
@@ -112,14 +129,14 @@ export const createBook = Effect.fn("books.create")(function* (
   familyId: string,
   input: {
     readonly slug: string;
-    readonly cast: Readonly<Record<string, string>>;
+    readonly cast: Readonly<Record<string, CastPerson>>;
     /** The family's books of this story the person saw and chose to make another copy next to. */
     readonly existing?: ReadonlyArray<string>;
   },
 ) {
   yield* requireFamilyAccess(userId, familyId, "edit");
   const { story, storyVersionId, manifest } = yield* readableStoryVersion(userId, input.slug);
-  yield* checkCast(manifest, familyId, input.cast);
+  yield* checkCast(manifest, input.cast);
   const id = `book_${crypto.randomUUID()}`;
   const unseen = yield* Database.query((db) =>
     db.transaction(async (tx) => {
@@ -139,13 +156,9 @@ export const createBook = Effect.fn("books.create")(function* (
       const bookIds = books.map((book) => book.id);
       if (bookIds.some((bookId) => !input.existing?.includes(bookId))) return bookIds;
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
-      await tx.insert(schema.bookCast).values(
-        Object.entries(input.cast).map(([slotId, characterId]) => ({
-          bookId: id,
-          slotId,
-          characterId,
-        })),
-      );
+      await tx
+        .insert(schema.bookCast)
+        .values(Object.entries(input.cast).map(([slotId, person]) => ({ bookId: id, slotId, ...person })));
       return null;
     }),
   );
@@ -204,26 +217,13 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     Database.query((db) => db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId))),
     Database.query((db) => db.select().from(schema.bookTextEdit).where(eq(schema.bookTextEdit.bookId, bookId))),
   ]);
-  const characters = yield* familyCharacters(
-    book.familyId,
-    castRows.map((row) => row.characterId),
-  );
 
   const roles: Array<BookRole> = [];
   for (const slot of manifest.characterSlots) {
     const row = castRows.find((candidate) => candidate.slotId === slot.slotId);
-    const character = characters.find((candidate) => candidate.id === row?.characterId);
-    if (!row || !character) continue;
-    roles.push({
-      slotId: slot.slotId,
-      characterId: character.id,
-      member: {
-        name: character.name,
-        ...(character.title ? { title: character.title } : {}),
-        pronouns: character.pronouns,
-      },
-      wrongAge: !slot.ages.includes(character.age),
-    });
+    if (!row) continue;
+    const person = yield* decodePerson(row).pipe(Effect.orDie);
+    roles.push({ slotId: slot.slotId, person, member: castMember(person) });
   }
   const cast: Record<string, CastMember> = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
 
@@ -248,28 +248,24 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
   return { view, canEdit };
 });
 
-/** Puts another family member in a role. */
+/** Changes who plays a role: their name, title, pronouns or age. */
 export const setBookCast = Effect.fn("books.setCast")(function* (
   userId: string,
-  input: { readonly bookId: string; readonly slotId: string; readonly characterId: string },
+  input: { readonly bookId: string; readonly slotId: string; readonly person: CastPerson },
 ) {
   const { book } = yield* bookFor(userId, input.bookId, "edit");
   const rows = yield* Database.query((db) =>
     db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, input.bookId)),
   );
-  const cast = {
-    ...Object.fromEntries(rows.map((row) => [row.slotId, row.characterId])),
-    [input.slotId]: input.characterId,
-  };
-  yield* checkCast(book.manifest, book.familyId, cast);
+  const cast: Record<string, CastPerson> = {};
+  for (const row of rows) cast[row.slotId] = yield* decodePerson(row).pipe(Effect.orDie);
+  cast[input.slotId] = input.person;
+  yield* checkCast(book.manifest, cast);
   yield* Database.query((db) =>
     db
       .insert(schema.bookCast)
-      .values({ bookId: input.bookId, slotId: input.slotId, characterId: input.characterId })
-      .onConflictDoUpdate({
-        target: [schema.bookCast.bookId, schema.bookCast.slotId],
-        set: { characterId: input.characterId },
-      }),
+      .values({ bookId: input.bookId, slotId: input.slotId, ...input.person })
+      .onConflictDoUpdate({ target: [schema.bookCast.bookId, schema.bookCast.slotId], set: input.person }),
   );
 });
 
@@ -321,11 +317,8 @@ export const saveTextEdit = Effect.fn("books.saveTextEdit")(function* (
 export const requestBookProof = Effect.fn("books.requestProof")(function* (userId: string, bookId: string) {
   const { book } = yield* bookFor(userId, bookId, "edit");
   const { view } = yield* getBook(userId, bookId);
-  if (view.roles.some((role) => role.wrongAge) || view.roles.length < view.manifest.characterSlots.length) {
-    return yield* new InvalidInput({
-      message: "Every role needs a family member of an age it accepts before the book can be printed.",
-    });
-  }
+  if (view.roles.length < view.manifest.characterSlots.length)
+    return yield* new InvalidInput({ message: "Every role needs someone in it before the book can be printed." });
   const edits = yield* Database.query((db) =>
     db
       .select({
@@ -356,7 +349,7 @@ export const listBookProofs = Effect.fn("books.listProofs")(function* (userId: s
  * Deletes a book for a role that edits books: its cast, text edits, and proofs, approved or not (all cascaded), then
  * cancels the proofs' renders and deletes their PDFs. No print orders exist yet to keep an approved proof for (D32).
  * A proof requested while the book is deleted goes with it too; the `storage.sweep` task deletes any PDF left behind,
- * and none is served without its proof. The family's characters stay.
+ * and none is served without its proof.
  */
 export const deleteBook = Effect.fn("books.delete")(function* (userId: string, bookId: string) {
   yield* bookFor(userId, bookId, "edit");

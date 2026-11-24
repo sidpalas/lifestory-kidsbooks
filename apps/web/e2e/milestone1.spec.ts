@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
 // The whole milestone 1 slice (docs/brief.md, "Milestone 1 scope"), in order, as the people in it do it: the operator
-// invites a family, its owner invites a view-only grandparent, adds family members with their ages, makes a book of the
-// sample story with them, edits a page's text, then downloads the PDF proof
+// invites a family, its owner invites a view-only grandparent, makes a book of the sample story, saying who plays each
+// role, edits a page's text, then downloads the PDF proof
 // and approves it, and the grandparent reads the book and the approved proof without being able to change them.
 // The other specs cover each part's edge cases. Every run uses fresh accounts, so runs don't depend on each other.
 const PASSWORD = "a-long-test-password";
@@ -47,7 +47,7 @@ const pdfFacts = (pdf: Buffer) => {
   };
 };
 
-test("milestone 1: invite, family, viewer, characters, a book, a text edit, an approved PDF proof", async ({
+test("milestone 1: invite, family, viewer, a book and its cast, a text edit, an approved PDF proof", async ({
   browser,
 }) => {
   test.setTimeout(180_000);
@@ -100,28 +100,19 @@ test("milestone 1: invite, family, viewer, characters, a book, a text edit, an a
   await gran.goto("/sharing");
   await expect(gran.getByTestId("family-panel")).toContainText("You're a viewer");
 
-  // 3. The owner adds two family members: a name, pronouns, what the kids call them, and an age (D29).
-  await owner.goto("/family/new");
-  await owner.getByLabel("Name").fill(child);
-  await owner.getByLabel("Pronouns").selectOption("she/her");
-  await owner.getByLabel("Age").selectOption("young-child");
-  await evidence(owner, "m1-character");
-  await owner.getByRole("button", { name: "Add to the family" }).click();
-  await expect(owner.getByTestId("characters")).toContainText(child);
-
-  await owner.goto("/family/new");
-  await owner.getByLabel("Name").fill(grownup);
-  await owner.getByLabel("Pronouns").selectOption("he/him");
-  await owner.getByLabel(/What the kids call them/).fill("Dad");
-  await owner.getByLabel("Age").selectOption("adult");
-  await owner.getByRole("button", { name: "Add to the family" }).click();
-  await expect(owner.getByTestId("characters")).toContainText(grownup);
-
-  // 4. A book of the sample story: the text names them.
+  // 3. and 4. A book of the sample story: the owner says who plays each role (a name, pronouns, what the kids call
+  // them, and an age the role accepts, D29), and the text names them.
   await owner.goto("/stories/the-kite-day");
-  const make = owner.getByRole("list", { name: "Roles" });
-  await make.getByLabel(/The child/).selectOption({ label: child });
-  await make.getByLabel(/A grown-up/).selectOption({ label: grownup });
+  const hero = owner.getByTestId("role-hero");
+  await hero.getByLabel("Name").fill(child);
+  await hero.getByLabel("Pronouns").selectOption("she/her");
+  await hero.getByLabel("Age").selectOption({ label: "Young child" });
+  const grown = owner.getByTestId("role-grownup");
+  await grown.getByLabel("Name").fill(grownup);
+  await grown.getByLabel("Pronouns").selectOption("he/him");
+  await grown.getByLabel(/What the kids call them/).fill("Dad");
+  await grown.getByLabel("Age").selectOption({ label: "Adult" });
+  await evidence(owner, "m1-cast");
   await owner.getByRole("button", { name: "Make the book" }).click();
   await expect(owner).toHaveURL(/\/books\/book_/);
   const bookPath = new URL(owner.url()).pathname;

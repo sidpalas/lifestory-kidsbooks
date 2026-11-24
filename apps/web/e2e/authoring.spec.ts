@@ -185,18 +185,12 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   expect((await stranger.request.get(`/api/files/stories/${storyId}/v1/${fontAsset}`)).status()).toBe(200);
   await stranger.context().close();
 
-  // 8. A family makes a book of it: the author's own family adds a young child.
-  await author.goto("/family/new");
-  await author.getByLabel("Name").fill(child);
-  await author.getByLabel("Pronouns").selectOption("she/her");
-  await author.getByLabel("Age").selectOption("young-child");
-  await author.getByRole("button", { name: "Add to the family" }).click();
-  await expect(author.getByTestId("characters")).toContainText(child);
-
+  // 8. A family makes a book of it: the author's own family, with a young child in the role.
   await author.goto("/stories");
   await author.getByTestId("stories").getByRole("link", { name: title }).click();
-  const make = author.getByRole("list", { name: "Roles" });
-  await make.getByLabel(/The child/).selectOption({ label: child });
+  const role = author.getByTestId("role-hero");
+  await role.getByLabel("Name").fill(child);
+  await role.getByLabel("Pronouns").selectOption("she/her");
   await author.getByRole("button", { name: "Make the book" }).click();
   await expect(author).toHaveURL(/\/books\/book_/);
   const pages = author.getByRole("region", { name: "All pages" }).getByTestId("book-page");
@@ -214,7 +208,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await expect(author.getByTestId("editor-page").getByTestId("illustration").locator("img")).toHaveCount(2);
   await evidence(author, "author-7-book");
 
-  // 9. Version 2 starts from version 1, and the author previews its text with Noor in the role.
+  // 9. Version 2 starts from version 1, and the author previews its text with Noor, from the family's book, in the role.
   await author.goto(`/author/${storyId}`);
   await author.getByRole("button", { name: "Start version 2" }).click();
   await author.getByLabel("Preview The child as").selectOption({ label: child });

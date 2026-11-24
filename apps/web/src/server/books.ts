@@ -3,28 +3,24 @@ import {
   approveProof,
   Auth,
   createBook,
-  createCharacter,
   deleteBook,
   deleteProof,
   getBook,
-  getCharacter,
   listBooks,
   listBookProofs,
-  listCharacters,
+  listCastPeople,
   listPublishedStories,
   requestBookProof,
   saveTextEdit,
   setBookCast,
-  updateCharacter,
 } from "@lifestory/core";
-// Characters and personalized books. The domain logic and every family role check are in @lifestory/core
-// (characters.ts, books.ts); these adapt requests to it.
+// Personalized books. The domain logic and every family role check are in @lifestory/core (books.ts); these adapt
+// requests to it.
 import {
   BookExists,
   BookSummary,
   BookView,
-  Character,
-  CharacterInput,
+  CastPerson,
   Forbidden,
   InvalidInput,
   NotAuthenticated,
@@ -56,65 +52,29 @@ export const FamilyLibraryResult = ResultSchema(
   Schema.Struct({
     family: Schema.Struct({ id: Schema.String, name: Schema.String }),
     canEdit: Schema.Boolean,
-    characters: Schema.Array(Character),
+    /** The people in the family's books, to pick for another book. */
+    people: Schema.Array(CastPerson),
     books: Schema.Array(BookSummary),
     stories: Schema.Array(StorySummary),
   }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
 
-/** The active family's characters, books, and the stories it can make a book of. */
+/** The active family's books, the people in them, and the stories it can make a book of. */
 export const getFamilyLibrary = createServerFn({ method: "GET" }).handler(() =>
   runEffect(
     FamilyLibraryResult,
     Effect.gen(function* () {
       const { user, family } = yield* currentFamily;
-      const [{ characters, canEdit }, { books }, stories] = yield* Effect.all([
-        listCharacters(user.id, family.id),
+      const [people, { books, canEdit }, stories] = yield* Effect.all([
+        listCastPeople(user.id, family.id),
         listBooks(user.id, family.id),
         listPublishedStories(),
       ]);
-      return { family: { id: family.id, name: family.name }, canEdit, characters, books, stories };
+      return { family: { id: family.id, name: family.name }, canEdit, people, books, stories };
     }),
   ),
 );
-
-export const CharacterResult = ResultSchema(
-  Schema.Struct({ character: Character, canEdit: Schema.Boolean }),
-  Schema.Union([NotAuthenticated, NotFound, Forbidden]),
-);
-
-export const getCharacterFn = createServerFn({ method: "GET" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ characterId: Schema.String })))
-  .handler(({ data }) =>
-    runEffect(CharacterResult, currentUser.pipe(Effect.flatMap((user) => getCharacter(user.id, data.characterId)))),
-  );
-
-export const SaveCharacterResult = ResultSchema(
-  Schema.Struct({ id: Schema.String }),
-  Schema.Union([NotAuthenticated, NotFound, Forbidden]),
-);
-
-/** Creates a character in the active family, or with `characterId` changes that one. */
-export const saveCharacterFn = createServerFn({ method: "POST" })
-  .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({ characterId: Schema.optional(Schema.String), character: CharacterInput }),
-    ),
-  )
-  .handler(({ data }) =>
-    runEffect(
-      SaveCharacterResult,
-      Effect.gen(function* () {
-        if (data.characterId) {
-          const user = yield* currentUser;
-          return yield* updateCharacter(user.id, data.characterId, data.character);
-        }
-        const { user, family } = yield* currentFamily;
-        return yield* createCharacter(user.id, family.id, data.character);
-      }),
-    ),
-  );
 
 export const CreateBookResult = ResultSchema(
   Schema.Struct({ id: Schema.String }),
@@ -126,7 +86,7 @@ export const createBookFn = createServerFn({ method: "POST" })
     Schema.toStandardSchemaV1(
       Schema.Struct({
         slug: Schema.String,
-        cast: Schema.Record(Schema.String, Schema.String),
+        cast: Schema.Record(Schema.String, CastPerson),
         /** The family's books of this story the person saw and chose to make another copy next to. */
         existing: Schema.optional(Schema.Array(Schema.String)),
       }),
@@ -143,11 +103,11 @@ export const createBookFn = createServerFn({ method: "POST" })
   );
 
 export const BookResult = ResultSchema(
-  Schema.Struct({ view: BookView, canEdit: Schema.Boolean, characters: Schema.Array(Character) }),
+  Schema.Struct({ view: BookView, canEdit: Schema.Boolean }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
 
-/** A book composed for BookPage, with the family's characters to recast its roles. */
+/** A book composed for BookPage. */
 export const getBookFn = createServerFn({ method: "GET" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String })))
   .handler(({ data }) =>
@@ -155,9 +115,7 @@ export const getBookFn = createServerFn({ method: "GET" })
       BookResult,
       Effect.gen(function* () {
         const user = yield* currentUser;
-        const { view, canEdit } = yield* getBook(user.id, data.bookId);
-        const { characters } = yield* listCharacters(user.id, view.book.familyId);
-        return { view, canEdit, characters };
+        return yield* getBook(user.id, data.bookId);
       }),
     ),
   );
@@ -166,9 +124,7 @@ export const EditBookResult = ResultSchema(Done, Schema.Union([NotAuthenticated,
 
 export const setBookCastFn = createServerFn({ method: "POST" })
   .validator(
-    Schema.toStandardSchemaV1(
-      Schema.Struct({ bookId: Schema.String, slotId: Schema.String, characterId: Schema.String }),
-    ),
+    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, person: CastPerson })),
   )
   .handler(({ data }) =>
     runEffect(

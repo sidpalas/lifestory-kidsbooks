@@ -19,4 +19,3 @@ export * from "./proofs.ts";
 export * from "./print-ready.ts";
 export * from "./tasks/index.ts";
 export * from "./books.ts";
-export * from "./characters.ts";

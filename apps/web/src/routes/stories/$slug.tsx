@@ -21,7 +21,7 @@ export const Route = createFileRoute("/stories/$slug")({
 });
 
 function StoryPreview() {
-  const { story, archived, version, manifest, cast, pages, characters, canEdit, books } = Route.useLoaderData();
+  const { story, archived, version, manifest, cast, pages, people, canEdit, books } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const { widthIn, heightIn } = manifest.trim;
@@ -58,7 +58,7 @@ function StoryPreview() {
         slug={slug}
         version={version}
         slots={slots}
-        characters={characters}
+        people={people}
         books={books}
         canEdit={canEdit}
         archived={archived}
