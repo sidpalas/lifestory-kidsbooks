@@ -2,20 +2,21 @@
 // pronouns, age) and the family's text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
 // figure until its own is drawn.
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import {
   ageLabel,
   type CastMember,
   composePage,
+  coverPage,
   decodeStoryManifest,
   pageText,
   type StoryManifest,
 } from "./book-format/index.ts";
 import { resolveText, tokenIssues } from "./book-format/text.ts";
-import type { BookRole, BookSummary, BookView } from "./contracts.ts";
-import { CastPerson } from "./contracts.ts";
+import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
+import { CastPerson, Hair, PhotoCheckResult } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -92,18 +93,28 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
         storySlug: schema.story.slug,
         storyTitle: schema.story.title,
         version: schema.storyVersion.version,
+        status: schema.book.status,
         name: schema.bookCast.name,
       })
       .from(schema.book)
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
       .innerJoin(schema.story, eq(schema.story.id, schema.storyVersion.storyId))
       .leftJoin(schema.bookCast, eq(schema.bookCast.bookId, schema.book.id))
-      .where(eq(schema.book.familyId, familyId))
+      // Drafts are hidden until ordered (D57): the story page's button reopens one.
+      .where(and(eq(schema.book.familyId, familyId), ne(schema.book.status, "draft")))
       .orderBy(asc(schema.book.createdAt), asc(schema.bookCast.slotId)),
   );
   const books = new Map<
     string,
-    { id: string; title: string; storySlug: string; storyTitle: string; version: number; names: Array<string> }
+    {
+      id: string;
+      title: string;
+      storySlug: string;
+      storyTitle: string;
+      version: number;
+      status: string;
+      names: Array<string>;
+    }
   >();
   for (const row of rows) {
     const { name: _, ...summary } = row;
@@ -148,11 +159,20 @@ export const createBook = Effect.fn("books.create")(function* (
         .where(eq(schema.story.id, story.id));
       if (current?.status === "archived") return "archived" as const;
       const books = await tx
-        .select({ id: schema.book.id })
+        .select({ id: schema.book.id, status: schema.book.status })
         .from(schema.book)
         .innerJoin(schema.storyVersion, eq(schema.storyVersion.id, schema.book.storyVersionId))
         .where(and(eq(schema.book.familyId, familyId), eq(schema.storyVersion.storyId, story.id)))
         .orderBy(desc(schema.book.createdAt));
+      // A draft of the story is reopened with this cast, not doubled (drafts are hidden from lists, D57).
+      const draft = books.find((book) => book.status === "draft");
+      if (draft) {
+        await tx.delete(schema.bookCast).where(eq(schema.bookCast.bookId, draft.id));
+        await tx
+          .insert(schema.bookCast)
+          .values(Object.entries(input.cast).map(([slotId, person]) => ({ bookId: draft.id, slotId, ...person })));
+        return { draft: draft.id };
+      }
       const bookIds = books.map((book) => book.id);
       if (bookIds.some((bookId) => !input.existing?.includes(bookId))) return bookIds;
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
@@ -162,6 +182,7 @@ export const createBook = Effect.fn("books.create")(function* (
       return null;
     }),
   );
+  if (unseen !== null && typeof unseen === "object" && "draft" in unseen) return { id: unseen.draft };
   if (unseen === "archived")
     return yield* new InvalidInput({ message: `${story.title} is archived, so no new books are made of it.` });
   if (unseen) {
@@ -186,6 +207,7 @@ export const loadBook = Effect.fn("books.load")(function* (bookId: string) {
         likenessRound: schema.book.likenessRound,
         cover: schema.book.cover,
         orderedAt: schema.book.orderedAt,
+        reviewNote: schema.book.reviewNote,
         storyId: schema.story.id,
         storyVersionId: schema.book.storyVersionId,
         slug: schema.story.slug,
@@ -233,9 +255,11 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
   }
   const cast: Record<string, CastMember> = Object.fromEntries(roles.map((role) => [role.slotId, role.member]));
 
+  const flow = yield* bookFlow(book);
+  const story = { storyId: book.storyId, version: book.version };
   const pages = manifest.pages.map((page) => ({
     pageId: page.pageId,
-    layers: composePage({ storyId: book.storyId, version: book.version }, page),
+    layers: chosenLayers(flow, page.pageId) ?? composePage(story, page),
     text: pageText(page).map((block, blockIndex) => {
       const edited =
         edits.find((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex)?.content ?? null;
@@ -250,8 +274,88 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
     roles,
     cast,
     pages,
+    flow,
   };
   return { view, canEdit };
+});
+
+/** A drawn page's layers in the version the parent chose, if the page is drawn. */
+const chosenLayers = (flow: BookFlow, pageId: string) => {
+  const page = flow.pages.find((candidate) => candidate.pageId === pageId);
+  return page?.versions.find((version) => version.version === page.chosenVersion)?.layers;
+};
+
+/**
+ * A book's photo-book state (D56, D57): likenesses, the cover, and each drawn page's versions composed for BookPage.
+ * Shared with the operator's review, which sees the same, photos included only on an opted-in book.
+ */
+export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<ReturnType<typeof loadBook>>) {
+  const [likenessRows, pageRows, artRows, consents] = yield* Effect.all([
+    Database.query((db) => db.select().from(schema.bookLikeness).where(eq(schema.bookLikeness.bookId, book.id))),
+    Database.query((db) => db.select().from(schema.bookPage).where(eq(schema.bookPage.bookId, book.id))),
+    Database.query((db) => db.select().from(schema.bookPageArt).where(eq(schema.bookPageArt.bookId, book.id))),
+    Database.query((db) =>
+      db.select({ id: schema.consent.id }).from(schema.consent).where(eq(schema.consent.bookId, book.id)),
+    ),
+  ]);
+  const story = { storyId: book.storyId, version: book.version };
+  const cover = coverPage(book.manifest);
+  const likenesses: Array<BookFlow["likenesses"][number]> = [];
+  for (const slot of book.manifest.characterSlots) {
+    const row = likenessRows.find((candidate) => candidate.slotId === slot.slotId);
+    likenesses.push({
+      slotId: slot.slotId,
+      checkStatus: row?.checkStatus ?? null,
+      check: row?.check ? yield* Schema.decodeUnknownEffect(PhotoCheckResult)(row.check).pipe(Effect.orDie) : null,
+      hair: row?.hair ? yield* Schema.decodeUnknownEffect(Hair)(row.hair).pipe(Effect.orDie) : null,
+      photoKey: row?.photoKey ?? null,
+      sheetKey: row?.sheetKey ?? null,
+      notes: row?.notes ?? [],
+    });
+  }
+  const pages = book.manifest.pages.flatMap((page) => {
+    const row = pageRows.find((candidate) => candidate.pageId === page.pageId);
+    if (!row) return [];
+    const art = artRows.filter((candidate) => candidate.pageId === page.pageId);
+    const versions = [...new Set(art.map((a) => a.version))]
+      .toSorted((a, b) => a - b)
+      .map((version) => {
+        const figures = art.filter((a) => a.version === version);
+        return {
+          version,
+          layers: composePage(story, page, (_figure, index) => figures.find((a) => a.figure === index)?.objectKey),
+          clippedShare: Math.max(0, ...figures.map((a) => a.clippedShare)),
+        };
+      });
+    return [
+      {
+        pageId: page.pageId,
+        latestVersion: row.latestVersion,
+        chosenVersion: row.chosenVersion,
+        ready: row.ready,
+        changeNote: row.changeNote,
+        versions,
+      },
+    ];
+  });
+  const flow: BookFlow = {
+    status: book.status,
+    photoReview: book.photoReview,
+    consented: consents.length > 0,
+    likenessStatus: book.likenessStatus,
+    likenessRound: book.likenessRound,
+    cover:
+      cover && book.cover
+        ? {
+            pageId: cover.pageId,
+            layers: composePage(story, cover, (_figure, index) => book.cover![index]),
+          }
+        : null,
+    likenesses,
+    pages,
+    reviewNote: book.reviewNote,
+  };
+  return flow;
 });
 
 /** Changes who plays a role: their name, title, pronouns or age. */
@@ -325,6 +429,10 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
   const { view } = yield* getBook(userId, bookId);
   if (view.roles.length < view.manifest.characterSlots.length)
     return yield* new InvalidInput({ message: "Every role needs someone in it before the book can be printed." });
+  if (view.flow.status !== "changes")
+    return yield* new InvalidInput({
+      message: "A proof can be made once every page is drawn, until the book is sent for review.",
+    });
   const edits = yield* Database.query((db) =>
     db
       .select({
@@ -339,7 +447,15 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
     familyId: book.familyId,
     bookId,
     storyVersionId: book.storyVersionId,
-    content: { cast: view.cast, textEdits: edits },
+    content: {
+      cast: view.cast,
+      textEdits: edits,
+      art: Object.fromEntries(
+        view.pages
+          .filter((page) => view.flow.pages.some((p) => p.pageId === page.pageId))
+          .map((page) => [page.pageId, page.layers]),
+      ),
+    },
     requestedBy: userId,
   });
 });

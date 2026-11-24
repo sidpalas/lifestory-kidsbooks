@@ -209,22 +209,38 @@ export const printableProof = Effect.fn("proofs.printable")(function* (proofId: 
   const content = yield* Schema.decodeUnknownEffect(ProofContent)(row.content).pipe(Effect.orDie);
   const pages = manifest.pages.map((page) => ({
     pageId: page.pageId,
-    layers: composePage({ storyId: row.storyId, version: row.version }, page),
+    layers: content.art?.[page.pageId] ?? composePage({ storyId: row.storyId, version: row.version }, page),
     text: proofPageText(page, content),
   }));
   return { storyId: row.storyId, version: row.version, manifest, cast: content.cast, pages };
 });
 
+// families/<familyId>/books/<bookId>/<area>/..., as written by the photo book's tasks.
+const BOOK_FILE_KEY = /^families\/([^/]+)\/books\/([^/]+)\/(likeness|pages|photos)\//;
 // families/<familyId>/proofs/<proofId>.pdf, as written by the render task.
 const PROOF_KEY = /^families\/([^/]+)\/proofs\/([^/]+)\.pdf$/;
 
 /**
- * Whether `userId` may download the object at `key` under `families/`: a proof's PDF, while its proof exists, for any
+ * Whether `userId` may download the object at `key` under `families/`: a book's drawn art (D56), a proof's PDF, while its proof exists, for any
  * member of that family. A PDF whose proof was deleted is gone for the family even before the sweep removes it (D32).
  */
 export const canReadFamilyFile = Effect.fn("proofs.canReadFamilyFile")(function* (userId: string, key: string) {
+  if (key.includes("..")) return false;
+  // A book's sheets, cover and pages for its family's members; its photos only for those who edit books (D56).
+  const book = BOOK_FILE_KEY.exec(key);
+  if (book) {
+    const [familyId, bookId, area] = [book[1]!, book[2]!, book[3]!];
+    const [row] = yield* Database.query((db) =>
+      db
+        .select({ id: schema.book.id })
+        .from(schema.book)
+        .where(and(eq(schema.book.id, bookId), eq(schema.book.familyId, familyId))),
+    );
+    const role = row ? yield* memberRole(userId, familyId) : null;
+    return role !== null && roleCan(role, { book: [area === "photos" ? "edit" : "read"] });
+  }
   const match = PROOF_KEY.exec(key);
-  if (!match || key.includes("..")) return false;
+  if (!match) return false;
   const [familyId, proofId] = [match[1]!, match[2]!];
   const [proof] = yield* Database.query((db) =>
     db

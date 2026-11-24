@@ -1,6 +1,7 @@
 // Serves objects from storage to signed-in users. Story assets (stories/<storyId>/v<n>/...) follow the story's
-// read rule; a family's files (families/<familyId>/..., such as PDF proofs) are for that family's members.
-import { Auth, canReadFamilyFile, canReadStoryAsset, ObjectStorage } from "@lifestory/core";
+// read rule; a family's files (families/<familyId>/..., such as PDF proofs) are for that family's members, and a
+// book's sheets and pages for the operator reviewing it (photos only on an opted-in book, D57).
+import { Auth, canReadFamilyFile, canReadStoryAsset, ObjectStorage, operatorCanReadBookFile } from "@lifestory/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Effect } from "effect";
 
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/api/files/$")({
             const user = yield* Auth.use((auth) => auth.requireUser(request.headers));
             const allowed = key.startsWith("stories/")
               ? yield* canReadStoryAsset(user.id, key)
-              : key.startsWith("families/") && (yield* canReadFamilyFile(user.id, key));
+              : key.startsWith("families/") &&
+                ((yield* canReadFamilyFile(user.id, key)) || (yield* operatorCanReadBookFile(user, key)));
             if (!allowed) return new Response("Not found", { status: 404 });
             const object = yield* ObjectStorage.use((storage) => storage.get(key));
             return new Response(new Uint8Array(object.body), {

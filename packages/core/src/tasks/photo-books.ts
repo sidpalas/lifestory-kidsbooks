@@ -7,7 +7,7 @@ import type { TaskContext } from "absurd-sdk";
 import { and, eq, sql } from "drizzle-orm";
 import { Config, Effect, Schema } from "effect";
 
-import { type Page, pageFigures, type PhotoFigure, storyAssetKey, type StoryManifest } from "../book-format/index.ts";
+import { coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
 import { loadBook } from "../books.ts";
 import { type Hair, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
@@ -47,16 +47,6 @@ export const deleteBookPhotos = Effect.fn("photoBooks.deletePhotos")(function* (
 
 const likenesses = (bookId: string) =>
   Database.query((db) => db.select().from(schema.bookLikeness).where(eq(schema.bookLikeness.bookId, bookId)));
-
-/** The page the cover is drawn from: the first with every role on it, else the first with any figure. */
-export const coverPage = (manifest: StoryManifest): Page | undefined => {
-  const slots = manifest.characterSlots.map((slot) => slot.slotId);
-  const withFigures = manifest.pages.filter((page) => pageFigures(page).length > 0);
-  return (
-    withFigures.find((page) => slots.every((slotId) => pageFigures(page).some((f) => f.slotId === slotId))) ??
-    withFigures[0]
-  );
-};
 
 type LoadedBook = Effect.Success<ReturnType<typeof loadBook>>;
 

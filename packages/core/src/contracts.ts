@@ -80,6 +80,7 @@ export const BookSummary = Schema.Struct({
   /** The story version the book pins. */
   version: Schema.Number,
   cast: Schema.String,
+  status: Schema.String,
 });
 export type BookSummary = typeof BookSummary.Type;
 
@@ -119,6 +120,8 @@ export const BookView = Schema.Struct({
       text: Schema.Array(BookTextBlock),
     }),
   ),
+  /** Where the photo book is (D56, D57). */
+  flow: Schema.suspend((): Schema.Codec<BookFlow> => BookFlow),
 });
 export type BookView = typeof BookView.Type;
 
@@ -133,6 +136,10 @@ export const ProofContent = Schema.Struct({
   cast: Schema.Record(Schema.String, CastMember),
   /** Replaces block `blockIndex` of page `pageId`; tokens stay unresolved, like the story's own text. */
   textEdits: Schema.Array(Schema.Struct({ pageId: Schema.String, blockIndex: Schema.Number, content: Schema.String })),
+  /** Each drawn page's layers in the chosen version (D57), so a later change or redo doesn't alter the proof. */
+  art: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect }))),
+  ),
 });
 export type ProofContent = typeof ProofContent.Type;
 
@@ -269,3 +276,81 @@ export const PhotoCheckResult = Schema.Struct({
   report: Schema.NullOr(PhotoReport),
 });
 export type PhotoCheckResult = typeof PhotoCheckResult.Type;
+
+/** The policies' version (D58), recorded with each consent; change it whenever a policy's text changes. */
+export const POLICY_VERSION = "2026-11-24";
+
+/** What the parent agrees to at the photo step (D58); the last is optional. */
+export const consentStatements = [
+  { id: "adult", required: true, text: "I'm 18 or older." },
+  {
+    id: "rights",
+    required: true,
+    text: "I have the right to use each photo: I'm the parent or guardian of any child in it, and any adult in it agreed.",
+  },
+  {
+    id: "processing",
+    required: true,
+    text: "I understand how photos are used: OpenAI checks each photo and draws a character sheet from it under zero data retention, and the photos are deleted once I order the book, or after 24 hours if I don't.",
+  },
+  {
+    id: "photo-review",
+    required: false,
+    text: "Optional: Lifestory's team may see the photos while reviewing my book, to judge the likeness. They're deleted when the book is approved, or 30 days after the order at most.",
+  },
+] as const;
+
+/** How many rounds of changes a parent may ask for on the sheets, and how many pages they may change (D56, D57). */
+export const MAX_LIKENESS_ROUNDS = 2;
+export const MAX_PAGE_CHANGES = 3;
+
+export const BookStatus = Schema.Literals([
+  "draft",
+  "ordered",
+  "making",
+  "changes",
+  "in_review",
+  "approved",
+  "refused",
+]);
+export type BookStatus = typeof BookStatus.Type;
+
+const Layer = Schema.Struct({ key: Schema.String, rect: Rect });
+
+/** A photo book's progress (D56, D57): what each step of the book page shows. */
+export const BookFlow = Schema.Struct({
+  status: BookStatus,
+  photoReview: Schema.Boolean,
+  consented: Schema.Boolean,
+  likenessStatus: Schema.Literals(["waiting", "drawing", "ready", "failed"]),
+  likenessRound: Schema.Number,
+  /** The cover page with the drawn figures, once the sheets are drawn. */
+  cover: Schema.NullOr(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Layer) })),
+  likenesses: Schema.Array(
+    Schema.Struct({
+      slotId: Schema.String,
+      checkStatus: Schema.NullOr(Schema.Literals(["checking", "passed", "refused"])),
+      check: Schema.NullOr(PhotoCheckResult),
+      hair: Schema.NullOr(Hair),
+      /** Whether the photo is still kept, and its key for the family (and the operator on an opted-in book). */
+      photoKey: Schema.NullOr(Schema.String),
+      sheetKey: Schema.NullOr(Schema.String),
+      notes: Schema.Array(Schema.Struct({ round: Schema.Number, note: Schema.String })),
+    }),
+  ),
+  /** Pages with figures, once the book is ordered: each drawn version's layers, and the chosen one. */
+  pages: Schema.Array(
+    Schema.Struct({
+      pageId: Schema.String,
+      latestVersion: Schema.Number,
+      chosenVersion: Schema.Number,
+      ready: Schema.Boolean,
+      changeNote: Schema.NullOr(Schema.String),
+      versions: Schema.Array(
+        Schema.Struct({ version: Schema.Number, layers: Schema.Array(Layer), clippedShare: Schema.Number }),
+      ),
+    }),
+  ),
+  reviewNote: Schema.NullOr(Schema.String),
+});
+export type BookFlow = typeof BookFlow.Type;

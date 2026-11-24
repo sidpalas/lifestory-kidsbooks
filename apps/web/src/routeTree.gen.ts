@@ -22,6 +22,7 @@ import { Route as AuthorIndexRouteImport } from './routes/author/index'
 import { Route as AuthorStoryIdRouteImport } from './routes/author/$storyId'
 import { Route as BooksBookIdRouteImport } from './routes/books/$bookId'
 import { Route as InvitationsInvitationIdRouteImport } from './routes/invitations.$invitationId'
+import { Route as PoliciesPolicyRouteImport } from './routes/policies.$policy'
 import { Route as SetPasswordTokenRouteImport } from './routes/set-password.$token'
 import { Route as StoriesSlugRouteImport } from './routes/stories/$slug'
 import { Route as _devLogMeInEmailRouteImport } from './routes/[_][_]dev/log-me-in/$email'
@@ -30,6 +31,7 @@ import { Route as FamilyStoriesIndexRouteImport } from './routes/_family/stories
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiFilesSplatRouteImport } from './routes/api/files/$'
 import { Route as PrintProofsProofIdRouteImport } from './routes/print/proofs.$proofId'
+import { Route as ApiBooksBookIdPhotosRouteImport } from './routes/api/books.$bookId.photos'
 import { Route as ApiAuthoringStoriesStoryIdAssetsRouteImport } from './routes/api/authoring/stories.$storyId.assets'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,6 +98,11 @@ const InvitationsInvitationIdRoute = InvitationsInvitationIdRouteImport.update({
   path: '/invitations/$invitationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PoliciesPolicyRoute = PoliciesPolicyRouteImport.update({
+  id: '/policies/$policy',
+  path: '/policies/$policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetPasswordTokenRoute = SetPasswordTokenRouteImport.update({
   id: '/set-password/$token',
   path: '/set-password/$token',
@@ -136,6 +143,11 @@ const PrintProofsProofIdRoute = PrintProofsProofIdRouteImport.update({
   path: '/print/proofs/$proofId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBooksBookIdPhotosRoute = ApiBooksBookIdPhotosRouteImport.update({
+  id: '/api/books/$bookId/photos',
+  path: '/api/books/$bookId/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthoringStoriesStoryIdAssetsRoute =
   ApiAuthoringStoriesStoryIdAssetsRouteImport.update({
     id: '/api/authoring/stories/$storyId/assets',
@@ -154,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/policies/$policy': typeof PoliciesPolicyRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
@@ -164,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books/': typeof FamilyBooksIndexRoute
   '/stories/': typeof FamilyStoriesIndexRoute
+  '/api/books/$bookId/photos': typeof ApiBooksBookIdPhotosRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
 export interface FileRoutesByTo {
@@ -177,6 +191,7 @@ export interface FileRoutesByTo {
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/policies/$policy': typeof PoliciesPolicyRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev': typeof _devIndexRoute
@@ -187,6 +202,7 @@ export interface FileRoutesByTo {
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/books': typeof FamilyBooksIndexRoute
   '/stories': typeof FamilyStoriesIndexRoute
+  '/api/books/$bookId/photos': typeof ApiBooksBookIdPhotosRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
 export interface FileRoutesById {
@@ -202,6 +218,7 @@ export interface FileRoutesById {
   '/author/$storyId': typeof AuthorStoryIdRoute
   '/books/$bookId': typeof BooksBookIdRoute
   '/invitations/$invitationId': typeof InvitationsInvitationIdRoute
+  '/policies/$policy': typeof PoliciesPolicyRoute
   '/set-password/$token': typeof SetPasswordTokenRoute
   '/stories/$slug': typeof StoriesSlugRoute
   '/__dev/': typeof _devIndexRoute
@@ -212,6 +229,7 @@ export interface FileRoutesById {
   '/print/proofs/$proofId': typeof PrintProofsProofIdRoute
   '/_family/books/': typeof FamilyBooksIndexRoute
   '/_family/stories/': typeof FamilyStoriesIndexRoute
+  '/api/books/$bookId/photos': typeof ApiBooksBookIdPhotosRoute
   '/api/authoring/stories/$storyId/assets': typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
 export interface FileRouteTypes {
@@ -227,6 +245,7 @@ export interface FileRouteTypes {
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
+    | '/policies/$policy'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev/'
@@ -237,6 +256,7 @@ export interface FileRouteTypes {
     | '/print/proofs/$proofId'
     | '/books/'
     | '/stories/'
+    | '/api/books/$bookId/photos'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -250,6 +270,7 @@ export interface FileRouteTypes {
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
+    | '/policies/$policy'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev'
@@ -260,6 +281,7 @@ export interface FileRouteTypes {
     | '/print/proofs/$proofId'
     | '/books'
     | '/stories'
+    | '/api/books/$bookId/photos'
     | '/api/authoring/stories/$storyId/assets'
   id:
     | '__root__'
@@ -274,6 +296,7 @@ export interface FileRouteTypes {
     | '/author/$storyId'
     | '/books/$bookId'
     | '/invitations/$invitationId'
+    | '/policies/$policy'
     | '/set-password/$token'
     | '/stories/$slug'
     | '/__dev/'
@@ -284,6 +307,7 @@ export interface FileRouteTypes {
     | '/print/proofs/$proofId'
     | '/_family/books/'
     | '/_family/stories/'
+    | '/api/books/$bookId/photos'
     | '/api/authoring/stories/$storyId/assets'
   fileRoutesById: FileRoutesById
 }
@@ -297,6 +321,7 @@ export interface RootRouteChildren {
   AuthorStoryIdRoute: typeof AuthorStoryIdRoute
   BooksBookIdRoute: typeof BooksBookIdRoute
   InvitationsInvitationIdRoute: typeof InvitationsInvitationIdRoute
+  PoliciesPolicyRoute: typeof PoliciesPolicyRoute
   SetPasswordTokenRoute: typeof SetPasswordTokenRoute
   StoriesSlugRoute: typeof StoriesSlugRoute
   _devIndexRoute: typeof _devIndexRoute
@@ -305,6 +330,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiFilesSplatRoute: typeof ApiFilesSplatRoute
   PrintProofsProofIdRoute: typeof PrintProofsProofIdRoute
+  ApiBooksBookIdPhotosRoute: typeof ApiBooksBookIdPhotosRoute
   ApiAuthoringStoriesStoryIdAssetsRoute: typeof ApiAuthoringStoriesStoryIdAssetsRoute
 }
 
@@ -401,6 +427,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvitationsInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/policies/$policy': {
+      id: '/policies/$policy'
+      path: '/policies/$policy'
+      fullPath: '/policies/$policy'
+      preLoaderRoute: typeof PoliciesPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/set-password/$token': {
       id: '/set-password/$token'
       path: '/set-password/$token'
@@ -457,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintProofsProofIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/books/$bookId/photos': {
+      id: '/api/books/$bookId/photos'
+      path: '/api/books/$bookId/photos'
+      fullPath: '/api/books/$bookId/photos'
+      preLoaderRoute: typeof ApiBooksBookIdPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/authoring/stories/$storyId/assets': {
       id: '/api/authoring/stories/$storyId/assets'
       path: '/api/authoring/stories/$storyId/assets'
@@ -494,6 +534,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthorStoryIdRoute: AuthorStoryIdRoute,
   BooksBookIdRoute: BooksBookIdRoute,
   InvitationsInvitationIdRoute: InvitationsInvitationIdRoute,
+  PoliciesPolicyRoute: PoliciesPolicyRoute,
   SetPasswordTokenRoute: SetPasswordTokenRoute,
   StoriesSlugRoute: StoriesSlugRoute,
   _devIndexRoute: _devIndexRoute,
@@ -502,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiFilesSplatRoute: ApiFilesSplatRoute,
   PrintProofsProofIdRoute: PrintProofsProofIdRoute,
+  ApiBooksBookIdPhotosRoute: ApiBooksBookIdPhotosRoute,
   ApiAuthoringStoriesStoryIdAssetsRoute: ApiAuthoringStoriesStoryIdAssetsRoute,
 }
 export const routeTree = rootRouteImport

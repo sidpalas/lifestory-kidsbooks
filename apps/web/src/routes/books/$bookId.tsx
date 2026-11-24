@@ -18,6 +18,7 @@ import { Schema } from "effect";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
+import { PageChange, PhotoBookSteps } from "~/components/book/photo-book";
 import { ProofPanel } from "~/components/book/ProofPanel";
 import { confirmDeleteBook } from "~/components/family-library";
 import { draftOf, PersonFields, personOf } from "~/components/make-book";
@@ -173,6 +174,8 @@ function BookEditor() {
         </p>
       )}
 
+      <PhotoBookSteps view={view} canEdit={canEdit} />
+
       <section aria-label="Editor" className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -205,6 +208,7 @@ function BookEditor() {
               />
             </ScaledPage>
           </div>
+          <PageChange key={`change-${page.pageId}`} view={view} pageId={page.pageId} canEdit={canEdit} />
           {/* Under the page, in its column: the text editor beside or below it can grow and shrink with each page's
               paragraphs without moving the strip. As wide as the page, not as all the thumbnails in one row. */}
           <section aria-label="All pages" className="w-0 min-w-full">
@@ -254,7 +258,10 @@ function BookEditor() {
         />
       </section>
 
-      <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} remove={deleteProof} hydrated />
+      {/* Proofs are of the drawn book (D57), from page changes on. */}
+      {!["draft", "ordered", "making"].includes(view.flow.status) && (
+        <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} remove={deleteProof} hydrated />
+      )}
     </main>
   );
 }

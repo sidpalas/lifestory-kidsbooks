@@ -1,7 +1,7 @@
 // A page's illustration as object storage keys for BookPage, bottom to top (D56): the illustrator's art as drawn,
 // and each figure as the family's drawing of it, else the story's stock drawing, else the bald reference. Pure and
 // browser-safe: drawing a figure happens in tasks, never when a page is shown.
-import { type Page, type PhotoFigure, type Rect, storyAssetKey } from "./manifest.ts";
+import { type Page, pageFigures, type PhotoFigure, type Rect, storyAssetKey, type StoryManifest } from "./manifest.ts";
 
 export type PlacedRect = readonly [number, number, number, number];
 
@@ -31,4 +31,14 @@ export const composePage = (
     if (layer.stock) return [{ key: asset(layer.stock), rect: layer.window }];
     return layer.reference ? [{ key: asset(layer.reference), rect: layer.box }] : [];
   });
+};
+
+/** The page the cover is drawn from: the first with every role on it, else the first with any figure. */
+export const coverPage = (manifest: StoryManifest): Page | undefined => {
+  const slots = manifest.characterSlots.map((slot) => slot.slotId);
+  const withFigures = manifest.pages.filter((page) => pageFigures(page).length > 0);
+  return (
+    withFigures.find((page) => slots.every((slotId) => pageFigures(page).some((f) => f.slotId === slotId))) ??
+    withFigures[0]
+  );
 };

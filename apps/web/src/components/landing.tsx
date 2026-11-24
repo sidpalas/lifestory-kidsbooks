@@ -5,6 +5,7 @@ import dreamAfter from "~/assets/marketing/dream-adventure-after.webp";
 import dreamBefore from "~/assets/marketing/dream-adventure-before.webp";
 import parentPhoto from "~/assets/marketing/parent-photo.webp";
 import socialPreview from "~/assets/marketing/social-preview.jpg";
+import { PolicyLinks } from "~/components/policy-links";
 import { Button } from "~/components/ui/button";
 
 // The page signed-out visitors see at /. Its images are marketing copies under src/assets/marketing, not story assets:
@@ -178,6 +179,7 @@ export function Landing() {
           </Link>
           .
         </p>
+        <PolicyLinks />
       </footer>
     </div>
   );
