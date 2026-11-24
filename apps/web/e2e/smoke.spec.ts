@@ -8,7 +8,7 @@ test("signed-out visitors get the landing page, with public images and a way to 
   await expect(page.getByText("Lifestory is invite-only for now.").first()).toBeVisible();
   // Every image is a public marketing copy that loaded, not a story asset behind sign-in.
   const images = page.locator("main img");
-  await expect(images).toHaveCount(3);
+  await expect(images).toHaveCount(4);
   for (const image of await images.all()) {
     await image.scrollIntoViewIfNeeded();
     expect(await image.getAttribute("src")).toMatch(/^\/(assets|src\/assets\/marketing)\//);
@@ -17,7 +17,7 @@ test("signed-out visitors get the landing page, with public images and a way to 
       .toBeGreaterThan(0);
   }
   const preview = await page.locator('meta[property="og:image"]').getAttribute("content");
-  expect((await page.request.get(new URL(preview ?? "").pathname)).headers()["content-type"]).toBe("image/png");
+  expect((await page.request.get(new URL(preview ?? "").pathname)).headers()["content-type"]).toBe("image/jpeg");
 
   await page.getByRole("main").getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
