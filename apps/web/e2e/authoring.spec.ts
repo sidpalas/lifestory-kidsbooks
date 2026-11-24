@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 
 import { markShownBookDrawn } from "./drawn.ts";
+import { expectFieldsAligned } from "./layout.ts";
 
 // Story authoring (D37), as an author does it: the operator lets an account author; the author starts a story, uploads
 // static fonts and sets text styles and the photo style (D56), defines a role with its outfit and stock sheet, lays out a
@@ -109,6 +110,12 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.getByRole("tab", { name: "Roles" }).click();
   await author.getByRole("button", { name: "Add a role" }).click();
   await expect(author.getByTestId("role-hero")).toContainText("{{hero.name}}");
+  // At 1024 px "Example title (optional, e.g. Dad)" wraps; the fields beside it still line up.
+  await author.setViewportSize({ width: 1024, height: 1000 });
+  for (const grid of await author.getByTestId("role-hero").locator(":scope > div.grid").all())
+    await expectFieldsAligned(grid);
+  await expectFieldsAligned(author.getByTestId("role-hero").locator(":scope > div.grid").nth(1), { wraps: true });
+  await author.setViewportSize({ width: 1440, height: 1000 });
   await author.getByLabel("Outfit on the sheet").fill("a yellow raincoat and blue boots");
   await author.getByLabel("Stock character sheet").setInputFiles(art("sheets/hero.svg"));
   await expect(author.getByTestId("role-hero").getByTestId("uploaded")).toHaveCount(1);

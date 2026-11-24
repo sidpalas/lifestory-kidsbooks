@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
 import { markDrawn, markShownBookDrawn } from "./drawn.ts";
+import { expectFieldsAligned } from "./layout.ts";
 
 // Personalized books, who plays each role, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
 // "The Example Family"; the seeded grandparent is a viewer in it. Names are unique per run.
@@ -70,6 +71,16 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
     "Older adult",
   ]);
   await expect(makeBook(page)).toBeDisabled();
+  // Each role's fields line up in two columns even where "What the kids call them (optional)" wraps onto two lines
+  // (the roles sit side by side from 768 px), and stack one per row on a phone.
+  const heroFields = page.getByTestId("role-hero").locator("fieldset");
+  for (const width of [768, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectFieldsAligned(heroFields, { wraps: true });
+  }
+  await page.setViewportSize({ width: 375, height: 740 });
+  await expectFieldsAligned(heroFields, { stacked: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await castKiteDay(
     page,
     { name: child, pronouns: "she/her", age: "Young child" },

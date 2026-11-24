@@ -70,7 +70,7 @@ export function PersonFields({
   const id = (field: string) => `${slot.slotId}-${field}`;
   return (
     <fieldset className="grid gap-2 sm:grid-cols-2" disabled={disabled} aria-label={slot.label}>
-      <label htmlFor={id("name")} className="flex flex-col gap-1 text-xs font-medium">
+      <label htmlFor={id("name")} className="flex flex-col justify-between gap-1 text-xs font-medium">
         Name
         <Input
           id={id("name")}
@@ -80,7 +80,7 @@ export function PersonFields({
           onChange={(event) => onChange({ ...value, name: event.target.value })}
         />
       </label>
-      <label htmlFor={id("title")} className="flex flex-col gap-1 text-xs font-medium">
+      <label htmlFor={id("title")} className="flex flex-col justify-between gap-1 text-xs font-medium">
         <span>
           What the kids call them <span className="font-normal text-muted-foreground">(optional)</span>
         </span>
@@ -93,7 +93,7 @@ export function PersonFields({
           onChange={(event) => onChange({ ...value, title: event.target.value })}
         />
       </label>
-      <label htmlFor={id("pronouns")} className="flex flex-col gap-1 text-xs font-medium">
+      <label htmlFor={id("pronouns")} className="flex flex-col justify-between gap-1 text-xs font-medium">
         Pronouns
         <NativeSelect
           id={id("pronouns")}
@@ -107,7 +107,7 @@ export function PersonFields({
           ))}
         </NativeSelect>
       </label>
-      <label htmlFor={id("age")} className="flex flex-col gap-1 text-xs font-medium">
+      <label htmlFor={id("age")} className="flex flex-col justify-between gap-1 text-xs font-medium">
         Age
         <NativeSelect
           id={id("age")}

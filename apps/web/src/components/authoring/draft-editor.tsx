@@ -737,7 +737,7 @@ function RoleEditor({
     <fieldset className="flex flex-col gap-3 rounded-md border p-3" data-testid={`role-${slot.slotId}`}>
       <legend className="px-1 text-sm font-semibold">{slot.label}</legend>
       <div className="grid gap-2 md:grid-cols-3">
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Role ID (used in tokens)
           <Input
             className="h-8"
@@ -747,7 +747,7 @@ function RoleEditor({
             }
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Role name for parents
           <Input
             className="h-8"
@@ -755,7 +755,7 @@ function RoleEditor({
             onChange={(event) => setSlot((s) => ({ ...s, label: event.target.value }))}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Guidance for parents
           <Input
             className="h-8"
@@ -778,7 +778,7 @@ function RoleEditor({
         ))}
       </fieldset>
       <div className="grid gap-2 md:grid-cols-3">
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Example name
           <Input
             className="h-8"
@@ -786,7 +786,7 @@ function RoleEditor({
             onChange={(event) => setSlot((s) => ({ ...s, example: { ...s.example, name: event.target.value } }))}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Example title (optional, e.g. Dad)
           <Input
             className="h-8"
@@ -799,7 +799,7 @@ function RoleEditor({
             }
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">
+        <label className="flex flex-col justify-between gap-1 text-xs font-medium">
           Example pronouns
           <NativeSelect
             aria-label="Example pronouns"
