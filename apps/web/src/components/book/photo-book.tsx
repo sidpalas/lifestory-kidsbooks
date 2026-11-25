@@ -478,35 +478,42 @@ function PoseSlot({ view, slotId, name, pose }: { view: BookView; slotId: string
       data-testid={`pose-${slotId}-${pose}`}
       {...dropTarget}
     >
-      <p className="text-muted-foreground">{info.hint}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        {photo?.photoKey && (
-          <img src={fileUrl(photo.photoKey)} alt={`${name}: ${info.label.toLowerCase()}`} className="h-16 rounded" />
-        )}
-        <FileInput
-          label={`${info.label} (${name})`}
-          buttonText={photo?.photoKey ? "Choose another" : "Choose a photo"}
-          emptyText=""
-          accept={photoTypes.join(",")}
-          disabled={busy}
-          onChange={pick}
-        />
-        <FileInput
-          className="hidden pointer-coarse:flex"
-          label=""
-          icon={<CameraIcon />}
-          aria-label={`Use the camera for ${name}, ${info.label.toLowerCase()}`}
-          buttonText="Take a photo"
-          emptyText=""
-          accept="image/*"
-          capture="environment"
-          disabled={busy}
-          onChange={pick}
-        />
+      {/* The buttons sit beside the label when the card has room and wrap below it when it doesn't. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex min-w-0 grow basis-48 flex-col gap-0.5">
+          <p className="font-medium">{info.label}</p>
+          <p className="text-muted-foreground">{info.hint}</p>
+          {(uploading || photo) && (
+            <p data-testid={`pose-status-${slotId}-${pose}`}>{checkText(uploading, photo?.checkStatus ?? null)}</p>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {photo?.photoKey && (
+            <img src={fileUrl(photo.photoKey)} alt={`${name}: ${info.label.toLowerCase()}`} className="h-12 rounded" />
+          )}
+          <FileInput
+            label=""
+            aria-label={`${info.label} (${name})`}
+            buttonText={photo?.photoKey ? "Choose another" : "Choose a photo"}
+            emptyText=""
+            accept={photoTypes.join(",")}
+            disabled={busy}
+            onChange={pick}
+          />
+          <FileInput
+            className="hidden pointer-coarse:flex"
+            label=""
+            icon={<CameraIcon />}
+            aria-label={`Use the camera for ${name}, ${info.label.toLowerCase()}`}
+            buttonText="Take a photo"
+            emptyText=""
+            accept="image/*"
+            capture="environment"
+            disabled={busy}
+            onChange={pick}
+          />
+        </div>
       </div>
-      {(uploading || photo) && (
-        <p data-testid={`pose-status-${slotId}-${pose}`}>{checkText(uploading, photo?.checkStatus ?? null)}</p>
-      )}
       {photo?.check?.refusals.map((issue) => (
         <p key={issue.code} className="text-destructive">
           {issue.message}

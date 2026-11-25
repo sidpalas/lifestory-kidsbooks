@@ -54,7 +54,9 @@ export function FileInput({
           {icon}
           {buttonText}
         </span>
-        <span className="min-w-0 truncate font-normal text-muted-foreground">{chosen ?? emptyText}</span>
+        {(chosen ?? emptyText) && (
+          <span className="min-w-0 truncate font-normal text-muted-foreground">{chosen ?? emptyText}</span>
+        )}
       </span>
     </label>
   );
