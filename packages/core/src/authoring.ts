@@ -132,6 +132,7 @@ export const listAuthoredStories = Effect.fn("authoring.listStories")(function* 
         title: schema.story.title,
         summary: schema.story.summary,
         status: schema.story.status,
+        operatorOnly: schema.story.operatorOnly,
         draftVersion: newestVersion(false),
         publishedVersion: newestVersion(true),
       })
@@ -260,7 +261,10 @@ export const storyVersions = Effect.fn("authoring.storyVersions")(function* (use
       title: owned.story.title,
       summary: owned.story.summary,
       status: owned.story.status,
+      operatorOnly: owned.story.operatorOnly,
     },
+    /** Whether the user may change who sees the story (D60): operators only. */
+    canSetOperatorOnly: user.role === "admin",
     draftVersion: owned.draft?.version ?? null,
     published: published.map((row) => ({ version: row.version, publishedAt: row.publishedAt!.toISOString() })),
   };
@@ -528,6 +532,24 @@ export const setStoryArchived = Effect.fn("authoring.setStoryArchived")(function
   const status = archived ? "archived" : "published";
   yield* Database.query((db) => db.update(schema.story).set({ status }).where(eq(schema.story.id, storyId)));
   return { status };
+});
+
+/**
+ * Makes a story the operator wrote operator-only, or puts it back for everyone (D60). Operator-only: only operators
+ * (and its author) list it, open its page, read its files, and make books of it, whatever its status, so a test story
+ * can be published to try the whole pipeline without reaching families. Books already made of it keep working, as
+ * with archiving (D49). Only an operator sets it: Forbidden for an author who isn't one.
+ */
+export const setStoryOperatorOnly = Effect.fn("authoring.setStoryOperatorOnly")(function* (
+  user: SessionUser,
+  storyId: string,
+  operatorOnly: boolean,
+) {
+  if (user.role !== "admin")
+    return yield* new Forbidden({ message: "Only the operator can make a story operator-only." });
+  yield* ownedDraft(user, storyId);
+  yield* Database.query((db) => db.update(schema.story).set({ operatorOnly }).where(eq(schema.story.id, storyId)));
+  return { operatorOnly };
 });
 
 /** Opens a draft of the next version, starting from the newest published one and copying its files. */

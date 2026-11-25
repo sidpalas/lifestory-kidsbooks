@@ -65,6 +65,7 @@ function AuthoringHome() {
                               ? `version ${story.publishedVersion} published`
                               : "not published yet"}
                             {story.status === "archived" && " · archived: hidden from families"}
+                            {story.operatorOnly && " · operator only: hidden from families"}
                             {story.draftVersion && ` · drafting version ${story.draftVersion}`}
                           </p>
                         </div>

@@ -43,9 +43,14 @@ const readJson = (dir: string, name: string) =>
 
 /**
  * Records the story, owned by `authorId`, as published, imports its manifest as version
- * `story.json#version` (validated, book format 4, assets uploaded under the story's prefix).
+ * `story.json#version` (validated, book format 4, assets uploaded under the story's prefix). `operatorOnly` (D60)
+ * applies when the import creates the story, so a test story never reaches families; an existing story keeps its own.
  */
-export const importStoryDirectory = Effect.fn("stories.importDirectory")(function* (dir: string, authorId: string) {
+export const importStoryDirectory = Effect.fn("stories.importDirectory")(function* (
+  dir: string,
+  authorId: string,
+  options: { readonly operatorOnly?: boolean } = {},
+) {
   const story = yield* Schema.decodeUnknownEffect(StoryFile)(yield* readJson(dir, "story.json")).pipe(Effect.orDie);
   const publishedAt = new Date(story.publishedAt);
   const [stored] = yield* Database.query(async (db) => {
@@ -59,10 +64,11 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
         summary: story.summary,
         status: "published",
         publishedAt,
+        operatorOnly: options.operatorOnly ?? false,
       })
       .onConflictDoNothing();
     return db
-      .select({ authorId: schema.story.authorId, slug: schema.story.slug })
+      .select({ authorId: schema.story.authorId, slug: schema.story.slug, operatorOnly: schema.story.operatorOnly })
       .from(schema.story)
       .where(eq(schema.story.id, story.id));
   });
@@ -82,14 +88,19 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
     readAsset,
     publishedAt,
   });
-  return story;
+  return { ...story, operatorOnly: stored.operatorOnly };
 });
 
 if (import.meta.main) {
-  const { values, positionals } = parseArgs({ options: { author: { type: "string" } }, allowPositionals: true });
+  const { values, positionals } = parseArgs({
+    options: { author: { type: "string" }, "operator-only": { type: "boolean" } },
+    allowPositionals: true,
+  });
   const email = values.author?.trim().toLowerCase();
   if (!email || positionals.length === 0) {
-    console.error("usage: node packages/core/src/story-import.ts --author <email> <story directory>...");
+    console.error(
+      "usage: node packages/core/src/story-import.ts --author <email> [--operator-only] <story directory>...",
+    );
     process.exit(2);
   }
   const runtime = makeServerRuntime();
@@ -99,8 +110,12 @@ if (import.meta.main) {
     );
     if (!author) throw new Error(`no account for ${email}; create it first (operator-create.ts, or an invitation)`);
     for (const dir of positionals) {
-      const story = await runtime.runPromise(importStoryDirectory(dir, author.id));
-      console.log(`${story.title} (/stories/${story.slug}) v${story.version} is published, by ${email}.`);
+      const story = await runtime.runPromise(
+        importStoryDirectory(dir, author.id, { operatorOnly: values["operator-only"] }),
+      );
+      console.log(
+        `${story.title} (/stories/${story.slug}) v${story.version} is published, by ${email}${story.operatorOnly ? ", for operators only" : ""}.`,
+      );
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

@@ -12,6 +12,7 @@ import {
   revokeAuthor,
   saveDraft,
   setStoryArchived,
+  setStoryOperatorOnly,
   startNextVersion,
   storyVersions,
 } from "@lifestory/core";
@@ -134,7 +135,9 @@ export const StoryVersionsResult = ResultSchema(
       title: Schema.String,
       summary: Schema.String,
       status: Schema.String,
+      operatorOnly: Schema.Boolean,
     }),
+    canSetOperatorOnly: Schema.Boolean,
     draftVersion: Schema.NullOr(Schema.Number),
     published: Schema.Array(Schema.Struct({ version: Schema.Number, publishedAt: Schema.String })),
   }),
@@ -167,6 +170,21 @@ export const setStoryArchivedFn = createServerFn({ method: "POST" })
     runEffect(
       ArchiveStoryResult,
       currentUser.pipe(Effect.flatMap((user) => setStoryArchived(user, data.storyId, data.archived))),
+    ),
+  );
+
+export const OperatorOnlyResult = ResultSchema(
+  Schema.Struct({ operatorOnly: Schema.Boolean }),
+  Schema.Union([NotAuthenticated, Forbidden, NotFound]),
+);
+
+/** Makes a story operator-only (`operatorOnly` true) or puts it back for everyone (D60). Operators only. */
+export const setStoryOperatorOnlyFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ storyId: Schema.String, operatorOnly: Schema.Boolean })))
+  .handler(({ data }) =>
+    runEffect(
+      OperatorOnlyResult,
+      currentUser.pipe(Effect.flatMap((user) => setStoryOperatorOnly(user, data.storyId, data.operatorOnly))),
     ),
   );
 

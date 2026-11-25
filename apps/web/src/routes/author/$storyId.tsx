@@ -12,7 +12,9 @@ import {
   ArchiveStoryResult,
   DraftResult,
   getDraftFn,
+  OperatorOnlyResult,
   setStoryArchivedFn,
+  setStoryOperatorOnlyFn,
   StartNextVersionResult,
   startNextVersionFn,
   StoryVersionsResult,
@@ -80,8 +82,15 @@ function AuthorStory() {
             /{versions.story.slug} · {draft ? `drafting version ${draft.version}` : "no draft open"}
             {latest && ` · version ${latest.version} published ${new Date(latest.publishedAt).toLocaleDateString()}`}
           </p>
+          {versions.canSetOperatorOnly && (
+            <Visibility storyId={versions.story.id} operatorOnly={versions.story.operatorOnly} />
+          )}
           {versions.story.status !== "draft" && (
-            <Catalogue storyId={versions.story.id} archived={versions.story.status === "archived"} />
+            <Catalogue
+              storyId={versions.story.id}
+              archived={versions.story.status === "archived"}
+              operatorOnly={versions.story.operatorOnly}
+            />
           )}
         </header>
         {draft ? (
@@ -118,7 +127,7 @@ function AuthorStory() {
 }
 
 /** Whether families find the story (D49): archiving hides it and stops new books; restoring brings it back. */
-function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }) {
+function Catalogue({ storyId, archived, operatorOnly }: { storyId: string; archived: boolean; operatorOnly: boolean }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -170,9 +179,61 @@ function Catalogue({ storyId, archived }: { storyId: string; archived: boolean }
         </>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
-          <p>In every family's stories.</p>
+          <p>{operatorOnly ? "Published, for operators only." : "In every family's stories."}</p>
           <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
             Archive…
+          </Button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Who may see the story (D60), for the operator: everyone once published, or operators only, to try the whole pipeline
+ * on a test story without it reaching families. Separate from publishing and archiving.
+ */
+function Visibility({ storyId, operatorOnly }: { storyId: string; operatorOnly: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = async (value: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      unwrapResult(OperatorOnlyResult)(await setStoryOperatorOnlyFn({ data: { storyId, operatorOnly: value } }));
+      await router.invalidate();
+    } catch (cause) {
+      setError(message(cause));
+    }
+    setBusy(false);
+  };
+  return (
+    <div
+      className={`mt-1 flex flex-col gap-2 rounded-md border p-3 text-sm ${operatorOnly ? "border-violet-300 bg-violet-50" : ""}`}
+      data-testid="story-visibility"
+      data-operator-only={operatorOnly}
+    >
+      {operatorOnly ? (
+        <>
+          <p>
+            <span className="font-medium">Operator only.</span> Only operators see this story, open its page, and make
+            books of it, published or not. Families never find it. Books already made stay as they are.
+          </p>
+          <Button size="sm" variant="outline" className="self-start" disabled={busy} onClick={() => void set(false)}>
+            Show to everyone when published
+          </Button>
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <p>Everyone sees it once it's published.</p>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void set(true)}>
+            Make operator only
           </Button>
         </div>
       )}

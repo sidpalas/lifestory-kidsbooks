@@ -93,6 +93,8 @@ export const StoryPreviewResult = ResultSchema(
     story: StorySummary,
     /** Archived by its author (D49): only the author sees it, and no book can be made of it. */
     archived: Schema.Boolean,
+    /** Operator-only (D60): only operators and its author see it; families get NotFound. */
+    operatorOnly: Schema.Boolean,
     version: Schema.Number,
     manifest: StoryManifest,
     /** The stock characters' names and pronouns, for the text. */

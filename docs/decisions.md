@@ -533,6 +533,26 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Reopen if:** parents hit the limits in normal use, payment arrives (then a paid order is the natural trigger),
   or families with several editors need a shared limit.
 
+### D60. An operator-only story: published for operators to try the pipeline, never seen by families — Decided (Sid, 2026-11-25) / Made
+
+- **Asked (Sid, 2026-11-25):** "a story that only me as the operator can use and see", to validate the graphics
+  pipeline on a generated test story without other users seeing it.
+- **What:** `story.operator_only` (boolean, default false; migration 0025), separate from `status`, so a story is a
+  draft, published, or archived as before, and independently operator-only. Archiving (D49) also hides a story but
+  stops its author's books too, so it can't serve testing; a draft can't be booked at all.
+- **Who sees and uses it:** operators (the `admin` role, read from the database on every check) and its author. For
+  everyone else the server treats it as missing: `listPublishedStories` leaves it out, `readableStoryVersion` (so
+  `/stories/<slug>` and `createBook`) answers NotFound, `canReadStoryAsset` refuses its files, and `createBook`
+  re-checks inside its per-family lock, so a story made operator-only mid-request gets no new book. An archived
+  operator-only story is its author's alone, as before.
+- **Who sets it:** only an operator, on a story they wrote, from its Studio page ("Make operator only" / "Show to
+  everyone when published"); `story:import --operator-only` creates a story that way, so a test story is never public
+  between import and the switch. A granted author (D37) can't set it.
+- **Books already made of it keep working** for their family (pages, files, proofs, reprints), as with archiving: the
+  book was made while the story was visible, and pulling its files would break a family's book (Sid, 2026-11-25: fine).
+- **Reopen if:** several operators need stories hidden from each other, authors need private test stories of their
+  own, or existing books of a story made operator-only should stop drawing.
+
 ### D26. Characters are illustrator-approved variants composed from parts; no AI when a book is made — Decided (Sid, 2026-11-18)
 
 - **Superseded by D56 (Sid, 2026-11-24):** parents upload one photo per character and a model draws them into the book through a per-book character sheet.

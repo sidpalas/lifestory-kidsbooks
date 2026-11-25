@@ -3,6 +3,7 @@
 // personalization) that pins one story version (see docs/plan.md, "Data model").
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -31,6 +32,11 @@ export const story = pgTable(
     summary: text("summary").notNull(),
     status: storyStatus("status").notNull().default("draft"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    /**
+     * Seen and used only by operators and its author, whatever its status (D60): a story for testing the pipeline,
+     * never in families' stories. Separate from `status`, so publishing and archiving work the same either way.
+     */
+    operatorOnly: boolean("operator_only").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

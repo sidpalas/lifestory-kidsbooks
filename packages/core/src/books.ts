@@ -24,7 +24,7 @@ import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
 import { createProof, proofSummaries, releaseDeletedProof } from "./proofs.ts";
-import { readableStoryVersion } from "./stories.ts";
+import { isOperatorSql, readableStoryVersion } from "./stories.ts";
 
 /** A person with the title only an adult has (`takesTitle`), so a child's never shows, prints or is stored. */
 const withTitleRule = (person: CastPerson): CastPerson =>
@@ -211,11 +211,16 @@ export const createBook = Effect.fn("books.create")(function* (
   const unseen = yield* Database.query((db) =>
     db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`book:${familyId}:${story.id}`}, 0))`);
-      // Checked here, not only when reading the story, so a story archived meanwhile gets no new book (D49).
+      // Checked here, not only when reading the story, so a story archived (D49) or made operator-only (D60)
+      // meanwhile gets no new book.
       const [current] = await tx
-        .select({ status: schema.story.status })
+        .select({
+          status: schema.story.status,
+          hidden: sql<boolean>`${schema.story.operatorOnly} and ${schema.story.authorId} <> ${userId} and not ${isOperatorSql(userId)}`,
+        })
         .from(schema.story)
         .where(eq(schema.story.id, story.id));
+      if (current?.hidden) return "hidden" as const;
       if (current?.status === "archived") return "archived" as const;
       const books = await tx
         .select({ id: schema.book.id, status: schema.book.status })
@@ -248,6 +253,7 @@ export const createBook = Effect.fn("books.create")(function* (
     }),
   );
   if (unseen !== null && typeof unseen === "object" && "draft" in unseen) return { id: unseen.draft };
+  if (unseen === "hidden") return yield* new NotFound({ entity: "story", id: input.slug });
   if (unseen === "archived")
     return yield* new InvalidInput({ message: `${story.title} is archived, so no new books are made of it.` });
   if (unseen) {

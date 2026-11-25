@@ -1,0 +1,1 @@
+ALTER TABLE "story" ADD COLUMN "operator_only" boolean DEFAULT false NOT NULL;

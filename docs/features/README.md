@@ -65,6 +65,8 @@ Show the user the images from that directory; a PASS line with no evidence looke
   scenery, check and publish. Covered by `e2e -- authoring drafts`; no map file yet.
 - [story-archive](story-archive.md): an author archives or restores a published story; existing books keep
   working. `verify e2e -- archive`.
+- [operator-only-stories](operator-only-stories.md): the operator hides a story from families while operators keep
+  listing, previewing, and booking it to try the pipeline. `verify e2e -- operator-only`.
 
 ### Whole suite
 

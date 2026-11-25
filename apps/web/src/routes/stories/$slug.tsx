@@ -29,7 +29,8 @@ const spreads = (count: number) => {
 };
 
 function StoryPreview() {
-  const { story, archived, version, manifest, cast, pages, people, canEdit, books } = Route.useLoaderData();
+  const { story, archived, operatorOnly, version, manifest, cast, pages, people, canEdit, books } =
+    Route.useLoaderData();
   const { slug } = Route.useParams();
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(story.id, version, asset)}`;
   const { widthIn, heightIn } = manifest.trim;
@@ -57,6 +58,19 @@ function StoryPreview() {
             books they made stay theirs. You see it because you wrote it.{" "}
             <Link to="/author/$storyId" params={{ storyId: story.id }} className="underline">
               Restore it in Studio
+            </Link>
+          </p>
+        )}
+        {operatorOnly && (
+          <p
+            className="rounded-md border border-violet-300 bg-violet-50 p-3 text-sm"
+            data-testid="story-operator-only"
+            role="status"
+          >
+            <span className="font-medium">Operator only.</span> Families can't find this story, open its page, or make
+            books of it; operators can, to try the pipeline.{" "}
+            <Link to="/author/$storyId" params={{ storyId: story.id }} className="underline">
+              Change it in Studio
             </Link>
           </p>
         )}

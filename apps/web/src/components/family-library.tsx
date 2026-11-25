@@ -137,6 +137,14 @@ export function StoryList({
               </Link>
               <p className="text-sm text-muted-foreground">{story.summary}</p>
               <p className="text-xs text-muted-foreground">by {story.authorName}</p>
+              {story.operatorOnly && (
+                <p
+                  className="self-start rounded bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-900"
+                  data-testid="story-operator-only"
+                >
+                  Operator only: families don't see it
+                </p>
+              )}
               <div className="mt-auto pt-1">
                 {ours.length === 1 ? (
                   <Button asChild size="sm">

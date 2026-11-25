@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, not, or, sql } from "drizzle-orm";
 import { Effect } from "effect";
 
 import {
@@ -23,10 +23,21 @@ import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
 
 /**
- * Published stories, the catalogue a family picks from, each with the cover of its newest published version: the
- * cover page's art with the illustrator's stock figures (D56), as the story page shows it. Nothing is drawn for it.
+ * Whether `userId` is an operator (the admin role, D3), as SQL, so every story rule reads the role from the database
+ * the same way. Aliased: the queries using it join `user` for the story's author.
  */
-export const listPublishedStories = Effect.fn("stories.listPublished")(function* () {
+export const isOperatorSql = (userId: string) =>
+  sql<boolean>`exists (select 1 from ${schema.user} as viewer where viewer.id = ${userId} and viewer.role = 'admin')`;
+
+/** Whether `userId` may see the story among published ones: any story, unless only operators may (D60). */
+const listedFor = (userId: string) => or(not(schema.story.operatorOnly), isOperatorSql(userId));
+
+/**
+ * Published stories `userId` may make books of, the catalogue a family picks from, each with the cover of its newest
+ * published version: the cover page's art with the illustrator's stock figures (D56), as the story page shows it.
+ * Nothing is drawn for it. Operator-only stories (D60) are listed for operators alone.
+ */
+export const listPublishedStories = Effect.fn("stories.listPublished")(function* (userId: string) {
   const rows = yield* Database.query((db) =>
     db
       .selectDistinctOn([schema.story.title, schema.story.id], {
@@ -35,13 +46,14 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
         title: schema.story.title,
         summary: schema.story.summary,
         authorName: schema.user.name,
+        operatorOnly: schema.story.operatorOnly,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
       })
       .from(schema.story)
       .innerJoin(schema.user, eq(schema.user.id, schema.story.authorId))
       .innerJoin(schema.storyVersion, eq(schema.storyVersion.storyId, schema.story.id))
-      .where(and(eq(schema.story.status, "published"), isNotNull(schema.storyVersion.publishedAt)))
+      .where(and(eq(schema.story.status, "published"), isNotNull(schema.storyVersion.publishedAt), listedFor(userId)))
       .orderBy(asc(schema.story.title), asc(schema.story.id), desc(schema.storyVersion.version)),
   );
   return yield* Effect.forEach(rows, ({ version, manifest: stored, ...story }) =>
@@ -53,13 +65,14 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
 });
 
 /**
- * Who may read a story version: a published version of a published story, anyone; of a story not published yet, its
- * author. An unpublished version is the author's draft (D37), read only through authoring and its files.
+ * Who may read a story version: a published version of a published story, anyone, or only operators when the story is
+ * operator-only (D60); of a story not published yet or archived, its author. An unpublished version is the author's
+ * draft (D37), read only through authoring and its files.
  */
 const readableBy = (userId: string) =>
   and(
     isNotNull(schema.storyVersion.publishedAt),
-    or(eq(schema.story.authorId, userId), eq(schema.story.status, "published")),
+    or(eq(schema.story.authorId, userId), and(eq(schema.story.status, "published"), listedFor(userId))),
   );
 
 /** The newest version of a story that `userId` may read, decoded. Fails with NotFound when there is none. */
@@ -73,6 +86,7 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
         summary: schema.story.summary,
         authorName: schema.user.name,
         status: schema.story.status,
+        operatorOnly: schema.story.operatorOnly,
         storyVersionId: schema.storyVersion.id,
         version: schema.storyVersion.version,
         manifest: schema.storyVersion.manifest,
@@ -86,11 +100,12 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
   );
   if (!row) return yield* new NotFound({ entity: "story", id: slug });
   const manifest: StoryManifest = yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie);
-  const { storyVersionId, version, manifest: _, status, ...story } = row;
+  const { storyVersionId, version, manifest: _, status, operatorOnly, ...story } = row;
   // Only its author reads an archived story (D49), to preview it; nobody makes a book of it.
   return {
     story: story satisfies StorySummary,
     archived: status === "archived",
+    operatorOnly,
     storyVersionId,
     version,
     manifest,
@@ -103,12 +118,12 @@ export const readableStoryVersion = Effect.fn("stories.readableVersion")(functio
  * to the user.
  */
 export const getStoryPreview = Effect.fn("stories.getPreview")(function* (userId: string, slug: string) {
-  const { story, archived, version, manifest } = yield* readableStoryVersion(userId, slug);
+  const { story, archived, operatorOnly, version, manifest } = yield* readableStoryVersion(userId, slug);
   const pages = manifest.pages.map((page) => ({
     pageId: page.pageId,
     layers: composePage({ storyId: story.id, version }, page),
   }));
-  return { story, archived, version, manifest, cast: exampleCast(manifest), pages };
+  return { story, archived, operatorOnly, version, manifest, cast: exampleCast(manifest), pages };
 });
 
 // No ".." anywhere: some S3 servers normalize paths, which would let a key climb out of the story.

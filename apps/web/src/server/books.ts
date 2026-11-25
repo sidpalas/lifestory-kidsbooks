@@ -69,7 +69,7 @@ export const getFamilyLibrary = createServerFn({ method: "GET" }).handler(() =>
       const [people, { books, canEdit }, stories] = yield* Effect.all([
         listCastPeople(user.id, family.id),
         listBooks(user.id, family.id),
-        listPublishedStories(),
+        listPublishedStories(user.id),
       ]);
       return { family: { id: family.id, name: family.name }, canEdit, people, books, stories };
     }),

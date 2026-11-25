@@ -176,6 +176,13 @@
       "when": 1795576639758,
       "tag": "0024_pose_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795606300398,
+      "tag": "0025_story_operator_only",
+      "breakpoints": true
     }
   ]
 }

@@ -218,6 +218,8 @@ export type BookTextBlock = typeof BookTextBlock.Type;
 /** A published story in the catalogue, with its cover: the cover page's illustration with the stock figures (D56). */
 export const StoryListing = Schema.Struct({
   ...StorySummary.fields,
+  /** Listed only for operators (D60): a story for testing the pipeline that families never see. */
+  operatorOnly: Schema.Boolean,
   cover: Schema.NullOr(CoverThumbnail),
 });
 export type StoryListing = typeof StoryListing.Type;
@@ -290,6 +292,7 @@ export const AuthoredStory = Schema.Struct({
   title: Schema.String,
   summary: Schema.String,
   status: Schema.String,
+  operatorOnly: Schema.Boolean,
   draftVersion: Schema.NullOr(Schema.Number),
   publishedVersion: Schema.NullOr(Schema.Number),
 });
