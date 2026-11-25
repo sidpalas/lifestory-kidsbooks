@@ -20,6 +20,7 @@ import { BookPage, ScaledPage } from "~/components/book/BookPage";
 import { Button } from "~/components/ui/button";
 import { FileInput } from "~/components/ui/file-input";
 import { NativeSelect } from "~/components/ui/native-select";
+import { cn } from "~/lib/utils";
 import {
   askLikenessChangesFn,
   choosePageVersionFn,
@@ -204,9 +205,29 @@ const preparePhoto = async (file: File) => {
   return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
 };
 
+const photoTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+/** The file picker's types; some systems give a dropped HEIC no type, so its extension counts too. */
+const isPhotoFile = (file: File) => photoTypes.includes(file.type) || /\.hei[cf]$/i.test(file.name);
+const isFileDrag = (event: { dataTransfer: DataTransfer | null }) =>
+  event.dataTransfer?.types.includes("Files") ?? false;
+
 const defaultHair: Hair = { colour: "brown", length: "short", texture: "straight" };
 
 function PhotoStep({ view }: { view: BookView }) {
+  // A file dropped beside a photo card would make the browser open it in place of the page; refuse it instead.
+  useEffect(() => {
+    const refuse = (event: DragEvent) => {
+      if (event.defaultPrevented || !isFileDrag(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+    };
+    window.addEventListener("dragover", refuse);
+    window.addEventListener("drop", refuse);
+    return () => {
+      window.removeEventListener("dragover", refuse);
+      window.removeEventListener("drop", refuse);
+    };
+  }, []);
   return (
     <section className="flex flex-col gap-3" aria-labelledby="photos-heading" data-testid="book-step">
       <h2 id="photos-heading" className="text-base font-semibold">
@@ -233,6 +254,7 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
   const [hair, setHair] = useState<Hair>(likeness.hair ?? defaultHair);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const upload = async (file: File) => {
     setError(null);
@@ -257,9 +279,41 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
     }
   };
 
+  // Dropping a file on the card does what choosing it does; each person has exactly one photo, so a drop of several
+  // files uploads none and says why.
+  const name = role?.person.name ?? slot.label;
+  const drop = (files: ReadonlyArray<File>) => {
+    if (uploading) return setError(`Wait for ${name}'s photo to finish uploading.`);
+    if (files.length !== 1)
+      return setError(`That's ${files.length} files. Drop one photo of ${name}: we use one photo of each person.`);
+    if (!isPhotoFile(files[0]!)) return setError("That isn't a photo we can use. Drop a JPEG, PNG, WebP or HEIC.");
+    void upload(files[0]!);
+  };
+
   const check = likeness.check;
   return (
-    <div className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid={`photo-${slotId}`}>
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-md border p-3 text-sm",
+        dragging && "border-dashed border-primary bg-accent",
+      )}
+      data-testid={`photo-${slotId}`}
+      onDragOver={(event) => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
+      }}
+      onDrop={(event) => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        setDragging(false);
+        drop([...event.dataTransfer.files]);
+      }}
+    >
       <p className="font-medium">
         {slot.label}: {role?.person.name}
       </p>
@@ -301,13 +355,17 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
       <FileInput
         label={`Photo of ${role?.person.name ?? slot.label}`}
         buttonText={likeness.photoKey ? "Choose another photo" : "Choose a photo"}
-        accept="image/jpeg,image/png,image/webp,image/heic"
+        emptyText={likeness.photoKey ? "Photo added" : undefined}
+        accept={photoTypes.join(",")}
         disabled={uploading}
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           if (file) void upload(file);
         }}
       />
+      <p className="text-xs text-muted-foreground pointer-coarse:hidden">
+        {dragging ? `Drop the photo of ${name}` : "Or drag a photo onto this card."}
+      </p>
       {likeness.photoKey && (
         <img src={fileUrl(likeness.photoKey)} alt={`Photo of ${role?.person.name}`} className="h-28 w-fit rounded" />
       )}

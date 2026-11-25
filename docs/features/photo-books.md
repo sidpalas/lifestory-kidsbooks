@@ -15,7 +15,8 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 - Story page: "Make the book" makes a draft book, or reopens the family's draft of the story (owner and editor; a
   viewer sees the stock characters only).
 - `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
-  (`POST /api/books/<id>/photos`, resized to 1536 px in the browser), the sheets and cover with two change rounds,
+  (`POST /api/books/<id>/photos`, resized to 1536 px in the browser; chosen with the button or dropped on that
+  person's card, where a drop of several files or a non-photo uploads nothing and says why), the sheets and cover with two change rounds,
   "Make my book", then the page-change form under each page and "Send for review". Proofs appear from page changes on.
   From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card
   (with a full-size link), for every family member, viewers included; display only, never a printed page.
@@ -38,7 +39,7 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 ## Verify
 
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
-bad photo, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
+bad photo, a refused two-file drop and a dropped photo, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
 deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a drawn book with `markDrawn`
 (`e2e/drawn.ts`).

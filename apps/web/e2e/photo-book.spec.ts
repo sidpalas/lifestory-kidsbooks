@@ -15,6 +15,21 @@ const PHOTO = Buffer.from(
 );
 const photo = (name: string) => ({ name, mimeType: "image/png", buffer: PHOTO });
 
+/** Drops files on an element the way a desktop browser does: dragenter, dragover, then drop with their DataTransfer. */
+const dropFiles = async (page: Page, testId: string, names: ReadonlyArray<string>) => {
+  const transfer = await page.evaluateHandle(
+    ({ files, base64 }) => {
+      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const data = new DataTransfer();
+      for (const name of files) data.items.add(new File([bytes], name, { type: "image/png" }));
+      return data;
+    },
+    { files: names, base64: PHOTO.toString("base64") },
+  );
+  const target = page.getByTestId(testId);
+  for (const type of ["dragenter", "dragover", "drop"]) await target.dispatchEvent(type, { dataTransfer: transfer });
+};
+
 const evidence = async (page: Page, name: string) => {
   if (process.env.E2E_SCREENSHOTS)
     await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/${name}.png`, fullPage: true });
@@ -112,7 +127,17 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     expect(await photosOf(bookId)).toBe(0);
     await evidence(page, "photo-refused");
 
-    await page.getByLabel(`Photo of ${child}`).setInputFiles(photo("child.png"));
+    // A photo can be dropped on its person's card; dropping several uploads none, since each person has one photo.
+    await dropFiles(page, "photo-hero", ["child.png", "child-2.png"]);
+    await expect(page.getByTestId("photo-hero").getByRole("alert")).toHaveText(
+      `That's 2 files. Drop one photo of ${child}: we use one photo of each person.`,
+    );
+    await expect(page.getByTestId("photo-status-hero")).toHaveText("No photo yet.");
+    await dropFiles(page, "photo-hero", ["child.png"]);
+    await expect(page.getByTestId("photo-status-hero")).toHaveText(/^(Checking the photo…|This photo works\.)$/, {
+      timeout: 30_000,
+    });
+    await expect(page.getByTestId("photo-hero").getByRole("alert")).toHaveCount(0);
     await page.getByLabel(`Photo of ${grownup}`).setInputFiles(photo("grownup.png"));
     await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId("cover")).toBeVisible();
