@@ -42,7 +42,8 @@ An example config, kept next to the art (it may name the original child, so it d
 
 ```json
 {
-  "canvas": [3075, 2475],
+  "canvas": [3375, 2625],
+  "cropAnchor": { "p02": [0.5, 1] },
   "pages": [
     { "pageId": "p01", "psd": "../psds/p01.psd", "notes": ["title page"] },
     { "pageId": "p02", "image": "../scans/p02.jpg" },
@@ -58,8 +59,10 @@ An example config, kept next to the art (it may name the original child, so it d
 }
 ```
 
-`canvas` is the print sheet, trim plus bleed (10x8 in with 0.125 in bleed at 300 ppi: 3075x2475). Every page is
-cover-fitted to it with one transform for all its layers; a crop that cuts into a hero is a warning. Then `grep` the
+`canvas` is the print sheet, trim plus bleed at 300 ppi, and the trim must be one of the sizes we print
+(`PRINT_SIZES`): 8.5x8.5 in is [2625, 2625], 8.5x11 in [2625, 3375], 11x8.5 in [3375, 2625]. Every page is
+cover-fitted to it with one transform for all its layers, cropped equally from both sides; `"cropAnchor": {"p03": [0.5,
+1]}` keeps a page's bottom edge instead (0 keeps the left or top). A crop that cuts into a hero is a warning. Then `grep` the
 export for the original child's name: it must appear nowhere.
 
 ## Fixing a PSD with a script

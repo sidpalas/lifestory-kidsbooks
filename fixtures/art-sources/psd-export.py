@@ -8,11 +8,14 @@
 #
 # Each PSD has three top-level groups (names configurable): "plate" (the scene without the hero, complete behind it),
 # "hero" (the bald hero, merged bottom to top) and "foreground" (each visible layer with pixels is one occluder). Every
-# page is cover-fitted to the print sheet (scale until it is filled, centre, crop the overflow equally from both sides),
-# with one transform for the plate, the hero and the occluders.
+# page is cover-fitted to the print sheet (scale until it is filled, crop the overflow equally from both sides unless
+# cropAnchor says otherwise), with one transform for the plate, the hero and the occluders.
 #
 # The config (paths relative to it; see .agents/skills/preparing-layered-art/SKILL.md for an example):
-#   canvas        [width, height] of the sheet in px, trim plus bleed (10x8 in + 0.125 in bleed at 300 ppi: [3075, 2475])
+#   canvas        [width, height] of the sheet in px, trim plus bleed at 300 ppi, one of the sizes we print
+#                 (PRINT_SIZES): 8.5x8.5 in [2625, 2625], 8.5x11 in [2625, 3375], 11x8.5 in [3375, 2625]
+#   cropAnchor    optional {pageId: [x, y]}: where that page's crop sits, 0 keeping the left or top edge, 1 the right or
+#                 bottom; [0.5, 0.5] (centred) by default
 #   pages         [{pageId, psd | image | white: true, notes?}]: a PSD page, or a flat plate from an image (or a PSD
 #                 flattened whole, via "flat": true), or a white page; notes are copied into export.json
 #   groups        optional {plate, hero, foreground}; heroSkip: hero layers left out of hero.png (trace layers, masks)
@@ -43,13 +46,15 @@ CW, CH = cfg["canvas"]
 G = {"plate": "plate", "hero": "hero", "foreground": "foreground", **cfg.get("groups", {})}
 SKIP = set(cfg.get("heroSkip", ["re-ink", "skin fill", "skin (neutral grey)"]))
 HEAD = cfg.get("headLayer", "original head hole")
+ANCHORS = cfg.get("cropAnchor", {})
+AX, AY = 0.5, 0.5  # the current page's crop anchor
 ALPHA_MIN = 26  # hero.png keeps alpha >= 0.1
 
 
 def fit(W, H):
     s = max(CW / W, CH / H)
     sw, sh = max(CW, round(W * s)), max(CH, round(H * s))
-    return s, sw, sh, (sw - CW) // 2, (sh - CH) // 2
+    return s, sw, sh, int((sw - CW) * AX), int((sh - CH) * AY)
 
 
 def to_sheet_rgb(im):
@@ -145,6 +150,7 @@ os.makedirs(args.out)
 pages, warnings, flats = [], [], []
 for spec in cfg["pages"]:
     pid = spec["pageId"]
+    AX, AY = ANCHORS.get(pid, [0.5, 0.5])
     d = os.path.join(args.out, "pages", pid)
     os.makedirs(d)
     e = {"pageId": pid, "source": None, "hero": None, "occluders": [], "occluderKinds": {}, "notes": list(spec.get("notes", []))}
@@ -163,7 +169,7 @@ for spec in cfg["pages"]:
         psd = PSDImage.open(src)
         W, H = psd.size
         s, sw, sh, ox, oy = fit(W, H)
-        e["notes"].append(f"PSD {W}x{H} scaled x{s:.4f}, cropped {ox} px from left and right, {oy} px from top and bottom")
+        e["notes"].append(f"PSD {W}x{H} scaled x{s:.4f}, cropped {sw - CW} px across ({ox} from the left) and {sh - CH} px down ({oy} from the top)")
         groups = {g.name: g for g in psd if g.is_group()}
         for k in ("plate", "hero"):
             if G[k] not in groups:
