@@ -7,6 +7,7 @@ import { Effect, Schema } from "effect";
 
 import {
   ageLabel,
+  takesTitle,
   type CastMember,
   composePage,
   coverPage,
@@ -25,8 +26,13 @@ import { requireFamilyAccess } from "./families.ts";
 import { createProof, proofSummaries, releaseDeletedProof } from "./proofs.ts";
 import { readableStoryVersion } from "./stories.ts";
 
+/** A person with the title only an adult has (`takesTitle`), so a child's never shows, prints or is stored. */
+const withTitleRule = (person: CastPerson): CastPerson =>
+  takesTitle(person.age) || person.title === null ? person : { ...person, title: null };
+/** A stored person; a title saved for a child before the rule is dropped on read. */
+const decodePerson = (row: unknown) => Schema.decodeUnknownEffect(CastPerson)(row).pipe(Effect.map(withTitleRule));
+
 /** Every role filled, by a person of an age the role accepts, and no role the story lacks. */
-const decodePerson = Schema.decodeUnknownEffect(CastPerson);
 
 const checkCast = Effect.fn("books.checkCast")(function* (
   manifest: StoryManifest,
@@ -220,9 +226,13 @@ export const createBook = Effect.fn("books.create")(function* (
       const draft = books.find((book) => book.status === "draft");
       if (draft) {
         await tx.delete(schema.bookCast).where(eq(schema.bookCast.bookId, draft.id));
-        await tx
-          .insert(schema.bookCast)
-          .values(Object.entries(input.cast).map(([slotId, person]) => ({ bookId: draft.id, slotId, ...person })));
+        await tx.insert(schema.bookCast).values(
+          Object.entries(input.cast).map(([slotId, person]) => ({
+            bookId: draft.id,
+            slotId,
+            ...withTitleRule(person),
+          })),
+        );
         return { draft: draft.id };
       }
       const bookIds = books.map((book) => book.id);
@@ -230,7 +240,9 @@ export const createBook = Effect.fn("books.create")(function* (
       await tx.insert(schema.book).values({ id, familyId, storyVersionId, title: story.title });
       await tx
         .insert(schema.bookCast)
-        .values(Object.entries(input.cast).map(([slotId, person]) => ({ bookId: id, slotId, ...person })));
+        .values(
+          Object.entries(input.cast).map(([slotId, person]) => ({ bookId: id, slotId, ...withTitleRule(person) })),
+        );
       return null;
     }),
   );
@@ -423,13 +435,14 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
   );
   const cast: Record<string, CastPerson> = {};
   for (const row of rows) cast[row.slotId] = yield* decodePerson(row).pipe(Effect.orDie);
-  cast[input.slotId] = input.person;
+  const person = withTitleRule(input.person);
+  cast[input.slotId] = person;
   yield* checkCast(book.manifest, cast);
   yield* Database.query((db) =>
     db
       .insert(schema.bookCast)
-      .values({ bookId: input.bookId, slotId: input.slotId, ...input.person })
-      .onConflictDoUpdate({ target: [schema.bookCast.bookId, schema.bookCast.slotId], set: input.person }),
+      .values({ bookId: input.bookId, slotId: input.slotId, ...person })
+      .onConflictDoUpdate({ target: [schema.bookCast.bookId, schema.bookCast.slotId], set: person }),
   );
 });
 

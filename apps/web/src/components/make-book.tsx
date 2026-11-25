@@ -1,4 +1,4 @@
-// Who's in a story: for each role, the person's name, what the kids call them, pronouns and an age the role accepts
+// Who's in a story: for each role, the person's name, what the kids call them (adults only), pronouns and an age the role accepts
 // (D29), typed in or picked from the family's earlier books; then make the book. The pages show the illustrator's stock
 // characters; a family's book draws its own people from their photos (D56).
 import {
@@ -9,6 +9,7 @@ import {
   type CastPerson,
   type CharacterSlot,
   PronounSet,
+  takesTitle,
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
@@ -38,7 +39,7 @@ const titleSuggestions = [
   "Uncle",
 ];
 
-/** A person in progress: the title as typed, empty for none. */
+/** A person in progress: the title as typed, empty for none; kept while the age is a child's, so switching back restores it. */
 export type PersonDraft = { name: string; title: string; pronouns: PronounSet; age: Age };
 
 export const draftOf = (person: CastPerson): PersonDraft => ({ ...person, title: person.title ?? "" });
@@ -50,12 +51,12 @@ export const blankFor = (slot: CharacterSlot): PersonDraft => ({
 });
 export const personOf = (draft: PersonDraft): CastPerson => ({
   name: draft.name.trim(),
-  title: draft.title.trim() || null,
+  title: (takesTitle(draft.age) && draft.title.trim()) || null,
   pronouns: draft.pronouns,
   age: draft.age,
 });
 
-/** Who plays one role: name, what the kids call them, pronouns, and one of the ages the role accepts. */
+/** Who plays one role: name, what the kids call them (only for an adult age), pronouns, and an age the role accepts. */
 export function PersonFields({
   slot,
   value,
@@ -80,19 +81,21 @@ export function PersonFields({
           onChange={(event) => onChange({ ...value, name: event.target.value })}
         />
       </label>
-      <label htmlFor={id("title")} className="flex flex-col justify-between gap-1 text-xs font-medium">
-        <span>
-          What the kids call them <span className="font-normal text-muted-foreground">(optional)</span>
-        </span>
-        <Input
-          id={id("title")}
-          value={value.title}
-          maxLength={30}
-          list="person-titles"
-          placeholder="Dad, Nana…"
-          onChange={(event) => onChange({ ...value, title: event.target.value })}
-        />
-      </label>
+      {takesTitle(value.age) && (
+        <label htmlFor={id("title")} className="flex flex-col justify-between gap-1 text-xs font-medium">
+          <span>
+            What the kids call them <span className="font-normal text-muted-foreground">(optional)</span>
+          </span>
+          <Input
+            id={id("title")}
+            value={value.title}
+            maxLength={30}
+            list="person-titles"
+            placeholder="Dad, Nana…"
+            onChange={(event) => onChange({ ...value, title: event.target.value })}
+          />
+        </label>
+      )}
       <label htmlFor={id("pronouns")} className="flex flex-col justify-between gap-1 text-xs font-medium">
         Pronouns
         <NativeSelect

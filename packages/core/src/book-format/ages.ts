@@ -16,3 +16,9 @@ export const Age = Schema.Literals(["baby", "toddler", "young-child", "older-chi
 export type Age = typeof Age.Type;
 
 export const ageLabel = (age: Age) => ageOptions.find((option) => option.id === age)!.label;
+
+/**
+ * Whether a person of this age has a title, what the kids call them ("Dad", "Nana"): adults only (Sid, 2026-11-25).
+ * A child's title is never asked for, stored, shown or printed; `{{slot.title}}` prints their name.
+ */
+export const takesTitle = (age: Age) => age === "adult" || age === "older-adult";

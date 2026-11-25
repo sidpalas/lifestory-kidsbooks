@@ -72,15 +72,19 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
     "Older adult",
   ]);
   await expect(makeBook(page)).toBeDisabled();
+  // Only an adult has a title, what the kids call them (Sid, 2026-11-25): the child's role doesn't ask for one.
+  await expect(page.getByTestId("role-hero").getByLabel(/What the kids call them/)).toHaveCount(0);
+  await expect(page.getByTestId("role-grownup").getByLabel(/What the kids call them/)).toBeVisible();
   // Each role's fields line up in two columns even where "What the kids call them (optional)" wraps onto two lines
   // (the roles sit side by side from 768 px), and stack one per row on a phone.
-  const heroFields = page.getByTestId("role-hero").locator("fieldset");
+  const grownupFields = page.getByTestId("role-grownup").locator("fieldset");
   for (const width of [768, 900]) {
     await page.setViewportSize({ width, height: 900 });
-    await expectFieldsAligned(heroFields, { wraps: true });
+    await expectFieldsAligned(grownupFields, { wraps: true });
   }
   await page.setViewportSize({ width: 375, height: 740 });
-  await expectFieldsAligned(heroFields, { stacked: true });
+  await expectFieldsAligned(grownupFields, { stacked: true });
+  await expectFieldsAligned(page.getByTestId("role-hero").locator("fieldset"), { stacked: true });
   await page.setViewportSize({ width: 1280, height: 720 });
   await castKiteDay(
     page,
@@ -198,16 +202,46 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   if (process.env.E2E_SCREENSHOTS)
     (await import("node:fs")).writeFileSync(`${process.env.E2E_SCREENSHOTS}/book-proof.pdf`, await pdf.body());
 
+  // The grown-up's Change form keeps their title; a title stored for a child before the rule is neither shown, asked
+  // for, nor kept when the child is saved.
+  const bookId = new URL(page.url()).pathname.split("/").pop()!;
+  const sql = async (query: string) => {
+    const { Database, makeServerRuntime } = await import("@lifestory/core");
+    const runtime = makeServerRuntime();
+    try {
+      return await runtime.runPromise(
+        Database.use(({ pool }) => Effect.promise(() => pool.query(query, [bookId]))).pipe(
+          Effect.map((result) => result.rows),
+        ) as Effect.Effect<Array<Record<string, unknown>>>,
+      );
+    } finally {
+      await runtime.dispose();
+    }
+  };
+  await sql("update book_cast set title = 'Bubs' where book_id = $1 and slot_id = 'hero'");
+  await page.reload();
+  const grownupRole = page.getByTestId("role-grownup");
+  await expect(grownupRole).toContainText(`${grownup} · Grandpa · they/them · older adult`);
+  await grownupRole.getByRole("button", { name: "Change" }).click();
+  await expect(grownupRole.getByLabel(/What the kids call them/)).toHaveValue("Grandpa");
+  await grownupRole.getByRole("button", { name: "Cancel" }).click();
+
   // Changing who plays a role renames them on every page, and the role still offers only its own ages.
   const hero = page.getByTestId("role-hero");
   await expect(hero).toContainText(`${child} · she/her · young child`);
+  await expect(hero).not.toContainText("Bubs");
   await hero.getByRole("button", { name: "Change" }).click();
+  await expect(hero.getByLabel(/What the kids call them/)).toHaveCount(0);
   await expect(hero.getByLabel("Age").locator("option")).toHaveText(["Young child", "Older child"]);
   await hero.getByLabel("Name").fill(`Bo ${id}`);
   await hero.getByLabel("Pronouns").selectOption("they/them");
   await hero.getByLabel("Age").selectOption({ label: "Older child" });
   await hero.getByRole("button", { name: "Save" }).click();
   await expect(hero).toContainText(`Bo ${id} · they/them · older child`);
+  expect(await sql("select slot_id, title from book_cast where book_id = $1 order by slot_id")).toEqual([
+    { slot_id: "grownup", title: "Grandpa" },
+    { slot_id: "hero", title: null },
+  ]);
   await page.reload();
   await expect(allPages.nth(2)).toContainText(`“Same time tomorrow?” asked Grandpa. Bo ${id} nodded, all smiles.`);
   await expect(page.getByTestId("editor-page")).toContainText(`Bo ${id} carried their kite, and they run up the hill.`);

@@ -41,7 +41,7 @@ Show the user the images from that directory; a PASS line with no evidence looke
 
 ### Characters
 
-- Who plays each role: a name, what the kids call them, pronouns, and an age the role accepts (D29, D56), entered
+- Who plays each role: a name, what the kids call them (adult and older-adult ages only; Sid, 2026-11-25), pronouns, and an age the role accepts (D29, D56), entered
   per book on the story page and changeable in the book editor; people from the family's earlier books are offered.
   Covered by `e2e -- books milestone1`; no map file yet. Their likeness comes from a photo per book (photo-books).
 

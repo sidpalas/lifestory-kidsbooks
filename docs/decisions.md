@@ -233,7 +233,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     the palettes, masks, and the algorithm name, so the editor and print load the same pixels. Measured on
     `a1.small`: a cold preview of the sample (24 recolours) takes about 1.8 s, then about 40 ms.
   - **Text tokens:** `{{slot.name}}`, `{{slot.title}}` (what the children call them, such as "Dad", separate from
-    the name and falling back to it when a member has none; Sid, 2026-11-19), and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
+    the name and falling back to it when a member has none; Sid, 2026-11-19; only adults have one, so a child's
+    `{{slot.title}}` prints their name and a title stored for a child before that is ignored, Sid, 2026-11-25), and `{{slot.they|them|their|theirs|themself}}` for `she/her`, `he/him`, and
     `they/them`; a capitalized field (`{{hero.They}}`) capitalizes the result. A verb after a pronoun agrees with it
     through `{{slot:singular|plural}}`: the first choice for she/her and he/him, the second for they/them, as typed
     (`{{hero.they}} {{hero:knows|know}}`, `{{hero.they}}{{hero:’s|’re}}`). Added for Dream Adventure, whose present
