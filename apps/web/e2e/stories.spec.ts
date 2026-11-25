@@ -4,7 +4,7 @@ import { extname } from "node:path";
 import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
-import { expectContained } from "./layout.ts";
+import { expectContained, SCREEN_WIDTHS } from "./layout.ts";
 
 // A new account has a family with nobody in it yet; the story's pages show its own characters.
 const newReader = () =>
@@ -190,7 +190,7 @@ test("a story card keeps its summary beside the cover readable and its button in
     .getByTestId("stories")
     .locator(":scope > li")
     .filter({ has: page.getByRole("link", { name: "The Kite Day", exact: true }) });
-  for (const width of [1440, 1024, 820, 768, 700, 640, 390, 320]) {
+  for (const width of SCREEN_WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
     await expectContained(card);
     const cover = (await card.getByTestId("story-cover").boundingBox())!;

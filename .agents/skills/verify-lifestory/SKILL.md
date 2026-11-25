@@ -12,9 +12,13 @@ description: Run the Lifestory app (dev server, production images, or the live s
    Every command runs `doctor` first and stops on a mismatched port or print origin; do what its FAIL line says.
 3. Look at the evidence in the directory the last line names (`view_media` on the PNGs) and show it to the user
    with the PASS/FAIL lines. A pass you didn't look at isn't a review.
-4. If the map has no command for what you changed, drive it with agent-browser through `/__dev/log-me-in/<email>`
+4. A change to a screen: check each card or panel you changed or added at every width in `SCREEN_WIDTHS`
+   (`apps/web/e2e/layout.ts`), in the states the change adds, with content as long and images as wide as real ones,
+   and look at a screenshot per width. A page that doesn't scroll sideways can still have a card that's squeezed or
+   that a button sticks out of: assert each card with `expectContained` in its feature's spec, across those widths.
+5. If the map has no command for what you changed, drive it with agent-browser through `/__dev/log-me-in/<email>`
    (AGENTS.md), then add the command to `apps/web/scripts/verify/` and a map file, so the next agent doesn't
    repeat it.
-5. Full suite: `mise run verify -- e2e --ci` (add `--port 3100` when the `web` service holds :3000).
+6. Full suite: `mise run verify -- e2e --ci` (add `--port 3100` when the `web` service holds :3000).
 
 Never run `verify` against production with any account but the agent family's, and never seed it.

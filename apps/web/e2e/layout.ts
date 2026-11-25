@@ -1,6 +1,13 @@
 import { expect, type Locator } from "@playwright/test";
 
 /**
+ * Screen widths a changed screen is checked at, in CSS px: wide and narrower desktop, the 768 px where the 224 px
+ * sidebar appears and leaves the content its narrowest, the band up to ~900 px where it still takes a big share,
+ * the sm breakpoint, and phones. Story cards once broke only between 640 and 900 px (Sid, 2026-11-25).
+ */
+export const SCREEN_WIDTHS = [1440, 1024, 820, 768, 640, 390, 320];
+
+/**
  * The rows of a form grid whose cells are labels wrapping their control: per field, how tall its label text is and
  * where its control starts. A row's controls must start at one height even when one label wraps onto more lines.
  */
