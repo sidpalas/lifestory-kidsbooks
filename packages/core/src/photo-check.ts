@@ -6,7 +6,16 @@ import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import sharp from "sharp";
 
 import { ageOptions, type Age } from "./book-format/ages.ts";
-import { type Hair, HairColour, hairSteps, type PhotoCheckResult, type PhotoIssue, PhotoReport } from "./contracts.ts";
+import {
+  EyeColour,
+  HairColour,
+  HairLength,
+  HairTexture,
+  type PhotoCheckResult,
+  type PhotoIssue,
+  PhotoReport,
+  SkinTone,
+} from "./contracts.ts";
 
 export class PhotoCheckFailed extends Schema.TaggedError<PhotoCheckFailed>()("PhotoCheckFailed", {
   message: Schema.String,
@@ -43,8 +52,6 @@ export const photoRules = {
   selfHarm: 0.8,
   /** A main face narrower than this can't carry a likeness. */
   minFaceWidthPx: 150,
-  /** Warn when the photo's hair is this many steps or more from the chips; lighting moves it about one. */
-  hairWarnSteps: 2,
   /** Warn when the apparent age is this many buckets or more from every age the role accepts. */
   ageWarnBuckets: 2,
 } as const;
@@ -63,14 +70,13 @@ const ageIndex = (age: Age) => ageOptions.findIndex((option) => option.id === ag
 
 /**
  * The rules (D56): refuse with no visible main face, a second prominent face, a face under about 150 px across, or a
- * blurred face; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, hair two or
- * more steps from the chips, and an age that doesn't match: one the role accepts but the parent didn't choose (the
+ * blurred face; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, and an age
+ * that doesn't match: one the role accepts but the parent didn't choose (the
  * sheet draws the chosen age, so a toddler chosen as a young child comes out about six), or one far from the role's.
  */
 export const judgePhoto = (
   report: PhotoReport,
   role: { readonly ages: ReadonlyArray<Age>; readonly chosen?: Age },
-  hair: Hair | null,
 ): PhotoCheckResult => {
   const refusals = [...moderationRefusals(report.moderation)];
   const warnings: Array<PhotoIssue> = [];
@@ -113,8 +119,6 @@ export const judgePhoto = (
           "The person looks far from this role's age. That's fine: the drawing shows them at the age you chose.",
         ),
       );
-    if (hair && report.hairColour && hairSteps(hair.colour, report.hairColour) >= photoRules.hairWarnSteps)
-      warnings.push(issue("hair", "The hair in the photo looks different from the colour you chose. Check the chips."));
   }
   return { status: refusals.length > 0 ? "refused" : "passed", refusals, warnings, report };
 };
@@ -133,7 +137,13 @@ export const FakePhotoCheck = Layer.succeed(PhotoCheck, {
       lighting: "good" as const,
       occlusions: [],
       apparentAge: "young-child" as const,
-      hairColour: null,
+      hairColour: "brown" as const,
+      hairLength: "short" as const,
+      hairTexture: "wavy" as const,
+      eyeColour: "brown" as const,
+      skinTone: "light" as const,
+      glasses: false,
+      freckles: false,
       facialHair: "none" as const,
       tip: "",
     }),
@@ -146,11 +156,22 @@ Do not identify the person or guess who they are. Describe only what is visible.
 - mainFaceWidth: the main face's width as a fraction of the image width (0-1).
 - sharpness of the main face; lighting of the photo; occlusions on the main person's head or face.
 - apparentAge: the age bucket the main person looks.
-- hairColour: the main person's hair colour from the list, or null when it is hidden.
+- hairColour, hairLength, hairTexture: the main person's hair from the lists, each null when it is hidden (hairLength "none" for a bald head).
+- eyeColour and skinTone from the lists, each null when you can't tell; glasses and freckles, null when you can't tell.
 - tip: one short sentence for the parent on how to take a better photo, or "" when the photo is good.`;
 
 const { moderation: _moderation, mainFaceWidthPx: _width, ...visionFields } = PhotoReport.fields;
-const VisionReply = Schema.Struct({ ...visionFields, mainFaceWidth: Schema.Number });
+const VisionReply = Schema.Struct({
+  ...visionFields,
+  hairLength: Schema.NullOr(HairLength),
+  hairTexture: Schema.NullOr(HairTexture),
+  eyeColour: Schema.NullOr(EyeColour),
+  skinTone: Schema.NullOr(SkinTone),
+  glasses: Schema.NullOr(Schema.Boolean),
+  freckles: Schema.NullOr(Schema.Boolean),
+  mainFaceWidth: Schema.Number,
+});
+const nullable = (literals: ReadonlyArray<string>) => ({ type: ["string", "null"], enum: [...literals, null] });
 
 const visionSchema = {
   type: "object",
@@ -165,6 +186,12 @@ const visionSchema = {
     "occlusions",
     "apparentAge",
     "hairColour",
+    "hairLength",
+    "hairTexture",
+    "eyeColour",
+    "skinTone",
+    "glasses",
+    "freckles",
     "facialHair",
     "tip",
   ],
@@ -180,7 +207,13 @@ const visionSchema = {
       items: { type: "string", enum: ["hat", "helmet", "sunglasses", "goggles", "mask", "hand", "other"] },
     },
     apparentAge: { type: "string", enum: ageOptions.map((option) => option.id) },
-    hairColour: { type: ["string", "null"], enum: [...HairColour.literals, null] },
+    hairColour: nullable(HairColour.literals),
+    hairLength: nullable(HairLength.literals),
+    hairTexture: nullable(HairTexture.literals),
+    eyeColour: nullable(EyeColour.literals),
+    skinTone: nullable(SkinTone.literals),
+    glasses: { type: ["boolean", "null"] },
+    freckles: { type: ["boolean", "null"] },
     facialHair: { type: "string", enum: ["none", "stubble", "moustache", "beard"] },
     tip: { type: "string" },
   },

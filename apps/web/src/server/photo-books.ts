@@ -12,6 +12,7 @@ import {
   requestPageChange,
   reviewBook,
   sendForReview,
+  setLook,
   withdrawPhotoReview,
 } from "@lifestory/core";
 import {
@@ -19,6 +20,7 @@ import {
   Forbidden,
   InvalidInput,
   JobError,
+  LookChoices,
   NotAuthenticated,
   NotFound,
   ResultSchema,
@@ -52,6 +54,12 @@ export const recordConsentFn = createServerFn({ method: "POST" })
 export const withdrawPhotoReviewFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(BookId))
   .handler(({ data }) => respond((user) => withdrawPhotoReview(user.id, data.bookId)));
+
+export const setLookFn = createServerFn({ method: "POST" })
+  .validator(
+    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, slotId: Schema.String, look: LookChoices })),
+  )
+  .handler(({ data }) => respond((user) => setLook(user.id, data)));
 
 export const drawSheetFn = createServerFn({ method: "POST" })
   .validator(

@@ -60,6 +60,98 @@ export const InvitationDetails = Schema.Struct({
 export type InvitationDetails = typeof InvitationDetails.Type;
 
 /**
+ * How a person looks (D56): what the photo check reads from the photo, which the parent confirms or corrects before
+ * the sheet is drawn, and the sheet prompt puts in words. Each option has a swatch for the confirmation chips.
+ */
+export const hairColours = [
+  { id: "black", label: "Black", swatch: "#1d1a19" },
+  { id: "dark-brown", label: "Dark brown", swatch: "#3b2618" },
+  { id: "brown", label: "Brown", swatch: "#5e3b22" },
+  { id: "light-brown", label: "Light brown", swatch: "#8a5d3b" },
+  { id: "dark-blond", label: "Dark blond", swatch: "#a7814f" },
+  { id: "blond", label: "Blond", swatch: "#d6b26e" },
+  { id: "platinum", label: "Platinum blond", swatch: "#eadcb4" },
+  { id: "auburn", label: "Auburn", swatch: "#7c3a1d" },
+  { id: "red", label: "Red", swatch: "#b04a22" },
+  { id: "strawberry-blond", label: "Strawberry blond", swatch: "#d39a66" },
+  { id: "grey", label: "Grey", swatch: "#9a9895" },
+  { id: "white", label: "White", swatch: "#e9e7e2" },
+] as const;
+export const HairColour = Schema.Literals(hairColours.map((colour) => colour.id));
+export type HairColour = typeof HairColour.Type;
+
+export const hairLengths = [
+  { id: "none", label: "No hair" },
+  { id: "very-short", label: "Very short" },
+  { id: "short", label: "Short" },
+  { id: "medium", label: "Chin to shoulder" },
+  { id: "long", label: "Long" },
+] as const;
+export const HairLength = Schema.Literals(hairLengths.map((length) => length.id));
+
+export const hairTextures = [
+  { id: "straight", label: "Straight" },
+  { id: "wavy", label: "Wavy" },
+  { id: "curly", label: "Curly" },
+  { id: "coily", label: "Coily" },
+] as const;
+export const HairTexture = Schema.Literals(hairTextures.map((texture) => texture.id));
+
+export const eyeColours = [
+  { id: "dark-brown", label: "Dark brown", swatch: "#3a2414" },
+  { id: "brown", label: "Brown", swatch: "#6b4423" },
+  { id: "hazel", label: "Hazel", swatch: "#8e7240" },
+  { id: "green", label: "Green", swatch: "#5f7d4a" },
+  { id: "blue", label: "Blue", swatch: "#4f7fb0" },
+  { id: "grey", label: "Grey", swatch: "#8b959c" },
+] as const;
+export const EyeColour = Schema.Literals(eyeColours.map((colour) => colour.id));
+
+/** Six tones, lightest to deepest. */
+export const skinTones = [
+  { id: "very-light", label: "Very light", swatch: "#f6e0d0" },
+  { id: "light", label: "Light", swatch: "#eac3a6" },
+  { id: "light-medium", label: "Light medium", swatch: "#d4a07a" },
+  { id: "medium", label: "Medium", swatch: "#b37a52" },
+  { id: "medium-deep", label: "Medium deep", swatch: "#8a5537" },
+  { id: "deep", label: "Deep", swatch: "#5a3423" },
+] as const;
+export const SkinTone = Schema.Literals(skinTones.map((tone) => tone.id));
+
+/**
+ * A look: each attribute, or null where the photo didn't show it and nobody set it. The photo check reads one; the
+ * parent's corrections (`LookChoices`) go over it, and the sheet is drawn from the result (`lookOf`).
+ */
+export const Look = Schema.Struct({
+  hairColour: Schema.NullOr(HairColour),
+  hairLength: Schema.NullOr(HairLength),
+  hairTexture: Schema.NullOr(HairTexture),
+  eyeColour: Schema.NullOr(EyeColour),
+  skinTone: Schema.NullOr(SkinTone),
+  glasses: Schema.NullOr(Schema.Boolean),
+  freckles: Schema.NullOr(Schema.Boolean),
+});
+export type Look = typeof Look.Type;
+export type LookKey = keyof Look;
+export const lookKeys = Object.keys(Look.fields) as ReadonlyArray<LookKey>;
+
+/** What the parent set for a person, attribute by attribute; anything absent comes from the photo. */
+export const LookChoices = Schema.Struct({
+  hairColour: Schema.optionalKey(HairColour),
+  hairLength: Schema.optionalKey(HairLength),
+  hairTexture: Schema.optionalKey(HairTexture),
+  eyeColour: Schema.optionalKey(EyeColour),
+  skinTone: Schema.optionalKey(SkinTone),
+  glasses: Schema.optionalKey(Schema.Boolean),
+  freckles: Schema.optionalKey(Schema.Boolean),
+});
+export type LookChoices = typeof LookChoices.Type;
+
+/** The look a sheet draws: the parent's choice for each attribute, else what the photo showed, else null. */
+export const lookOf = (photo: Partial<Look> | null | undefined, choices: LookChoices): Look =>
+  Object.fromEntries(lookKeys.map((key) => [key, choices[key] ?? photo?.[key] ?? null])) as unknown as Look;
+
+/**
  * Who plays a role in one book (D56; no separate family members since Sid, 2026-11-24): a name, what the children
  * call them, pronouns for the text, and an age the role accepts, which the character sheet draws them at.
  */
@@ -68,6 +160,8 @@ export const CastPerson = Schema.Struct({
   title: Schema.NullOr(Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(30))),
   pronouns: PronounSet,
   age: Age,
+  /** What the parent set of their look (D56); carried to the next book that picks them, photos never are. */
+  look: Schema.optionalKey(LookChoices),
 });
 export type CastPerson = typeof CastPerson.Type;
 
@@ -216,54 +310,6 @@ export const DraftView = Schema.Struct({
 });
 export type DraftView = typeof DraftView.Type;
 
-/**
- * Hair chips (D56): what the parent says about each person's hair, which the sheet prompt puts in words. Colours sit
- * on a grid of lightness and redness, so the photo check can tell how many steps the photo's hair is from the chips.
- */
-export const hairColours = [
-  { id: "black", label: "Black", at: [0, 0] },
-  { id: "dark-brown", label: "Dark brown", at: [1, 0] },
-  { id: "brown", label: "Brown", at: [2, 0] },
-  { id: "light-brown", label: "Light brown", at: [3, 0] },
-  { id: "dark-blond", label: "Dark blond", at: [4, 0] },
-  { id: "blond", label: "Blond", at: [5, 0] },
-  { id: "platinum", label: "Platinum blond", at: [6, 0] },
-  { id: "auburn", label: "Auburn", at: [2, 1] },
-  { id: "red", label: "Red", at: [3, 2] },
-  { id: "strawberry-blond", label: "Strawberry blond", at: [4, 1] },
-  { id: "grey", label: "Grey", at: [5, -1] },
-  { id: "white", label: "White", at: [6, -1] },
-] as const;
-export const HairColour = Schema.Literals(hairColours.map((colour) => colour.id));
-export type HairColour = typeof HairColour.Type;
-
-export const hairLengths = [
-  { id: "none", label: "No hair" },
-  { id: "very-short", label: "Very short" },
-  { id: "short", label: "Short" },
-  { id: "medium", label: "Chin to shoulder" },
-  { id: "long", label: "Long" },
-] as const;
-export const HairLength = Schema.Literals(hairLengths.map((length) => length.id));
-
-export const hairTextures = [
-  { id: "straight", label: "Straight" },
-  { id: "wavy", label: "Wavy" },
-  { id: "curly", label: "Curly" },
-  { id: "coily", label: "Coily" },
-] as const;
-export const HairTexture = Schema.Literals(hairTextures.map((texture) => texture.id));
-
-export const Hair = Schema.Struct({ colour: HairColour, length: HairLength, texture: HairTexture });
-export type Hair = typeof Hair.Type;
-
-/** Steps between two hair colours: lighting moves a photo's hair about one (D56, spike). */
-export const hairSteps = (a: HairColour, b: HairColour) => {
-  const [ax, ay] = hairColours.find((colour) => colour.id === a)!.at;
-  const [bx, by] = hairColours.find((colour) => colour.id === b)!.at;
-  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
-};
-
 /** What the photo check saw (D56): moderation scores and the vision model's report, never who the person is. */
 export const PhotoReport = Schema.Struct({
   moderation: Schema.Struct({ sexual: Schema.Number, violence: Schema.Number, selfHarm: Schema.Number }),
@@ -279,6 +325,13 @@ export const PhotoReport = Schema.Struct({
   occlusions: Schema.Array(Schema.Literals(["hat", "helmet", "sunglasses", "goggles", "mask", "hand", "other"])),
   apparentAge: Age,
   hairColour: Schema.NullOr(HairColour),
+  /** The rest of the look (D56, 2026-11-25); absent from reports stored before. Null where the photo hides it. */
+  hairLength: Schema.optionalKey(Schema.NullOr(HairLength)),
+  hairTexture: Schema.optionalKey(Schema.NullOr(HairTexture)),
+  eyeColour: Schema.optionalKey(Schema.NullOr(EyeColour)),
+  skinTone: Schema.optionalKey(Schema.NullOr(SkinTone)),
+  glasses: Schema.optionalKey(Schema.NullOr(Schema.Boolean)),
+  freckles: Schema.optionalKey(Schema.NullOr(Schema.Boolean)),
   facialHair: Schema.Literals(["none", "stubble", "moustache", "beard"]),
   tip: Schema.String,
 });
@@ -299,7 +352,7 @@ export const PhotoCheckResult = Schema.Struct({
 export type PhotoCheckResult = typeof PhotoCheckResult.Type;
 
 /** The policies' version (D58), recorded with each consent; change it whenever a policy's text changes. */
-export const POLICY_VERSION = "2026-11-24";
+export const POLICY_VERSION = "2026-11-25";
 
 /**
  * What OpenAI keeps of what we send (D56), as OPENAI_DATA_RETENTION states it for the OpenAI project: "standard"
@@ -387,7 +440,6 @@ export const BookFlow = Schema.Struct({
       slotId: Schema.String,
       checkStatus: Schema.NullOr(Schema.Literals(["checking", "passed", "refused"])),
       check: Schema.NullOr(PhotoCheckResult),
-      hair: Schema.NullOr(Hair),
       /** Whether the photo is still kept, and its key for the family (and the operator on an opted-in book). */
       photoKey: Schema.NullOr(Schema.String),
       sheetKey: Schema.NullOr(Schema.String),

@@ -13,7 +13,7 @@ Version 2026-11-24. This text hasn't been reviewed by a lawyer yet.
 ## What AI receives
 
 Each photo goes to OpenAI twice, for the check and the sheet. {{openai-retention}}
-Nothing else about your family goes with it beyond the age and hair you chose.
+Nothing else about your family goes with it beyond the age you chose and the look you confirmed (hair, eyes, skin tone, freckles, glasses).
 
 ## Human review
 

@@ -155,8 +155,26 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       { likeness_status: "waiting" },
     ]);
     await expect(page.getByRole("button", { name: `Draw ${grownup} (3 drawings left)` })).toBeVisible();
+
+    // The look the photo showed (the fake reads short, wavy, brown hair), which the parent corrects before drawing;
+    // the correction and the photo's reading both show, and the sheet is drawn from the correction (D56).
+    const look = page.getByTestId("look-hero");
+    const length = look.getByLabel(`${child}'s hair length`);
+    await expect(length).toHaveValue("short");
+    await expect(look).toContainText("From the photo");
+    await length.selectOption({ label: "Long" });
+    await expect(length).toHaveValue("long");
+    await expect(look).toContainText("You set this");
+    await expect(look).toContainText("The photo looked short.");
     await evidence(page, "photo-draw");
     await drawEveryone(page, [child, grownup]);
+    const [first] = await sql<{ prompt: string }>(
+      "select request->>'prompt' as prompt from generation where request->>'outputKey' like $1",
+      [`%/books/${bookId}/likeness/hero/sheet-d1-%`],
+    );
+    expect(first!.prompt).toContain("Hair: long, wavy, brown hair. Eyes: brown. Skin tone: light.");
+    // Once drawn, the look is how they were drawn; a note changes it.
+    await expect(page.getByTestId("look-hero").getByLabel(`${child}'s hair length`)).toBeDisabled();
     expect(await photosOf(bookId)).toBe(2);
     await evidence(page, "photo-preview");
 
@@ -353,7 +371,6 @@ test("an account's photo uploads are limited in bursts and in total, counting ev
         multipart: {
           file: { name, mimeType, buffer: PHOTO },
           slotId,
-          hair: JSON.stringify({ colour: "brown", length: "short", texture: "straight" }),
         },
       });
 

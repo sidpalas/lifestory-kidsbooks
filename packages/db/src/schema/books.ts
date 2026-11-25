@@ -74,8 +74,8 @@ export const book = pgTable(
 export const photoCheckStatus = pgEnum("photo_check_status", ["checking", "passed", "refused"]);
 
 /**
- * One role's likeness in a book (D56): the photo while it's kept, what the check found, the hair as the parent
- * described it, and the current character sheet, which every page is drawn from.
+ * One role's likeness in a book (D56): the photo while it's kept, what the check found (the look it read included),
+ * and the current character sheet, which every page is drawn from. The parent's corrections to the look are the cast's.
  */
 export const bookLikeness = pgTable(
   "book_likeness",
@@ -91,8 +91,6 @@ export const bookLikeness = pgTable(
     checkStatus: photoCheckStatus("check_status"),
     /** The check's report and verdict (refusals and warnings), as `PhotoCheckResult`. */
     check: jsonb("check"),
-    /** Hair chips: colour, length, texture. */
-    hair: jsonb("hair").$type<{ colour: string; length: string; texture: string }>(),
     sheetKey: text("sheet_key"),
     /** Sheets started for this person, the first included (D56: at most three); a failed drawing doesn't count. */
     draws: integer("draws").notNull().default(0),
@@ -217,6 +215,8 @@ export const bookCast = pgTable(
     pronouns: text("pronouns").notNull(),
     /** One of the seven age buckets (packages/core book-format/ages.ts), one the role accepts. */
     age: text("age").notNull(),
+    /** What the parent set of their look (D56, `LookChoices`): each attribute they corrected; the rest is the photo's. */
+    look: jsonb("look").$type<Record<string, string | boolean>>().notNull().default({}),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.bookId, t.slotId] })],

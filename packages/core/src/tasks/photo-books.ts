@@ -9,7 +9,7 @@ import { Config, Effect, Schema } from "effect";
 
 import { type Age, coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
 import { loadBook } from "../books.ts";
-import { type Hair, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
+import { LookChoices, lookOf, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
 import { GenerationFailed } from "../errors.ts";
 import {
@@ -287,11 +287,7 @@ export const checkPhoto = defineTask({
               .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
           );
           const result: PhotoCheckResult = report
-            ? judgePhoto(
-                report,
-                { ages: slot?.ages ?? [], ...(person ? { chosen: person.age as Age } : {}) },
-                row.hair as Hair | null,
-              )
+            ? judgePhoto(report, { ages: slot?.ages ?? [], ...(person ? { chosen: person.age as Age } : {}) })
             : { status: "refused", refusals: refusedFirst, warnings: [], report: null };
           if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey!).pipe(Effect.orDie);
           yield* Database.query((db) =>
@@ -342,11 +338,16 @@ export const drawLikenessSheet = defineTask({
         "likeness",
         likenesses(bookId).pipe(Effect.map((rows) => rows.find((candidate) => candidate.slotId === slotId) ?? null)),
       );
-      const [person] = yield* Database.query((db) =>
-        db
-          .select({ age: schema.bookCast.age })
-          .from(schema.bookCast)
-          .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
+      // The look the parent confirmed when they asked for the drawing, read once so a rerun draws the same.
+      const person = yield* step(
+        ctx,
+        "person",
+        Database.query((db) =>
+          db
+            .select({ age: schema.bookCast.age, look: schema.bookCast.look })
+            .from(schema.bookCast)
+            .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
+        ).pipe(Effect.map(([found]) => found ?? null)),
       );
       if (!slot || !row?.photoKey || !person)
         return yield* Effect.die(new Error(`book ${bookId}: ${slotId} has no photo`));
@@ -356,7 +357,10 @@ export const drawLikenessSheet = defineTask({
         style,
         age: person.age as never,
         outfit: slot.outfit,
-        hair: row.hair as Hair | null,
+        look: lookOf(
+          (row.check as PhotoCheckResult | null)?.report,
+          yield* Schema.decodeUnknownEffect(LookChoices)(person.look).pipe(Effect.orDie),
+        ),
       });
       const sheet = yield* generateImage(ctx, "sheet", {
         key: `sheet:${bookId}:${slotId}:${drawId}`,

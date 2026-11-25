@@ -19,7 +19,7 @@ import {
 import { agreementIssues, resolveText, tokenIssues } from "./book-format/text.ts";
 import { AppConfig } from "./config.ts";
 import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
-import { CastPerson, Hair, PhotoCheckResult } from "./contracts.ts";
+import { CastPerson, PhotoCheckResult } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -72,6 +72,7 @@ export const listCastPeople = Effect.fn("books.listCastPeople")(function* (userI
         title: schema.bookCast.title,
         pronouns: schema.bookCast.pronouns,
         age: schema.bookCast.age,
+        look: schema.bookCast.look,
       })
       .from(schema.bookCast)
       .innerJoin(schema.book, eq(schema.book.id, schema.bookCast.bookId))
@@ -370,7 +371,6 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
       slotId: slot.slotId,
       checkStatus: row?.checkStatus ?? null,
       check: row?.check ? yield* Schema.decodeUnknownEffect(PhotoCheckResult)(row.check).pipe(Effect.orDie) : null,
-      hair: row?.hair ? yield* Schema.decodeUnknownEffect(Hair)(row.hair).pipe(Effect.orDie) : null,
       photoKey: row?.photoKey ?? null,
       sheetKey: row?.sheetKey ?? null,
       draws: row?.draws ?? 0,

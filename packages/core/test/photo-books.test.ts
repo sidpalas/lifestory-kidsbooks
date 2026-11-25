@@ -1,9 +1,10 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import type { PhotoReport } from "../src/contracts.ts";
+import { lookOf, type PhotoReport } from "../src/contracts.ts";
 import { fitFigure } from "../src/figure.ts";
 import { judgePhoto } from "../src/photo-check.ts";
+import { hairWords, lookWords } from "../src/photo-prompts.ts";
 import { uploadRefusal } from "../src/photo-uploads.ts";
 
 const report = (overrides: Partial<PhotoReport> = {}): PhotoReport => ({
@@ -22,7 +23,6 @@ const report = (overrides: Partial<PhotoReport> = {}): PhotoReport => ({
   ...overrides,
 });
 const child = { ages: ["young-child", "older-child"] as const };
-const brown = { colour: "brown", length: "short", texture: "straight" } as const;
 const codes = (result: ReturnType<typeof judgePhoto>) => ({
   status: result.status,
   refusals: result.refusals.map((issue) => issue.code),
@@ -31,41 +31,37 @@ const codes = (result: ReturnType<typeof judgePhoto>) => ({
 
 describe("judgePhoto", () => {
   it("passes a photo with bystanders, and refuses a second prominent face", () => {
-    expect(codes(judgePhoto(report({ backgroundFaces: 6 }), child, brown))).toEqual({
+    expect(codes(judgePhoto(report({ backgroundFaces: 6 }), child))).toEqual({
       status: "passed",
       refusals: [],
       warnings: [],
     });
-    expect(codes(judgePhoto(report({ prominentFaces: 2 }), child, brown)).refusals).toEqual(["two-faces"]);
+    expect(codes(judgePhoto(report({ prominentFaces: 2 }), child)).refusals).toEqual(["two-faces"]);
   });
 
   it("refuses at the per-category moderation thresholds, not below them", () => {
     // The spike's pool table: violence 0.40 is fine; sexual refuses from 0.3, violence and self-harm from 0.8.
-    expect(
-      judgePhoto(report({ moderation: { sexual: 0.29, violence: 0.79, selfHarm: 0.4 } }), child, brown).status,
-    ).toBe("passed");
+    expect(judgePhoto(report({ moderation: { sexual: 0.29, violence: 0.79, selfHarm: 0.4 } }), child).status).toBe(
+      "passed",
+    );
     for (const moderation of [
       { sexual: 0.3, violence: 0, selfHarm: 0 },
       { sexual: 0, violence: 0.8, selfHarm: 0 },
       { sexual: 0, violence: 0, selfHarm: 0.8 },
     ])
-      expect(codes(judgePhoto(report({ moderation }), child, brown)).refusals).toEqual(["moderation"]);
+      expect(codes(judgePhoto(report({ moderation }), child)).refusals).toEqual(["moderation"]);
   });
 
   it("refuses a face under 150 px or blurred, with no minimum image size", () => {
-    expect(judgePhoto(report({ mainFaceWidthPx: 150 }), child, brown).status).toBe("passed");
-    expect(codes(judgePhoto(report({ mainFaceWidthPx: 149 }), child, brown)).refusals).toEqual(["small-face"]);
-    expect(codes(judgePhoto(report({ sharpness: "blurred" }), child, brown)).refusals).toEqual(["blurred"]);
-    expect(judgePhoto(report({ sharpness: "soft" }), child, brown).status).toBe("passed");
+    expect(judgePhoto(report({ mainFaceWidthPx: 150 }), child).status).toBe("passed");
+    expect(codes(judgePhoto(report({ mainFaceWidthPx: 149 }), child)).refusals).toEqual(["small-face"]);
+    expect(codes(judgePhoto(report({ sharpness: "blurred" }), child)).refusals).toEqual(["blurred"]);
+    expect(judgePhoto(report({ sharpness: "soft" }), child).status).toBe("passed");
   });
 
-  it("warns on hair two steps from the chips, not one, and on an age far from the role's", () => {
-    // Lighting moves hair a step: light brown next to brown passes quietly; blond is three steps off.
-    expect(codes(judgePhoto(report({ hairColour: "light-brown" }), child, brown)).warnings).toEqual([]);
-    expect(codes(judgePhoto(report({ hairColour: "blond" }), child, brown)).warnings).toEqual(["hair"]);
-    expect(codes(judgePhoto(report({ hairColour: "auburn" }), child, brown)).warnings).toEqual([]);
+  it("warns on an age far from the role's", () => {
     // An adult's photo for a child's role still passes (the sheet draws them as a child), with a warning.
-    expect(codes(judgePhoto(report({ apparentAge: "adult" }), child, brown))).toEqual({
+    expect(codes(judgePhoto(report({ apparentAge: "adult" }), child))).toEqual({
       status: "passed",
       refusals: [],
       warnings: ["age"],
@@ -74,16 +70,48 @@ describe("judgePhoto", () => {
 
   it("warns when the photo looks like another age the role accepts than the one chosen (a toddler chosen as six)", () => {
     const wide = { ages: ["toddler", "young-child", "older-child"] as const };
-    const toddler = judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "young-child" }, brown);
+    const toddler = judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "young-child" });
     expect(codes(toddler).warnings).toEqual(["age"]);
     expect(toddler.warnings[0]!.message).toContain("looks like a toddler (1–3), but you chose young child (3–7)");
-    expect(
-      codes(judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "toddler" }, brown)).warnings,
-    ).toEqual([]);
+    expect(codes(judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "toddler" })).warnings).toEqual([]);
     // One step off but outside the role's ages: no nudge to an age the role can't take.
-    expect(
-      codes(judgePhoto(report({ apparentAge: "toddler" }), { ...child, chosen: "young-child" }, brown)).warnings,
-    ).toEqual([]);
+    expect(codes(judgePhoto(report({ apparentAge: "toddler" }), { ...child, chosen: "young-child" })).warnings).toEqual(
+      [],
+    );
+  });
+});
+
+describe("the look a sheet draws", () => {
+  const photo = {
+    hairColour: "blond",
+    hairLength: "long",
+    hairTexture: null,
+    eyeColour: "blue",
+    skinTone: "light",
+    glasses: true,
+    freckles: null,
+  } as const;
+
+  it("takes the parent's choice over the photo, a false one included, and keeps unknowns unknown", () => {
+    // Lucy's case: the photo read long hair, the parent says short; and the parent says no glasses.
+    const look = lookOf(photo, { hairLength: "short", glasses: false });
+    expect(look).toEqual({ ...photo, hairLength: "short", glasses: false });
+    // A report stored before the look was read has only the hair colour.
+    expect(lookOf({ hairColour: "brown" }, {})).toMatchObject({
+      hairColour: "brown",
+      hairLength: null,
+      eyeColour: null,
+    });
+    expect(lookOf(null, { freckles: true }).freckles).toBe(true);
+  });
+
+  it("says only what's known, and a bald head without colour", () => {
+    const look = lookOf(photo, { hairLength: "short", glasses: false });
+    expect(hairWords(look)).toBe("short, blond hair");
+    expect(lookWords(look)).toBe(" Eyes: blue. Skin tone: light. No glasses.");
+    expect(hairWords(lookOf(photo, { hairLength: "none" }))).toBe("no hair (bald)");
+    expect(hairWords(lookOf(null, {}))).toBe("the hair as in the photo");
+    expect(lookWords(lookOf(null, {}))).toBe("");
   });
 });
 

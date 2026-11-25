@@ -5,10 +5,14 @@ import {
   type BookView,
   consentStatements,
   type DataRetention,
-  type Hair,
+  eyeColours,
   hairColours,
   hairLengths,
   hairTextures,
+  type LookChoices,
+  type LookKey,
+  lookOf,
+  skinTones,
   MAX_PAGE_CHANGES,
   MAX_SHEET_DRAWS,
   unwrapResult,
@@ -28,6 +32,7 @@ import {
   FlowStepResult,
   orderBookFn,
   recordConsentFn,
+  setLookFn,
   requestPageChangeFn,
   sendForReviewFn,
   withdrawPhotoReviewFn,
@@ -212,7 +217,100 @@ const isPhotoFile = (file: File) => photoTypes.includes(file.type) || /\.hei[cf]
 const isFileDrag = (event: { dataTransfer: DataTransfer | null }) =>
   event.dataTransfer?.types.includes("Files") ?? false;
 
-const defaultHair: Hair = { colour: "brown", length: "short", texture: "straight" };
+/** The look's attributes as the confirmation shows them: each option with its swatch, if it has one. */
+const yesNo = [
+  { id: true, label: "Yes" },
+  { id: false, label: "No" },
+] as const;
+const lookFields: ReadonlyArray<{
+  key: LookKey;
+  label: string;
+  options: ReadonlyArray<{ id: string | boolean; label: string; swatch?: string }>;
+}> = [
+  { key: "hairColour", label: "Hair colour", options: hairColours },
+  { key: "hairLength", label: "Hair length", options: hairLengths },
+  { key: "hairTexture", label: "Hair texture", options: hairTextures },
+  { key: "eyeColour", label: "Eyes", options: eyeColours },
+  { key: "skinTone", label: "Skin tone", options: skinTones },
+  { key: "freckles", label: "Freckles", options: yesNo },
+  { key: "glasses", label: "Glasses", options: yesNo },
+];
+const optionLabel = (options: (typeof lookFields)[number]["options"], id: string | boolean | null | undefined) =>
+  options.find((option) => option.id === id)?.label ?? "Not sure";
+
+/**
+ * How a person looks (D56): what the photo showed, which the parent confirms or corrects before the first drawing.
+ * Each attribute says where it came from; where the parent's choice differs from the photo, both show.
+ */
+function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; name: string }) {
+  const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
+  const choices: LookChoices = view.roles.find((candidate) => candidate.slotId === slotId)?.person.look ?? {};
+  const photo = likeness.check?.report ?? null;
+  const look = lookOf(photo, choices);
+  const locked = likeness.drawing || likeness.sheetKey !== null;
+  const { error, pending, run } = useStep();
+  const set = (key: LookKey, value: string) => {
+    const next: Record<string, unknown> = { ...choices };
+    const option = lookFields.find((field) => field.key === key)!.options.find((o) => String(o.id) === value);
+    if (!option) delete next[key];
+    else next[key] = option.id;
+    void run(() => setLookFn({ data: { bookId: view.book.id, slotId, look: next as LookChoices } }));
+  };
+  return (
+    <div className="flex flex-col gap-2" data-testid={`look-${slotId}`}>
+      <p className="text-xs text-muted-foreground">
+        {locked
+          ? `How we drew ${name}. To change it, write a note under their sheet.`
+          : `How ${name} looks, from the photo. Fix anything that's wrong before you draw them: it goes along with the photo.`}
+      </p>
+      <dl className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+        {lookFields.map((field) => {
+          const chosen = choices[field.key] !== undefined;
+          const fromPhoto = photo?.[field.key] ?? null;
+          const value = look[field.key];
+          const swatch = field.options.find((option) => option.id === value)?.swatch;
+          return (
+            <div key={field.key} className="flex flex-col gap-0.5 text-xs">
+              <dt className="flex items-center justify-between gap-2 font-medium">
+                {field.label}
+                <span className={cn("font-normal", chosen ? "text-primary" : "text-muted-foreground")}>
+                  {chosen ? "You set this" : fromPhoto === null ? "Not in the photo" : "From the photo"}
+                </span>
+              </dt>
+              <dd className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="size-4 shrink-0 rounded-full ring-1 ring-black/20"
+                  style={{ background: swatch ?? "transparent" }}
+                />
+                <NativeSelect
+                  aria-label={`${name}'s ${field.label.toLowerCase()}`}
+                  className="h-8 min-w-0 flex-1 text-xs"
+                  value={value === null ? "" : String(value)}
+                  disabled={locked || pending}
+                  onChange={(event) => set(field.key, event.target.value)}
+                >
+                  <option value="">{fromPhoto === null ? "Not sure" : "As in the photo"}</option>
+                  {field.options.map((option) => (
+                    <option key={String(option.id)} value={String(option.id)}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </dd>
+              {chosen && fromPhoto !== null && fromPhoto !== value && (
+                <dd className="text-amber-700">
+                  The photo looked {optionLabel(field.options, fromPhoto).toLowerCase()}.
+                </dd>
+              )}
+            </div>
+          );
+        })}
+      </dl>
+      <Alert text={error} />
+    </div>
+  );
+}
 
 function PhotoStep({ view }: { view: BookView }) {
   // A file dropped beside a photo card would make the browser open it in place of the page; refuse it instead.
@@ -252,7 +350,6 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
   const slot = view.manifest.characterSlots.find((candidate) => candidate.slotId === slotId)!;
   const role = view.roles.find((candidate) => candidate.slotId === slotId);
   const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
-  const [hair, setHair] = useState<Hair>(likeness.hair ?? defaultHair);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -264,7 +361,6 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
       const form = new FormData();
       form.set("file", await preparePhoto(file));
       form.set("slotId", slotId);
-      form.set("hair", JSON.stringify(hair));
       const response = await fetch(`/api/books/${view.book.id}/photos`, {
         method: "POST",
         headers: { "x-lifestory-upload": "1" },
@@ -323,41 +419,6 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
       <p className="font-medium">
         {slot.label}: {role?.person.name}
       </p>
-      <div className="grid grid-cols-3 gap-2">
-        <NativeSelect
-          aria-label={`${slot.label}'s hair colour`}
-          value={hair.colour}
-          onChange={(event) => setHair({ ...hair, colour: event.target.value as Hair["colour"] })}
-        >
-          {hairColours.map((colour) => (
-            <option key={colour.id} value={colour.id}>
-              {colour.label}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={`${slot.label}'s hair length`}
-          value={hair.length}
-          onChange={(event) => setHair({ ...hair, length: event.target.value as Hair["length"] })}
-        >
-          {hairLengths.map((length) => (
-            <option key={length.id} value={length.id}>
-              {length.label}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={`${slot.label}'s hair texture`}
-          value={hair.texture}
-          onChange={(event) => setHair({ ...hair, texture: event.target.value as Hair["texture"] })}
-        >
-          {hairTextures.map((texture) => (
-            <option key={texture.id} value={texture.id}>
-              {texture.label}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
       <FileInput
         label={`Photo of ${role?.person.name ?? slot.label}`}
         buttonText={likeness.photoKey ? "Choose another photo" : "Choose a photo"}
@@ -406,6 +467,7 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
           {issue.message}
         </p>
       ))}
+      {likeness.checkStatus === "passed" && <LookConfirm view={view} slotId={slotId} name={name} />}
       <Alert text={error} />
     </div>
   );

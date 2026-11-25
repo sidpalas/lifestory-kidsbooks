@@ -3,28 +3,44 @@
 // T-01a1fb83-7824-71fa-8625-bfe2dcc7ccda and T-8b52103b-ac29-4045-8048-12ef3cf41c6f).
 import { ageOptions, type Age } from "./book-format/ages.ts";
 import type { PhotoStyle } from "./book-format/manifest.ts";
-import { type Hair, hairColours, hairLengths, hairTextures } from "./contracts.ts";
+import { eyeColours, hairColours, hairLengths, hairTextures, type Look, skinTones } from "./contracts.ts";
 
 const ageWords = (age: Age) => ageOptions.find((option) => option.id === age)!.prompt;
 
-export const hairWords = (hair: Hair | null) => {
-  if (!hair) return "the hair as in the photo";
-  if (hair.length === "none") return "no hair (bald)";
-  const colour = hairColours.find((c) => c.id === hair.colour)!.label.toLowerCase();
-  const length = hairLengths.find((l) => l.id === hair.length)!.label.toLowerCase();
-  const texture = hairTextures.find((t) => t.id === hair.texture)!.label.toLowerCase();
-  return `${length}, ${texture}, ${colour} hair`;
+const label = (options: ReadonlyArray<{ id: string; label: string }>, id: string | null) =>
+  id === null ? null : options.find((option) => option.id === id)!.label.toLowerCase();
+
+/** The hair in words: what's known of length, texture and colour; "as in the photo" when nothing is. */
+export const hairWords = (look: Look) => {
+  if (look.hairLength === "none") return "no hair (bald)";
+  const words = [
+    label(hairLengths, look.hairLength),
+    label(hairTextures, look.hairTexture),
+    label(hairColours, look.hairColour),
+  ].filter((word) => word !== null);
+  return words.length === 0 ? "the hair as in the photo" : `${words.join(", ")} hair`;
+};
+
+/** The rest of the look in words, each only when known: eyes, skin tone, freckles, glasses. */
+export const lookWords = (look: Look) => {
+  const words = [
+    look.eyeColour && `Eyes: ${label(eyeColours, look.eyeColour)}.`,
+    look.skinTone && `Skin tone: ${label(skinTones, look.skinTone)}.`,
+    look.freckles !== null && (look.freckles ? "Freckles." : "No freckles."),
+    look.glasses !== null && (look.glasses ? "Glasses, as in the photo." : "No glasses."),
+  ].filter(Boolean);
+  return words.length === 0 ? "" : ` ${words.join(" ")}`;
 };
 
 /** v1's sheet and revise prompts, which v2 keeps. */
 const sheetPrompts = {
   /** References: the photo, then the story's style reference. */
-  sheet: (input: { style: PhotoStyle; age: Age; outfit: string; hair: Hair | null }) =>
+  sheet: (input: { style: PhotoStyle; age: Age; outfit: string; look: Look }) =>
     `The first image is a photo of a person. The second image shows the style of a children's picture book. ` +
     `Draw a character sheet of this person as ${ageWords(input.age)}, in the book's style ` +
     `(${input.style.styleWords}): front, three-quarter and back views side by side, full body, on a plain white ` +
     `background. Keep the face shape, eyes, skin tone and features from the photo so the person is recognisable, ` +
-    `drawn at that age. Hair: ${hairWords(input.hair)}. Outfit: ${input.outfit}. No text, no frame.`,
+    `drawn at that age. Hair: ${hairWords(input.look)}.${lookWords(input.look)} Outfit: ${input.outfit}. No text, no frame.`,
   /** References: the current sheet. One note per call (D56: preview changes edit the current sheet). */
   revise: (note: string) =>
     `This is a character sheet for a children's picture book. Change only this: ${note}. Keep everything else ` +

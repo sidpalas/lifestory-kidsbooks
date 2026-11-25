@@ -307,7 +307,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   the family's earlier books, so nobody is typed twice. Supersedes D48's Our family page.
 - **The parent's path:** the story page shows the illustrator's stock characters. "Put your family in this book"
   makes a draft book. The parent says who plays each role (every role, not only the hero) and uploads
-  one photo each, with hair chips. Each photo is checked in about 3 s. Once a person's photo passes, "Draw {name}"
+  one photo each. Each photo is checked in about 3 s, and the check reads how the person looks. Once a person's photo passes, "Draw {name}"
   draws their sheet (about 20 s); once everyone has one, the cover with everyone on it follows. **Drawings (Sid,
   2026-11-25):** each person gets three drawings, the first included; a note on their sheet or a new photo after
   it uses one, and nobody else's sheet changes. A person with no drawings left takes no new photo, and a failed
@@ -319,7 +319,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     1536×1024 or 1024×1536. It is the newest image model OpenAI lists as eligible for zero data retention;
     2.6 is not. The model ID is configuration (`OPENAI_PHOTO_MODEL`), since `gpt-image-2` shuts down on 2027-02-10.
   - **Character sheet**, once per role per book, from the photo and the story's style reference: the person at the
-    age the parent chose for them (one the role accepts), front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
+    age the parent chose for them (one the role accepts), front, three-quarter and back views, in the slot's stock outfit, with the confirmed look in words. The book
     owns it, because it carries that story's style.
   - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
     from the sheets (`likeness.sheet` with a note). **Approved by Sid (2026-11-24)** over his first choice of a
@@ -366,11 +366,18 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     photos; `gpt-5.4-nano` missed a helmet, a beanie and the child on his shoulders.
   - Rules in code: **refuse** with no visible main face, a second prominent face (offer a crop), a face under about
     150 px across, or a blurred face. Background faces never refuse (counting every face would have refused 7 of 10
-    good photos). **Warn** on a hat, helmet, goggles or sunglasses, poor light, hair two or more steps from the
-    chips (lighting moves hair colour a step), and an age that doesn't match: one the role accepts but the parent
+    good photos). **Warn** on a hat, helmet, goggles or sunglasses, poor light, and an age that doesn't match: one the role accepts but the parent
     didn't choose, or one far from every age the role accepts. (Revised 2026-11-25: Lucy, a toddler entered as a
     young child in a story without toddlers, got no warning and was drawn about six; Dream Adventure v3 accepts
     toddlers.)
+- **The look, confirmed (Sid, 2026-11-25):** the check also reads hair colour, length and texture, eye colour,
+  skin tone, freckles and glasses, each null when the photo doesn't show it. Once a photo passes, the parent sees each
+  attribute with a swatch, labelled "From the photo" or "You set this"; where their choice differs from the photo,
+  the photo's reading shows too. Their corrections go over the photo's reading attribute by attribute (`lookOf`), and
+  the sheet prompt says what's known. They're stored on the cast (`book_cast.look`), so a person picked from an
+  earlier book brings them; the photo never carries over. The look locks at the first drawing; a note changes it
+  after. Replaces the blank hair chips, which defaulted to long hair for Lucy (her hair is short) and overrode the
+  photo; the hair-colour warning goes with them. Migration 0022 moves the chips into `book_cast.look`.
 - **Durable workflows (Absurd, D4; every step idempotent):**
 
   <!-- oxfmt-ignore -->

@@ -1,11 +1,9 @@
-// Uploads one role's photo to a draft book (D56): POST multipart with `file`, `slotId` and `hair` (JSON of the hair
-// chips). The browser has already resized it and dropped its metadata. Answers { uploadId } and starts the check, or
+// Uploads one role's photo to a draft book (D56): POST multipart with `file` and `slotId`. The browser has already resized it and dropped its metadata. Answers { uploadId } and starts the check, or
 // { error } with a status: 429, with Retry-After when waiting helps, past the account's upload limits (D59). The custom
 // header makes a cross-site form unable to send this.
 import { Auth, uploadPhoto } from "@lifestory/core";
-import { Hair } from "@lifestory/core/contracts";
 import { createFileRoute } from "@tanstack/react-router";
-import { Effect, Schema } from "effect";
+import { Effect } from "effect";
 
 import { serverRuntime } from "~/server/runtime";
 
@@ -23,12 +21,8 @@ export const Route = createFileRoute("/api/books/$bookId/photos")({
             const form = yield* Effect.promise(() => request.formData());
             const file = form.get("file");
             const slotId = form.get("slotId");
-            const hair = yield* Effect.try(() => JSON.parse(String(form.get("hair")))).pipe(
-              Effect.flatMap(Schema.decodeUnknownEffect(Hair)),
-              Effect.option,
-            );
-            if (!(file instanceof File) || typeof slotId !== "string" || hair._tag === "None")
-              return json({ error: "Send a photo, a role and the hair" }, 400);
+            if (!(file instanceof File) || typeof slotId !== "string")
+              return json({ error: "Send a photo and a role" }, 400);
             const body = new Uint8Array(yield* Effect.promise(() => file.arrayBuffer()));
             return json(
               yield* uploadPhoto(user.id, {
@@ -37,7 +31,6 @@ export const Route = createFileRoute("/api/books/$bookId/photos")({
                 fileName: file.name,
                 contentType: file.type,
                 body,
-                hair: hair.value,
               }),
             );
           }).pipe(

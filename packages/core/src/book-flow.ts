@@ -8,7 +8,7 @@ import { Effect } from "effect";
 import { Auth, type SessionUser } from "./auth.ts";
 import { bookFlow, loadBook } from "./books.ts";
 import { AppConfig } from "./config.ts";
-import { consentStatements, type Hair, MAX_PAGE_CHANGES, MAX_SHEET_DRAWS, policyVersion } from "./contracts.ts";
+import { consentStatements, LookChoices, MAX_PAGE_CHANGES, MAX_SHEET_DRAWS, policyVersion } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -148,7 +148,6 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     readonly fileName: string;
     readonly contentType: string;
     readonly body: Uint8Array;
-    readonly hair: Hair;
   },
 ) {
   const book = yield* editableBook(userId, input.bookId);
@@ -194,7 +193,6 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     photoDeletedAt: null,
     checkStatus: "checking" as const,
     check: null,
-    hair: input.hair,
     consentId: consent.id,
     sheetKey: null,
   };
@@ -217,6 +215,31 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     ),
   );
   return { uploadId };
+});
+
+/**
+ * The parent confirms or corrects how a person looks (D56, Sid 2026-11-25): each attribute they set goes over what
+ * the photo showed; an attribute left out comes from the photo. Only before the person's first sheet: after it, a
+ * note on the sheet changes them.
+ */
+export const setLook = Effect.fn("bookFlow.setLook")(function* (
+  userId: string,
+  input: { readonly bookId: string; readonly slotId: string; readonly look: LookChoices },
+) {
+  const book = yield* editableBook(userId, input.bookId);
+  yield* requireStatus(book, ["draft"], "This book is already ordered.");
+  const person = yield* likenessOf(book.id, input.slotId);
+  if (!person) return yield* new NotFound({ entity: "role", id: input.slotId });
+  if (person.drawing || person.sheetKey)
+    return yield* new InvalidInput({
+      message: `${person.name} is drawn already: write what to change about them under their sheet.`,
+    });
+  yield* Database.query((db) =>
+    db
+      .update(schema.bookCast)
+      .set({ look: input.look as Record<string, string | boolean> })
+      .where(and(eq(schema.bookCast.bookId, book.id), eq(schema.bookCast.slotId, input.slotId))),
+  );
 });
 
 /**
