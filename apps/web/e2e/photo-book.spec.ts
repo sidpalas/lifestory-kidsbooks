@@ -292,3 +292,107 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await operator.context.close();
   }
 });
+
+test("an account's photo uploads are limited in bursts and in total, counting every photo it stored (D59)", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const { photoUploadLimits: limits } = await import("@lifestory/core");
+  const id = unique();
+  const [child, grownup] = [`Ava ${id}`, `Ben ${id}`];
+  const email = `limits-${id}@lifestory.dev`;
+  const parent = await signedIn(browser, email, "/");
+  try {
+    const { page } = parent;
+    const bookId = await startBook(page, child, grownup);
+    await page.getByLabel("I'm 18 or older.").check();
+    await page.getByLabel(/^I have the right to use each photo/).check();
+    await page.getByLabel(/^I understand how photos are used/).check();
+    await page.getByRole("button", { name: "Agree and add photos" }).click();
+    await expect(page.getByLabel(`Photo of ${child}`)).toBeAttached();
+    const [{ id: userId }] = (await sql<{ id: string }>('select id from "user" where email = $1', [email])) as [
+      { id: string },
+    ];
+    const counted = async () =>
+      Number((await sql<{ n: string }>("select count(*) as n from photo_upload where user_id = $1", [userId]))[0]!.n);
+    const upload = (slotId: string, name: string, mimeType = "image/png") =>
+      page.request.post(`/api/books/${bookId}/photos`, {
+        headers: { "x-lifestory-upload": "1" },
+        multipart: {
+          file: { name, mimeType, buffer: PHOTO },
+          slotId,
+          hair: JSON.stringify({ colour: "brown", length: "short", texture: "straight" }),
+        },
+      });
+
+    // A request refused before anything is stored doesn't count.
+    expect((await upload("hero", "child.gif", "image/gif")).status()).toBe(400);
+    expect(await counted()).toBe(0);
+
+    // A photo the check refuses was stored and checked, so it counts.
+    const refused = (await (await upload("grownup", "ben-two-faces.png")).json()) as { uploadId: string };
+    await expect
+      .poll(() => sql("select check_status from book_likeness where upload_id = $1", [refused.uploadId]), {
+        timeout: 30_000,
+      })
+      .toEqual([{ check_status: "refused" }]);
+    expect(await sql("select id from photo_upload where id = $1", [refused.uploadId])).toEqual([
+      { id: refused.uploadId },
+    ]);
+
+    // Five more than the burst at once, each replacing the last: exactly the burst is stored, the rest wait.
+    const burst = await Promise.all(
+      Array.from({ length: limits.burst.count + 4 }, (_, i) => upload("hero", `child-${i}.png`)),
+    );
+    const statuses = burst.map((response) => response.status());
+    expect(statuses.filter((status) => status === 200)).toHaveLength(limits.burst.count - 1);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(5);
+    const waiting = burst.find((response) => response.status() === 429)!;
+    expect(Number(waiting.headers()["retry-after"])).toBeGreaterThan(0);
+    expect(((await waiting.json()) as { error: string }).error).toMatch(
+      new RegExp(`^You've added ${limits.burst.count} photos in the last 10 minutes\\. Try again in `),
+    );
+    expect(await counted()).toBe(limits.burst.count);
+
+    // A day later the burst has passed; with one upload left of the allowance, three at once store one.
+    await sql("update photo_upload set created_at = now() - interval '1 day' where user_id = $1", [userId]);
+    await sql(
+      `insert into photo_upload (id, user_id, book_id, created_at)
+       select 'up_old_' || $1 || '_' || n, $1, $2, now() - interval '2 days' from generate_series(1, $3::int) n`,
+      [userId, bookId, limits.allowance - limits.burst.count - 1],
+    );
+    const last = await Promise.all([1, 2, 3].map((i) => upload("hero", `last-${i}.png`)));
+    expect(last.map((response) => response.status()).toSorted()).toEqual([200, 429, 429]);
+    const capped = last.find((response) => response.status() === 429)!;
+    expect(capped.headers()["retry-after"]).toBeUndefined();
+    expect(((await capped.json()) as { error: string }).error).toMatch(
+      new RegExp(`^You've used all ${limits.allowance} photo uploads this account has\\.`),
+    );
+    expect(await counted()).toBe(limits.allowance);
+
+    // The parent sees why on the person's card.
+    await page.getByLabel(`Photo of ${child}`).setInputFiles(photo("one-more.png"));
+    await expect(page.getByTestId("photo-hero").getByRole("alert")).toContainText(
+      `You've used all ${limits.allowance} photo uploads this account has.`,
+    );
+    await evidence(page, "upload-limit");
+
+    // An order isn't paid for yet (D57), so placing one raises nothing; a book the operator approved does.
+    const other = `book_limits_${id}`;
+    await sql(
+      `insert into book (id, family_id, story_version_id, title, status)
+       select $2, family_id, story_version_id, title, 'ordered' from book where id = $1`,
+      [bookId, other],
+    );
+    await sql("insert into book_order (id, book_id, placed_by, price_cents, currency) values ($1, $2, $3, 0, 'USD')", [
+      `order_${id}`,
+      other,
+      userId,
+    ]);
+    expect((await upload("hero", "ordered.png")).status()).toBe(429);
+    await sql("update book set status = 'approved' where id = $1", [other]);
+    expect((await upload("hero", "approved.png")).status()).toBe(200);
+  } finally {
+    await parent.context.close();
+  }
+});

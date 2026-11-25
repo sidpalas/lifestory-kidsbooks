@@ -1,6 +1,7 @@
 // Uploads one role's photo to a draft book (D56): POST multipart with `file`, `slotId` and `hair` (JSON of the hair
 // chips). The browser has already resized it and dropped its metadata. Answers { uploadId } and starts the check, or
-// { error } with a status. The custom header makes a cross-site form unable to send this.
+// { error } with a status: 429, with Retry-After when waiting helps, past the account's upload limits (D59). The custom
+// header makes a cross-site form unable to send this.
 import { Auth, uploadPhoto } from "@lifestory/core";
 import { Hair } from "@lifestory/core/contracts";
 import { createFileRoute } from "@tanstack/react-router";
@@ -45,6 +46,12 @@ export const Route = createFileRoute("/api/books/$bookId/photos")({
               Forbidden: (error) => Effect.succeed(json({ error: error.message }, 403)),
               NotFound: () => Effect.succeed(json({ error: "No such book or role" }, 404)),
               InvalidInput: (error) => Effect.succeed(json({ error: error.message }, 400)),
+              UploadLimitReached: (error) => {
+                const response = json({ error: error.message }, 429);
+                if (error.retryAfterSeconds !== null)
+                  response.headers.set("retry-after", String(error.retryAfterSeconds));
+                return Effect.succeed(response);
+              },
               JobError: (error) => Effect.succeed(json({ error: error.message }, 500)),
             }),
           ),

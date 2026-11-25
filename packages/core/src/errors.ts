@@ -54,6 +54,15 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInp
 }) {}
 
 /**
+ * The account reached a photo upload limit (D59); message says which and what to do. `retryAfterSeconds` is when the
+ * burst limit frees a slot, null when waiting won't help.
+ */
+export class UploadLimitReached extends Schema.TaggedError<UploadLimitReached>()("UploadLimitReached", {
+  message: Schema.String,
+  retryAfterSeconds: Schema.NullOr(Schema.Number),
+}) {}
+
+/**
  * The family already has a book of this story that the person didn't choose to make another next to, so no new one
  * was made; `bookIds` are the family's books of it, newest first.
  */

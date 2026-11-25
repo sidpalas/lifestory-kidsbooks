@@ -15,6 +15,7 @@ import { requireFamilyAccess } from "./families.ts";
 import { figureRules } from "./figure.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
+import { releaseUpload, reserveUpload } from "./photo-uploads.ts";
 import { ObjectStorage } from "./storage.ts";
 import {
   checkPhoto,
@@ -112,7 +113,8 @@ export const withdrawPhotoReview = Effect.fn("bookFlow.withdrawPhotoReview")(fun
 
 /**
  * Stores a role's photo and starts its check (D56). The parent consents first; a new photo replaces the role's
- * earlier one, whose object is deleted, and the sheets are drawn again once every role's photo passes.
+ * earlier one, whose object is deleted, and the sheets are drawn again once every role's photo passes. Each stored
+ * photo counts toward the account's upload limits (D59).
  */
 export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
   userId: string,
@@ -143,9 +145,13 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
   if (!consent) return yield* new InvalidInput({ message: "Agree to how photos are used before uploading." });
 
   const uploadId = `up_${crypto.randomUUID()}`;
+  yield* reserveUpload(userId, { id: uploadId, bookId: book.id });
   const key = photoObjectKey(book.familyId, book.id, input.slotId, uploadId);
   const storage = yield* ObjectStorage;
-  yield* storage.put(key, input.body, input.contentType).pipe(Effect.orDie);
+  yield* storage.put(key, input.body, input.contentType).pipe(
+    Effect.orDie,
+    Effect.onError(() => releaseUpload(uploadId)),
+  );
   const [previous] = yield* Database.query((db) =>
     db
       .select({ photoKey: schema.bookLikeness.photoKey })

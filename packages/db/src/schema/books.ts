@@ -104,6 +104,24 @@ export const bookLikeness = pgTable(
   (t) => [primaryKey({ columns: [t.bookId, t.slotId] })],
 );
 
+/**
+ * Every photo an account's upload stored, kept as long as the account (D59): what the upload limits count. Not tied
+ * to the book, whose draft the sweep deletes after a day, so deleting drafts doesn't hand back uploads.
+ */
+export const photoUpload = pgTable(
+  "photo_upload",
+  {
+    /** The upload's ID, as in `book_likeness.upload_id` and the photo's key. */
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    bookId: text("book_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("photo_upload_user_idx").on(t.userId, t.createdAt)],
+);
+
 /** A page of a made book: the version of its figures the parent chose, and the change they asked for (D57). */
 export const bookPage = pgTable(
   "book_page",

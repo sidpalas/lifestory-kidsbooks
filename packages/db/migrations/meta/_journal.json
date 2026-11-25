@@ -141,6 +141,13 @@
       "when": 1795544601696,
       "tag": "0019_photo_book_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795569391862,
+      "tag": "0020_photo_upload_limits",
+      "breakpoints": true
     }
   ]
 }

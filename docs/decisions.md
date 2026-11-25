@@ -473,6 +473,33 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   biometric laws such as BIPA; no face template is kept, but photos are processed for likeness).
 - **Reopen if:** a lawyer's review, public sign-ups, or a new processor.
 
+### D59. Photo uploads are limited per account: a burst limit and a total that approved books raise — Decided (Sid, 2026-11-25)
+
+- **Asked (Sid, 2026-11-25):** rate limit the photos an account can upload, or cap them, raising the cap when they
+  order a book.
+- **Why uploads cost:** a photo's check is about US$0.002 (D56), but a photo that passes on a book whose roles all
+  have photos starts `likeness.preview`, which draws every role's sheet (US$0.032 each) and the cover's figures
+  (US$0.036 each, up to three tries) again, about US$0.14–0.28 for The Kite Day's two roles. Replacing one photo
+  redraws every sheet. Deleting a draft doesn't undo any of it, and the sweep deletes drafts after a day (D57).
+- **What counts:** every upload the server stored: replacements, photos the check refuses, and photos replaced
+  before their check ran. A request refused before anything is stored (wrong type, too large, no consent, not a
+  draft, over a limit) doesn't. Counted per account (the uploader), in `photo_upload`, which keeps an ID per upload
+  and no photo, as long as the account; not per book, so deleting drafts hands nothing back. Checked and recorded
+  under a lock per account, so concurrent uploads can't pass a limit together. Extra pose photos (D56, planned)
+  go through the same `uploadPhoto` and count one each.
+- **Values (Sid, 2026-11-25)** (`photoUploadLimits` in `packages/core/src/photo-uploads.ts`):
+  - Burst: 20 uploads in any 10 minutes, a three-role book with every pose photo and some retakes; past it the
+    upload answers 429 with `Retry-After` and "Try again in N minutes".
+  - Total: 40 uploads before any book qualifies (three or four books' worth with retakes, at most about US$6–11
+    of drawing), and 40 more for each qualifying book; past it, 429 saying so and to write to us.
+- **What raises the total (Sid, 2026-11-25):** a book the account ordered that the operator approved.
+  A placed order isn't paid for (D57: price 0, settled by hand), and ordering is the most expensive step (`book.make`
+  draws every page, about US$1), so letting an unpaid order raise the cap would let an account loop upload, order,
+  upload. Rejected: any placed order (unpaid, above); a paid flag on `book_order` set by hand (more work for the
+  operator before payment exists).
+- **Reopen if:** parents hit the limits in normal use, payment arrives (then a paid order is the natural trigger),
+  or families with several editors need a shared limit.
+
 ### D26. Characters are illustrator-approved variants composed from parts; no AI when a book is made — Decided (Sid, 2026-11-18)
 
 - **Superseded by D56 (Sid, 2026-11-24):** parents upload one photo per character and a model draws them into the book through a per-book character sheet.

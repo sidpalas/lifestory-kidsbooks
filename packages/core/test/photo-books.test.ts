@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { PhotoReport } from "../src/contracts.ts";
 import { fitFigure } from "../src/figure.ts";
 import { judgePhoto } from "../src/photo-check.ts";
+import { uploadRefusal } from "../src/photo-uploads.ts";
 
 const report = (overrides: Partial<PhotoReport> = {}): PhotoReport => ({
   moderation: { sexual: 0, violence: 0, selfHarm: 0 },
@@ -163,5 +164,36 @@ describe("fitFigure", () => {
     await expect(
       fitFigure({ output: opaque, bald, head: [...head], window: [...window], size, tint: true }),
     ).rejects.toThrow("no transparent background");
+  });
+});
+
+describe("uploadRefusal", () => {
+  // Small, uneven limits so each boundary is its own number: 3 in 10 minutes, 5 before a book qualifies, 4 more each.
+  const limits = { burst: { count: 3, windowMs: 10 * 60_000 }, allowance: 5, perQualifyingBook: 4 } as const;
+  const now = new Date("2026-11-25T12:00:00Z");
+  const usage = (total: number, recent: number, qualifyingBooks = 0, oldestMinutesAgo = 7) => ({
+    total,
+    recent,
+    oldestRecentAt: recent > 0 ? new Date(now.getTime() - oldestMinutesAgo * 60_000) : null,
+    qualifyingBooks,
+  });
+
+  it("allows up to the burst, then says when the oldest upload in the window frees a slot", () => {
+    expect(uploadRefusal(usage(2, 2), now, limits)).toBeNull();
+    const refused = uploadRefusal(usage(3, 3, 0, 7.5), now, limits)!;
+    // The oldest is 7.5 minutes old in a 10-minute window: free in 150 s, said as 3 minutes.
+    expect(refused.retryAfterSeconds).toBe(150);
+    expect(refused.message).toBe("You've added 3 photos in the last 10 minutes. Try again in 3 minutes.");
+    expect(uploadRefusal(usage(3, 3, 0, 9.99), now, limits)!.message).toMatch(/Try again in a minute\.$/);
+  });
+
+  it("caps the total, raised by each qualifying book, and says so rather than to wait", () => {
+    expect(uploadRefusal(usage(4, 0), now, limits)).toBeNull();
+    const capped = uploadRefusal(usage(5, 3), now, limits)!;
+    expect(capped.retryAfterSeconds).toBeNull();
+    expect(capped.message).toMatch(/^You've used all 5 photo uploads this account has\. Each book we approve adds 4/);
+    expect(uploadRefusal(usage(8, 0, 1), now, limits)).toBeNull();
+    expect(uploadRefusal(usage(9, 0, 1), now, limits)!.message).toMatch(/all 9 photo uploads/);
+    expect(uploadRefusal(usage(12, 0, 2), now, limits)).toBeNull();
   });
 });

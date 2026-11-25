@@ -42,11 +42,16 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
 bad photo, a refused two-file drop, a dropped photo and one from the camera input, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
-deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a drawn book with `markDrawn`
+deletes, and the 24 h sweep of an abandoned draft. A second test covers the upload limits (D59): a refused request
+not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, the total allowance
+with the message on the person's card, and that an unpaid order raises nothing while an approved book does. Other book specs start from a drawn book with `markDrawn`
 (`e2e/drawn.ts`).
 
 ## Gotchas
 
+- Every photo the server stores counts toward the uploader's limits (D59, `photo_upload`): a burst per 10 minutes
+  and a total that approved books raise. A test account that hits them: `delete from photo_upload where user_id = …`
+  in a dev database.
 - `OPENAI_DATA_RETENTION` (`standard` or `zero`) states what the OpenAI project keeps; it blocks nothing (Sid,
   2026-11-24). The policies (`{{openai-retention}}`), the consent statement and the landing page take their retention
   sentence from `retentionCopy` by it, and each consent records `<POLICY_VERSION>/standard` or `/zero`. Production
