@@ -155,17 +155,18 @@ function BookEditor() {
         {manifest.characterSlots.map((slot) => {
           const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
           // The sheets the order approved (D57); before it, the preview step shows the sheets still being changed.
-          const sheetKey =
+          const likeness =
             view.flow.status === "draft"
-              ? null
-              : view.flow.likenesses.find((likeness) => likeness.slotId === slot.slotId)?.sheetKey;
+              ? undefined
+              : view.flow.likenesses.find((candidate) => candidate.slotId === slot.slotId);
           return role ? (
             <RoleCard
               key={slot.slotId}
               role={role}
               label={slot.label}
               slot={slot}
-              sheetUrl={sheetKey ? `/api/files/${sheetKey}` : null}
+              sheetUrl={likeness?.sheetKey ? `/api/files/${likeness.sheetKey}` : null}
+              expressionsUrl={likeness?.expressionsKey ? `/api/files/${likeness.expressionsKey}` : null}
               canEdit={canEdit}
               onSave={(person) =>
                 run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, person } }))
@@ -426,6 +427,7 @@ function RoleCard({
   label,
   slot,
   sheetUrl,
+  expressionsUrl,
   canEdit,
   onSave,
 }: {
@@ -433,6 +435,8 @@ function RoleCard({
   label: string;
   slot: CharacterSlot;
   sheetUrl: string | null;
+  /** The person's six expressions, drawn with the sheet; null on sheets drawn before them. */
+  expressionsUrl: string | null;
   canEdit: boolean;
   onSave: (person: CastPerson) => Promise<void>;
 }) {
@@ -479,15 +483,32 @@ function RoleCard({
         </div>
       </div>
       {sheetUrl && sheetOpen && (
-        <figure className="flex flex-col gap-1">
-          <img src={sheetUrl} alt={sheetAlt} className="w-full rounded ring-1 ring-black/10" />
-          <figcaption className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-            <span>Every page of this book is drawn from this sheet.</span>
-            <a href={sheetUrl} target="_blank" rel="noreferrer" className="underline">
-              Open full size
-            </a>
-          </figcaption>
-        </figure>
+        <div className="flex flex-col gap-3">
+          <figure className="flex flex-col gap-1">
+            <img src={sheetUrl} alt={sheetAlt} className="w-full rounded ring-1 ring-black/10" />
+            <figcaption className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+              <span>Every page of this book is drawn from this sheet.</span>
+              <a href={sheetUrl} target="_blank" rel="noreferrer" className="underline">
+                Open full size
+              </a>
+            </figcaption>
+          </figure>
+          {expressionsUrl && (
+            <figure className="flex flex-col gap-1">
+              <img
+                src={expressionsUrl}
+                alt={`${person.name} in six expressions`}
+                className="w-full rounded ring-1 ring-black/10"
+              />
+              <figcaption className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                <span>The same face in six expressions, drawn with the sheet.</span>
+                <a href={expressionsUrl} target="_blank" rel="noreferrer" className="underline">
+                  Open full size
+                </a>
+              </figcaption>
+            </figure>
+          )}
+        </div>
       )}
       {editing && (
         <form

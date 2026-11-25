@@ -266,8 +266,14 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(page.getByLabel(`What to change about ${child}`)).toHaveCount(0);
     await expect(page.getByTestId("sheet-card-hero")).toContainText(`That was the last drawing of ${child}.`);
     await expect(page.getByLabel(`What to change about ${grownup}`)).toBeVisible();
-    const sheets = await sql<{ slot_id: string; sheet_key: string; draws: number; notes: Array<{ round: number }> }>(
-      "select slot_id, sheet_key, draws, notes from book_likeness where book_id = $1 order by slot_id",
+    const sheets = await sql<{
+      slot_id: string;
+      sheet_key: string;
+      expressions_key: string;
+      draws: number;
+      notes: Array<{ round: number }>;
+    }>(
+      "select slot_id, sheet_key, expressions_key, draws, notes from book_likeness where book_id = $1 order by slot_id",
       [bookId],
     );
     const before = (slotId: string) => firstSheets.find((row) => row.slot_id === slotId)!.sheet_key;
@@ -286,21 +292,29 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     // The order draws every page and deletes the photos (no photo review opted in).
     await makeAndWait(page);
     expect(await photosOf(bookId)).toBe(0);
-    // The cast then shows each role's approved sheet: the hero's from the last round, the grown-up's first sheet.
+    // The cast then shows each role's approved sheet and the expressions drawn with it: the hero's from the last
+    // round, the grown-up's first. The book keeps the same files the drawing stored; the order draws none.
+    expect(
+      await sql("select slot_id, sheet_key, expressions_key from book_likeness where book_id = $1 order by slot_id", [
+        bookId,
+      ]),
+    ).toEqual(sheets.map(({ slot_id, sheet_key, expressions_key }) => ({ slot_id, sheet_key, expressions_key })));
     for (const [slotId, name] of [
       ["hero", child],
       ["grownup", grownup],
     ] as const) {
+      const row = sheets.find((candidate) => candidate.slot_id === slotId)!;
+      expect(row.expressions_key).toContain(`/likeness/${slotId}/expressions-`);
       await page
         .getByTestId(`role-${slotId}`)
         .getByRole("button", { name: `${name}'s character sheet` })
         .click();
       const sheet = page.getByRole("img", { name: `${name}'s character sheet` });
-      await expect(sheet).toHaveAttribute(
-        "src",
-        `/api/files/${sheets.find((row) => row.slot_id === slotId)!.sheet_key}`,
-      );
+      await expect(sheet).toHaveAttribute("src", `/api/files/${row.sheet_key}`);
       expect((await page.request.get((await sheet.getAttribute("src"))!)).status()).toBe(200);
+      const faces = page.getByRole("img", { name: `${name} in six expressions` });
+      await expect(faces).toHaveAttribute("src", `/api/files/${row.expressions_key}`);
+      expect((await page.request.get((await faces.getAttribute("src"))!)).status()).toBe(200);
     }
     await evidence(page, "photo-cast-sheets");
     const art = await sql<{ n: number }>("select count(*)::int as n from book_page_art where book_id = $1", [bookId]);
@@ -347,6 +361,8 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await operator.page.goto(`/review/${bookId}`);
     await expect(operator.page.getByTestId("review-status")).toContainText("in review · photos not shared");
     await expect(operator.page.getByTestId(/^review-photo-/)).toHaveCount(0);
+    for (const row of sheets)
+      expect((await operator.page.request.get(`/api/files/${row.expressions_key}`)).status()).toBe(200);
     await expect(operator.page.getByTestId("review-page-p01")).toContainText("version 2 of 2");
     await evidence(operator.page, "photo-review");
     await operator.page.setViewportSize({ width: 320, height: 720 });
@@ -358,6 +374,7 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(page.getByTestId("book-step")).toContainText("Approved for print");
     await page.getByRole("button", { name: `${child}'s character sheet` }).click();
     await expect(page.getByRole("img", { name: `${child}'s character sheet` })).toBeVisible();
+    await expect(page.getByRole("img", { name: `${child} in six expressions` })).toBeVisible();
 
     // A second book, opted in to photo review: the order keeps the photos, the operator sees them, approval deletes them.
     const second = await startBook(page, child, grownup);

@@ -23,9 +23,14 @@ export const markDrawn = async (...bookIds: ReadonlyArray<string>) => {
 
 /**
  * Gives a book a stored character sheet per role, as the photo steps leave one (an SVG naming the role, 3:2 like a
- * real sheet). Returns each role's sheet key.
+ * real sheet), and the six expressions for the roles in `withExpressions` (sheets drawn before them have none).
+ * Returns each role's sheet key, and each expressions key under `<slotId>:expressions`.
  */
-export const giveSheets = async (bookId: string, slotIds: ReadonlyArray<string>) => {
+export const giveSheets = async (
+  bookId: string,
+  slotIds: ReadonlyArray<string>,
+  withExpressions: ReadonlyArray<string> = [],
+) => {
   const { Database, ObjectStorage, makeServerRuntime } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   try {
@@ -41,11 +46,20 @@ export const giveSheets = async (bookId: string, slotIds: ReadonlyArray<string>)
           const key = `families/${family_id}/books/${bookId}/likeness/${slotId}/sheet-e2e.svg`;
           const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><rect width="1536" height="1024" fill="#f4e8d0"/><text x="768" y="540" font-size="120" text-anchor="middle">${slotId} sheet</text></svg>`;
           yield* storage.put(key, new TextEncoder().encode(svg), "image/svg+xml");
+          const expressionsKey = withExpressions.includes(slotId)
+            ? `families/${family_id}/books/${bookId}/likeness/${slotId}/expressions-e2e.svg`
+            : null;
+          if (expressionsKey) {
+            const faces = `<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024"><rect width="1536" height="1024" fill="#d0e4f4"/><text x="768" y="540" font-size="120" text-anchor="middle">${slotId} expressions</text></svg>`;
+            yield* storage.put(expressionsKey, new TextEncoder().encode(faces), "image/svg+xml");
+            keys[`${slotId}:expressions`] = expressionsKey;
+          }
           yield* Effect.promise(() =>
             pool.query(
-              `insert into book_likeness (book_id, slot_id, sheet_key) values ($1, $2, $3)
-               on conflict (book_id, slot_id) do update set sheet_key = excluded.sheet_key`,
-              [bookId, slotId, key],
+              `insert into book_likeness (book_id, slot_id, sheet_key, expressions_key) values ($1, $2, $3, $4)
+               on conflict (book_id, slot_id)
+               do update set sheet_key = excluded.sheet_key, expressions_key = excluded.expressions_key`,
+              [bookId, slotId, key, expressionsKey],
             ),
           );
           keys[slotId] = key;

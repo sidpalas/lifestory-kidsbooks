@@ -276,8 +276,26 @@ test("a viewer reads the family's books but can't change them", async ({ page, b
     "aria-expanded",
     "false",
   );
+  // Sheets drawn before the expressions show alone.
+  await expect(page.getByRole("img", { name: /in six expressions/ })).toHaveCount(0);
   await imagesLoaded(page);
   await evidence(page, "book-sheet-open");
+  // With the expressions drawn with the hero's sheet, they show under it; the grown-up's sheet still shows alone.
+  Object.assign(sheets, await giveSheets(bookId, ["hero", "grownup"], ["hero"]));
+  await page.reload();
+  await heroSheet.click();
+  await expect(page.getByTestId("role-hero").getByRole("img", { name: `${child} in six expressions` })).toHaveAttribute(
+    "src",
+    `/api/files/${sheets["hero:expressions"]}`,
+  );
+  await page
+    .getByTestId("role-grownup")
+    .getByRole("button", { name: /character sheet/ })
+    .click();
+  await expect(page.getByTestId("role-grownup").getByRole("img", { name: /character sheet/ })).toBeVisible();
+  await expect(page.getByTestId("role-grownup").getByRole("img", { name: /in six expressions/ })).toHaveCount(0);
+  await imagesLoaded(page);
+  await evidence(page, "book-sheet-expressions-open");
 
   const viewer = await browser.newPage();
   await viewer.goto(`/__dev/log-me-in/grandparent@lifestory.dev?returnTo=${bookUrl}`);
@@ -290,10 +308,13 @@ test("a viewer reads the family's books but can't change them", async ({ page, b
   // The viewer sees the sheets too; someone outside the family can't load them.
   await viewer.getByRole("button", { name: `${child}'s character sheet` }).click();
   await expect(viewer.getByRole("img", { name: `${child}'s character sheet` })).toBeVisible();
-  expect((await viewer.request.get(`/api/files/${sheets.hero}`)).status()).toBe(200);
+  await expect(viewer.getByRole("img", { name: `${child} in six expressions` })).toBeVisible();
+  for (const key of [sheets.hero, sheets["hero:expressions"]])
+    expect((await viewer.request.get(`/api/files/${key}`)).status()).toBe(200);
   const outsider = await browser.newPage();
   await outsider.goto(`/__dev/log-me-in/outsider-${id}@lifestory.dev?returnTo=/`);
-  expect((await outsider.request.get(`/api/files/${sheets.hero}`)).status()).toBe(404);
+  for (const key of [sheets.hero, sheets["hero:expressions"]])
+    expect((await outsider.request.get(`/api/files/${key}`)).status()).toBe(404);
   await outsider.close();
   // The viewer previews the story but can't make or delete books.
   await viewer.goto("/stories/the-kite-day");

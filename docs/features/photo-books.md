@@ -20,8 +20,9 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
   person's card, where a drop of several files or a non-photo uploads nothing and says why; on touch screens a
   "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), up to three optional extra photos per person, one slot per pose with its own buttons and drop target, each person's look read from the photo to confirm or correct (swatches, "From the photo" or "You set this"), "Draw {name}", their sheet and six expressions with a note for another drawing (drawings left shown), the cover,
   "Make my book", then the page-change form under each page and "Send for review". Proofs appear from page changes on.
-  From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card
-  (with a full-size link), for every family member, viewers included; display only, never a printed page.
+  From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card,
+  with the six expressions drawn with it underneath (sheets drawn before the expressions show alone), each with a
+  full-size link, for every family member, viewers included; display only, never a printed page.
 - The draft book's photo, preview and order steps, then its page-change and review steps: owner and editor. Drafts
   are hidden from Our books and from the story page's list of the family's books.
 - `/policies/terms`, `/policies/privacy`, `/policies/child-safety` (D58), public, from `apps/web/src/policies/*.md`
@@ -41,7 +42,7 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 ## Verify
 
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
-bad photo, a refused two-file drop, a dropped photo and one from the camera input, a corrected hair length that reaches the sheet prompt, an extra photo of someone else refused and a passing one sent to the sheet, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, a refused new photo for the child, the order with the photos gone from storage, three page changes with keep and use-new, a
+bad photo, a refused two-file drop, a dropped photo and one from the camera input, a corrected hair length that reaches the sheet prompt, an extra photo of someone else refused and a passing one sent to the sheet, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, a refused new photo for the child, the order with the photos gone from storage and each person's sheet and expressions kept and shown with the cast, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
 deletes, and the 24 h sweep of an abandoned draft. A second test covers the upload limits (D59): a refused request
 not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, a check task for each stored upload and none for a refused one (the 21st in 10 minutes), the total allowance
