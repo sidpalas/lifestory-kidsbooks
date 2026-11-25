@@ -175,6 +175,14 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       [`%/books/${bookId}/likeness/hero/sheet-d1-%`],
     );
     expect(first!.prompt).toContain("Hair: long, wavy, brown hair. Eyes: brown. Skin tone: light.");
+    // Each drawing also draws the person in six expressions, from the sheet just drawn and never the photo (D56).
+    await expect(page.getByTestId("expressions-hero")).toBeVisible();
+    const [expressions] = await sql<{ references: Array<string>; sheet: string }>(
+      `select g.request->'references' as references, l.sheet_key as sheet from generation g, book_likeness l
+       where g.request->>'outputKey' like $1 and l.book_id = $2 and l.slot_id = 'hero'`,
+      [`%/books/${bookId}/likeness/hero/expressions-d1-%`, bookId],
+    );
+    expect(expressions!.references).toEqual([expressions!.sheet]);
     // Once drawn, the look is how they were drawn; a note changes it.
     await expect(page.getByTestId("look-hero").getByLabel(`${child}'s hair length`)).toBeDisabled();
     expect(await photosOf(bookId)).toBe(2);

@@ -77,6 +77,13 @@ function Review() {
                 {likeness.sheetKey && (
                   <img src={fileUrl(likeness.sheetKey)} alt={`${slot.label}'s sheet`} className="h-40 rounded" />
                 )}
+                {likeness.expressionsKey && (
+                  <img
+                    src={fileUrl(likeness.expressionsKey)}
+                    alt={`${slot.label}'s expressions`}
+                    className="h-40 rounded"
+                  />
+                )}
               </div>
               {likeness.notes.map((n) => (
                 <p key={n.round} className="text-xs text-muted-foreground">

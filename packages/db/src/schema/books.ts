@@ -92,6 +92,8 @@ export const bookLikeness = pgTable(
     /** The check's report and verdict (refusals and warnings), as `PhotoCheckResult`. */
     check: jsonb("check"),
     sheetKey: text("sheet_key"),
+    /** The same person's head in several expressions, drawn from the sheet with it (D56); null before 2026-11-25. */
+    expressionsKey: text("expressions_key"),
     /** Sheets started for this person, the first included (D56: at most three); a failed drawing doesn't count. */
     draws: integer("draws").notNull().default(0),
     /** A sheet for this person is being drawn. */

@@ -73,7 +73,13 @@ export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function*
   book: LoadedBook,
   page: Page,
   sheets: Readonly<Record<string, string>>,
-  options: { readonly tag: string; readonly outputBase: string; readonly note?: string },
+  options: {
+    readonly tag: string;
+    readonly outputBase: string;
+    readonly note?: string;
+    /** Each person's expressions, which v3 prompts send along with the sheet. */
+    readonly expressions?: Readonly<Record<string, string>>;
+  },
 ) {
   const { manifest } = book;
   const style = manifest.photo!;
@@ -104,15 +110,20 @@ export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function*
         return referenceKey;
       }).pipe(Effect.orDie),
     );
+    const expressions = style.promptVersion === "photo-hero-v3" ? options.expressions?.[figure.slotId] : undefined;
     // Each try that comes back usable is kept; one the checks accept ends the tries, else the least clipped wins.
     let result: DrawnFigure | null = null;
     let accepted = false;
     for (let attempt = 0; attempt < ATTEMPTS && !accepted; attempt++) {
       const generated = yield* generateImage(ctx, `${name}:a${attempt}`, {
         key: `figure:${book.id}:${options.tag}:${page.pageId}:${index}:${attempt}`,
-        prompt: photoPrompts[style.promptVersion].figure({ style, ...(options.note ? { note: options.note } : {}) }),
+        prompt: photoPrompts[style.promptVersion].figure({
+          style,
+          ...(options.note ? { note: options.note } : {}),
+          ...(expressions ? { expressions: true } : {}),
+        }),
         ...size,
-        references: [referenceKey, sheet],
+        references: expressions ? [referenceKey, sheet, expressions] : [referenceKey, sheet],
         background: "transparent",
         outputKey: `${options.outputBase}/${index}-drawn-${attempt}`,
       });
@@ -179,6 +190,20 @@ const sheetsAtStart = (ctx: TaskContext, bookId: string) =>
     ),
   );
 
+/** Each role's expressions key, read in its own step like `sheetsAtStart`. */
+const expressionsAtStart = (ctx: TaskContext, bookId: string) =>
+  step(
+    ctx,
+    "expressions",
+    likenesses(bookId).pipe(
+      Effect.map((rows) =>
+        Object.fromEntries(
+          rows.flatMap((row) => (row.expressionsKey ? [[row.slotId, row.expressionsKey] as const] : [])),
+        ),
+      ),
+    ),
+  );
+
 /**
  * Draws the cover from the current sheets and marks the likeness ready, unless meanwhile another person's sheet
  * started drawing or a new photo cleared one: that drawing draws the cover again.
@@ -194,6 +219,7 @@ const drawCover = Effect.fn("photoBooks.drawCover")(function* (
     ? yield* drawPageFigures(ctx, book, page, sheets, {
         tag: `cover-${drawId}`,
         outputBase: `${bookPrefix(book.familyId, book.id)}likeness/cover/${drawId}`,
+        expressions: yield* expressionsAtStart(ctx, book.id),
       })
     : [];
   yield* step(
@@ -372,6 +398,16 @@ export const drawLikenessSheet = defineTask({
           : [row.sheetKey!],
         outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/sheet-${drawId}`,
       });
+      // The same person in several expressions, from the sheet just drawn, so the parent judges the likeness beyond
+      // one face, and v3 pages draw a sleeping or sad face from the person's own.
+      const expressions = yield* generateImage(ctx, "expressions", {
+        key: `expressions:${bookId}:${slotId}:${drawId}`,
+        prompt: prompts.expressions({ style }),
+        width: 1536,
+        height: 1024,
+        references: [sheet.key],
+        outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/expressions-${drawId}`,
+      });
       // Store the sheet, then see whether the cover is due: every person drawn and nobody drawing.
       const sheets = yield* step(
         ctx,
@@ -380,7 +416,7 @@ export const drawLikenessSheet = defineTask({
           yield* Database.query((db) =>
             db
               .update(schema.bookLikeness)
-              .set({ sheetKey: sheet.key, drawing: false })
+              .set({ sheetKey: sheet.key, expressionsKey: expressions.key, drawing: false })
               .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId))),
           );
           const rows = yield* likenesses(bookId);
@@ -444,6 +480,7 @@ export const drawPage = defineTask({
       if (!page) return yield* Effect.die(new Error(`book ${bookId} has no page ${pageId}`));
       const sheets = yield* sheetsAtStart(ctx, bookId);
       const drawn = yield* drawPageFigures(ctx, book, page, sheets, {
+        expressions: yield* expressionsAtStart(ctx, bookId),
         tag: `v${version}`,
         outputBase: `${bookPrefix(book.familyId, bookId)}pages/${pageId}/v${version}`,
         ...(note ? { note } : {}),
@@ -453,6 +490,9 @@ export const drawPage = defineTask({
         "record",
         Database.query((db) =>
           db.transaction(async (tx) => {
+            // Pages finishing together take turns here, so the last one sees every other page ready; without the
+            // lock, two last pages each saw the other's page not yet ready and the book stayed "making" for good.
+            await tx.execute(sql`select 1 from book where id = ${bookId} for update`);
             for (const figure of drawn) {
               const values = {
                 objectKey: figure.key,

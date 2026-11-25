@@ -195,6 +195,7 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     check: null,
     consentId: consent.id,
     sheetKey: null,
+    expressionsKey: null,
   };
   yield* Database.query((db) =>
     db.transaction(async (tx) => {

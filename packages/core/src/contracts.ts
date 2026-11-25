@@ -443,6 +443,8 @@ export const BookFlow = Schema.Struct({
       /** Whether the photo is still kept, and its key for the family (and the operator on an opted-in book). */
       photoKey: Schema.NullOr(Schema.String),
       sheetKey: Schema.NullOr(Schema.String),
+      /** The person's head in several expressions, drawn from the sheet; null on sheets drawn before them. */
+      expressionsKey: Schema.NullOr(Schema.String),
       /** Sheets started for this person, the first included, out of MAX_SHEET_DRAWS; and whether one is drawing. */
       draws: Schema.Number,
       drawing: Schema.Boolean,

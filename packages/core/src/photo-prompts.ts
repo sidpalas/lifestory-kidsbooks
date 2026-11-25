@@ -41,6 +41,13 @@ const sheetPrompts = {
     `(${input.style.styleWords}): front, three-quarter and back views side by side, full body, on a plain white ` +
     `background. Keep the face shape, eyes, skin tone and features from the photo so the person is recognisable, ` +
     `drawn at that age. Hair: ${hairWords(input.look)}.${lookWords(input.look)} Outfit: ${input.outfit}. No text, no frame.`,
+  /** References: the sheet just drawn. The parent judges the likeness across these (D56). */
+  expressions: (input: { style: PhotoStyle }) =>
+    `This is a character sheet for a children's picture book. Draw the same character's head and shoulders six ` +
+    `times in a row, facing three-quarters toward the viewer, with these expressions from left to right: a big open ` +
+    `grin, a gentle smile, neutral, eyes closed as if asleep, sad, surprised. Keep the face shape, eyes, hair, skin ` +
+    `tone, age and drawing style exactly as on the sheet (${input.style.styleWords}). Plain white background, no ` +
+    `text, no frame.`,
   /** References: the current sheet. One note per call (D56: preview changes edit the current sheet). */
   revise: (note: string) =>
     `This is a character sheet for a children's picture book. Change only this: ${note}. Keep everything else ` +
@@ -69,6 +76,26 @@ export const photoPrompts = {
       `hair and skin tone from the sheet. Keep the clothes, hat or helmet the placeholder wears on this page, with ` +
       `their shapes and colours; don't dress the figure in the sheet's outfit. Output only that character on a ` +
       `transparent background: don't draw the scenery, other figures, or anything behind or around the figure.` +
+      (input.note ? ` The parent asked for this change: ${input.note}.` : ""),
+  },
+  "photo-hero-v3": {
+    ...sheetPrompts,
+    /**
+     * References: the page reference, the sheet, then the person's expressions when they have them (sheets drawn
+     * before 2026-11-25 don't).
+     */
+    figure: (input: { style: PhotoStyle; note?: string; expressions?: boolean }) =>
+      `The first image is part of a page of a children's picture book, with a bald placeholder figure on it. The ` +
+      `second image is a character sheet` +
+      (input.expressions ? `, and the third shows the same character's face in several expressions` : "") +
+      `. Redraw the placeholder figure as the character on the sheet, in exactly the same pose, position, size and ` +
+      `framing, in the book's style (${input.style.styleWords}). Take the face, hair and skin tone from the sheet` +
+      (input.expressions
+        ? `, and give the face the expression the placeholder shows on this page, drawn as in the expressions image`
+        : "") +
+      `. Keep the clothes, hat or helmet the placeholder wears on this page, with their shapes and colours; don't ` +
+      `dress the figure in the sheet's outfit. Output only that character on a transparent background: don't draw ` +
+      `the scenery, other figures, or anything behind or around the figure.` +
       (input.note ? ` The parent asked for this change: ${input.note}.` : ""),
   },
 } as const satisfies Record<PhotoStyle["promptVersion"], unknown>;

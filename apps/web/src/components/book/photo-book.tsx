@@ -577,6 +577,14 @@ function SheetCard({ view, slotId }: { view: BookView; slotId: string }) {
           data-testid={`sheet-${slotId}`}
         />
       )}
+      {likeness.expressionsKey && (
+        <img
+          src={fileUrl(likeness.expressionsKey)}
+          alt={`${name} in six expressions`}
+          className="w-full rounded"
+          data-testid={`expressions-${slotId}`}
+        />
+      )}
       <figcaption className="font-medium">{name}</figcaption>
       {likeness.drawing ? (
         <p>Drawing {name}: about 20 seconds.</p>

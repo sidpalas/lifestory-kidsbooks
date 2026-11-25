@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { lookOf, type PhotoReport } from "../src/contracts.ts";
 import { fitFigure } from "../src/figure.ts";
 import { judgePhoto } from "../src/photo-check.ts";
-import { hairWords, lookWords } from "../src/photo-prompts.ts";
+import { hairWords, lookWords, photoPrompts } from "../src/photo-prompts.ts";
 import { uploadRefusal } from "../src/photo-uploads.ts";
 
 const report = (overrides: Partial<PhotoReport> = {}): PhotoReport => ({
@@ -112,6 +112,16 @@ describe("the look a sheet draws", () => {
     expect(hairWords(lookOf(photo, { hairLength: "none" }))).toBe("no hair (bald)");
     expect(hairWords(lookOf(null, {}))).toBe("the hair as in the photo");
     expect(lookWords(lookOf(null, {}))).toBe("");
+  });
+});
+
+describe("v3 figure prompts", () => {
+  it("name the expressions image only when the person has one, so an older sheet's call isn't told of a missing image", () => {
+    const style = { styleReference: "style.png", styleWords: "pencil", promptVersion: "photo-hero-v3" } as const;
+    const figure = photoPrompts["photo-hero-v3"].figure;
+    expect(figure({ style, expressions: true })).toContain("the third shows the same character's face");
+    expect(figure({ style })).not.toContain("third");
+    expect(figure({ style })).not.toContain("expression");
   });
 });
 

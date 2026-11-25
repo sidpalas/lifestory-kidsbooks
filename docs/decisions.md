@@ -370,6 +370,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     didn't choose, or one far from every age the role accepts. (Revised 2026-11-25: Lucy, a toddler entered as a
     young child in a story without toddlers, got no warning and was drawn about six; Dream Adventure v3 accepts
     toddlers.)
+- **Expressions (Sid, 2026-11-25):** each drawing also draws the person's head six times from the sheet just drawn
+  (a big grin, a gentle smile, neutral, eyes closed, sad, surprised; about US$0.03), shown under the sheet and in the
+  operator's review, so the parent judges the likeness across faces, not one. Lucy's pages with her open grin looked
+  like her; sleeping, sad and back views fell back to "a blonde girl". Stories on prompt version `photo-hero-v3` also
+  send each page's figure call the expressions, asking for the placeholder's expression drawn as in them; v1 and v2
+  stories keep their pinned prompts, and a sheet drawn before has no expressions, so its pages get the v2 wording.
+  New stories and imports default to v3; Dream Adventure gets it with its next version.
 - **The look, confirmed (Sid, 2026-11-25):** the check also reads hair colour, length and texture, eye colour,
   skin tone, freckles and glasses, each null when the photo doesn't show it. Once a photo passes, the parent sees each
   attribute with a swatch, labelled "From the photo" or "You set this"; where their choice differs from the photo,
@@ -384,7 +391,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | Task | Spawned by | Steps |
   | --- | --- | --- |
   | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
-  | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note), then the cover once everyone has a sheet and none is drawing; keyed by book, person and drawing |
+  | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note) and their expressions from it, then the cover once everyone has a sheet and none is drawing; keyed by book, person and drawing |
   | `book.make` | the order (D57) | delete the book's photos unless the parent opted in to photo review, then spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
   | `page.figure` | `book.make`, a page change, the operator's redo | generate, the checks above, tint, store; keyed by book, page, slot and version |
   | `book.release` | the operator's approval (D57) | delete any photos kept for review; when print ordering arrives, sending the file to the printer becomes the step before it |
@@ -425,8 +432,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   objects are deleted by a one-off command in the same phase; Sid is the only user and gave that go with the plan.
   Order: the photo flow lands, then the wipe, then the migration.
 - **Cost (estimates from measured calls):** a sheet US$0.032, a figure US$0.036, a sheet edit US$0.023, a check
-  about US$0.002. Worst case with two notes per person, 23 pages, 3 page changes and 10% retries: about US$1.24 for a child
-  alone, US$1.55 with a grandparent on 4 pages.
+  about US$0.002, an expressions image about US$0.03 (estimated, not yet measured). Worst case with two notes per
+  person, 23 pages, 3 page changes and 10% retries: about US$1.33 for a child alone, US$1.73 with a grandparent on 4
+  pages (US$1.24 and US$1.55 before expressions).
 - **Why:** families want their own child, and composed parts didn't look good enough after long testing. A sheet
   in the middle removed page-to-page drift on all 15 test pages, where pages drawn straight from the photo drifted
   in hair colour, length and freckles, and no page needs the photo, so a page change or a redo never reads it.

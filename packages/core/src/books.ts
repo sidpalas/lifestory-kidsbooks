@@ -373,6 +373,7 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
       check: row?.check ? yield* Schema.decodeUnknownEffect(PhotoCheckResult)(row.check).pipe(Effect.orDie) : null,
       photoKey: row?.photoKey ?? null,
       sheetKey: row?.sheetKey ?? null,
+      expressionsKey: row?.expressionsKey ?? null,
       draws: row?.draws ?? 0,
       drawing: row?.drawing ?? false,
       notes: row?.notes ?? [],

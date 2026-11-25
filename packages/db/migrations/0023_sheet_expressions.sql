@@ -1,0 +1,1 @@
+ALTER TABLE "book_likeness" ADD COLUMN "expressions_key" text;
