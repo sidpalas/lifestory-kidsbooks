@@ -3,6 +3,7 @@
 import { type BookSummary, type CoverThumbnail, type StoryListing, unwrapResult } from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 
+import { layerSrc } from "~/components/book/BookPage";
 import { Button } from "~/components/ui/button";
 import { deleteBookFn, EditBookResult } from "~/server/books";
 
@@ -27,7 +28,8 @@ function Cover({ cover, testId }: { cover: CoverThumbnail; testId: string }) {
       {cover.layers.map(({ key, rect: [x0, y0, x1, y1] }, i) => (
         <img
           key={i}
-          src={`/api/files/${key}`}
+          // A card a few hundred pixels wide: every layer fits the smallest screen copy.
+          src={layerSrc(`/api/files/${key}`, 0)}
           alt=""
           loading="lazy"
           className="absolute"

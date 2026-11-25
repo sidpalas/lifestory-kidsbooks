@@ -17,6 +17,7 @@ import { Effect, Schema } from "effect";
 import { Database } from "./database.ts";
 import { makeServerRuntime } from "./runtime.ts";
 import { importStoryVersion } from "./stories.ts";
+import { spawnStoryScreenCopies } from "./tasks/screen-copies.ts";
 
 /** story.json: what a story directory says about the story itself; manifest.json holds the version's content. */
 const StoryFile = Schema.Struct({
@@ -88,6 +89,7 @@ export const importStoryDirectory = Effect.fn("stories.importDirectory")(functio
     readAsset,
     publishedAt,
   });
+  yield* spawnStoryScreenCopies(story.id, story.version).pipe(Effect.orDie);
   return { ...story, operatorOnly: stored.operatorOnly };
 });
 

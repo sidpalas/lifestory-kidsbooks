@@ -26,6 +26,7 @@ import { defineTask, Jobs, step } from "../jobs.ts";
 import { judgePhoto, moderationRefusals, PhotoCheck } from "../photo-check.ts";
 import { photoPrompts } from "../photo-prompts.ts";
 import { ObjectStorage } from "../storage.ts";
+import { spawnScreenCopies } from "./screen-copies.ts";
 
 /** Everything a book owns in storage (D31): photos, likeness (sheets, cover), and pages. Deleted with the book. */
 export const bookPrefix = (familyId: string, bookId: string) => `families/${familyId}/books/${bookId}/`;
@@ -243,6 +244,14 @@ const drawCover = Effect.fn("photoBooks.drawCover")(function* (
           ),
         ),
     ).pipe(Effect.as(null)),
+  );
+  yield* step(
+    ctx,
+    "cover screen copies",
+    spawnScreenCopies(
+      cover.map((figure) => figure.key),
+      `screen-copies:${book.id}:cover-${drawId}`,
+    ).pipe(Effect.orDie, Effect.as(null)),
   );
 });
 
@@ -634,6 +643,14 @@ export const drawPage = defineTask({
               and not exists (select 1 from book_page where book_id = ${bookId} and not ready)`);
           }),
         ).pipe(Effect.as(null)),
+      );
+      yield* step(
+        ctx,
+        "screen copies",
+        spawnScreenCopies(
+          drawn.map((figure) => figure.key),
+          `screen-copies:${bookId}:${pageId}:v${version}`,
+        ).pipe(Effect.orDie, Effect.as(null)),
       );
       return { pageId, version, figures: drawn.length };
     }),

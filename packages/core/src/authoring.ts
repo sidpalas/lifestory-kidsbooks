@@ -28,6 +28,7 @@ import { Database } from "./database.ts";
 import { DraftChanged, Forbidden, InvalidInput, NotFound, StoryNotPublishable } from "./errors.ts";
 import { printTrimIssues } from "./print-ready.ts";
 import { ObjectStorage } from "./storage.ts";
+import { spawnStoryScreenCopies } from "./tasks/screen-copies.ts";
 
 // ---- Who may author ------------------------------------------------------------
 
@@ -514,6 +515,8 @@ export const publishDraft = Effect.fn("authoring.publishDraft")(function* (
     if (keep.has(object.key)) continue;
     yield* storage.delete(object.key).pipe(Effect.ignore);
   }
+  // Ready-made screen copies for the new version's previews; serving makes any this misses.
+  yield* spawnStoryScreenCopies(storyId, draft.version).pipe(Effect.ignore);
   return { version: draft.version };
 });
 

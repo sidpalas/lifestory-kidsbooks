@@ -9,10 +9,24 @@ import type {
   ResolvedTextBlock,
   StoryManifest,
 } from "@lifestory/core/contracts";
+import { SCREEN_WIDTHS } from "@lifestory/core/contracts";
 import type * as React from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
 
 const inch = (n: number) => `${n}in`;
+
+/** The scale a ScaledPage shows its page at; none (print) loads the original art. */
+const ScreenScale = createContext<number | null>(null);
+
+/**
+ * The URL of a layer's image at the size it shows: on screen, the smallest screen copy at least as wide as the layer
+ * in device pixels (the largest, past that); in print, the original.
+ */
+export const layerSrc = (url: string, screenPx: number | null) => {
+  if (screenPx === null || !/\.(png|jpe?g|webp)$/i.test(url)) return url;
+  const width = SCREEN_WIDTHS.find((candidate) => candidate >= screenPx) ?? SCREEN_WIDTHS.at(-1)!;
+  return `${url}?w=${width}`;
+};
 
 /** The page's full size: the trim plus bleed on every side, which is the printed sheet before cutting. */
 export const pageSizeIn = (trim: StoryManifest["trim"]) => ({
@@ -71,6 +85,11 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
   const { widthIn, heightIn } = pageSizeIn(trim);
   const slotLabels = new Map(manifest.characterSlots.map((slot) => [slot.slotId, slot.label]));
   const { overflowing, sheet } = useOverflow(page.frames.length, onOverflow);
+  const scale = useContext(ScreenScale);
+  // The illustration area's width in pixels of a 2x screen at this page's scale: fixed, so the server-rendered story
+  // page asks for what the browser will, and a 3x phone, whose pages show smaller, still looks sharp.
+  const artPx =
+    scale === null ? null : (page.art === "left-half" ? trim.bleedIn + trim.widthIn / 2 : widthIn) * 96 * scale * 2;
   // `text` is the page's paragraphs in reading order (pageText); each frame takes the next ones.
   const frames = page.frames.map((frame, f) => {
     const first = page.frames.slice(0, f).reduce((n, earlier) => n + earlier.paragraphs.length, 0);
@@ -104,7 +123,7 @@ export function BookPage({ manifest, page, text, illustration, cast, guides = fa
         {illustration.map(({ url, rect: [x0, y0, x1, y1] }, i) => (
           <img
             key={i}
-            src={url}
+            src={layerSrc(url, artPx === null ? null : (artPx * (x1 - x0)) / 1000)}
             alt=""
             style={{
               position: "absolute",
@@ -327,7 +346,7 @@ export function ScaledPage({
           width: inch(widthIn),
         }}
       >
-        {children}
+        <ScreenScale value={scale}>{children}</ScreenScale>
       </div>
     </div>
   );

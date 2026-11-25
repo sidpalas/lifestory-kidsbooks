@@ -34,4 +34,10 @@ strip moves neither the window nor the strip.
 
 - `ScaledPage` sizes its box with an svg of the page's aspect ratio (no minimum width, so grid cells shrink it) and
   measures that box with a ResizeObserver for the scale; don't give it a fixed width again.
+- Previews load screen copies, not the 300 DPI originals: inside a `ScaledPage`, `BookPage` asks
+  `/api/files/<key>?w=<width>` for the smallest of `SCREEN_WIDTHS` (512, 1536) covering each PNG, JPEG, or WebP layer
+  on a 2x screen. The worker's `images.screenCopies` task stores them as `<key>.w<width>.webp` beside the original
+  after a story is imported or published and after a book's figures are drawn; a copy still missing is made on its
+  first request. Print (no `ScaledPage`) loads the originals. Story files are cached for a year (versions never
+  change), family files for an hour, each with an ETag.
 - `verify proof` undoes the scaling to compare at full size; it knows `ScaledPage`'s structure.
