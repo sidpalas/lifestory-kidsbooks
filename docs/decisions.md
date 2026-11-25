@@ -315,7 +315,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     1536×1024 or 1024×1536. It is the newest image model OpenAI lists as eligible for zero data retention;
     2.6 is not. The model ID is configuration (`OPENAI_PHOTO_MODEL`), since `gpt-image-2` shuts down on 2027-02-10.
   - **Character sheet**, once per role per book, from the photo and the story's style reference: the person at the
-    role's age, front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
+    age the parent chose for them (one the role accepts), front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
     owns it, because it carries that story's style.
   - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
     from the sheets (`likeness.revise`). **Approved by Sid (2026-11-24)** over his first choice of a
@@ -362,8 +362,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     photos; `gpt-5.4-nano` missed a helmet, a beanie and the child on his shoulders.
   - Rules in code: **refuse** with no visible main face, a second prominent face (offer a crop), a face under about
     150 px across, or a blurred face. Background faces never refuse (counting every face would have refused 7 of 10
-    good photos). **Warn** on a hat, helmet, goggles or sunglasses, poor light, an age far from the role's, or hair
-    two or more steps from the chips (lighting moves hair colour a step).
+    good photos). **Warn** on a hat, helmet, goggles or sunglasses, poor light, hair two or more steps from the
+    chips (lighting moves hair colour a step), and an age that doesn't match: one the role accepts but the parent
+    didn't choose, or one far from every age the role accepts. (Revised 2026-11-25: Lucy, a toddler entered as a
+    young child in a story without toddlers, got no warning and was drawn about six; Dream Adventure v3 accepts
+    toddlers.)
 - **Durable workflows (Absurd, D4; every step idempotent):**
 
   <!-- oxfmt-ignore -->

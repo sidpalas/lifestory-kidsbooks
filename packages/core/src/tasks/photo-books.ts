@@ -7,7 +7,7 @@ import type { TaskContext } from "absurd-sdk";
 import { and, eq, sql } from "drizzle-orm";
 import { Config, Effect, Schema } from "effect";
 
-import { coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
+import { type Age, coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
 import { loadBook } from "../books.ts";
 import { type Hair, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
@@ -280,8 +280,18 @@ export const checkPhoto = defineTask({
           if (!row) return "stale" as const;
           const book = yield* loadBook(bookId).pipe(Effect.orDie);
           const slot = book.manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
+          const [person] = yield* Database.query((db) =>
+            db
+              .select({ age: schema.bookCast.age })
+              .from(schema.bookCast)
+              .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
+          );
           const result: PhotoCheckResult = report
-            ? judgePhoto(report, { ages: slot?.ages ?? [] }, row.hair as Hair | null)
+            ? judgePhoto(
+                report,
+                { ages: slot?.ages ?? [], ...(person ? { chosen: person.age as Age } : {}) },
+                row.hair as Hair | null,
+              )
             : { status: "refused", refusals: refusedFirst, warnings: [], report: null };
           if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey!).pipe(Effect.orDie);
           yield* Database.query((db) =>

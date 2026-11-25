@@ -71,6 +71,20 @@ describe("judgePhoto", () => {
       warnings: ["age"],
     });
   });
+
+  it("warns when the photo looks like another age the role accepts than the one chosen (a toddler chosen as six)", () => {
+    const wide = { ages: ["toddler", "young-child", "older-child"] as const };
+    const toddler = judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "young-child" }, brown);
+    expect(codes(toddler).warnings).toEqual(["age"]);
+    expect(toddler.warnings[0]!.message).toContain("looks like a toddler (1–3), but you chose young child (3–7)");
+    expect(
+      codes(judgePhoto(report({ apparentAge: "toddler" }), { ...wide, chosen: "toddler" }, brown)).warnings,
+    ).toEqual([]);
+    // One step off but outside the role's ages: no nudge to an age the role can't take.
+    expect(
+      codes(judgePhoto(report({ apparentAge: "toddler" }), { ...child, chosen: "young-child" }, brown)).warnings,
+    ).toEqual([]);
+  });
 });
 
 /** An RGBA canvas with opaque rectangles of a colour, as raw pixels or PNG. */

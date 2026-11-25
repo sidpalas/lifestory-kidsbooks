@@ -63,12 +63,13 @@ const ageIndex = (age: Age) => ageOptions.findIndex((option) => option.id === ag
 
 /**
  * The rules (D56): refuse with no visible main face, a second prominent face, a face under about 150 px across, or a
- * blurred face; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, an age far
- * from the role's, or hair two or more steps from the chips.
+ * blurred face; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, hair two or
+ * more steps from the chips, and an age that doesn't match: one the role accepts but the parent didn't choose (the
+ * sheet draws the chosen age, so a toddler chosen as a young child comes out about six), or one far from the role's.
  */
 export const judgePhoto = (
   report: PhotoReport,
-  role: { readonly ages: ReadonlyArray<Age> },
+  role: { readonly ages: ReadonlyArray<Age>; readonly chosen?: Age },
   hair: Hair | null,
 ): PhotoCheckResult => {
   const refusals = [...moderationRefusals(report.moderation)];
@@ -95,11 +96,21 @@ export const judgePhoto = (
       warnings.push(issue("lighting", "The light is poor, so colours may come out wrong."));
     const ages = role.ages.map(ageIndex);
     const distance = Math.min(...ages.map((age) => Math.abs(age - ageIndex(report.apparentAge))));
-    if (distance >= photoRules.ageWarnBuckets)
+    const looks = ageOptions[ageIndex(report.apparentAge)]!;
+    if (role.chosen && role.chosen !== report.apparentAge && role.ages.includes(report.apparentAge)) {
+      const chosen = ageOptions[ageIndex(role.chosen)]!;
       warnings.push(
         issue(
           "age",
-          "The person looks far from this role's age. That's fine: the drawing shows them at the role's age.",
+          `This photo looks like a ${looks.label.toLowerCase()} (${looks.years}), but you chose ` +
+            `${chosen.label.toLowerCase()} (${chosen.years}). We draw them at the age you choose, so change it if that's wrong.`,
+        ),
+      );
+    } else if (distance >= photoRules.ageWarnBuckets)
+      warnings.push(
+        issue(
+          "age",
+          "The person looks far from this role's age. That's fine: the drawing shows them at the age you chose.",
         ),
       );
     if (hair && report.hairColour && hairSteps(hair.colour, report.hairColour) >= photoRules.hairWarnSteps)
