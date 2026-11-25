@@ -39,6 +39,20 @@ export const Trim = Schema.Struct({
 });
 export type Trim = typeof Trim.Type;
 
+/**
+ * The trim sizes a story may be published at (Sid, 2026-11-25): Lulu's three children's-book formats. Checked on
+ * publishing and importing (`printTrimIssues`, D35), not when decoding, so stored versions at other sizes stay readable.
+ */
+export const PRINT_SIZES = [
+  { name: "Square", widthIn: 8.5, heightIn: 8.5 },
+  { name: "US Letter", widthIn: 8.5, heightIn: 11 },
+  { name: "US Letter Landscape", widthIn: 11, heightIn: 8.5 },
+] as const;
+
+/** The print size a trim is, if it is one. */
+export const printSize = (trim: { readonly widthIn: number; readonly heightIn: number }) =>
+  PRINT_SIZES.find((size) => size.widthIn === trim.widthIn && size.heightIn === trim.heightIn);
+
 export const FontFile = Schema.Struct({
   family: Schema.String.check(Schema.isMinLength(1)),
   asset: FontAsset,

@@ -28,6 +28,7 @@ import {
   type StoryManifest,
 } from "./book-format/index.ts";
 import { generationSize, illustrationAspect } from "./figure.ts";
+import { printTrimIssues } from "./print-ready.ts";
 
 const PixelBox = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
 
@@ -111,6 +112,9 @@ export const convertExport = async (options: {
       frames: StoryManifest["pages"][number]["frames"];
     }>;
   };
+  // Importing refuses the same (D35); failing here saves building the directory first.
+  const trimProblems = printTrimIssues(layout.trim);
+  if (trimProblems.length > 0) throw new Error(`text-layout.json's trim won't print:\n${trimProblems.join("\n")}`);
   const [W, H] = exported.canvas;
   const notes: Array<string> = [];
   // Pixels to thousandths, rounding outward so the rect covers every pixel; and back, for cropping to the rect.

@@ -1238,6 +1238,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   story version must have `safeMarginIn` ≥ 0.5 and Lulu's 0.125 in bleed (`printTrimIssues`, checked by
   `importStoryVersion` like static fonts, so stored versions stay readable). Moon Picnic v5 moves from 0.375 to
   0.5 in; on its proof the closest word sits 0.519 in inside the trim. The Paper Boat already used 0.5 in.
+- **Sizes (Sid, 2026-11-25):** a new story version must also be one of `PRINT_SIZES`, Lulu's three children's-book
+  formats: Square 8.5 × 8.5 in, US Letter 8.5 × 11 in, and US Letter Landscape 11 × 8.5 in (`printTrimIssues`, on
+  publishing, importing, and in `story-from-export`; the editor offers only these). Dream Adventure v3 is 10 × 8 in,
+  which Lulu doesn't print, so it needs a new version at a listed size before it can be ordered.
 - **Reopen if:** a print provider needs PDF/X or CMYK; Lulu rejects or normalizes a proof; flattened art at 300 ppi
   looks soft in print (then a higher resolution, up to Lulu's 600); or files of real art get too big to download.
 
@@ -1271,8 +1275,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   figure, which the shape used to). Files upload to `stories/<storyId>/v<n>/` (D31's owner prefix), named with a
   hash of their bytes, so a published version's paths never point at changed bytes and the recolour cache (keyed by
   path, D24) stays correct. Only the author reads an unpublished version's files (`canReadStoryAsset`).
-- **New stories start with Lulu's trim** (0.125 in bleed, 0.5 in safe margin), and publishing refuses a version
-  without them (`printTrimIssues`, D35), as importing does.
+- **New stories start with Lulu's trim** (Square 8.5 × 8.5 in, 0.125 in bleed, 0.5 in safe margin), and publishing
+  refuses a version without a listed size, that bleed, and that margin (`printTrimIssues`, D35), as importing does.
+  The editor's size is a choice of `PRINT_SIZES`.
 - **Uploads:** a server route, `POST /api/authoring/stories/<storyId>/assets` (multipart), checks the author, the
   folder (`fonts`, `pages/<pageId>[/<slotId>]`), the type by its bytes, size (40 MB art, 5 MB SVG and fonts), and
   that a font is static (D24). It needs an `x-lifestory-upload` header, so a cross-site form can't post to it. This

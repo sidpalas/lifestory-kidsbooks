@@ -23,6 +23,8 @@ import {
   type PDFObject,
 } from "pdf-lib";
 
+import { PRINT_SIZES, printSize } from "./book-format/manifest.ts";
+
 /** Lulu's interior file requirements, as numbers the check uses. */
 export const LULU_INTERIOR = {
   bleedIn: 0.125,
@@ -39,13 +41,21 @@ export interface TrimSize {
 }
 
 /**
- * What keeps a story's trim from printing at Lulu: a bleed other than Lulu's, or a safe margin narrower than Lulu's.
- * Checked when a story version is imported, so versions stored before the rule stay readable.
+ * What keeps a story's trim from printing at Lulu: a size outside PRINT_SIZES, a bleed other than Lulu's, or a safe
+ * margin narrower than Lulu's. Checked when a story version is published or imported, so versions stored before a
+ * rule stay readable.
  */
 export const printTrimIssues = (trim: {
+  readonly widthIn: number;
+  readonly heightIn: number;
   readonly bleedIn: number;
   readonly safeMarginIn: number;
 }): ReadonlyArray<string> => [
+  ...(printSize(trim)
+    ? []
+    : [
+        `trim: ${trim.widthIn} × ${trim.heightIn} in isn't a size we print; use ${PRINT_SIZES.map((size) => `${size.name} (${size.widthIn} × ${size.heightIn} in)`).join(", ")}`,
+      ]),
   ...(trim.bleedIn === LULU_INTERIOR.bleedIn
     ? []
     : [`trim.bleedIn: ${trim.bleedIn} in; Lulu prints a ${LULU_INTERIOR.bleedIn} in bleed`]),

@@ -16,6 +16,8 @@ import {
   type IllustrationLayer,
   type Page,
   type PhotoFigure,
+  PRINT_SIZES,
+  printSize,
   PronounSet,
   type Rect,
   resolvePageText,
@@ -490,18 +492,30 @@ function StoryTab({
       <section className="flex flex-col gap-2" aria-label="Trim">
         <h3 className="font-semibold">Trim</h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <NumberField
-            label="Width (in)"
-            step={0.125}
-            value={draft.trim.widthIn}
-            onChange={(n) => setTrim("widthIn", n)}
-          />
-          <NumberField
-            label="Height (in)"
-            step={0.125}
-            value={draft.trim.heightIn}
-            onChange={(n) => setTrim("heightIn", n)}
-          />
+          <label className="col-span-2 flex flex-col gap-1 text-sm font-medium">
+            Size
+            <NativeSelect
+              aria-label="Size"
+              value={`${draft.trim.widthIn}x${draft.trim.heightIn}`}
+              onChange={(event) => {
+                const size = PRINT_SIZES.find((s) => `${s.widthIn}x${s.heightIn}` === event.target.value);
+                if (size)
+                  change((d) => ({ ...d, trim: { ...d.trim, widthIn: size.widthIn, heightIn: size.heightIn } }));
+              }}
+            >
+              {/* A draft from before the size rule keeps its size until the author picks one we print. */}
+              {printSize(draft.trim) ? null : (
+                <option value={`${draft.trim.widthIn}x${draft.trim.heightIn}`}>
+                  {draft.trim.widthIn} × {draft.trim.heightIn} in (not a size we print)
+                </option>
+              )}
+              {PRINT_SIZES.map((size) => (
+                <option key={size.name} value={`${size.widthIn}x${size.heightIn}`}>
+                  {size.name}, {size.widthIn} × {size.heightIn} in
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
           <NumberField
             label="Bleed (in)"
             step={0.0625}

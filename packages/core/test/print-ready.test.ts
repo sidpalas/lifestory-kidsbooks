@@ -141,13 +141,29 @@ describe("checkPrintReady", () => {
 });
 
 describe("printTrimIssues", () => {
+  const square = { widthIn: 8.5, heightIn: 8.5 };
+
   it("needs Lulu's 0.125 in bleed and text at least 0.5 in inside the trim", () => {
-    expect(printTrimIssues({ bleedIn: 0.125, safeMarginIn: 0.5 })).toEqual([]);
-    expect(printTrimIssues({ bleedIn: 0.125, safeMarginIn: 0.375 })).toEqual([
+    expect(printTrimIssues({ ...square, bleedIn: 0.125, safeMarginIn: 0.5 })).toEqual([]);
+    expect(printTrimIssues({ ...square, bleedIn: 0.125, safeMarginIn: 0.375 })).toEqual([
       "trim.safeMarginIn: 0.375 in; Lulu needs text at least 0.5 in inside the trim",
     ]);
-    expect(printTrimIssues({ bleedIn: 0.25, safeMarginIn: 0.75 })).toEqual([
+    expect(printTrimIssues({ ...square, bleedIn: 0.25, safeMarginIn: 0.75 })).toEqual([
       "trim.bleedIn: 0.25 in; Lulu prints a 0.125 in bleed",
     ]);
+  });
+
+  it("takes only the print sizes, in either orientation as listed", () => {
+    const lulu = { bleedIn: 0.125, safeMarginIn: 0.5 };
+    expect(printTrimIssues({ ...lulu, widthIn: 8.5, heightIn: 11 })).toEqual([]);
+    expect(printTrimIssues({ ...lulu, widthIn: 11, heightIn: 8.5 })).toEqual([]);
+    // Dream Adventure v3's 10 × 8 in landscape isn't a Lulu size; nor is a square a hair off 8.5 in.
+    for (const size of [
+      { widthIn: 10, heightIn: 8 },
+      { widthIn: 8.625, heightIn: 8.5 },
+    ])
+      expect(printTrimIssues({ ...lulu, ...size })).toEqual([
+        `trim: ${size.widthIn} × ${size.heightIn} in isn't a size we print; use Square (8.5 × 8.5 in), US Letter (8.5 × 11 in), US Letter Landscape (11 × 8.5 in)`,
+      ]);
   });
 });

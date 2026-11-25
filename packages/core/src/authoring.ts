@@ -416,13 +416,17 @@ const publishIssues = Effect.fn("authoring.publishIssues")(function* (
   const decoded = yield* Effect.result(decodeStoryManifest(draft));
   if (decoded._tag === "Failure") {
     const { issues } = SchemaIssue.makeFormatterStandardSchemaV1()(decoded.failure.issue);
-    return issues.map((issue) =>
-      issueText(
-        draft,
-        (issue.path ?? []).map((segment) => (typeof segment === "object" ? segment.key : segment)),
-        issue.message,
+    return [
+      ...issues.map((issue) =>
+        issueText(
+          draft,
+          (issue.path ?? []).map((segment) => (typeof segment === "object" ? segment.key : segment)),
+          issue.message,
+        ),
       ),
-    );
+      // The trim decides the whole layout, so the author hears about it before the rest is done.
+      ...printTrimIssues(draft.trim),
+    ];
   }
   const manifest = decoded.success;
   const storage = yield* ObjectStorage;
