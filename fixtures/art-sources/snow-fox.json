@@ -1,0 +1,20 @@
+{
+  "story": {
+    "id": "story_snow_fox",
+    "slug": "the-fox-and-the-red-hat",
+    "title": "The Fox and the Red Hat",
+    "summary": "A five-page test story in flat 1960s screen-print style: a child loses a red hat in the wind and follows a fox's paw prints through the snow.",
+    "version": 1,
+    "publishedAt": "2026-11-25T12:00:00Z"
+  },
+  "slot": {
+    "slotId": "hero",
+    "label": "The child",
+    "description": "A child about 3 to 10 years old, the main character on every page",
+    "ages": ["toddler", "young-child", "older-child"],
+    "example": { "name": "Ada", "pronouns": "she/her" },
+    "outfit": "a mustard-yellow puffy winter coat, teal trousers, red mittens and red boots"
+  },
+  "styleWords": "flat mid-century screen-print: bold flat colour in teal, coral red, mustard and navy, thick navy outlines, halftone-dot shading, slightly misregistered colour",
+  "styleReferencePage": "p01"
+}
