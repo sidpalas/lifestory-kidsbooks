@@ -19,12 +19,13 @@ const inch = (n: number) => `${n}in`;
 const ScreenScale = createContext<number | null>(null);
 
 /**
- * The URL of a layer's image at the size it shows: on screen, the smallest screen copy at least as wide as the layer
- * in device pixels (the largest, past that); in print, the original.
+ * The URL of a layer's image at the size it shows: on screen, the smallest screen copy at least 90% as wide as the
+ * layer in device pixels (the largest, past that); in print, the original. Stretching a copy up to 10% on a 2x screen
+ * doesn't show, and it keeps a landscape story page (1080 px plates at 11.25 in) on 1024 copies instead of 1536.
  */
 export const layerSrc = (url: string, screenPx: number | null) => {
   if (screenPx === null || !/\.(png|jpe?g|webp)$/i.test(url)) return url;
-  const width = SCREEN_WIDTHS.find((candidate) => candidate >= screenPx) ?? SCREEN_WIDTHS.at(-1)!;
+  const width = SCREEN_WIDTHS.find((candidate) => candidate >= screenPx * 0.9) ?? SCREEN_WIDTHS.at(-1)!;
   return `${url}?w=${width}`;
 };
 
