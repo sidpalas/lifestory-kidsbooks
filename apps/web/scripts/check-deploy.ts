@@ -3,7 +3,8 @@
 // /api/health is ok with this commit's migration count, the sign-in page and every stylesheet, font, and script
 // it links load (a missing stylesheet once shipped unstyled pages, commit fbd8a10), the landing
 // page at / and its social preview image load, and the /__dev routes are 404.
-// Exits 1 listing every failure. If a newer commit is already live, this one was superseded and it exits 0.
+// Exits 1 listing every failure. If a newer commit is already live, or this one never went live and a newer commit
+// is on main, this one was superseded and it exits 0.
 //
 //   node apps/web/scripts/check-deploy.ts --url https://lifestory.devopsdirective.com --sha <commit> [--wait-minutes 20]
 import { execFileSync } from "node:child_process";
@@ -75,7 +76,18 @@ for (;;) {
     process.exit(0);
   }
   const live = typeof health !== "string" && health.version === sha && health.workers?.some((w) => w.version === sha);
-  if (live || Date.now() >= deadline) break;
+  if (live) break;
+  if (Date.now() >= deadline) {
+    // A push to main cancels the previous commit's CI run, and Railway's "Wait for CI" then reports that commit's
+    // deploy as failed. It never goes live, and the newer commit, which contains it, gets its own deploy and check.
+    execFileSync("git", ["fetch", "--quiet", "origin", "main"], { stdio: "ignore" });
+    const head = execFileSync("git", ["rev-parse", "FETCH_HEAD"], { encoding: "utf8" }).trim();
+    if (head !== sha && isAncestor(sha, head)) {
+      console.log(`Superseded: ${short(head)}, a newer commit, is on main and deploys instead of ${short(sha)}.`);
+      process.exit(0);
+    }
+    break;
+  }
   console.log(`  waiting: ${web} ${workers}`);
   await new Promise((resolve) => setTimeout(resolve, 15_000));
 }

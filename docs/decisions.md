@@ -1529,7 +1529,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   shows on the commit and in Actions but emails nobody: the run is `railway-app[bot]`'s, and GitHub emails a failed
   run only to its actor. Sid chose that over an alerting issue (2026-11-19: "extra process"). A failed
   Railway deploy is checked without waiting, so it fails too. If a newer commit is already live, the run passes as
-  superseded.
+  superseded, and so does a commit that never went live once a newer commit containing it is on `main`: a push
+  cancels the previous commit's CI run, so Railway's "Wait for CI" reports that commit's deploy as failed (seen
+  2026-11-25 on e68df5d, 7a237c7 and c2376dd).
 - **Version and worker heartbeat:** both services read their commit from `APP_VERSION`, else Railway's
   `RAILWAY_GIT_COMMIT_SHA`. Each worker process upserts a `worker_heartbeat` row (migration 0009) every 30 s with
   its commit; `/api/health` adds `version` and `workers` (those that beat in the last 90 s: commit, start time,
