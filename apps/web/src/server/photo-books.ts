@@ -8,7 +8,6 @@ import {
   listReviewQueue,
   orderBook,
   recordConsent,
-  redoPage,
   requestPageChange,
   reviewBook,
   sendForReview,
@@ -17,6 +16,7 @@ import {
 } from "@lifestory/core";
 import {
   BookFlow,
+  CastMember,
   Forbidden,
   InvalidInput,
   JobError,
@@ -25,6 +25,7 @@ import {
   NotFound,
   ResultSchema,
   StoryManifest,
+  TextStyleName,
 } from "@lifestory/core/contracts";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -84,8 +85,8 @@ export const choosePageVersionFn = createServerFn({ method: "POST" })
   .handler(({ data }) => respond((user) => choosePageVersion(user.id, data)));
 
 export const sendForReviewFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(BookId))
-  .handler(({ data }) => respond((user) => sendForReview(user.id, data.bookId)));
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, proofId: Schema.String })))
+  .handler(({ data }) => respond((user) => sendForReview(user.id, data)));
 
 // ---- The operator (D57) -------------------------------------------------------------
 
@@ -118,6 +119,23 @@ export const ReviewBookResult = ResultSchema(
     familyName: Schema.String,
     proofKey: Schema.NullOr(Schema.String),
     proofCurrent: Schema.Boolean,
+    /** Who plays each role, as the shown pages name them. */
+    cast: Schema.Record(Schema.String, CastMember),
+    /** Each page as the approved proof prints it: drawing and text, with the story's wording of an edited paragraph. */
+    pages: Schema.Array(
+      Schema.Struct({
+        pageId: Schema.String,
+        layers: Schema.Array(
+          Schema.Struct({
+            key: Schema.String,
+            rect: Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]),
+          }),
+        ),
+        text: Schema.Array(
+          Schema.Struct({ style: TextStyleName, text: Schema.String, original: Schema.NullOr(Schema.String) }),
+        ),
+      }),
+    ),
   }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
@@ -128,14 +146,15 @@ export const reviewBookFn = createServerFn({ method: "GET" })
     runEffect(ReviewBookResult, currentUser.pipe(Effect.flatMap((user) => reviewBook(user, data.bookId)))),
   );
 
-export const redoPageFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, pageId: Schema.String, note: Note })))
-  .handler(({ data }) => respond((user) => redoPage(user, data)));
-
 export const decideBookFn = createServerFn({ method: "POST" })
   .validator(
     Schema.toStandardSchemaV1(
-      Schema.Struct({ bookId: Schema.String, decision: Schema.Literals(["approve", "refuse"]), note: Note }),
+      Schema.Struct({
+        bookId: Schema.String,
+        decision: Schema.Literals(["approve", "refuse"]),
+        note: Note,
+        pageNotes: Schema.optionalKey(Schema.Array(Schema.Struct({ pageId: Schema.String, note: Note }))),
+      }),
     ),
   )
   .handler(({ data }) => respond((user) => decideBook(user, data)));

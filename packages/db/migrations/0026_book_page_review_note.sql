@@ -1,0 +1,1 @@
+ALTER TABLE "book_page" ADD COLUMN "review_note" text;

@@ -1,15 +1,14 @@
 // The operator's review of one family book (D57): the approved sheets, every page as chosen with the parent's notes,
-// the approved proof, and the photos only when the parent opted in. Redo a page with its own note, refuse with a note
-// emailed to the family, or approve for print. Everything is read through reviewBook, which checks the operator role.
+// the proof the parent approved, and the photos only when the parent opted in. The operator only decides: approve
+// for print, or refuse with a reason on the book, on pages, or both, emailed to the family (Sid, 2026-11-25); they
+// never change the book. Everything is read through reviewBook, which checks the operator role.
 // On a phone the summary comes first, then the characters and pages, then the decision; from `lg` the summary and the
 // decision sit in a column beside the pages, the decision kept in view while scrolling.
 import {
-  type BookFlow,
   type BookStatus,
   Forbidden,
   NotAuthenticated,
   NotFound,
-  type StoryManifest,
   storyAssetKey,
   unwrapResult,
 } from "@lifestory/core/contracts";
@@ -17,10 +16,9 @@ import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/
 import { useState } from "react";
 
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
-import { flowBusy, usePollWhileBusy } from "~/components/book/photo-book";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
-import { decideBookFn, FlowStepResult, redoPageFn, ReviewBookResult, reviewBookFn } from "~/server/photo-books";
+import { decideBookFn, FlowStepResult, ReviewBookResult, reviewBookFn } from "~/server/photo-books";
 
 export const Route = createFileRoute("/review/$bookId")({
   ssr: false,
@@ -39,28 +37,6 @@ export const Route = createFileRoute("/review/$bookId")({
 const fileUrl = (key: string) => `/api/files/${key}`;
 /** A figure clipped by more than this share is flagged (figureRules.flagClippedShare). */
 const FLAG_CLIPPED = 0.05;
-
-/** Runs one review action, then reloads; returns whether it worked. */
-function useAction() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const run = async (call: () => Promise<unknown>) => {
-    setError(null);
-    setPending(true);
-    try {
-      unwrapResult(FlowStepResult)((await call()) as never);
-      await router.invalidate();
-      return true;
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-      return false;
-    } finally {
-      setPending(false);
-    }
-  };
-  return { error, pending, run };
-}
 
 function Alert({ text }: { text: string | null }) {
   return text ? (
@@ -88,19 +64,54 @@ function Shown({ src, alt, testId, className }: { src: string; alt: string; test
 function Review() {
   const review = Route.useLoaderData();
   const { flow, manifest } = review;
-  usePollWhileBusy(flowBusy(flow));
+  const router = useRouter();
   const bookId = Route.useParams().bookId;
   const assetUrl = (asset: string) => `/api/files/${storyAssetKey(review.storyId, review.version, asset)}`;
   const inReview = flow.status === "in_review";
+  // The operator's reason per page, for a refusal; sent with the decision.
+  const [pageNotes, setPageNotes] = useState<Record<string, string>>({});
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const drawn = manifest.pages.flatMap((page, index) => {
     const state = flow.pages.find((candidate) => candidate.pageId === page.pageId);
     return state ? [{ page, index, state }] : [];
   });
-  const redrawing = drawn.filter(({ state }) => !state.ready);
   const changed = drawn.filter(({ state }) => state.changeNote);
   const clipped = drawn.filter(({ state }) =>
     state.versions.some((v) => v.version === state.chosenVersion && v.clippedShare > FLAG_CLIPPED),
   );
+  const rewrittenPages = review.pages.flatMap((page, index) =>
+    page.text.some((block) => block.original !== null) ? [index + 1] : [],
+  );
+  const notedPages = manifest.pages.flatMap((page, index) =>
+    pageNotes[page.pageId]?.trim()
+      ? [{ pageId: page.pageId, number: index + 1, note: pageNotes[page.pageId]!.trim() }]
+      : [],
+  );
+  const decide = async (decision: "approve" | "refuse") => {
+    setError(null);
+    setPending(true);
+    try {
+      unwrapResult(FlowStepResult)(
+        await decideBookFn({
+          data: {
+            bookId,
+            decision,
+            note: decision === "refuse" ? note : "",
+            ...(decision === "refuse"
+              ? { pageNotes: notedPages.map((page) => ({ pageId: page.pageId, note: page.note })) }
+              : {}),
+          },
+        }),
+      );
+      await router.invalidate();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 p-4 sm:p-8">
@@ -127,31 +138,31 @@ function Review() {
           <ul className="flex flex-col gap-1">
             <li>
               {drawn.length} drawn {drawn.length === 1 ? "page" : "pages"}
-              {changed.length > 0 && ` · notes on page ${changed.map(({ index }) => index + 1).join(", ")}`}
+              {changed.length > 0 && ` · the parent changed page ${changed.map(({ index }) => index + 1).join(", ")}`}
             </li>
+            {rewrittenPages.length > 0 && (
+              <li className="text-amber-700" data-testid="review-rewritten">
+                The parent rewrote the text on page {rewrittenPages.join(", ")}: check it's fit to print.
+              </li>
+            )}
             {clipped.length > 0 && (
               <li className="text-amber-700">
                 Figures clipped on page {clipped.map(({ index }) => index + 1).join(", ")}: check them.
               </li>
             )}
-            {redrawing.length > 0 && (
-              <li data-testid="review-redrawing">
-                Redrawing page {redrawing.map(({ index }) => index + 1).join(", ")}: about 20 seconds.
-              </li>
-            )}
           </ul>
           <div className="flex flex-col gap-1" data-testid="review-proof">
-            <p className="font-medium">The parent's approved proof</p>
+            <p className="font-medium">The proof the parent approved</p>
             {review.proofKey ? (
               <>
                 <a href={fileUrl(review.proofKey)} className="w-fit underline">
                   Download the approved proof
                 </a>
                 {review.proofCurrent ? (
-                  <p className="text-muted-foreground">It shows the pages as they are now.</p>
+                  <p className="text-muted-foreground">It shows the book as it was sent: this is the file we print.</p>
                 ) : (
                   <p className="text-amber-700" data-testid="review-proof-outdated">
-                    Out of date: pages were redrawn after the parent approved it, so the PDF doesn't show them.
+                    Out of date: the book changed after the parent approved it.
                   </p>
                 )}
               </>
@@ -220,181 +231,150 @@ function Review() {
                 Pages
               </h2>
               <p className="text-sm text-muted-foreground">
-                The drawings as the parent chose them; the text is in the proof. Redo a page with a note to draw it
-                again: the new drawing replaces it.
+                Each page as the approved proof prints it, with the family's names and text.
+                {inReview && " If a page is why you refuse the book, say what's wrong under it: the family sees it."}
               </p>
             </div>
-            <ul aria-label="Pages" className="grid min-w-0 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-3">
-              {manifest.pages.map((page, index) => (
-                <ReviewPage
-                  key={page.pageId}
-                  flow={flow}
-                  manifest={manifest}
-                  bookId={bookId}
-                  index={index}
-                  inReview={inReview}
-                />
-              ))}
+            <ul aria-label="Pages" className="grid min-w-0 gap-4 md:grid-cols-2">
+              {manifest.pages.map((page, index) => {
+                const state = flow.pages.find((candidate) => candidate.pageId === page.pageId);
+                const version = state?.versions.find((v) => v.version === state.chosenVersion);
+                const shown = review.pages.find((candidate) => candidate.pageId === page.pageId)!;
+                const rewritten = shown.text.filter((block) => block.original !== null);
+                return (
+                  <li
+                    key={page.pageId}
+                    className="flex min-w-0 flex-col gap-1.5 rounded-md border p-2 text-xs"
+                    data-testid={`review-page-${page.pageId}`}
+                  >
+                    {/* The page as it prints: the approved proof's drawing and the family's final text. */}
+                    <span className="w-fit max-w-full rounded-sm ring-1 ring-black/10">
+                      <ScaledPage trim={manifest.trim} scale={0.6}>
+                        <BookPage
+                          manifest={manifest}
+                          page={page}
+                          text={shown.text.map((block) => ({ style: block.style, text: block.text }))}
+                          illustration={shown.layers.map((layer) => ({ url: fileUrl(layer.key), rect: layer.rect }))}
+                          cast={review.cast}
+                        />
+                      </ScaledPage>
+                    </span>
+                    <p>
+                      <span className="font-medium">Page {index + 1}</span>
+                      {state &&
+                        state.latestVersion > 1 &&
+                        (state.chosenVersion === 1 ? " · original kept" : " · changed")}
+                      {version && version.clippedShare > FLAG_CLIPPED && (
+                        <span className="text-amber-700"> · {Math.round(version.clippedShare * 100)}% clipped</span>
+                      )}
+                    </p>
+                    {state?.changeNote && <p className="text-muted-foreground">Parent asked: "{state.changeNote}"</p>}
+                    {rewritten.length > 0 && (
+                      <div
+                        className="flex flex-col gap-1 rounded border-l-2 border-amber-500 bg-amber-50 p-2"
+                        data-testid={`review-text-edits-${page.pageId}`}
+                      >
+                        <p className="font-medium text-amber-900">The parent rewrote the text here</p>
+                        {rewritten.map((block, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            <p>Now: "{block.text}"</p>
+                            <p className="text-muted-foreground">The story's: "{block.original}"</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {inReview ? (
+                      <textarea
+                        aria-label={`What's wrong with page ${index + 1}`}
+                        placeholder="Only if refusing: what's wrong here"
+                        className="min-h-12 rounded-md border bg-transparent p-2 text-sm"
+                        value={pageNotes[page.pageId] ?? ""}
+                        maxLength={1000}
+                        onChange={(event) => setPageNotes({ ...pageNotes, [page.pageId]: event.target.value })}
+                      />
+                    ) : (
+                      state?.reviewNote && (
+                        <p className="text-destructive" data-testid={`review-page-note-${page.pageId}`}>
+                          Refused: "{state.reviewNote}"
+                        </p>
+                      )
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         </div>
 
         <Decision
-          bookId={bookId}
           status={flow.status}
           reviewNote={flow.reviewNote}
-          redrawing={redrawing.map(({ index }) => index + 1)}
+          note={note}
+          setNote={setNote}
+          notedPages={notedPages.map(({ number }) => number)}
+          pending={pending}
+          error={error}
+          decide={decide}
         />
       </div>
     </main>
   );
 }
 
-function ReviewPage({
-  flow,
-  manifest,
-  bookId,
-  index,
-  inReview,
-}: {
-  flow: BookFlow;
-  manifest: StoryManifest;
-  bookId: string;
-  index: number;
-  inReview: boolean;
-}) {
-  const page = manifest.pages[index]!;
-  const drawn = flow.pages.find((candidate) => candidate.pageId === page.pageId);
-  const version = drawn?.versions.find((v) => v.version === drawn.chosenVersion);
-  const [redoing, setRedoing] = useState(false);
-  const [note, setNote] = useState("");
-  const { error, pending, run } = useAction();
-  return (
-    <li
-      className="flex min-w-0 flex-col gap-1.5 rounded-md border p-2 text-xs"
-      data-testid={`review-page-${page.pageId}`}
-    >
-      <span className="w-fit max-w-full rounded-sm ring-1 ring-black/10">
-        <ScaledPage trim={manifest.trim} scale={0.4}>
-          <BookPage
-            manifest={manifest}
-            page={page}
-            text={[]}
-            illustration={(version?.layers ?? []).map((layer) => ({ url: fileUrl(layer.key), rect: layer.rect }))}
-            cast={{}}
-          />
-        </ScaledPage>
-      </span>
-      <p>
-        <span className="font-medium">Page {index + 1}</span>
-        {drawn && ` · version ${drawn.chosenVersion} of ${drawn.latestVersion}`}
-        {drawn && !drawn.ready && <span className="font-medium"> · redrawing…</span>}
-        {version && version.clippedShare > FLAG_CLIPPED && (
-          <span className="text-amber-700"> · {Math.round(version.clippedShare * 100)}% clipped</span>
-        )}
-      </p>
-      {drawn?.changeNote && <p className="text-muted-foreground">Note: "{drawn.changeNote}"</p>}
-      {drawn &&
-        inReview &&
-        (redoing ? (
-          <form
-            className="flex flex-col gap-1.5"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (await run(() => redoPageFn({ data: { bookId, pageId: page.pageId, note } }))) {
-                setRedoing(false);
-                setNote("");
-              }
-            }}
-          >
-            <textarea
-              aria-label={`What to change on page ${index + 1}`}
-              placeholder="What to change, for the drawing"
-              className="min-h-16 rounded-md border bg-transparent p-2 text-sm"
-              value={note}
-              maxLength={300}
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" size="sm" disabled={pending || note.trim() === ""}>
-                Redraw page {index + 1}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setRedoing(false)}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-fit"
-            disabled={!drawn.ready}
-            onClick={() => setRedoing(true)}
-          >
-            Redo this page
-          </Button>
-        ))}
-      <Alert text={error} />
-    </li>
-  );
-}
-
 function Decision({
-  bookId,
   status,
   reviewNote,
-  redrawing,
+  note,
+  setNote,
+  notedPages,
+  pending,
+  error,
+  decide,
 }: {
-  bookId: string;
   status: BookStatus;
   reviewNote: string | null;
-  /** Page numbers still being redrawn. */
-  redrawing: ReadonlyArray<number>;
+  note: string;
+  setNote: (note: string) => void;
+  /** Numbers of the pages with a reason written under them. */
+  notedPages: ReadonlyArray<number>;
+  pending: boolean;
+  error: string | null;
+  decide: (decision: "approve" | "refuse") => Promise<void>;
 }) {
-  const [note, setNote] = useState("");
-  const { error, pending, run } = useAction();
   const box =
-    "flex min-w-0 flex-col gap-2 rounded-md border p-4 text-sm lg:sticky lg:top-4 lg:col-start-2 lg:row-start-2 lg:self-start";
+    "flex min-w-0 scroll-mt-4 flex-col gap-2 rounded-md border p-4 text-sm lg:sticky lg:top-4 lg:col-start-2 lg:row-start-2 lg:self-start";
+  const section = (children: React.ReactNode) => (
+    <section id="review-decision" aria-label="Decision" className={box} data-testid="review-decision">
+      {children}
+    </section>
+  );
   if (status === "approved")
-    return (
-      <section id="review-decision" aria-label="Decision" className={box} data-testid="review-decision">
-        <h2 className="text-base font-semibold text-emerald-700">✓ Approved for print</h2>
-        {reviewNote && <p className="text-muted-foreground">Note: "{reviewNote}"</p>}
-      </section>
-    );
+    return section(<h2 className="text-base font-semibold text-emerald-700">✓ Approved for print</h2>);
   if (status === "refused")
-    return (
-      <section id="review-decision" aria-label="Decision" className={box} data-testid="review-decision">
+    return section(
+      <>
         <h2 className="text-base font-semibold text-destructive">Refused</h2>
-        <p>Emailed to the family: "{reviewNote}"</p>
-      </section>
+        {reviewNote && <p>Emailed to the family: "{reviewNote}"</p>}
+        <p className="text-muted-foreground">Any notes on pages show under them.</p>
+      </>,
     );
   if (status !== "in_review")
-    return (
-      <section id="review-decision" aria-label="Decision" className={box} data-testid="review-decision">
-        <p className="text-muted-foreground">The family hasn't sent this book for review.</p>
-      </section>
-    );
-  return (
-    <section id="review-decision" aria-label="Decision" className={box} data-testid="review-decision">
+    return section(<p className="text-muted-foreground">The family hasn't sent this book for review.</p>);
+  const reasons = note.trim() !== "" || notedPages.length > 0;
+  return section(
+    <>
       <h2 className="text-base font-semibold">Your decision</h2>
-      {redrawing.length > 0 ? (
-        <p data-testid="review-wait">Approve once page {redrawing.join(", ")} is redrawn and you've checked it.</p>
-      ) : (
-        <p className="text-muted-foreground">
-          Approve it for print, or refuse it with a note the family gets by email.
-        </p>
-      )}
-      <Button
-        className="w-fit"
-        disabled={pending || redrawing.length > 0}
-        onClick={() => run(() => decideBookFn({ data: { bookId, decision: "approve", note: "" } }))}
-      >
+      <p className="text-muted-foreground">
+        Approve it for print as the parent's proof shows it, or refuse it with a reason the family gets by email.
+      </p>
+      <Button className="w-fit" disabled={pending || notedPages.length > 0} onClick={() => void decide("approve")}>
         Approve for print
       </Button>
+      {notedPages.length > 0 && (
+        <p className="text-xs text-muted-foreground">You wrote what's wrong on a page, so this is a refusal.</p>
+      )}
       <label className="mt-2 flex flex-col gap-1">
-        <span>Or refuse: why, for the family (emailed)</span>
+        <span>Or refuse: what's wrong with the book as a whole (emailed)</span>
         <textarea
           aria-label="Refusal note"
           className="min-h-16 rounded-md border bg-transparent p-2"
@@ -403,15 +383,13 @@ function Decision({
           onChange={(event) => setNote(event.target.value)}
         />
       </label>
-      <Button
-        variant="outline"
-        className="w-fit"
-        disabled={pending || note.trim() === ""}
-        onClick={() => run(() => decideBookFn({ data: { bookId, decision: "refuse", note } }))}
-      >
-        Refuse with this note
+      {notedPages.length > 0 && (
+        <p data-testid="review-noted-pages">With your notes on page {notedPages.join(", ")}.</p>
+      )}
+      <Button variant="outline" className="w-fit" disabled={pending || !reasons} onClick={() => void decide("refuse")}>
+        Refuse the book
       </Button>
       <Alert text={error} />
-    </section>
+    </>,
   );
 }

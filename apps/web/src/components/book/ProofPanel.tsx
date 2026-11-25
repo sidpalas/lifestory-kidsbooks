@@ -1,5 +1,5 @@
 // A book's PDF proofs: make one from the cast and text as they are now, watch it render, download it (D27), and
-// approve one for print. A parent deletes any of them after confirming, an approved one with a stronger warning (D32).
+// approve one for print, which sends the book for review. A parent deletes any of them after confirming, an approved one with a stronger warning (D32).
 // The page passes how to list, request, approve, and delete them.
 import type { ProofSummary } from "@lifestory/core/contracts";
 import { useEffect, useState } from "react";
@@ -23,12 +23,13 @@ export function ProofPanel({
   embedded = false,
   onProofs,
   reloadKey,
+  approveBlocked = null,
 }: {
   /** Lists the proofs. Must be stable for the same subject (the panel reloads when it changes). */
   load: () => Promise<ProofList>;
   /** Starts one; rejects with a message for the parent. */
   request: () => Promise<void>;
-  /** Approves a ready proof for print. */
+  /** Approves a ready proof for print and sends the book for review, in one action (D57). */
   approve: (proofId: string) => Promise<void>;
   /** Deletes a proof, approved or not, with its PDF. */
   remove: (proofId: string) => Promise<void>;
@@ -39,6 +40,8 @@ export function ProofPanel({
   onProofs?: (list: ProofList) => void;
   /** Reloads the list when it changes: the book changed, so a proof may no longer be current. */
   reloadKey?: string;
+  /** Why no proof can be approved and sent yet (a page still redrawing), shown instead of the button. */
+  approveBlocked?: string | null;
 }) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
   const [requesting, setRequesting] = useState(false);
@@ -77,7 +80,7 @@ export function ProofPanel({
       await approve(proofId);
       setState(await load());
     } catch (cause) {
-      setError(cause instanceof Error && cause.message ? cause.message : "The proof couldn't be approved.");
+      setError(cause instanceof Error && cause.message ? cause.message : "The book couldn't be sent.");
     } finally {
       setApproving(null);
     }
@@ -192,15 +195,19 @@ export function ProofPanel({
                       Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
                     </a>
                     {/* Only a proof of the book as it is now: approving an older one would send pages that changed. */}
-                    {state.canRequest && !proof.approvedAt && proof.current && (
-                      <Button
-                        size="sm"
-                        onClick={() => void approveProof(proof.id)}
-                        disabled={!hydrated || approving !== null}
-                      >
-                        {approving === proof.id ? "Approving…" : "Approve for print"}
-                      </Button>
-                    )}
+                    {state.canRequest &&
+                      proof.current &&
+                      (approveBlocked ? (
+                        <span className="text-muted-foreground">{approveBlocked}</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => void approveProof(proof.id)}
+                          disabled={!hydrated || approving !== null}
+                        >
+                          {approving === proof.id ? "Sending…" : "Approve and send for review"}
+                        </Button>
+                      ))}
                   </>
                 ) : proof.status === "rendering" ? (
                   <span className="text-muted-foreground">Making the PDF…</span>

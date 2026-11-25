@@ -405,7 +405,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
   | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note) and their expressions from it, then the cover once everyone has a sheet and none is drawing; keyed by book, person and drawing |
   | `book.make` | the order (D57) | delete the book's photos unless the parent opted in to photo review, then spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
-  | `page.figure` | `book.make`, a page change, the operator's redo | generate, the checks above, tint, store; keyed by book, page, slot and version |
+  | `page.figure` | `book.make`, a page change | generate, the checks above, tint, store; keyed by book, page, slot and version |
   | `book.release` | the operator's approval (D57) | delete any photos kept for review; when print ordering arrives, sending the file to the printer becomes the step before it |
   | `storage.sweep` | the worker, every 6 h (D31) | adds unordered drafts older than 24 h (with their photos), photos of ordered books not opted in, photos of approved or refused books, and opted-in photos 30 days after the order |
 
@@ -415,7 +415,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 - **Photos, privacy and storage:** photos live at `families/<familyId>/books/<bookId>/photos/<slotId>/<uploadId>`
   and are deleted right after the order, as `book.make`'s first step, since no later step reads them: every page,
-  page change and redo is drawn from the approved sheet (Sid, 2026-11-24). A refusal by the check deletes a photo at
+  page change is drawn from the approved sheet (Sid, 2026-11-24). A refusal by the check deletes a photo at
   once, and a draft that is never ordered goes whole after 24 h.
 - **Photo review, opt-in (Sid, 2026-11-24):** at the photo step, off by default, the parent may let our team see the
   photos during review, to judge how good a likeness the book is; intended for friends and family while we test.
@@ -449,7 +449,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   pages (US$1.24 and US$1.55 before expressions).
 - **Why:** families want their own child, and composed parts didn't look good enough after long testing. A sheet
   in the middle removed page-to-page drift on all 15 test pages, where pages drawn straight from the photo drifted
-  in hair colour, length and freckles, and no page needs the photo, so a page change or a redo never reads it.
+  in hair colour, length and freckles, and no page needs the photo, so a page change never reads it.
 - **Rejected:** composable figure, hair and accessory layers with recolour (D26's system); pages straight from the
   photo; page changes as edits of the current page; sheet notes as fresh sheets (the drift test above); a
   third-party photo-quality API (another vendor and agreement).
@@ -472,9 +472,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   character as a whole ("her hair is wrong everywhere") can't be fixed page by page; the screen says so and points
   the parent to us, and the operator decides whether to edit the sheet and redraw the book, at our cost. Text edits and
   proofs work as today; a proof pins the chosen version of every page's art.
-- **Send for review:** the parent approves a proof (D32) and sends the book for review. The operator's queue under
-  `/admin` shows the approved sheets beside every page with the parent's notes; the operator redoes a page, refuses
-  the book with a note that is emailed to the family, or approves it, which makes the approved proof the print file and spawns `book.release`, which deletes any photos kept
+- **Send for review:** the parent approves a proof (D32), which sends the book for review in the same action, and only
+  a proof of the book as it is (cast, text, chosen drawings) can be (Sid, 2026-11-25: separate approve and send steps
+  were overkill). The operator's queue under `/admin` shows the approved sheets beside every page with the parent's
+  notes; the operator only decides, never changing the book (Sid, 2026-11-25; the redo is gone): refuses it with a
+  reason on the book, on pages, or both, emailed to the family and shown on the book, or approves it, which makes the approved proof the print file and spawns `book.release`, which deletes any photos kept
   for review; a refusal deletes them too.
 - **Operator access:** the operator reads family books only through `reviewBook(bookId)` in `packages/core`, and
   sees the sheets and pages, and the photos beside the sheets only on a book whose parent opted in to photo review.

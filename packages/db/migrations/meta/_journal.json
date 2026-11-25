@@ -183,6 +183,13 @@
       "when": 1795606300398,
       "tag": "0025_story_operator_only",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795617892555,
+      "tag": "0026_book_page_review_note",
+      "breakpoints": true
     }
   ]
 }

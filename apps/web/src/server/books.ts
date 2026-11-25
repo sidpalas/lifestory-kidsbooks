@@ -1,6 +1,5 @@
 import {
   activeFamily,
-  approveProof,
   Auth,
   createBook,
   deleteBook,
@@ -193,24 +192,6 @@ export const requestBookProofFn = createServerFn({ method: "POST" })
     runEffect(
       RequestBookProofResult,
       currentUser.pipe(Effect.flatMap((user) => requestBookProof(user.id, data.bookId))),
-    ),
-  );
-
-export const ApproveProofResult = ResultSchema(
-  Done,
-  Schema.Union([NotAuthenticated, NotFound, Forbidden, InvalidInput]),
-);
-
-/** Approves a ready proof of a book for print, recording who and when. */
-export const approveProofFn = createServerFn({ method: "POST" })
-  .validator(Schema.toStandardSchemaV1(Schema.Struct({ proofId: Schema.String })))
-  .handler(({ data }) =>
-    runEffect(
-      ApproveProofResult,
-      currentUser.pipe(
-        Effect.flatMap((user) => approveProof(user.id, data.proofId)),
-        done,
-      ),
     ),
   );
 

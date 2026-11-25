@@ -257,7 +257,7 @@ export const ProofContent = Schema.Struct({
   cast: Schema.Record(Schema.String, CastMember),
   /** Replaces block `blockIndex` of page `pageId`; tokens stay unresolved, like the story's own text. */
   textEdits: Schema.Array(Schema.Struct({ pageId: Schema.String, blockIndex: Schema.Number, content: Schema.String })),
-  /** Each drawn page's layers in the chosen version (D57), so a later change or redo doesn't alter the proof. */
+  /** Each drawn page's layers in the chosen version (D57), so a later change doesn't alter the proof. */
   art: Schema.optionalKey(
     Schema.Record(Schema.String, Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect }))),
   ),
@@ -375,7 +375,7 @@ export const PhotoCheckResult = Schema.Struct({
 export type PhotoCheckResult = typeof PhotoCheckResult.Type;
 
 /** The policies' version (D58), recorded with each consent; change it whenever a policy's text changes. */
-export const POLICY_VERSION = "2026-11-25";
+export const POLICY_VERSION = "2026-11-25.2";
 
 /**
  * What OpenAI keeps of what we send (D56), as OPENAI_DATA_RETENTION states it for the OpenAI project: "standard"
@@ -491,6 +491,8 @@ export const BookFlow = Schema.Struct({
       chosenVersion: Schema.Number,
       ready: Schema.Boolean,
       changeNote: Schema.NullOr(Schema.String),
+      /** The operator's note on this page, from a refusal (D57). */
+      reviewNote: Schema.NullOr(Schema.String),
       versions: Schema.Array(
         Schema.Struct({ version: Schema.Number, layers: Schema.Array(Layer), clippedShare: Schema.Number }),
       ),

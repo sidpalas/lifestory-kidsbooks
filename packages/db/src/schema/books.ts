@@ -156,12 +156,14 @@ export const bookPage = pgTable(
       .notNull()
       .references(() => book.id, { onDelete: "cascade" }),
     pageId: text("page_id").notNull(),
-    /** The version drawn last; 1 is `book.make`'s, 2 a change, more an operator's redo. */
+    /** The version drawn last; 1 is `book.make`'s, 2 the parent's change (older books may have more). */
     latestVersion: integer("latest_version").notNull().default(1),
     chosenVersion: integer("chosen_version").notNull().default(1),
     /** Whether the latest version is drawn yet. */
     ready: boolean("ready").notNull().default(false),
     changeNote: text("change_note"),
+    /** The operator's note on this page when they refused the book (D57); the book's own note is `book.review_note`. */
+    reviewNote: text("review_note"),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.bookId, t.pageId] })],

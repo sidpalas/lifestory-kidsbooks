@@ -7,8 +7,8 @@ A parent puts their family into a story (D56): one photo per role, checked in se
 person, where a note that edits their sheet or a new photo uses one, and "Make my book", which is the order (D57). The order deletes the photos, unless the parent
 opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
 `page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
-proof and sends the book for review. The operator redoes a page, refuses the book with a note, or approves it for
-print (`book.release`). Built on the fakes; the Dream Adventure import and a real-provider run are still to come.
+proof, which sends the book for review. The operator only decides: refuses the book with a reason on the book, on
+pages, or both, or approves it for print (`book.release`). Built on the fakes; the Dream Adventure import and a real-provider run are still to come.
 
 ## Routes and roles
 
@@ -19,12 +19,12 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
   (`POST /api/books/<id>/photos`, resized to 1536 px in the browser; chosen with the button or dropped on that
   person's card, where a drop of several files or a non-photo uploads nothing and says why; on touch screens a
   "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), up to three optional extra photos per person, one slot per pose with its own buttons and drop target, each person's look read from the photo to confirm or correct (swatches, "From the photo" or "You set this"), "Draw {name}", their sheet and six expressions with a note for another drawing (drawings left shown), the cover,
-  "Make my book", then the page-change form under each page and "Read your book": three steps in order above the
-  editor (read every page, with the changed pages linked; make a proof and approve it; send for review), one marked
-  current, a step with a redraw or a render under way marked in progress, and the send button off with the reason
-  until a proof is approved and no page is redrawing. An approved proof the book has changed since is marked out of
-  date with a warning, though sending stays allowed (the server only needs an approved proof). The last page offers
-  "Done reading: make your proof ↑". From the order on, a strip of the book's stages (photos, drawing, read and
+  "Make my book", then the page-change form under each page and "Read your book": two steps in order above the
+  editor (read every page, with the changed pages linked; make a proof and approve it, which sends the book for
+  review in the same click), one marked current, a step with a redraw or a render under way marked in progress. Only
+  a proof of the book as it is now (cast, text, chosen drawings) offers "Approve and send for review", and none while
+  a page redraws; the server refuses an out-of-date proof too. The last page offers "Done reading: make your proof ↑".
+  A refused book shows the operator's note and each page's reason. From the order on, a strip of the book's stages (photos, drawing, read and
   approve, our review, print) marks where it is.
   From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card,
   with the six expressions drawn with it underneath (sheets drawn before the expressions show alone), each with a
@@ -34,11 +34,14 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 - `/policies/terms`, `/policies/privacy`, `/policies/child-safety` (D58), public, from `apps/web/src/policies/*.md`
   rendered with marked; linked from the landing footer, the photo step and the order step. Bump `POLICY_VERSION`
   in `contracts.ts` with any text change.
-- `/admin` "Books to review" and `/review/<id>`: the operator only, through `reviewBook`; sheets, pages with notes,
-  the approved proof (and whether it still shows the pages: a redo since makes it out of date), and photos only on an
-  opted-in book. Each character's photo, sheet and six expressions fit their card at any width. Redo a page with its
-  own note under it; approve (off while a page redraws) or refuse with a note (emailed to the owners) in the decision
-  box, kept in view beside the pages from 1024 px and after them on a phone.
+- `/admin` "Books to review" and `/review/<id>`: the operator only, through `reviewBook`; sheets, pages with the
+  parent's notes, the approved proof, and photos only on an opted-in book. Each character's photo, sheet and six
+  expressions fit their card at any width. Each page shows as the approved proof prints it, drawing and text with the
+  family's names and edits, and a paragraph the parent rewrote is flagged beside the story's wording, for the
+  content check without the PDF (Sid, 2026-11-25). The operator never changes the book (Sid, 2026-11-25): they approve it, or
+  refuse it with a reason on the book, under pages (`book_page.review_note`), or both, emailed to the owners. A reason
+  under a page turns approval off. The decision box stays in view beside the pages from 1024 px and comes after them
+  on a phone.
 
 ## Seed data
 
@@ -51,10 +54,11 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
 bad photo, a refused two-file drop, a dropped photo and one from the camera input, a corrected hair length that reaches the sheet prompt, an extra photo of someone else refused and a passing one sent to the sheet, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, a refused new photo for the child, the order with the photos gone from storage and each person's sheet and expressions kept and shown with the cast, three page changes with keep and use-new, the
-"Read your book" steps (send off until a proof is approved, the last page leading back to the proof, an approved proof
-out of date after a text edit and current again when it's undone, the card contained at 320 and 390 px), the operator's
-character cards and decision contained at 320 and 390 px, a redo with its own note that holds approval until it's
-redrawn and puts the proof out of date, operator approval, a second book opted in to photo review whose photos the operator sees and approval
+"Read your book" steps (the last page leading back to the proof, a proof out of date after a text edit with nothing to
+approve and the server refusing it, a new proof with the edit current, the card contained at 320 and 390 px, then
+"Approve and send for review"), the operator's character cards and decision contained at 320 and 390 px, the parent's rewritten text on the
+operator's page and flagged, a refusal
+with a page reason and a book note that the parent sees, operator approval, a second book opted in to photo review whose photos the operator sees and approval
 deletes, and the 24 h sweep of an abandoned draft. A second test covers the upload limits (D59): a refused request
 not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, a check task for each stored upload and none for a refused one (the 21st in 10 minutes), the total allowance
 with the message on the person's card, and that an unpaid order raises nothing while an approved book does. Other book specs start from a drawn book with `markDrawn`

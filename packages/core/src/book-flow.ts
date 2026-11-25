@@ -2,10 +2,11 @@
 // drawing follows, a spawned task; the tasks are in tasks/photo-books.ts. The family's role checks are the same as
 // for every book; the operator reads and decides family books only through `reviewBook` and `decideBook` here.
 import { schema } from "@lifestory/db";
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import { Auth, type SessionUser } from "./auth.ts";
+import { composePage, pageText, resolveText } from "./book-format/index.ts";
 import { bookFlow, bookProofContent, loadBook } from "./books.ts";
 import { AppConfig } from "./config.ts";
 import {
@@ -24,7 +25,7 @@ import { figureRules } from "./figure.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
 import { releaseUpload, reserveUpload } from "./photo-uploads.ts";
-import { sameProofContent } from "./proofs.ts";
+import { proofPageText, sameProofContent } from "./proofs.ts";
 import { ObjectStorage } from "./storage.ts";
 import {
   checkPhoto,
@@ -462,31 +463,46 @@ export const choosePageVersion = Effect.fn("bookFlow.chooseVersion")(function* (
   );
 });
 
-/** Sends the book for our review (D57): every page drawn, and a proof approved. */
-export const sendForReview = Effect.fn("bookFlow.sendForReview")(function* (userId: string, bookId: string) {
-  const book = yield* editableBook(userId, bookId);
+/**
+ * The parent approves a proof and sends the book for our review, in one action (D57, Sid 2026-11-25): every page
+ * drawn, and the proof ready and showing the book as it is now, so what we review and print is what they checked.
+ */
+export const sendForReview = Effect.fn("bookFlow.sendForReview")(function* (
+  userId: string,
+  input: { readonly bookId: string; readonly proofId: string },
+) {
+  const book = yield* editableBook(userId, input.bookId);
   yield* requireStatus(book, ["changes"], "This book isn't waiting for page changes.");
-  const pending = yield* Database.query((db) =>
+  const [proof] = yield* Database.query((db) =>
     db
-      .select({ pageId: schema.bookPage.pageId })
-      .from(schema.bookPage)
-      .where(and(eq(schema.bookPage.bookId, bookId), eq(schema.bookPage.ready, false))),
-  );
-  if (pending.length > 0) return yield* new InvalidInput({ message: "Wait for every page to be drawn first." });
-  const approved = yield* Database.query((db) =>
-    db
-      .select({ id: schema.proof.id })
+      .select({ status: schema.proof.status, content: schema.proof.content })
       .from(schema.proof)
-      .where(and(eq(schema.proof.bookId, bookId), isNotNull(schema.proof.approvedAt)))
-      .limit(1),
+      .where(and(eq(schema.proof.id, input.proofId), eq(schema.proof.bookId, book.id))),
   );
-  if (approved.length === 0)
-    return yield* new InvalidInput({ message: "Approve a proof first: it's the file we review and print." });
+  if (!proof) return yield* new NotFound({ entity: "proof", id: input.proofId });
+  if (proof.status !== "ready")
+    return yield* new InvalidInput({ message: "The proof is still being made. Check it once it's ready." });
+  const flow = yield* bookFlow(book);
+  if (flow.pages.some((page) => !page.ready))
+    return yield* new InvalidInput({ message: "Wait for every page to be drawn first." });
+  const content = yield* Schema.decodeUnknownEffect(ProofContent)(proof.content).pipe(Effect.orDie);
+  if (!sameProofContent(content, yield* bookProofContent(book, flow)))
+    return yield* new InvalidInput({
+      message: "The book changed after this proof was made. Make a new proof and check it.",
+    });
   yield* Database.query((db) =>
-    db
-      .update(schema.book)
-      .set({ status: "in_review" })
-      .where(and(eq(schema.book.id, bookId), eq(schema.book.status, "changes"))),
+    db.transaction(async (tx) => {
+      const [moved] = await tx
+        .update(schema.book)
+        .set({ status: "in_review" })
+        .where(and(eq(schema.book.id, book.id), eq(schema.book.status, "changes")))
+        .returning({ id: schema.book.id });
+      if (!moved) return;
+      await tx
+        .update(schema.proof)
+        .set({ approvedAt: new Date(), approvedBy: userId })
+        .where(and(eq(schema.proof.id, input.proofId), isNull(schema.proof.approvedAt)));
+    }),
   );
 });
 
@@ -563,6 +579,29 @@ export const reviewBook = Effect.fn("bookFlow.review")(function* (operator: Sess
       .where(eq(schema.organization.id, book.familyId)),
   );
   const proofContent = proof ? yield* Schema.decodeUnknownEffect(ProofContent)(proof.content).pipe(Effect.orDie) : null;
+  const current = yield* bookProofContent(book, flow);
+  // Each page as the approved proof prints it (the book as it is, before any proof): its drawing, and its text with
+  // the family's names and edits, so the operator reviews quality and content without the PDF (Sid, 2026-11-25).
+  const shown = proofContent ?? current;
+  const story = { storyId: book.storyId, version: book.version };
+  const pages = book.manifest.pages.map((page) => {
+    const chosen = flow.pages.find((candidate) => candidate.pageId === page.pageId);
+    return {
+      pageId: page.pageId,
+      layers:
+        shown.art?.[page.pageId] ??
+        chosen?.versions.find((version) => version.version === chosen.chosenVersion)?.layers ??
+        composePage(story, page),
+      text: proofPageText(page, shown).map((block, blockIndex) => {
+        const edited = shown.textEdits.some((edit) => edit.pageId === page.pageId && edit.blockIndex === blockIndex);
+        return {
+          ...block,
+          /** The story's own wording, when the family rewrote this paragraph. */
+          original: edited ? resolveText(pageText(page)[blockIndex]!.content, shown.cast) : null,
+        };
+      }),
+    };
+  });
   return {
     flow: {
       ...flow,
@@ -578,8 +617,10 @@ export const reviewBook = Effect.fn("bookFlow.review")(function* (operator: Sess
     manifest: book.manifest,
     familyName: family?.name ?? "",
     proofKey: proof?.objectKey ?? null,
-    /** Whether the approved proof shows the pages as chosen now; a redo since it was approved makes it out of date. */
-    proofCurrent: proofContent ? sameProofContent(proofContent, yield* bookProofContent(book, flow)) : false,
+    /** Whether the approved proof shows the book as it was sent; one approved before later changes doesn't. */
+    proofCurrent: proofContent ? sameProofContent(proofContent, current) : false,
+    cast: shown.cast,
+    pages,
   };
 });
 
@@ -597,52 +638,51 @@ export const operatorCanReadBookFile = Effect.fn("bookFlow.operatorCanRead")(fun
   return row?.photoReview === true;
 });
 
-/** The operator redraws a page (D57), as the next version, which becomes the chosen one when drawn. */
-export const redoPage = Effect.fn("bookFlow.redoPage")(function* (
-  operator: SessionUser,
-  input: { readonly bookId: string; readonly pageId: string; readonly note: string },
-) {
-  yield* requireOperator(operator);
-  const book = yield* loadBook(input.bookId);
-  yield* requireStatus(book, ["in_review"], "Only a book in review can be redone.");
-  const [page] = yield* Database.query((db) =>
-    db
-      .select()
-      .from(schema.bookPage)
-      .where(and(eq(schema.bookPage.bookId, book.id), eq(schema.bookPage.pageId, input.pageId))),
-  );
-  if (!page) return yield* new NotFound({ entity: "page", id: input.pageId });
-  const version = page.latestVersion + 1;
-  yield* spawnPageVersion(book.id, input.pageId, version, input.note.trim() || "Redraw this page.");
-  yield* Database.query((db) =>
-    db
-      .update(schema.bookPage)
-      .set({ chosenVersion: version })
-      .where(and(eq(schema.bookPage.bookId, book.id), eq(schema.bookPage.pageId, input.pageId))),
-  );
-});
-
 /**
- * The operator approves the book for print, or refuses it with a note emailed to the family (D57). Either way
- * `book.release` deletes any photos kept for review.
+ * The operator approves the book for print, or refuses it (D57): only those two, never a change to it (Sid,
+ * 2026-11-25). A refusal says why, on the book, on pages, or both; the notes are kept for the family and emailed to
+ * its owners. Either way `book.release` deletes any photos kept for review.
  */
 export const decideBook = Effect.fn("bookFlow.decide")(function* (
   operator: SessionUser,
-  input: { readonly bookId: string; readonly decision: "approve" | "refuse"; readonly note: string },
+  input: {
+    readonly bookId: string;
+    readonly decision: "approve" | "refuse";
+    readonly note: string;
+    readonly pageNotes?: ReadonlyArray<{ readonly pageId: string; readonly note: string }>;
+  },
 ) {
   yield* requireOperator(operator);
   const book = yield* loadBook(input.bookId);
   yield* requireStatus(book, ["in_review"], "This book isn't waiting for review.");
   const note = input.note.trim();
-  if (input.decision === "refuse" && note.length === 0)
-    return yield* new InvalidInput({ message: "Say why, for the family." });
+  const pageNotes =
+    input.decision === "refuse"
+      ? (input.pageNotes ?? []).map((page) => ({ pageId: page.pageId, note: page.note.trim() })).filter((p) => p.note)
+      : [];
+  const pageNumber = (pageId: string) => book.manifest.pages.findIndex((page) => page.pageId === pageId) + 1;
+  const unknown = pageNotes.find((page) => pageNumber(page.pageId) === 0);
+  if (unknown) return yield* new NotFound({ entity: "page", id: unknown.pageId });
+  if (input.decision === "refuse" && note.length === 0 && pageNotes.length === 0)
+    return yield* new InvalidInput({ message: "Say why, for the family: on the book, on a page, or both." });
   const status = input.decision === "approve" ? ("approved" as const) : ("refused" as const);
-  yield* Database.query((db) =>
-    db
-      .update(schema.book)
-      .set({ status, reviewedBy: operator.id, reviewedAt: new Date(), reviewNote: note || null })
-      .where(and(eq(schema.book.id, book.id), eq(schema.book.status, "in_review"))),
+  const decided = yield* Database.query((db) =>
+    db.transaction(async (tx) => {
+      const [moved] = await tx
+        .update(schema.book)
+        .set({ status, reviewedBy: operator.id, reviewedAt: new Date(), reviewNote: note || null })
+        .where(and(eq(schema.book.id, book.id), eq(schema.book.status, "in_review")))
+        .returning({ id: schema.book.id });
+      if (!moved) return false;
+      for (const page of pageNotes)
+        await tx
+          .update(schema.bookPage)
+          .set({ reviewNote: page.note })
+          .where(and(eq(schema.bookPage.bookId, book.id), eq(schema.bookPage.pageId, page.pageId)));
+      return true;
+    }),
   );
+  if (!decided) return;
   yield* Jobs.use((jobs) =>
     jobs.spawn(releaseBook, { bookId: book.id }, { idempotencyKey: `book.release:${book.id}` }),
   );
@@ -660,7 +700,12 @@ export const decideBook = Effect.fn("bookFlow.decide")(function* (
         mailer.send({
           to: email,
           subject: `About your book ${book.title}`,
-          text: `We reviewed ${book.title} and can't print it as it is:\n\n${note}\n\nReply to this email with any questions.`,
+          text: `We reviewed ${book.title} and can't print it as it is:\n\n${[
+            ...(note ? [note] : []),
+            ...pageNotes
+              .toSorted((a, b) => pageNumber(a.pageId) - pageNumber(b.pageId))
+              .map((page) => `Page ${pageNumber(page.pageId)}: ${page.note}`),
+          ].join("\n\n")}\n\nReply to this email with any questions.`,
           link,
         }),
       ),

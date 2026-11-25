@@ -156,10 +156,12 @@ test("milestone 1: invite, family, viewer, a book and its cast, a text edit, an 
   expect(pdfFacts(pdf).fonts).toContain("Literata-Regular");
   if (process.env.E2E_SCREENSHOTS) await download.saveAs(`${process.env.E2E_SCREENSHOTS}/m1-proof.pdf`);
 
-  await proof.getByRole("button", { name: "Approve for print" }).click();
+  // Approving the proof sends the book to our review in the same click; the proof stays listed as a record.
+  await proof.getByRole("button", { name: "Approve and send for review" }).click();
+  await expect(owner.getByTestId("book-step")).toContainText("With our team");
   await expect(proof).toHaveAttribute("data-approved", "true");
   await expect(proof.getByTestId("proof-approval")).toContainText("Approved for print by Robin on");
-  await expect(proof.getByRole("button", { name: "Approve for print" })).toHaveCount(0);
+  await expect(owner.getByRole("button", { name: /^Approve/ })).toHaveCount(0);
   await evidence(owner, "m1-approved");
 
   // The grandparent reads the book with the edit and the approval, downloads the proof, and can change nothing.
@@ -171,7 +173,7 @@ test("milestone 1: invite, family, viewer, a book and its cast, a text edit, an 
   const granProof = gran.getByRole("region", { name: "PDF proofs" }).getByTestId("proof").first();
   await expect(granProof.getByTestId("proof-approval")).toContainText("Approved for print by Robin");
   await expect(gran.getByRole("button", { name: "Make a PDF proof" })).toHaveCount(0);
-  await expect(gran.getByRole("button", { name: "Approve for print" })).toHaveCount(0);
+  await expect(gran.getByRole("button", { name: /^Approve/ })).toHaveCount(0);
   const href = await granProof.getByRole("link", { name: /Download PDF/ }).getAttribute("href");
   expect((await gran.request.get(href!)).status()).toBe(200);
   await Promise.all([owner, gran].map((person) => person.context().close()));

@@ -458,6 +458,7 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
         chosenVersion: row.chosenVersion,
         ready: row.ready,
         changeNote: row.changeNote,
+        reviewNote: row.reviewNote,
         versions,
       },
     ];

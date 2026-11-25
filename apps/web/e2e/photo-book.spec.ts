@@ -341,14 +341,12 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     ]);
     await evidence(page, "photo-page-changes");
 
-    // The finish steps, in order at the top of the page: read, then a proof approved, then send. Nothing to send until
-    // a proof is approved, and the step says so.
+    // The finish steps, in order at the top of the page: read, then approve a proof, which sends the book in the same
+    // click. Nothing to approve until there's a proof of the book as it is.
     const finish = page.getByRole("region", { name: "Read your book" });
     await expect(finish.getByTestId("finish-pages")).toHaveAttribute("data-state", "current");
     await expect(finish.getByTestId("finish-pages").getByRole("button", { name: "Page 1: new drawing" })).toBeVisible();
-    const send = finish.getByRole("button", { name: "Send for review" });
-    await expect(send).toBeDisabled();
-    await expect(finish.getByTestId("finish-send")).toContainText("Approve a proof first");
+    await expect(page.getByRole("button", { name: "Send for review" })).toHaveCount(0);
     // The last page leads back up to the proof.
     await strip
       .getByRole("button", { name: /^Page / })
@@ -361,34 +359,45 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     const proof = proofs.getByTestId("proof").first();
     await expect(proof).toHaveAttribute("data-status", "ready", { timeout: 90_000 });
     await expect(finish.getByTestId("finish-proof")).toHaveAttribute("data-state", "current");
-    await proof.getByRole("button", { name: "Approve for print" }).click();
-    await expect(proof).toHaveAttribute("data-approved", "true");
-    await expect(finish.getByTestId("finish-proof")).toHaveAttribute("data-state", "done");
-    await expect(finish.getByTestId("finish-send")).toHaveAttribute("data-state", "current");
-    // A text change after the approval puts the proof out of date until the text is as it was.
+    const approveAndSend = proof.getByRole("button", { name: "Approve and send for review" });
+    await expect(approveAndSend).toBeVisible();
+    // A text change after the proof puts it out of date, with nothing to approve, until the text is as it was.
     await strip.getByRole("button", { name: "Page 2" }).click();
     await page.getByLabel("Text block 1", { exact: true }).fill(`${child} ran outside.`);
     await page.getByRole("button", { name: "Save text block 1" }).click();
     await expect(proof).toHaveAttribute("data-current", "false");
     await expect(finish.getByTestId("finish-proof-outdated")).toBeVisible();
-    await expect(finish.getByTestId("finish-proof")).toHaveAttribute("data-state", "current");
-    await expect(proof.getByRole("button", { name: "Approve for print" })).toHaveCount(0);
+    await expect(finish.getByTestId("finish-pages")).toHaveAttribute("data-state", "current");
+    await expect(approveAndSend).toHaveCount(0);
+    // The server refuses an out-of-date proof too, whatever the page shows.
+    const [stale] = await sql<{ id: string; user_id: string }>(
+      `select proof.id, "user".id as user_id from proof, "user" where proof.book_id = $1 and "user".email = $2`,
+      [bookId, `photos-${id}@lifestory.dev`],
+    );
+    const refused = await withCore(({ sendForReview }) =>
+      sendForReview(stale!.user_id, { bookId, proofId: stale!.id }).pipe(Effect.flip),
+    );
+    expect(refused).toMatchObject({ _tag: "InvalidInput", message: expect.stringContaining("changed after") });
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 800 });
       await expectContained(finish);
     }
     await page.setViewportSize({ width: 1280, height: 720 });
     await evidence(page, "photo-proof-outdated");
-    await page.getByRole("button", { name: "Use the story's text for block 1" }).click();
-    await expect(proof).toHaveAttribute("data-current", "true");
+    // A new proof with the edit is current; the parent approves and sends that one, keeping their wording.
+    await proofs.getByRole("button", { name: "Make a PDF proof" }).click();
+    const fresh = proofs.getByTestId("proof").first();
+    await expect(fresh).toHaveAttribute("data-status", "ready", { timeout: 90_000 });
+    await expect(fresh).toHaveAttribute("data-current", "true");
     await expect(finish.getByTestId("finish-proof-outdated")).toHaveCount(0);
-    await send.click();
+    await fresh.getByRole("button", { name: "Approve and send for review" }).click();
     await expect(page.getByTestId("book-step")).toContainText("With our team");
     await expect(page.getByTestId("book-progress").locator("[aria-current=step]")).toHaveText(/Our review/);
+    await expect(page.getByTestId("proof").first()).toHaveAttribute("data-approved", "true");
     await expect(page.getByRole("button", { name: "Make a PDF proof" })).toHaveCount(0);
 
-    // The operator sees the sheets and pages, never the photos of a book not opted in, redoes a page with its own
-    // note, and approves it once it's redrawn.
+    // The operator sees the sheets and pages, never the photos of a book not opted in, and only decides: a reason
+    // under a page makes it a refusal, which the family sees with the book's note.
     await operator.page.goto("/admin");
     await expect(operator.page.getByTestId("review-queue").getByRole("link", { name: "The Kite Day" })).not.toHaveCount(
       0,
@@ -398,8 +407,17 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(operator.page.getByTestId(/^review-photo-/)).toHaveCount(0);
     for (const row of sheets)
       expect((await operator.page.request.get(`/api/files/${row.expressions_key}`)).status()).toBe(200);
-    await expect(operator.page.getByTestId("review-page-p01")).toContainText("version 2 of 2");
-    await expect(operator.page.getByTestId("review-proof")).toContainText("It shows the pages as they are now.");
+    await expect(operator.page.getByTestId("review-page-p01")).toContainText("Page 1 · changed");
+    await expect(operator.page.getByTestId("review-proof")).toContainText("It shows the book as it was sent");
+    await expect(operator.page.getByRole("button", { name: /Redo|Redraw/ })).toHaveCount(0);
+    // Each page shows as it prints, with the family's text: the rewritten paragraph is on the page and flagged
+    // beside the story's wording, so the operator moderates it without the PDF.
+    const p02review = operator.page.getByTestId("review-page-p02");
+    await expect(p02review.getByTestId("book-page")).toContainText(`${child} ran outside.`);
+    await expect(operator.page.getByTestId("review-page-p03").getByTestId("book-page")).toContainText(child);
+    await expect(p02review.getByTestId("review-text-edits-p02")).toContainText(`Now: "${child} ran outside."`);
+    await expect(p02review.getByTestId("review-text-edits-p02")).toContainText("The story's:");
+    await expect(operator.page.getByTestId("review-rewritten")).toContainText("page 2");
     await evidence(operator.page, "photo-review");
     // Each character's sheet and six expressions fit their card on a phone (they once ran far past it).
     for (const width of [320, 390]) {
@@ -410,21 +428,23 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       await expectContained(operator.page.getByTestId("review-decision"));
     }
     await operator.page.setViewportSize({ width: 1280, height: 720 });
-    const p02 = operator.page.getByTestId("review-page-p02");
-    await p02.getByRole("button", { name: "Redo this page" }).click();
-    await p02.getByLabel("What to change on page 2").fill("A bigger smile");
-    await p02.getByRole("button", { name: "Redraw page 2" }).click();
     const approve = operator.page.getByRole("button", { name: "Approve for print" });
-    await expect(operator.page.getByTestId("review-wait")).toContainText("page 2");
+    const refuse = operator.page.getByRole("button", { name: "Refuse the book" });
+    await expect(refuse).toBeDisabled();
+    await operator.page.getByLabel("What's wrong with page 2").fill("Her face is hidden by the kite.");
     await expect(approve).toBeDisabled();
-    await expect(p02).toContainText("version 3 of 3", { timeout: 60_000 });
-    await expect(p02).toContainText('Note: "A bigger smile"');
-    await expect(operator.page.getByTestId("review-proof-outdated")).toBeVisible();
-    await approve.click();
-    await expect(operator.page.getByTestId("review-status")).toContainText("approved");
-    await expect(operator.page.getByTestId("review-decision")).toContainText("Approved for print");
+    await expect(operator.page.getByTestId("review-noted-pages")).toContainText("page 2");
+    await operator.page.getByLabel("Refusal note").fill("Please choose another drawing for page 2.");
+    await refuse.click();
+    await expect(operator.page.getByTestId("review-status")).toContainText("refused");
+    await expect(operator.page.getByTestId("review-page-note-p02")).toContainText("Her face is hidden by the kite.");
+    expect(
+      await sql("select page_id, review_note from book_page where book_id = $1 and review_note is not null", [bookId]),
+    ).toEqual([{ page_id: "p02", review_note: "Her face is hidden by the kite." }]);
     await page.reload();
-    await expect(page.getByTestId("book-step")).toContainText("Approved for print");
+    await expect(page.getByTestId("book-step")).toContainText("We can't print this book");
+    await expect(page.getByTestId("refusal-note")).toHaveText("Please choose another drawing for page 2.");
+    await expect(page.getByTestId("refusal-page-p02")).toHaveText("Page 2: Her face is hidden by the kite.");
     await page.getByRole("button", { name: `${child}'s character sheet` }).click();
     await expect(page.getByRole("img", { name: `${child}'s character sheet` })).toBeVisible();
     await expect(page.getByRole("img", { name: `${child} in six expressions` })).toBeVisible();

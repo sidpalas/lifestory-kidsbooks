@@ -30,8 +30,6 @@ import { FileInput } from "~/components/ui/file-input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { cn } from "~/lib/utils";
 import {
-  ApproveProofResult,
-  approveProofFn,
   BookProofsResult,
   DeleteProofResult,
   deleteProofFn,
@@ -155,7 +153,22 @@ export function PhotoBookSteps({ view, canEdit }: { view: BookView; canEdit: boo
     );
   return (
     <Notice title="We can't print this book" status={flow.status}>
-      <p>{flow.reviewNote ?? "Our team couldn't approve it."} Reply to our email with any questions.</p>
+      {flow.reviewNote && <p data-testid="refusal-note">{flow.reviewNote}</p>}
+      {flow.pages.some((page) => page.reviewNote) && (
+        <ul className="flex flex-col gap-1" aria-label="What's wrong on each page">
+          {view.manifest.pages.flatMap((page, index) => {
+            const note = flow.pages.find((candidate) => candidate.pageId === page.pageId)?.reviewNote;
+            return note
+              ? [
+                  <li key={page.pageId} data-testid={`refusal-page-${page.pageId}`}>
+                    <span className="font-medium">Page {index + 1}:</span> {note}
+                  </li>,
+                ]
+              : [];
+          })}
+        </ul>
+      )}
+      <p>Reply to our email with any questions.</p>
       {proofs}
     </Notice>
   );
@@ -203,11 +216,14 @@ function BookProofs({
   view,
   canEdit,
   onProofs,
+  approveBlocked = null,
 }: {
   view: BookView;
   canEdit: boolean;
   onProofs?: (list: ProofList) => void;
+  approveBlocked?: string | null;
 }) {
+  const router = useRouter();
   const bookId = view.book.id;
   // Reloads the list when the book changes (a page chosen, text saved), so each proof says whether it's current.
   const stamp = JSON.stringify([view.cast, view.pages, view.flow.pages.map((page) => page.chosenVersion)]);
@@ -224,8 +240,10 @@ function BookProofs({
       request={async () => {
         unwrapResult(RequestBookProofResult)(await requestBookProofFn({ data: { bookId } }));
       }}
+      approveBlocked={approveBlocked}
       approve={async (proofId) => {
-        unwrapResult(ApproveProofResult)(await approveProofFn({ data: { proofId } }));
+        unwrapResult(FlowStepResult)(await sendForReviewFn({ data: { bookId, proofId } }));
+        await router.invalidate();
       }}
       remove={async (proofId) => {
         unwrapResult(DeleteProofResult)(await deleteProofFn({ data: { proofId } }));
@@ -918,23 +936,23 @@ function Step({
 
 /**
  * The drawn book's last steps for the parent (D57), in the order they're done: read the pages (changing up to three
- * drawings and any text), make a proof and approve it, then send the book to our review. Each step says what's left
- * and what's still being drawn or made; the pages themselves are the editor below.
+ * drawings and any text), then make a proof, check it, and approve it, which sends the book to our review in the same
+ * action (Sid, 2026-11-25). Each step says what's left and what's still being drawn or made; the pages themselves are
+ * the editor below.
  */
 function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
   const { flow, manifest } = view;
   const navigate = useNavigate();
-  const { error, pending, run } = useStep();
   const [list, setList] = useState<ProofList | null>(null);
   const used = flow.pages.filter((page) => page.latestVersion > 1).length;
   const redrawing = flow.pages.filter((page) => !page.ready);
   const changed = flow.pages.filter((page) => page.latestVersion > 1);
   const proofs = list?.proofs ?? [];
-  const approved = proofs.filter((proof) => proof.approvedAt);
-  const approvedNow = approved.some((proof) => proof.current);
   const making = proofs.some((proof) => proof.current && proof.status === "rendering");
-  const readyToApprove = proofs.some((proof) => proof.current && proof.status === "ready" && !proof.approvedAt);
+  const ready = proofs.some((proof) => proof.current && proof.status === "ready");
+  const outdated = proofs.length > 0 && !proofs.some((proof) => proof.current && proof.status !== "failed");
   const pageNumber = (pageId: string) => manifest.pages.findIndex((page) => page.pageId === pageId) + 1;
+  const redrawingPages = redrawing.map((page) => pageNumber(page.pageId)).join(", ");
   const showPage = (pageId?: string) => {
     void navigate({
       to: "/books/$bookId",
@@ -946,22 +964,9 @@ function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
   };
   const onProofs = useCallback((next: ProofList) => setList(next), []);
 
-  const pagesState: StepState = redrawing.length > 0 ? "waiting" : proofs.length > 0 ? "done" : "current";
-  // One step is current at a time: reading until there's a proof, then the proof until it's approved, then sending.
-  const proofState: StepState = approvedNow
-    ? "done"
-    : making
-      ? "waiting"
-      : redrawing.length > 0 || proofs.length === 0
-        ? "todo"
-        : "current";
-  const sendState: StepState = approvedNow && redrawing.length === 0 ? "current" : "todo";
-  const blocked =
-    redrawing.length > 0
-      ? `Wait for page ${redrawing.map((page) => pageNumber(page.pageId)).join(", ")} to finish redrawing.`
-      : approved.length === 0
-        ? "Approve a proof first: it's the file we review and print."
-        : null;
+  // One step is current at a time: reading until there's a proof of the book as it is, then the proof.
+  const pagesState: StepState = redrawing.length > 0 ? "waiting" : ready || making ? "done" : "current";
+  const proofState: StepState = making ? "waiting" : ready && redrawing.length === 0 ? "current" : "todo";
 
   return (
     <section
@@ -975,10 +980,11 @@ function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
         Read your book
       </h2>
       <p className="text-muted-foreground">
-        Every page is drawn. Three steps before we print it: read the pages, approve a proof, then send it to us.
+        Every page is drawn. Read the pages, then approve a proof: that sends the book to our team, who check it before
+        it's printed.
         {!canEdit && " Someone in your family who edits books does these."}
       </p>
-      <ol className="grid gap-2 lg:grid-cols-3" aria-label="Steps to finish your book">
+      <ol className="grid gap-2 lg:grid-cols-2" aria-label="Steps to finish your book">
         <Step n={1} title="Read every page" state={pagesState} testId="finish-pages">
           <p>
             Read the pages below and fix any text. You can change the drawing on up to {MAX_PAGE_CHANGES} pages (
@@ -986,8 +992,7 @@ function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
           </p>
           {redrawing.length > 0 && (
             <p data-testid="finish-redrawing">
-              Redrawing page {redrawing.map((page) => pageNumber(page.pageId)).join(", ")}: about 20 seconds. You can
-              keep reading meanwhile.
+              Redrawing page {redrawingPages}: about 20 seconds. You can keep reading meanwhile.
             </p>
           )}
           {changed.length > 0 && (
@@ -1011,46 +1016,29 @@ function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
             Read the pages
           </Button>
         </Step>
-        <Step n={2} title="Make a proof and approve it" state={proofState} testId="finish-proof">
+        <Step n={2} title="Approve a proof and send it to us" state={proofState} testId="finish-proof">
           <p>
-            The proof is the PDF we print, with your characters and text as they are now. Download it, check every page,
-            then approve it.
+            The proof is the PDF we print, with your characters and text as they are now. Download it and check every
+            page. Approving it sends the book to our team, who email you if something needs changing; after that the
+            pages can't change.
           </p>
-          {approved.length > 0 && !approvedNow && (
+          {outdated && (
             <p className="text-amber-700" data-testid="finish-proof-outdated">
-              You changed the book after approving a proof. Make a new proof and approve it, so we review and print the
-              book as it is now.
+              You changed the book after your last proof. Make a new one, so we review and print the book as it is now.
             </p>
           )}
-          {readyToApprove && <p className="font-medium">Your proof is ready: download it and check it.</p>}
-          <BookProofs view={view} canEdit={canEdit} onProofs={onProofs} />
-        </Step>
-        <Step n={3} title="Send it to us for review" state={sendState} testId="finish-send">
-          <p>
-            Our team checks every page before anything is printed, and emails you if something needs changing. After you
-            send it, the pages and proof can't change.
-          </p>
-          {canEdit && (
-            <>
-              {blocked && list && <p className="text-muted-foreground">{blocked}</p>}
-              {!blocked && !approvedNow && (
-                <p className="text-amber-700">
-                  Sending now sends your older approved proof, without your latest changes.
-                </p>
-              )}
-              <Button
-                className="w-fit"
-                disabled={pending || blocked !== null || !list}
-                onClick={() => run(() => sendForReviewFn({ data: { bookId: view.book.id } }))}
-              >
-                Send for review
-              </Button>
-            </>
+          {ready && redrawing.length === 0 && (
+            <p className="font-medium">Your proof is ready: download it, check it, then approve it.</p>
           )}
+          <BookProofs
+            view={view}
+            canEdit={canEdit}
+            onProofs={onProofs}
+            approveBlocked={redrawing.length > 0 ? `Wait for page ${redrawingPages} to finish redrawing.` : null}
+          />
         </Step>
       </ol>
       <PhotoReviewNote view={view} canEdit={canEdit} />
-      <Alert text={error} />
     </section>
   );
 }

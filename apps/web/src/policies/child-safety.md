@@ -18,7 +18,8 @@ Nothing else about your family goes with it beyond the age you chose and the loo
 
 ## Human review
 
-A person on our team reviews every book before it's printed and can redraw a page or refuse the book. They see the
+A person on our team reviews every book before it's printed and approves it or refuses it, saying why. They never
+change your book. They see the
 character sheets and pages, and your photos only when you allowed it.
 
 ## Reporting a problem

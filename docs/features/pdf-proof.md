@@ -11,8 +11,8 @@ for print, or deletes any proof after confirming, an approved one with a stronge
 
 - `/books/<id>` (a family's book): the "PDF proofs" list is step 2 of "Read your book", the card above the editor
   (photo-books.md), and stays there as a record once the book is sent. Each proof says whether it shows the book as
-  it is now (cast, text and chosen drawings); only a current one can be approved, and from sending on nobody makes,
-  approves or deletes proofs from the page. Story previews have no proof panel: make a book first.
+  it is now (cast, text and chosen drawings); only a current one can be approved, and approving it sends the book for
+  review (D57). From then on nobody makes, approves or deletes proofs from the page. Story previews have no proof panel: make a book first.
 - Download: `/api/files/families/<familyId>/proofs/<proofId>.pdf`; any member of that family, 404 for others.
 - Owner and editor make, approve, and delete proofs; a viewer downloads only. A deleted proof's download is 404, and so is
   any PDF whose proof row is gone. Deleting a book deletes its proofs (cascaded) and their PDFs.
