@@ -203,8 +203,10 @@ the version already has, raise `version` in its `story.json` (stored versions ne
 A real book's art (tens of MB) stays out of this public repository. The illustrator's PSDs are exported on the Mac
 that has them, as a layer export: `export.json`, `text-layout.json`, `assets/fonts/` and `pages/<pageId>/` with
 `plate.jpg`, `hero.png` and `occluders/` (Dream Adventure's came from thread
-T-01a1fe52-571e-740b-9ac7-821990daba31). Only the converter, `packages/core/src/story-from-export.ts`, and the
-story's settings, `fixtures/art-sources/<story>.json`, are committed. The converter builds a story directory outside
+T-01a1fe52-571e-740b-9ac7-821990daba31). `fixtures/art-sources/psd-export.py` writes that export from PSDs laid out
+as `plate`, `hero` and `foreground` groups, and `psd-layers.py` writes scripted fixes into a PSD; the skill
+`.agents/skills/preparing-layered-art` covers the layout and both. Only these tools, the converter,
+`packages/core/src/story-from-export.ts`, and the story's settings, `fixtures/art-sources/<story>.json`, are committed. The converter builds a story directory outside
 the repository and validates its manifest, including that figures on a page stay apart:
 
 ```sh
