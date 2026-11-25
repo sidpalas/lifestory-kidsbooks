@@ -32,6 +32,13 @@ export const step = <A, E, R>(ctx: TaskContext, name: string, effect: Effect.Eff
     return yield* Effect.promise(() => ctx.step(name, () => Effect.runPromiseWith(context)(effect)));
   });
 
+/**
+ * How long a failed run waits before Absurd retries it: 20 s, 40 s, 80 s, 160 s over the default 5 attempts. Without
+ * it a retry runs at once, and OpenAI's 429s (all gpt-image models share 20 images a minute) would use up every
+ * attempt within the same minute.
+ */
+const retryStrategy = { kind: "exponential", baseSeconds: 20, factor: 2, maxSeconds: 300 } as const;
+
 const fail = (cause: unknown) => new JobError({ message: cause instanceof Error ? cause.message : String(cause) });
 
 export class Jobs extends Context.Service<
@@ -73,6 +80,7 @@ export class Jobs extends Context.Service<
               try: () =>
                 client.spawn(task.name, encoded, {
                   queue: Jobs.queue,
+                  retryStrategy,
                   ...(options?.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
                 }),
               catch: fail,

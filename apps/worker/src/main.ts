@@ -26,7 +26,9 @@ for (const task of tasks as ReadonlyArray<TaskDefinition<any, unknown, unknown, 
   );
 }
 
-const worker = await client.startWorker({ concurrency: 4, pollInterval: 0.5 });
+// Most of a task is waiting on OpenAI, whose gpt-image models share 20 images a minute; at ~20 s a call, 6 tasks at
+// once stay just under that. More tasks or more replicas only add 429s (Jobs.spawn's retries back them off).
+const worker = await client.startWorker({ concurrency: 6, pollInterval: 0.5 });
 console.log(`worker started: queue=${Jobs.queue} tasks=${tasks.map((t) => t.name).join(",")}`);
 
 // Absurd has no scheduler (D4), so each worker spawns the storage sweep (D31) at start and every 6 hours. The
