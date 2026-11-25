@@ -172,6 +172,13 @@ export const sweepStorage = defineTask({
               .set({ photoKey: null, photoDeletedAt: new Date(now) })
               .where(and(inArray(schema.bookLikeness.bookId, photosGone), isNotNull(schema.bookLikeness.photoKey))),
           );
+        if (photosGone.length > 0)
+          yield* Database.query((db) =>
+            db
+              .update(schema.bookPosePhoto)
+              .set({ photoKey: null, photoDeletedAt: new Date(now) })
+              .where(and(inArray(schema.bookPosePhoto.bookId, photosGone), isNotNull(schema.bookPosePhoto.photoKey))),
+          );
         return { deleted: keys.length };
       }),
     ),

@@ -8,7 +8,14 @@ import { Effect } from "effect";
 import { Auth, type SessionUser } from "./auth.ts";
 import { bookFlow, loadBook } from "./books.ts";
 import { AppConfig } from "./config.ts";
-import { consentStatements, LookChoices, MAX_PAGE_CHANGES, MAX_SHEET_DRAWS, policyVersion } from "./contracts.ts";
+import {
+  consentStatements,
+  LookChoices,
+  MAX_PAGE_CHANGES,
+  MAX_SHEET_DRAWS,
+  type PhotoPose,
+  policyVersion,
+} from "./contracts.ts";
 import { Database } from "./database.ts";
 import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -71,6 +78,7 @@ export const recordConsent = Effect.fn("bookFlow.consent")(function* (
       });
       await tx.update(schema.book).set({ photoReview }).where(eq(schema.book.id, book.id));
       await tx.update(schema.bookLikeness).set({ consentId: id }).where(eq(schema.bookLikeness.bookId, book.id));
+      await tx.update(schema.bookPosePhoto).set({ consentId: id }).where(eq(schema.bookPosePhoto.bookId, book.id));
     }),
   );
   return { id };
@@ -148,6 +156,8 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     readonly fileName: string;
     readonly contentType: string;
     readonly body: Uint8Array;
+    /** An extra photo's pose (D56); absent for the main photo. */
+    readonly pose?: PhotoPose;
   },
 ) {
   const book = yield* editableBook(userId, input.bookId);
@@ -181,37 +191,78 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     Effect.orDie,
     Effect.onError(() => releaseUpload(uploadId)),
   );
-  const [previous] = yield* Database.query((db) =>
-    db
-      .select({ photoKey: schema.bookLikeness.photoKey })
-      .from(schema.bookLikeness)
-      .where(and(eq(schema.bookLikeness.bookId, book.id), eq(schema.bookLikeness.slotId, input.slotId))),
-  );
-  const values = {
-    photoKey: key,
-    uploadId,
-    photoDeletedAt: null,
-    checkStatus: "checking" as const,
-    check: null,
-    consentId: consent.id,
-    sheetKey: null,
-    expressionsKey: null,
-  };
-  yield* Database.query((db) =>
-    db.transaction(async (tx) => {
-      await tx
-        .insert(schema.bookLikeness)
-        .values({ bookId: book.id, slotId: input.slotId, ...values })
-        .onConflictDoUpdate({ target: [schema.bookLikeness.bookId, schema.bookLikeness.slotId], set: values });
-      // A new photo means a new sheet for this person, and a new cover once it's drawn; nobody else changes.
-      await tx.update(schema.book).set({ likenessStatus: "waiting", cover: null }).where(eq(schema.book.id, book.id));
-    }),
-  );
-  if (previous?.photoKey) yield* storage.delete(previous.photoKey).pipe(Effect.ignore);
+  if (input.pose) {
+    // An extra photo replaces only its pose's earlier photo; the sheet changes once it passes (photo.check).
+    const pose = input.pose;
+    const [previous] = yield* Database.query((db) =>
+      db
+        .select({ photoKey: schema.bookPosePhoto.photoKey })
+        .from(schema.bookPosePhoto)
+        .where(
+          and(
+            eq(schema.bookPosePhoto.bookId, book.id),
+            eq(schema.bookPosePhoto.slotId, input.slotId),
+            eq(schema.bookPosePhoto.pose, pose),
+          ),
+        ),
+    );
+    const values = {
+      photoKey: key,
+      uploadId,
+      photoDeletedAt: null,
+      checkStatus: "checking" as const,
+      check: null,
+      consentId: consent.id,
+    };
+    yield* Database.query((db) =>
+      db
+        .insert(schema.bookPosePhoto)
+        .values({ bookId: book.id, slotId: input.slotId, pose, ...values })
+        .onConflictDoUpdate({
+          target: [schema.bookPosePhoto.bookId, schema.bookPosePhoto.slotId, schema.bookPosePhoto.pose],
+          set: values,
+        }),
+    );
+    if (previous?.photoKey) yield* storage.delete(previous.photoKey).pipe(Effect.ignore);
+  } else {
+    const [previous] = yield* Database.query((db) =>
+      db
+        .select({ photoKey: schema.bookLikeness.photoKey })
+        .from(schema.bookLikeness)
+        .where(and(eq(schema.bookLikeness.bookId, book.id), eq(schema.bookLikeness.slotId, input.slotId))),
+    );
+    const values = {
+      photoKey: key,
+      uploadId,
+      photoDeletedAt: null,
+      checkStatus: "checking" as const,
+      check: null,
+      consentId: consent.id,
+      sheetKey: null,
+      expressionsKey: null,
+    };
+    yield* Database.query((db) =>
+      db.transaction(async (tx) => {
+        await tx
+          .insert(schema.bookLikeness)
+          .values({ bookId: book.id, slotId: input.slotId, ...values })
+          .onConflictDoUpdate({ target: [schema.bookLikeness.bookId, schema.bookLikeness.slotId], set: values });
+        // A new photo means a new sheet for this person, and a new cover once it's drawn; nobody else changes.
+        await tx.update(schema.book).set({ likenessStatus: "waiting", cover: null }).where(eq(schema.book.id, book.id));
+      }),
+    );
+    if (previous?.photoKey) yield* storage.delete(previous.photoKey).pipe(Effect.ignore);
+  }
   yield* Jobs.use((jobs) =>
     jobs.spawn(
       checkPhoto,
-      { bookId: book.id, slotId: input.slotId, uploadId, fileName: input.fileName },
+      {
+        bookId: book.id,
+        slotId: input.slotId,
+        uploadId,
+        fileName: input.fileName,
+        ...(input.pose ? { pose: input.pose } : {}),
+      },
       { idempotencyKey: `photo.check:${uploadId}` },
     ),
   );
@@ -259,6 +310,19 @@ export const drawSheet = Effect.fn("bookFlow.drawSheet")(function* (
   if (person.checkStatus !== "passed" || !person.photoKey)
     return yield* new InvalidInput({ message: `Add a photo of ${person.name} that passes the check first.` });
   if (person.drawing) return yield* new InvalidInput({ message: `${person.name} is being drawn already.` });
+  const [checking] = yield* Database.query((db) =>
+    db
+      .select({ pose: schema.bookPosePhoto.pose })
+      .from(schema.bookPosePhoto)
+      .where(
+        and(
+          eq(schema.bookPosePhoto.bookId, book.id),
+          eq(schema.bookPosePhoto.slotId, input.slotId),
+          eq(schema.bookPosePhoto.checkStatus, "checking"),
+        ),
+      ),
+  );
+  if (checking) return yield* new InvalidInput({ message: `Wait for the check of ${person.name}'s photos to finish.` });
   if ((person.draws ?? 0) >= MAX_SHEET_DRAWS)
     return yield* new InvalidInput({ message: `You've used all ${MAX_SHEET_DRAWS} drawings of ${person.name}.` });
   const note = person.sheetKey ? (input.note ?? "").trim().slice(0, 300) : "";

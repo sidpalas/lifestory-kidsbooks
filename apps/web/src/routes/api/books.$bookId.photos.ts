@@ -1,9 +1,10 @@
-// Uploads one role's photo to a draft book (D56): POST multipart with `file` and `slotId`. The browser has already resized it and dropped its metadata. Answers { uploadId } and starts the check, or
+// Uploads one role's photo to a draft book (D56): POST multipart with `file`, `slotId`, and `pose` for an extra photo. The browser has already resized it and dropped its metadata. Answers { uploadId } and starts the check, or
 // { error } with a status: 429, with Retry-After when waiting helps, past the account's upload limits (D59). The custom
 // header makes a cross-site form unable to send this.
 import { Auth, uploadPhoto } from "@lifestory/core";
+import { PhotoPose } from "@lifestory/core/contracts";
 import { createFileRoute } from "@tanstack/react-router";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 
 import { serverRuntime } from "~/server/runtime";
 
@@ -21,8 +22,10 @@ export const Route = createFileRoute("/api/books/$bookId/photos")({
             const form = yield* Effect.promise(() => request.formData());
             const file = form.get("file");
             const slotId = form.get("slotId");
+            const pose = form.get("pose");
             if (!(file instanceof File) || typeof slotId !== "string")
               return json({ error: "Send a photo and a role" }, 400);
+            if (pose !== null && !Schema.is(PhotoPose)(pose)) return json({ error: "No such photo slot" }, 400);
             const body = new Uint8Array(yield* Effect.promise(() => file.arrayBuffer()));
             return json(
               yield* uploadPhoto(user.id, {
@@ -31,6 +34,7 @@ export const Route = createFileRoute("/api/books/$bookId/photos")({
                 fileName: file.name,
                 contentType: file.type,
                 body,
+                ...(pose !== null ? { pose } : {}),
               }),
             );
           }).pipe(

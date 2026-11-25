@@ -169,6 +169,13 @@
       "when": 1795573898764,
       "tag": "0023_sheet_expressions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795576639758,
+      "tag": "0024_pose_photos",
+      "breakpoints": true
     }
   ]
 }

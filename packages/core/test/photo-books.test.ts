@@ -59,6 +59,12 @@ describe("judgePhoto", () => {
     expect(judgePhoto(report({ sharpness: "soft" }), child).status).toBe("passed");
   });
 
+  it("refuses an extra photo of someone else, and says nothing when there was no main photo to compare", () => {
+    expect(codes(judgePhoto(report({ samePerson: false }), child)).refusals).toEqual(["other-person"]);
+    expect(judgePhoto(report({ samePerson: true }), child).status).toBe("passed");
+    expect(judgePhoto(report(), child).status).toBe("passed");
+  });
+
   it("warns on an age far from the role's", () => {
     // An adult's photo for a child's role still passes (the sheet draws them as a child), with a warning.
     expect(codes(judgePhoto(report({ apparentAge: "adult" }), child))).toEqual({
@@ -103,6 +109,15 @@ describe("the look a sheet draws", () => {
       eyeColour: null,
     });
     expect(lookOf(null, { freckles: true }).freckles).toBe(true);
+  });
+
+  it("names the extra photos in the sheet prompt only when there are some", () => {
+    const style = { styleReference: "style.png", styleWords: "pencil", promptVersion: "photo-hero-v3" } as const;
+    const base = { style, age: "toddler", outfit: "pyjamas", look: lookOf(null, {}) } as const;
+    const sheet = photoPrompts["photo-hero-v3"].sheet;
+    expect(sheet(base)).toMatch(/^The first image is a photo of a person\. The second image/);
+    expect(sheet({ ...base, extraPhotos: 2 })).toMatch(/^The first 3 images are photos of the same person/);
+    expect(sheet({ ...base, extraPhotos: 2 })).toContain("from the photos so");
   });
 
   it("says only what's known, and a bald head without colour", () => {

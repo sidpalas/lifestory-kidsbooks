@@ -1,6 +1,7 @@
 // The photo check (D56): each uploaded photo is moderated, then looked at by a small vision model, and the rules below
 // decide in code whether it can make a character sheet. `PHOTO_CHECK=fake` (the default) looks at nothing and refuses
-// a photo whose file name contains `two-faces`, so tests and orbs make no API calls; `openai` calls OpenAI.
+// a photo whose file name contains `two-faces`, and an extra photo whose name contains `other-person` as someone else,
+// so tests and orbs make no API calls; `openai` calls OpenAI.
 import type { JsonObject } from "absurd-sdk";
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import sharp from "sharp";
@@ -41,6 +42,8 @@ export class PhotoCheck extends Context.Service<
     readonly inspect: (
       photo: PhotoInput,
     ) => Effect.Effect<Inspection & { readonly usage?: JsonObject }, PhotoCheckFailed>;
+    /** Whether an extra photo shows the same person as the main photo, without saying who either is. */
+    readonly samePerson: (main: PhotoInput, extra: PhotoInput) => Effect.Effect<boolean, PhotoCheckFailed>;
   }
 >()("@lifestory/core/PhotoCheck") {}
 
@@ -70,7 +73,7 @@ const ageIndex = (age: Age) => ageOptions.findIndex((option) => option.id === ag
 
 /**
  * The rules (D56): refuse with no visible main face, a second prominent face, a face under about 150 px across, or a
- * blurred face; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, and an age
+ * blurred face, or an extra photo of someone other than the main photo's person; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, and an age
  * that doesn't match: one the role accepts but the parent didn't choose (the
  * sheet draws the chosen age, so a toddler chosen as a young child comes out about six), or one far from the role's.
  */
@@ -91,6 +94,8 @@ export const judgePhoto = (
       refusals.push(issue("small-face", "The face is too small. Choose a closer photo, or crop it around the face."));
     else if (report.sharpness === "blurred")
       refusals.push(issue("blurred", "The face is blurred. Choose a sharper photo."));
+    else if (report.samePerson === false)
+      refusals.push(issue("other-person", "This looks like a different person from the first photo."));
   }
   if (refusals.length === 0) {
     const covered = report.occlusions.filter((o) => ["hat", "helmet", "sunglasses", "goggles"].includes(o));
@@ -147,6 +152,7 @@ export const FakePhotoCheck = Layer.succeed(PhotoCheck, {
       facialHair: "none" as const,
       tip: "",
     }),
+  samePerson: (_main, extra) => Effect.succeed(!extra.fileName.includes("other-person")),
 });
 
 const visionPrompt = `You check a photo a parent uploaded so an illustrator can draw the main person in a children's book.
@@ -219,6 +225,18 @@ const visionSchema = {
   },
 };
 
+const samePersonPrompt = `Two photos a parent uploaded of one family member for a children's book illustrator.
+Do not identify the people or guess who they are. Say only whether the main person in the second photo looks like the
+same person as the main person in the first, allowing for a different expression, angle, hairstyle, light or a few
+years of age.`;
+const SamePersonReply = Schema.Struct({ samePerson: Schema.Boolean });
+const samePersonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["samePerson"],
+  properties: { samePerson: { type: "boolean" } },
+};
+
 const dataUrl = (photo: PhotoInput) => `data:${photo.contentType};base64,${Buffer.from(photo.body).toString("base64")}`;
 
 /** OpenAI: `omni-moderation-latest`, then OPENAI_CHECK_MODEL (`gpt-5.4-mini`) through /v1/responses (D56). */
@@ -247,8 +265,41 @@ export const OpenAIPhotoCheck = Layer.effect(
         return JSON.parse(text) as Record<string, any>;
       });
 
+    const responseJson = (content: ReadonlyArray<unknown>, name: string, schema: object) =>
+      post("/responses", {
+        model,
+        input: [{ role: "user", content }],
+        text: { format: { type: "json_schema", name, strict: true, schema } },
+      }).pipe(
+        Effect.flatMap((body) => {
+          const text = (body.output ?? [])
+            .flatMap((item: any) => item.content ?? [])
+            .find((part: any) => part.type === "output_text")?.text;
+          return Effect.try({
+            try: () => ({ reply: JSON.parse(String(text)) as unknown, body }),
+            catch: () => new PhotoCheckFailed({ message: `unreadable reply: ${String(text).slice(0, 200)}` }),
+          });
+        }),
+      );
+
     return {
       name: `openai:${model}`,
+      samePerson: (main, extra) =>
+        responseJson(
+          [
+            { type: "input_text", text: samePersonPrompt },
+            { type: "input_image", image_url: dataUrl(main) },
+            { type: "input_image", image_url: dataUrl(extra) },
+          ],
+          "same_person",
+          samePersonSchema,
+        ).pipe(
+          Effect.flatMap(({ reply }) => Schema.decodeUnknownEffect(SamePersonReply)(reply)),
+          Effect.mapError((error) =>
+            error instanceof PhotoCheckFailed ? error : new PhotoCheckFailed({ message: String(error) }),
+          ),
+          Effect.map((reply) => reply.samePerson),
+        ),
       moderate: (photo) =>
         post("/moderations", {
           model: "omni-moderation-latest",

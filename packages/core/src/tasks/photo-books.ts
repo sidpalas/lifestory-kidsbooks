@@ -4,12 +4,12 @@
 // and upload, so a rerun overwrites the same objects.
 import { schema } from "@lifestory/db";
 import type { TaskContext } from "absurd-sdk";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Config, Effect, Schema } from "effect";
 
 import { type Age, coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
 import { loadBook } from "../books.ts";
-import { LookChoices, lookOf, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
+import { LookChoices, lookOf, PhotoCheckResult, PhotoPose, photoPoses, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
 import { GenerationFailed } from "../errors.ts";
 import {
@@ -42,6 +42,12 @@ export const deleteBookPhotos = Effect.fn("photoBooks.deletePhotos")(function* (
       .update(schema.bookLikeness)
       .set({ photoKey: null, photoDeletedAt: sql`coalesce(${schema.bookLikeness.photoDeletedAt}, now())` })
       .where(eq(schema.bookLikeness.bookId, bookId)),
+  );
+  yield* Database.query((db) =>
+    db
+      .update(schema.bookPosePhoto)
+      .set({ photoKey: null, photoDeletedAt: sql`coalesce(${schema.bookPosePhoto.photoDeletedAt}, now())` })
+      .where(eq(schema.bookPosePhoto.bookId, bookId)),
   );
   return photos.length;
 });
@@ -241,18 +247,32 @@ const drawCover = Effect.fn("photoBooks.drawCover")(function* (
 });
 
 /** A role's likeness while `uploadId` is still its photo and not deleted, else null. */
-const currentUpload = (bookId: string, slotId: string, uploadId: string) =>
-  Database.query((db) =>
-    db
-      .select()
-      .from(schema.bookLikeness)
-      .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId))),
-  ).pipe(Effect.map(([row]) => (row?.uploadId === uploadId && row.photoKey ? row : null)));
+const currentUpload = (bookId: string, slotId: string, uploadId: string, pose?: PhotoPose) =>
+  (pose
+    ? Database.query((db) =>
+        db
+          .select({ photoKey: schema.bookPosePhoto.photoKey, uploadId: schema.bookPosePhoto.uploadId })
+          .from(schema.bookPosePhoto)
+          .where(
+            and(
+              eq(schema.bookPosePhoto.bookId, bookId),
+              eq(schema.bookPosePhoto.slotId, slotId),
+              eq(schema.bookPosePhoto.pose, pose),
+            ),
+          ),
+      )
+    : Database.query((db) =>
+        db
+          .select({ photoKey: schema.bookLikeness.photoKey, uploadId: schema.bookLikeness.uploadId })
+          .from(schema.bookLikeness)
+          .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId))),
+      )
+  ).pipe(Effect.map(([row]) => (row?.uploadId === uploadId && row.photoKey ? { photoKey: row.photoKey } : null)));
 
 /** The photo of `uploadId` for the check, or null once replaced or deleted. */
-const uploadedPhoto = (bookId: string, slotId: string, uploadId: string, fileName: string) =>
+const uploadedPhoto = (bookId: string, slotId: string, uploadId: string, fileName: string, pose?: PhotoPose) =>
   Effect.gen(function* () {
-    const row = yield* currentUpload(bookId, slotId, uploadId);
+    const row = yield* currentUpload(bookId, slotId, uploadId, pose);
     if (!row) return null;
     const object = yield* (yield* ObjectStorage).get(row.photoKey!).pipe(Effect.orDie);
     return { body: object.body, contentType: object.contentType, fileName };
@@ -269,14 +289,16 @@ export const checkPhoto = defineTask({
     slotId: Schema.String,
     uploadId: Schema.String,
     fileName: Schema.String,
+    /** An extra photo's pose; absent for the main photo. */
+    pose: Schema.optionalKey(PhotoPose),
   }),
-  run: ({ bookId, slotId, uploadId, fileName }, ctx) =>
+  run: ({ bookId, slotId, uploadId, fileName, pose }, ctx) =>
     Effect.gen(function* () {
       const moderation = yield* step(
         ctx,
         "moderate",
         Effect.gen(function* () {
-          const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName);
+          const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName, pose);
           return input ? yield* (yield* PhotoCheck).moderate(input) : null;
         }).pipe(Effect.orDie),
       );
@@ -291,18 +313,37 @@ export const checkPhoto = defineTask({
               ctx,
               "inspect",
               Effect.gen(function* () {
-                const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName);
+                const input = yield* uploadedPhoto(bookId, slotId, uploadId, fileName, pose);
                 if (!input) return null;
                 const { usage: _, ...inspection } = yield* (yield* PhotoCheck).inspect(input);
                 return { moderation, ...inspection };
               }).pipe(Effect.orDie),
             );
+      // An extra photo is compared with the person's main photo, while there's one that passed.
+      const samePerson =
+        pose && report
+          ? yield* step(
+              ctx,
+              "compare",
+              Effect.gen(function* () {
+                const [main] = yield* likenesses(bookId).pipe(
+                  Effect.map((rows) => rows.filter((row) => row.slotId === slotId)),
+                );
+                if (main?.checkStatus !== "passed" || !main.photoKey) return null;
+                const extra = yield* uploadedPhoto(bookId, slotId, uploadId, fileName, pose);
+                if (!extra) return null;
+                const object = yield* (yield* ObjectStorage).get(main.photoKey);
+                const first = { body: object.body, contentType: object.contentType, fileName: "main" };
+                return yield* (yield* PhotoCheck).samePerson(first, extra);
+              }).pipe(Effect.orDie),
+            )
+          : null;
 
       const status = yield* step(
         ctx,
         "store",
         Effect.gen(function* () {
-          const row = yield* currentUpload(bookId, slotId, uploadId);
+          const row = yield* currentUpload(bookId, slotId, uploadId, pose);
           if (!row) return "stale" as const;
           const book = yield* loadBook(bookId).pipe(Effect.orDie);
           const slot = book.manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
@@ -313,17 +354,59 @@ export const checkPhoto = defineTask({
               .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
           );
           const result: PhotoCheckResult = report
-            ? judgePhoto(report, { ages: slot?.ages ?? [], ...(person ? { chosen: person.age as Age } : {}) })
+            ? judgePhoto(samePerson === null ? report : { ...report, samePerson }, {
+                ages: slot?.ages ?? [],
+                ...(person ? { chosen: person.age as Age } : {}),
+              })
             : { status: "refused", refusals: refusedFirst, warnings: [], report: null };
-          if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey!).pipe(Effect.orDie);
+          if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey).pipe(Effect.orDie);
+          const outcome = {
+            checkStatus: result.status,
+            check: Schema.encodeSync(PhotoCheckResult)(result),
+            ...(result.status === "refused" ? { photoKey: null, photoDeletedAt: new Date() } : {}),
+          };
+          if (pose) {
+            // A passing extra photo changes what the person's sheet is drawn from: their sheet goes, and drawing them
+            // again uses one of their drawings (D56). A refused one leaves the sheet as it was.
+            yield* Database.query((db) =>
+              db.transaction(async (tx) => {
+                const stored = await tx
+                  .update(schema.bookPosePhoto)
+                  .set(outcome)
+                  .where(
+                    and(
+                      eq(schema.bookPosePhoto.bookId, bookId),
+                      eq(schema.bookPosePhoto.slotId, slotId),
+                      eq(schema.bookPosePhoto.pose, pose),
+                      eq(schema.bookPosePhoto.uploadId, uploadId),
+                    ),
+                  )
+                  .returning({ pose: schema.bookPosePhoto.pose });
+                if (result.status !== "passed" || stored.length === 0) return;
+                const cleared = await tx
+                  .update(schema.bookLikeness)
+                  .set({ sheetKey: null, expressionsKey: null })
+                  .where(
+                    and(
+                      eq(schema.bookLikeness.bookId, bookId),
+                      eq(schema.bookLikeness.slotId, slotId),
+                      isNotNull(schema.bookLikeness.sheetKey),
+                    ),
+                  )
+                  .returning({ slotId: schema.bookLikeness.slotId });
+                if (cleared.length > 0)
+                  await tx
+                    .update(schema.book)
+                    .set({ likenessStatus: "waiting", cover: null })
+                    .where(and(eq(schema.book.id, bookId), eq(schema.book.status, "draft")));
+              }),
+            );
+            return result.status;
+          }
           yield* Database.query((db) =>
             db
               .update(schema.bookLikeness)
-              .set({
-                checkStatus: result.status,
-                check: Schema.encodeSync(PhotoCheckResult)(result),
-                ...(result.status === "refused" ? { photoKey: null, photoDeletedAt: new Date() } : {}),
-              })
+              .set(outcome)
               .where(
                 and(
                   eq(schema.bookLikeness.bookId, bookId),
@@ -377,12 +460,33 @@ export const drawLikenessSheet = defineTask({
       );
       if (!slot || !row?.photoKey || !person)
         return yield* Effect.die(new Error(`book ${bookId}: ${slotId} has no photo`));
+      // The person's extra photos that passed, in the slots' order; only the sheet reads them (D56).
+      const poses = yield* step(
+        ctx,
+        "poses",
+        Database.query((db) =>
+          db
+            .select({ pose: schema.bookPosePhoto.pose, photoKey: schema.bookPosePhoto.photoKey })
+            .from(schema.bookPosePhoto)
+            .where(
+              and(
+                eq(schema.bookPosePhoto.bookId, bookId),
+                eq(schema.bookPosePhoto.slotId, slotId),
+                eq(schema.bookPosePhoto.checkStatus, "passed"),
+                isNotNull(schema.bookPosePhoto.photoKey),
+              ),
+            ),
+        ).pipe(
+          Effect.map((rows) => photoPoses.flatMap((p) => rows.filter((r) => r.pose === p.id).map((r) => r.photoKey!))),
+        ),
+      );
       const note = row.notes.findLast((candidate) => candidate.round === draw)?.note;
       const fresh = !note || !row.sheetKey || mode === "fresh";
       const sheetPrompt = prompts.sheet({
         style,
         age: person.age as never,
         outfit: slot.outfit,
+        extraPhotos: poses.length,
         look: lookOf(
           (row.check as PhotoCheckResult | null)?.report,
           yield* Schema.decodeUnknownEffect(LookChoices)(person.look).pipe(Effect.orDie),
@@ -394,7 +498,7 @@ export const drawLikenessSheet = defineTask({
         width: 1536,
         height: 1024,
         references: fresh
-          ? [row.photoKey, storyAssetKey(book.storyId, book.version, style.styleReference)]
+          ? [row.photoKey, ...poses, storyAssetKey(book.storyId, book.version, style.styleReference)]
           : [row.sheetKey!],
         outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/sheet-${drawId}`,
       });

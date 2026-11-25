@@ -7,7 +7,7 @@ Version 2026-11-24. For adults 18 and older. This text hasn't been reviewed by a
 - **Your account:** your name and email, to sign you in and email you about your books.
 - **Your family's books:** who plays each role (a name, what the children call them, pronouns and an age), your text
   changes, your notes on the drawings, and your proofs.
-- **Photos:** one photo of each person in a book, only to draw them.
+- **Photos:** a photo of each person in a book, and up to three more of them if you add them, only to draw them.
 - **Consent:** what you agreed to at the photo step and when, kept as long as your account.
 
 We don't keep a face template or any biometric identifier, and we don't use your photos to train any model.

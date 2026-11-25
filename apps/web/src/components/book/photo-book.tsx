@@ -12,6 +12,8 @@ import {
   type LookChoices,
   type LookKey,
   lookOf,
+  type PhotoPose,
+  photoPoses,
   skinTones,
   MAX_PAGE_CHANGES,
   MAX_SHEET_DRAWS,
@@ -45,7 +47,12 @@ const fileUrl = (key: string) => `/api/files/${key}`;
 
 /** Whether the server is still working on something the page shows. */
 export const flowBusy = (flow: Flow) =>
-  flow.likenesses.some((likeness) => likeness.checkStatus === "checking" || likeness.drawing) ||
+  flow.likenesses.some(
+    (likeness) =>
+      likeness.checkStatus === "checking" ||
+      likeness.drawing ||
+      likeness.poses.some((pose) => pose.checkStatus === "checking"),
+  ) ||
   flow.likenessStatus === "drawing" ||
   flow.status === "ordered" ||
   flow.status === "making" ||
@@ -346,11 +353,12 @@ function PhotoStep({ view }: { view: BookView }) {
   );
 }
 
-function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
+/**
+ * One photo's upload, for the main photo or an extra pose (D56): the chosen or dropped file is resized and sent.
+ * Each slot holds one photo, so a drop of several files, or of a non-photo, uploads nothing and says why.
+ */
+function usePhotoUpload(view: BookView, slotId: string, name: string, pose?: PhotoPose) {
   const router = useRouter();
-  const slot = view.manifest.characterSlots.find((candidate) => candidate.slotId === slotId)!;
-  const role = view.roles.find((candidate) => candidate.slotId === slotId);
-  const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -362,6 +370,7 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
       const form = new FormData();
       form.set("file", await preparePhoto(file));
       form.set("slotId", slotId);
+      if (pose) form.set("pose", pose);
       const response = await fetch(`/api/books/${view.book.id}/photos`, {
         method: "POST",
         headers: { "x-lifestory-upload": "1" },
@@ -377,13 +386,10 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
     }
   };
 
-  // Dropping a file on the card does what choosing it does; each person has exactly one photo, so a drop of several
-  // files uploads none and says why.
-  const name = role?.person.name ?? slot.label;
   const drop = (files: ReadonlyArray<File>) => {
     if (uploading) return setError(`Wait for ${name}'s photo to finish uploading.`);
     if (files.length !== 1)
-      return setError(`That's ${files.length} files. Drop one photo of ${name}: we use one photo of each person.`);
+      return setError(`That's ${files.length} files. Drop one photo here: each slot takes one photo of ${name}.`);
     if (!isPhotoFile(files[0]!)) return setError("That isn't a photo we can use. Drop a JPEG, PNG, WebP or HEIC.");
     void upload(files[0]!);
   };
@@ -393,6 +399,102 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
     if (file) void upload(file);
   };
 
+  /** Makes an element this slot's drop target. */
+  const dropTarget = {
+    onDragOver: (event: React.DragEvent) => {
+      if (!isFileDrag(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      setDragging(true);
+    },
+    onDragLeave: (event: React.DragEvent) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
+    },
+    onDrop: (event: React.DragEvent) => {
+      if (!isFileDrag(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDragging(false);
+      drop([...event.dataTransfer.files]);
+    },
+  };
+  return { error, uploading, dragging, pick, dropTarget };
+}
+
+const checkText = (uploading: boolean, status: string | null) =>
+  uploading
+    ? "Uploading…"
+    : status === "checking"
+      ? "Checking the photo…"
+      : status === "passed"
+        ? "This photo works."
+        : status === "refused"
+          ? "We can't use this photo."
+          : "No photo yet.";
+
+/** An extra photo's slot (D56): optional, one photo, with its own buttons and drop target. */
+function PoseSlot({ view, slotId, name, pose }: { view: BookView; slotId: string; name: string; pose: PhotoPose }) {
+  const info = photoPoses.find((candidate) => candidate.id === pose)!;
+  const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
+  const photo = likeness.poses.find((candidate) => candidate.pose === pose);
+  const { error, uploading, dragging, pick, dropTarget } = usePhotoUpload(view, slotId, name, pose);
+  const busy = uploading || likeness.drawing;
+  return (
+    <li
+      className={cn(
+        "flex min-w-0 flex-col gap-1.5 rounded border p-2 text-xs",
+        dragging && "border-dashed border-primary bg-accent",
+      )}
+      data-testid={`pose-${slotId}-${pose}`}
+      {...dropTarget}
+    >
+      <p className="text-muted-foreground">{info.hint}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {photo?.photoKey && (
+          <img src={fileUrl(photo.photoKey)} alt={`${name}: ${info.label.toLowerCase()}`} className="h-16 rounded" />
+        )}
+        <FileInput
+          label={`${info.label} (${name})`}
+          buttonText={photo?.photoKey ? "Choose another" : "Choose a photo"}
+          emptyText=""
+          accept={photoTypes.join(",")}
+          disabled={busy}
+          onChange={pick}
+        />
+        <FileInput
+          className="hidden pointer-coarse:flex"
+          label=""
+          icon={<CameraIcon />}
+          aria-label={`Use the camera for ${name}, ${info.label.toLowerCase()}`}
+          buttonText="Take a photo"
+          emptyText=""
+          accept="image/*"
+          capture="environment"
+          disabled={busy}
+          onChange={pick}
+        />
+      </div>
+      {(uploading || photo) && (
+        <p data-testid={`pose-status-${slotId}-${pose}`}>{checkText(uploading, photo?.checkStatus ?? null)}</p>
+      )}
+      {photo?.check?.refusals.map((issue) => (
+        <p key={issue.code} className="text-destructive">
+          {issue.message}
+        </p>
+      ))}
+      <Alert text={error} />
+    </li>
+  );
+}
+
+function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
+  const slot = view.manifest.characterSlots.find((candidate) => candidate.slotId === slotId)!;
+  const role = view.roles.find((candidate) => candidate.slotId === slotId);
+  const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
+  const name = role?.person.name ?? slot.label;
+  const { error, uploading, dragging, pick, dropTarget } = usePhotoUpload(view, slotId, name);
+
   const check = likeness.check;
   return (
     <div
@@ -401,21 +503,7 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
         dragging && "border-dashed border-primary bg-accent",
       )}
       data-testid={`photo-${slotId}`}
-      onDragOver={(event) => {
-        if (!isFileDrag(event)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-        setDragging(true);
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
-      }}
-      onDrop={(event) => {
-        if (!isFileDrag(event)) return;
-        event.preventDefault();
-        setDragging(false);
-        drop([...event.dataTransfer.files]);
-      }}
+      {...dropTarget}
     >
       <p className="font-medium">
         {slot.label}: {role?.person.name}
@@ -448,15 +536,7 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
         <img src={fileUrl(likeness.photoKey)} alt={`Photo of ${role?.person.name}`} className="h-28 w-fit rounded" />
       )}
       <p data-testid={`photo-status-${slotId}`} className="text-xs">
-        {uploading
-          ? "Uploading…"
-          : likeness.checkStatus === "checking"
-            ? "Checking the photo…"
-            : likeness.checkStatus === "passed"
-              ? "This photo works."
-              : likeness.checkStatus === "refused"
-                ? "We can't use this photo."
-                : "No photo yet."}
+        {checkText(uploading, likeness.checkStatus)}
       </p>
       {check?.refusals.map((issue) => (
         <p key={issue.code} className="text-xs text-destructive">
@@ -468,7 +548,19 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
           {issue.message}
         </p>
       ))}
-      {likeness.checkStatus === "passed" && <LookConfirm view={view} slotId={slotId} name={name} />}
+      {likeness.checkStatus === "passed" && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            More photos help us draw {name} from every side. They're optional; we recommend at least one.
+          </p>
+          <ul className="flex flex-col gap-2" aria-label={`More photos of ${name}`}>
+            {photoPoses.map((pose) => (
+              <PoseSlot key={pose.id} view={view} slotId={slotId} name={name} pose={pose.id} />
+            ))}
+          </ul>
+          <LookConfirm view={view} slotId={slotId} name={name} />
+        </>
+      )}
       <Alert text={error} />
     </div>
   );

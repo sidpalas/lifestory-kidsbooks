@@ -136,10 +136,10 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     expect(await photosOf(bookId)).toBe(0);
     await evidence(page, "photo-refused");
 
-    // A photo can be dropped on its person's card; dropping several uploads none, since each person has one photo.
+    // A photo can be dropped on its person's card; dropping several uploads none, since each slot takes one photo.
     await dropFiles(page, "photo-hero", ["child.png", "child-2.png"]);
     await expect(page.getByTestId("photo-hero").getByRole("alert")).toHaveText(
-      `That's 2 files. Drop one photo of ${child}: we use one photo of each person.`,
+      `That's 2 files. Drop one photo here: each slot takes one photo of ${child}.`,
     );
     await expect(page.getByTestId("photo-status-hero")).toHaveText("No photo yet.");
     await dropFiles(page, "photo-hero", ["child.png"]);
@@ -168,6 +168,25 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(length).toHaveValue("long");
     await expect(look).toContainText("You set this");
     await expect(look).toContainText("The photo looked short.");
+
+    // Optional extra photos, one per pose (D56): each slot is its own drop target and checks its photo, and one of
+    // someone else is refused. The passing one goes to the sheet with the main photo, never to a page.
+    const pose = page.getByTestId("pose-hero-expression");
+    await dropFiles(page, "pose-hero-expression", ["other-person.png"]);
+    await expect(page.getByTestId("pose-status-hero-expression")).toHaveText("We can't use this photo.", {
+      timeout: 30_000,
+    });
+    await expect(pose).toContainText("different person from the first photo");
+    await expect(page.getByTestId("photo-status-hero")).toHaveText("This photo works.");
+    await page.getByLabel(`A different expression (${child})`).setInputFiles(photo("laughing.png"));
+    await expect(page.getByTestId("pose-status-hero-expression")).toHaveText("This photo works.", {
+      timeout: 30_000,
+    });
+    await expect(page.getByTestId("pose-hero-hair")).not.toContainText("No photo yet");
+    await expect(page.getByLabel(`Use the camera for ${child}, the side or back of their hair`)).toHaveAttribute(
+      "capture",
+      "environment",
+    );
     await evidence(page, "photo-draw");
     await drawEveryone(page, [child, grownup]);
     const [first] = await sql<{ prompt: string }>(
@@ -175,6 +194,18 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       [`%/books/${bookId}/likeness/hero/sheet-d1-%`],
     );
     expect(first!.prompt).toContain("Hair: long, wavy, brown hair. Eyes: brown. Skin tone: light.");
+    const [heroSheet] = await sql<{ references: Array<string> }>(
+      "select request->'references' as references from generation where request->>'outputKey' like $1",
+      [`%/books/${bookId}/likeness/hero/sheet-d1-%`],
+    );
+    const [extra] = await sql<{ photo_key: string }>(
+      "select photo_key from book_pose_photo where book_id = $1 and slot_id = 'hero' and pose = 'expression'",
+      [bookId],
+    );
+    // The main photo, the extra photo, then the style reference.
+    expect(heroSheet!.references).toHaveLength(3);
+    expect(heroSheet!.references[1]).toBe(extra!.photo_key);
+    expect(first!.prompt).toContain("The first 2 images are photos of the same person");
     // Each drawing also draws the person in six expressions, from the sheet just drawn and never the photo (D56).
     await expect(page.getByTestId("expressions-hero")).toBeVisible();
     const [expressions] = await sql<{ references: Array<string>; sheet: string }>(
@@ -185,13 +216,13 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     expect(expressions!.references).toEqual([expressions!.sheet]);
     // Once drawn, the look is how they were drawn; a note changes it.
     await expect(page.getByTestId("look-hero").getByLabel(`${child}'s hair length`)).toBeDisabled();
-    expect(await photosOf(bookId)).toBe(2);
+    expect(await photosOf(bookId)).toBe(3); // two main photos and the passing extra one; the refused one is gone
     await evidence(page, "photo-preview");
     // On a phone each person's photo and sheet card fits its column: the buttons named after the person wrap instead
     // of widening the card off the screen.
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 800 });
-      for (const card of await page.getByTestId(/^(photo-(hero|grownup)|sheet-card-.+)$/).all())
+      for (const card of await page.getByTestId(/^(photo-(hero|grownup)|pose-.+|sheet-card-.+)$/).all())
         await expectContained(card);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     }

@@ -35,11 +35,18 @@ export const lookWords = (look: Look) => {
 /** v1's sheet and revise prompts, which v2 keeps. */
 const sheetPrompts = {
   /** References: the photo, then the story's style reference. */
-  sheet: (input: { style: PhotoStyle; age: Age; outfit: string; look: Look }) =>
-    `The first image is a photo of a person. The second image shows the style of a children's picture book. ` +
+  /**
+   * References: the main photo, the person's extra photos (D56, optional), then the story's style reference. With no
+   * extra photos the wording is as before, so a sheet from one photo is drawn the same way.
+   */
+  sheet: (input: { style: PhotoStyle; age: Age; outfit: string; look: Look; extraPhotos?: number }) =>
+    (input.extraPhotos
+      ? `The first ${input.extraPhotos + 1} images are photos of the same person, with different expressions and ` +
+        `from different sides. The last image shows the style of a children's picture book. `
+      : `The first image is a photo of a person. The second image shows the style of a children's picture book. `) +
     `Draw a character sheet of this person as ${ageWords(input.age)}, in the book's style ` +
     `(${input.style.styleWords}): front, three-quarter and back views side by side, full body, on a plain white ` +
-    `background. Keep the face shape, eyes, skin tone and features from the photo so the person is recognisable, ` +
+    `background. Keep the face shape, eyes, skin tone and features from the ${input.extraPhotos ? "photos" : "photo"} so the person is recognisable, ` +
     `drawn at that age. Hair: ${hairWords(input.look)}.${lookWords(input.look)} Outfit: ${input.outfit}. No text, no frame.`,
   /** References: the sheet just drawn. The parent judges the likeness across these (D56). */
   expressions: (input: { style: PhotoStyle }) =>

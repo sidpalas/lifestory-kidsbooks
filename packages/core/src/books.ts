@@ -19,7 +19,7 @@ import {
 import { agreementIssues, resolveText, tokenIssues } from "./book-format/text.ts";
 import { AppConfig } from "./config.ts";
 import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
-import { CastPerson, PhotoCheckResult } from "./contracts.ts";
+import { CastPerson, PhotoCheckResult, type PhotoPose, photoPoses } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -354,8 +354,9 @@ const chosenLayers = (flow: BookFlow, pageId: string) => {
  * Shared with the operator's review, which sees the same, photos included only on an opted-in book.
  */
 export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<ReturnType<typeof loadBook>>) {
-  const [likenessRows, pageRows, artRows, consents] = yield* Effect.all([
+  const [likenessRows, poseRows, pageRows, artRows, consents] = yield* Effect.all([
     Database.query((db) => db.select().from(schema.bookLikeness).where(eq(schema.bookLikeness.bookId, book.id))),
+    Database.query((db) => db.select().from(schema.bookPosePhoto).where(eq(schema.bookPosePhoto.bookId, book.id))),
     Database.query((db) => db.select().from(schema.bookPage).where(eq(schema.bookPage.bookId, book.id))),
     Database.query((db) => db.select().from(schema.bookPageArt).where(eq(schema.bookPageArt.bookId, book.id))),
     Database.query((db) =>
@@ -377,6 +378,22 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
       draws: row?.draws ?? 0,
       drawing: row?.drawing ?? false,
       notes: row?.notes ?? [],
+      poses: yield* Effect.forEach(
+        photoPoses.flatMap((pose) =>
+          poseRows.filter((candidate) => candidate.slotId === slot.slotId && candidate.pose === pose.id),
+        ),
+        (pose) =>
+          Effect.gen(function* () {
+            return {
+              pose: pose.pose as PhotoPose,
+              checkStatus: pose.checkStatus,
+              check: pose.check
+                ? yield* Schema.decodeUnknownEffect(PhotoCheckResult)(pose.check).pipe(Effect.orDie)
+                : null,
+              photoKey: pose.photoKey,
+            };
+          }),
+      ),
     });
   }
   const pages = book.manifest.pages.flatMap((page) => {

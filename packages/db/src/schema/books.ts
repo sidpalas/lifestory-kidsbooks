@@ -107,6 +107,30 @@ export const bookLikeness = pgTable(
 );
 
 /**
+ * A person's extra photos (D56, Sid 2026-11-25): optional, one per pose (`photoPoses`). Checked like the main photo
+ * and compared with it; only the character sheet reads them, never a page. Deleted with the main photo.
+ */
+export const bookPosePhoto = pgTable(
+  "book_pose_photo",
+  {
+    bookId: text("book_id")
+      .notNull()
+      .references(() => book.id, { onDelete: "cascade" }),
+    slotId: text("slot_id").notNull(),
+    pose: text("pose").notNull(),
+    /** `families/<familyId>/books/<bookId>/photos/<slotId>/<uploadId>`; null once deleted. */
+    photoKey: text("photo_key"),
+    uploadId: text("upload_id").notNull(),
+    photoDeletedAt: timestamp("photo_deleted_at", { withTimezone: true }),
+    checkStatus: photoCheckStatus("check_status").notNull().default("checking"),
+    check: jsonb("check"),
+    consentId: text("consent_id").references(() => consent.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [primaryKey({ columns: [t.bookId, t.slotId, t.pose] })],
+);
+
+/**
  * Every photo an account's upload stored, kept as long as the account (D59): what the upload limits count. Not tied
  * to the book, whose draft the sweep deletes after a day, so deleting drafts doesn't hand back uploads.
  */

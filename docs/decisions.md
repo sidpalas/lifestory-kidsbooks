@@ -370,6 +370,16 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     didn't choose, or one far from every age the role accepts. (Revised 2026-11-25: Lucy, a toddler entered as a
     young child in a story without toddlers, got no warning and was drawn about six; Dream Adventure v3 accepts
     toddlers.)
+- **Extra photos (Sid, 2026-11-25):** after a person's main photo passes, their card offers three optional slots,
+  one per pose (`photoPoses`: a different expression, the side or back of the hair, another angle), recommended
+  but never required. One slot per pose, not one multi-file input, because a phone camera returns one photo per
+  launch: each slot has "Choose a photo", a touch-only "Take a photo" (`capture="environment"`, which Android 14+
+  Chrome needs to open the camera) and its own drop target holding one file. Each goes through `uploadPhoto` with a
+  `pose` (`book_pose_photo`, migration 0024) and the same check, plus a comparison with the main photo that
+  refuses someone else ("other-person"); nobody is identified. Only the sheet reads them, after the main photo and
+  before the style reference; pages never do. A passing extra photo clears that person's sheet, so drawing them
+  again uses one of their drawings; "Draw {name}" waits while any of their photos is being checked. They're
+  deleted with the main photo (the order, the sweep, a refusal).
 - **Expressions (Sid, 2026-11-25):** each drawing also draws the person's head six times from the sheet just drawn
   (a big grin, a gentle smile, neutral, eyes closed, sad, surprised; about US$0.03), shown under the sheet and in the
   operator's review, so the parent judges the likeness across faces, not one. Lucy's pages with her open grin looked
@@ -413,7 +423,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Storage and processors:** sheets, the cover and preview
   rounds live under `…/books/<bookId>/likeness/` and pages, both versions of a changed one, under `…/pages/`, all
   deleted with the book. Only the worker reads photos and only OpenAI receives them, twice (the check and the
-  sheet), never for pages. The operator sees them only on an opted-in book, through `reviewBook` (D57).
+  sheet; an extra photo a third time, with the main one, to compare them), never for pages. The operator sees them only on an opted-in book, through `reviewBook` (D57).
   `OPENAI_DATA_RETENTION` (`standard` or `zero`) states what the OpenAI project keeps, and the policies, consent and
   landing page describe it; it blocks no request (Sid, 2026-11-24, replacing an `OPENAI_ZDR` guard that refused to
   send photos without zero data retention), so the app can be tested before ZDR is on without claiming it. Under ZDR OpenAI
@@ -506,7 +516,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   before their check ran. A request refused before anything is stored (wrong type, too large, no consent, not a
   draft, over a limit) doesn't. Counted per account (the uploader), in `photo_upload`, which keeps an ID per upload
   and no photo, as long as the account; not per book, so deleting drafts hands nothing back. Checked and recorded
-  under a lock per account, so concurrent uploads can't pass a limit together. Extra pose photos (D56, planned)
+  under a lock per account, so concurrent uploads can't pass a limit together. Extra pose photos (D56)
   go through the same `uploadPhoto` and count one each.
 - **Values (Sid, 2026-11-25)** (`photoUploadLimits` in `packages/core/src/photo-uploads.ts`):
   - Burst: 20 uploads in any 10 minutes, a three-role book with every pose photo and some retakes; past it the

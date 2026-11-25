@@ -334,8 +334,22 @@ export const PhotoReport = Schema.Struct({
   freckles: Schema.optionalKey(Schema.NullOr(Schema.Boolean)),
   facialHair: Schema.Literals(["none", "stubble", "moustache", "beard"]),
   tip: Schema.String,
+  /** An extra photo only: whether it shows the same person as the main photo; absent when there was none to compare. */
+  samePerson: Schema.optionalKey(Schema.Boolean),
 });
 export type PhotoReport = typeof PhotoReport.Type;
+
+/**
+ * The extra photos a person may have (D56, Sid 2026-11-25), one slot each, all optional: what one photo can't show.
+ * One slot per pose, not one multi-file input, because a phone camera returns one photo per launch.
+ */
+export const photoPoses = [
+  { id: "expression", label: "A different expression", hint: "Laughing, or a face they often make." },
+  { id: "hair", label: "The side or back of their hair", hint: "So we see its length and shape from behind." },
+  { id: "angle", label: "From another angle", hint: "Turned partly away, or in profile." },
+] as const;
+export const PhotoPose = Schema.Literals(photoPoses.map((pose) => pose.id));
+export type PhotoPose = typeof PhotoPose.Type;
 
 /** A refusal or warning, for the parent. */
 export const PhotoIssue = Schema.Struct({ code: Schema.String, message: Schema.String });
@@ -449,6 +463,15 @@ export const BookFlow = Schema.Struct({
       draws: Schema.Number,
       drawing: Schema.Boolean,
       notes: Schema.Array(Schema.Struct({ round: Schema.Number, note: Schema.String })),
+      /** The person's extra photos, one per pose they filled. */
+      poses: Schema.Array(
+        Schema.Struct({
+          pose: PhotoPose,
+          checkStatus: Schema.Literals(["checking", "passed", "refused"]),
+          check: Schema.NullOr(PhotoCheckResult),
+          photoKey: Schema.NullOr(Schema.String),
+        }),
+      ),
     }),
   ),
   /** Pages with figures, once the book is ordered: each drawn version's layers, and the chosen one. */
