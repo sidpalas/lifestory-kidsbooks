@@ -78,6 +78,13 @@ function StoryPreview() {
             The pages with {shown}
           </h2>
         </div>
+        <p className="text-sm text-muted-foreground" data-testid="placeholder-note">
+          <span className="font-medium text-foreground">
+            {slots.length === 1 ? `${shown} is a placeholder.` : `${shown} are placeholders.`}
+          </span>{" "}
+          In your family's book, each part gets the name of the person who plays it and an illustration drawn from their
+          photo.
+        </p>
         {/* As in the printed book: page 1, the cover, is a right-hand page on its own, and every later left-hand
             (even) page faces the next one, 2–3 … 16–17. On a phone the pages stack, a spread at a time. */}
         <ol className="flex flex-col gap-8">

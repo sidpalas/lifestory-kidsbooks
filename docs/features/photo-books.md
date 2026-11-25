@@ -13,7 +13,8 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 ## Routes and roles
 
 - Story page: "Make the book" makes a draft book, or reopens the family's draft of the story (owner and editor; a
-  viewer sees the stock characters only).
+  viewer sees the stock characters only). A note under "The pages with …" says the example names and pictures are
+  placeholders that the book replaces with each person's name and a drawing from their photo.
 - `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
   (`POST /api/books/<id>/photos`, resized to 1536 px in the browser; chosen with the button or dropped on that
   person's card, where a drop of several files or a non-photo uploads nothing and says why; on touch screens a
