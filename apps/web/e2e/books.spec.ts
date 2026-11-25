@@ -1,3 +1,4 @@
+import type { ServerServices } from "@lifestory/core";
 import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
@@ -412,4 +413,130 @@ test("a family with a book of the story is sent to it instead of silently making
   } finally {
     await context.close();
   }
+});
+
+test("each book in Our books shows its cover: the drawn cover page, else the cover from the sheets, else stock figures", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const id = unique();
+  const child = `Bo ${id}`;
+  await page.goto(`/__dev/log-me-in/cover-${id}@lifestory.dev?returnTo=/`);
+  await page.goto("/stories/the-kite-day");
+  await castKiteDay(
+    page,
+    { name: child, pronouns: "she/her", age: "Older child" },
+    { name: `Jo ${id}`, pronouns: "he/him", age: "Adult" },
+  );
+  await makeBook(page).click();
+  const bookId = await markShownBookDrawn(page);
+
+  const { Database, ObjectStorage, makeServerRuntime } = await import("@lifestory/core");
+  /** Stores an SVG per key under the book's family and runs `query`, as the photo-book tasks would leave things. */
+  const store = async (keys: ReadonlyArray<string>, query: string, params: ReadonlyArray<unknown>) => {
+    const runtime = makeServerRuntime();
+    try {
+      await runtime.runPromise(
+        Effect.gen(function* () {
+          const { pool } = yield* Database;
+          const storage = yield* ObjectStorage;
+          for (const key of keys)
+            yield* storage.put(
+              key,
+              new TextEncoder().encode(
+                `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#c33"/></svg>`,
+              ),
+              "image/svg+xml",
+            );
+          yield* Effect.promise(() => pool.query(query, [...params]));
+        }) as Effect.Effect<void, never, ServerServices>,
+      );
+    } finally {
+      await runtime.dispose();
+    }
+  };
+  const familyId = await (async () => {
+    const runtime = makeServerRuntime();
+    try {
+      return await runtime.runPromise(
+        Database.use(({ pool }) =>
+          Effect.promise(() =>
+            pool.query("select family_id from book where id = $1", [bookId]).then((r) => r.rows[0].family_id as string),
+          ),
+        ) as Effect.Effect<string, never, ServerServices>,
+      );
+    } finally {
+      await runtime.dispose();
+    }
+  })();
+  const prefix = `families/${familyId}/books/${bookId}`;
+
+  const cover = page.getByTestId("books").getByRole("listitem").filter({ hasText: child }).getByTestId("book-cover");
+  const sources = () => cover.locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")));
+  const loaded = () =>
+    expect
+      .poll(() =>
+        cover.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).naturalWidth > 0)),
+      )
+      .toBe(true);
+
+  // Before anything is drawn: the story version's cover page (p01, with both roles) in stock figures.
+  await page.goto("/books");
+  const [plate, ...stock] = await sources();
+  expect(plate).toMatch(/^\/api\/files\/stories\/[^/]+\/v\d+\/pages\/p01\/.+/);
+  const files = plate!.slice(0, plate!.lastIndexOf("/"));
+  expect(stock).toEqual([`${files}/hero/stock.svg`, `${files}/grownup/stock.svg`]);
+  await loaded();
+  await evidence(page, "books-cover-stock");
+
+  // With the cover drawn from the sheets: its figures over the plate.
+  const likeness = [`${prefix}/likeness/cover/r0/0.svg`, `${prefix}/likeness/cover/r0/1.svg`];
+  await store(likeness, "update book set cover = $2 where id = $1", [bookId, JSON.stringify(likeness)]);
+  await page.reload();
+  expect(await sources()).toEqual([plate, ...likeness.map((key) => `/api/files/${key}`)]);
+  await loaded();
+
+  // With the cover page drawn for the book: the version the parent chose, not another.
+  const drawn = (version: number) => [0, 1].map((figure) => `${prefix}/pages/p01/v${version}/${figure}.svg`);
+  await store(
+    [...drawn(1), ...drawn(2)],
+    `with drawn_page as (
+       insert into book_page (book_id, page_id, latest_version, chosen_version, ready) values ($1, 'p01', 2, 1, true)
+     )
+     insert into book_page_art (book_id, page_id, version, figure, slot_id, object_key, iou, rescaled, clipped_share)
+       select $1, 'p01', v, f, case f when 0 then 'hero' else 'grownup' end,
+              $2 || '/pages/p01/v' || v || '/' || f || '.svg', 1, false, 0
+       from generate_series(1, 2) v, generate_series(0, 1) f`,
+    [bookId, prefix],
+  );
+  await page.reload();
+  expect(await sources()).toEqual([plate, ...drawn(1).map((key) => `/api/files/${key}`)]);
+  await loaded();
+  await evidence(page, "books-cover");
+
+  // The page's shape beside the title, on a desktop and a 320 px phone, with Delete still on the row.
+  for (const width of [1280, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    const box = (await cover.boundingBox())!;
+    expect(box.width).toBeGreaterThan(50);
+    expect(box.height).toBeCloseTo(box.width, 0);
+    await expect(
+      page.getByRole("button", { name: new RegExp(`^Delete The Kite Day with .*${child}`) }),
+    ).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await evidence(page, `books-cover-${width}`);
+  }
+  // The picture opens the book like its title, without a second link for screen readers.
+  await expect(page.getByTestId("books").getByRole("link", { name: "The Kite Day" })).toHaveCount(1);
+  await cover.click();
+  await expect(page).toHaveURL(new RegExp(`/books/${bookId}$`));
+
+  // Someone outside the family neither sees the book nor loads its cover.
+  const outsider = await browser.newPage();
+  await outsider.goto(`/__dev/log-me-in/outsider-${id}@lifestory.dev?returnTo=/books`);
+  await expect(outsider.getByTestId("book-cover")).toHaveCount(0);
+  for (const key of [likeness[0]!, drawn(1)[0]!])
+    expect((await outsider.request.get(`/api/files/${key}`)).status()).toBe(404);
+  await outsider.close();
 });

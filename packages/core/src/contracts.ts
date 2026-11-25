@@ -71,6 +71,17 @@ export const CastPerson = Schema.Struct({
 });
 export type CastPerson = typeof CastPerson.Type;
 
+const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
+
+/** A cover page's illustration as a list shows it, without its text; nothing is drawn for a thumbnail. */
+export const CoverThumbnail = Schema.Struct({
+  /** The illustration area's size, for its shape. */
+  widthIn: Schema.Number,
+  heightIn: Schema.Number,
+  layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })),
+});
+export type CoverThumbnail = typeof CoverThumbnail.Type;
+
 /** A family's book, as listed. */
 export const BookSummary = Schema.Struct({
   id: Schema.String,
@@ -81,6 +92,11 @@ export const BookSummary = Schema.Struct({
   version: Schema.Number,
   cast: Schema.String,
   status: Schema.String,
+  /**
+   * The book's cover: the cover page as drawn for the book, else the cover drawn from its character sheets, else the
+   * story version's stock figures (D56).
+   */
+  cover: Schema.NullOr(CoverThumbnail),
 });
 export type BookSummary = typeof BookSummary.Type;
 
@@ -101,19 +117,10 @@ export const BookTextBlock = Schema.Struct({
 });
 export type BookTextBlock = typeof BookTextBlock.Type;
 
-const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
-
 /** A published story in the catalogue, with its cover: the cover page's illustration with the stock figures (D56). */
 export const StoryListing = Schema.Struct({
   ...StorySummary.fields,
-  cover: Schema.NullOr(
-    Schema.Struct({
-      /** The illustration area's size, for its shape. */
-      widthIn: Schema.Number,
-      heightIn: Schema.Number,
-      layers: Schema.Array(Schema.Struct({ key: Schema.String, rect: Rect })),
-    }),
-  ),
+  cover: Schema.NullOr(CoverThumbnail),
 });
 export type StoryListing = typeof StoryListing.Type;
 

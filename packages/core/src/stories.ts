@@ -6,7 +6,7 @@ import { Effect } from "effect";
 
 import {
   composePage,
-  coverPage,
+  coverThumbnail,
   decodeStoryManifest,
   exampleCast,
   isVariableFont,
@@ -47,14 +47,7 @@ export const listPublishedStories = Effect.fn("stories.listPublished")(function*
   return yield* Effect.forEach(rows, ({ version, manifest: stored, ...story }) =>
     Effect.gen(function* () {
       const manifest = yield* decodeStoryManifest(stored).pipe(Effect.orDie);
-      const page = coverPage(manifest) ?? manifest.pages[0];
-      const { trim } = manifest;
-      const cover = page && {
-        widthIn: page.art === "left-half" ? trim.bleedIn + trim.widthIn / 2 : trim.widthIn + 2 * trim.bleedIn,
-        heightIn: trim.heightIn + 2 * trim.bleedIn,
-        layers: composePage({ storyId: story.id, version }, page),
-      };
-      return { ...story, cover: cover ?? null } satisfies StoryListing;
+      return { ...story, cover: coverThumbnail({ storyId: story.id, version }, manifest) } satisfies StoryListing;
     }),
   );
 });

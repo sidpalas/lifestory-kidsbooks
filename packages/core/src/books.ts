@@ -2,7 +2,7 @@
 // pronouns, age) and the family's text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
 // figure until its own is drawn.
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import {
@@ -10,6 +10,7 @@ import {
   type CastMember,
   composePage,
   coverPage,
+  coverThumbnail,
   decodeStoryManifest,
   pageText,
   type StoryManifest,
@@ -91,10 +92,13 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
       .select({
         id: schema.book.id,
         title: schema.book.title,
+        storyId: schema.story.id,
+        storyVersionId: schema.book.storyVersionId,
         storySlug: schema.story.slug,
         storyTitle: schema.story.title,
         version: schema.storyVersion.version,
         status: schema.book.status,
+        likenessCover: schema.book.cover,
         name: schema.bookCast.name,
       })
       .from(schema.book)
@@ -110,10 +114,13 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
     {
       id: string;
       title: string;
+      storyId: string;
+      storyVersionId: string;
       storySlug: string;
       storyTitle: string;
       version: number;
       status: string;
+      likenessCover: ReadonlyArray<string> | null;
       names: Array<string>;
     }
   >();
@@ -123,9 +130,53 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
     if (row.name) book.names.push(row.name);
     books.set(row.id, book);
   }
+  // Each listed version's manifest once, and the chosen version's figures of the family's drawn pages.
+  const versionIds = [...new Set([...books.values()].map((book) => book.storyVersionId))];
+  const [versions, art] = yield* Effect.all([
+    versionIds.length === 0
+      ? Effect.succeed([])
+      : Database.query((db) =>
+          db
+            .select({ id: schema.storyVersion.id, manifest: schema.storyVersion.manifest })
+            .from(schema.storyVersion)
+            .where(inArray(schema.storyVersion.id, versionIds)),
+        ),
+    Database.query((db) =>
+      db
+        .select({
+          bookId: schema.bookPageArt.bookId,
+          pageId: schema.bookPageArt.pageId,
+          figure: schema.bookPageArt.figure,
+          objectKey: schema.bookPageArt.objectKey,
+        })
+        .from(schema.bookPageArt)
+        .innerJoin(
+          schema.bookPage,
+          and(
+            eq(schema.bookPage.bookId, schema.bookPageArt.bookId),
+            eq(schema.bookPage.pageId, schema.bookPageArt.pageId),
+            eq(schema.bookPage.chosenVersion, schema.bookPageArt.version),
+          ),
+        )
+        .innerJoin(schema.book, eq(schema.book.id, schema.bookPageArt.bookId))
+        .where(and(eq(schema.book.familyId, familyId), ne(schema.book.status, "draft"))),
+    ),
+  ]);
+  const manifests = new Map<string, StoryManifest>();
+  for (const row of versions) manifests.set(row.id, yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie));
   const summaries: ReadonlyArray<BookSummary> = [...books.values()]
     .toReversed()
-    .map(({ names, ...book }) => ({ ...book, cast: names.join(", ") }));
+    .map(({ names, storyId, storyVersionId, likenessCover, ...book }) => {
+      const manifest = manifests.get(storyVersionId)!;
+      const story = { storyId, version: book.version };
+      // The cover page as drawn for the book, else the cover drawn from its sheets, else the stock figures (D56).
+      const pageId = coverThumbnail(story, manifest)?.pageId;
+      const drawn = art.filter((row) => row.bookId === book.id && row.pageId === pageId);
+      const cover = coverThumbnail(story, manifest, (_figure, index) =>
+        drawn.length > 0 ? drawn.find((row) => row.figure === index)?.objectKey : likenessCover?.[index],
+      );
+      return { ...book, cast: names.join(", "), cover };
+    });
   return { books: summaries, canEdit: access.canEdit };
 });
 

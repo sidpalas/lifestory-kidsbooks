@@ -33,6 +33,26 @@ export const composePage = (
   });
 };
 
+/**
+ * A thumbnail of the cover page (else the first page): its illustration area's size, for its shape, and its layers,
+ * each figure from `drawn` as in composePage. Null for a story without pages.
+ */
+export const coverThumbnail = (
+  story: { readonly storyId: string; readonly version: number },
+  manifest: StoryManifest,
+  drawn?: (figure: PhotoFigure, index: number) => string | undefined,
+) => {
+  const page = coverPage(manifest) ?? manifest.pages[0];
+  if (!page) return null;
+  const { trim } = manifest;
+  return {
+    pageId: page.pageId,
+    widthIn: page.art === "left-half" ? trim.bleedIn + trim.widthIn / 2 : trim.widthIn + 2 * trim.bleedIn,
+    heightIn: trim.heightIn + 2 * trim.bleedIn,
+    layers: composePage(story, page, drawn),
+  };
+};
+
 /** The page the cover is drawn from: the first with every role on it, else the first with any figure. */
 export const coverPage = (manifest: StoryManifest): Page | undefined => {
   const slots = manifest.characterSlots.map((slot) => slot.slotId);
