@@ -14,7 +14,8 @@ import {
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { CameraIcon } from "lucide-react";
+import { type ChangeEvent, useEffect, useState } from "react";
 
 import { BookPage, ScaledPage } from "~/components/book/BookPage";
 import { Button } from "~/components/ui/button";
@@ -40,6 +41,8 @@ const fileUrl = (key: string) => `/api/files/${key}`;
 /** Whether the server is still working on something the page shows. */
 export const flowBusy = (flow: Flow) =>
   flow.likenesses.some((likeness) => likeness.checkStatus === "checking") ||
+  // The last photo's check passes a moment before it starts the drawing; keep polling across that gap.
+  (flow.likenessStatus === "waiting" && flow.likenesses.every((likeness) => likeness.checkStatus === "passed")) ||
   flow.likenessStatus === "drawing" ||
   flow.status === "ordered" ||
   flow.status === "making" ||
@@ -290,6 +293,11 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
     void upload(files[0]!);
   };
 
+  const pick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    if (file) void upload(file);
+  };
+
   const check = likeness.check;
   return (
     <div
@@ -358,10 +366,20 @@ function PhotoCard({ view, slotId }: { view: BookView; slotId: string }) {
         emptyText={likeness.photoKey ? "Photo added" : undefined}
         accept={photoTypes.join(",")}
         disabled={uploading}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) void upload(file);
-        }}
+        onChange={pick}
+      />
+      {/* Phones: a plain picker doesn't offer the camera on Android 14+ Chrome, so the camera gets its own button. */}
+      <FileInput
+        className="hidden pointer-coarse:flex"
+        label="Or use the camera"
+        icon={<CameraIcon />}
+        aria-label={`Take ${name}'s photo with the camera`}
+        buttonText={likeness.photoKey ? "Take another photo" : "Take a photo"}
+        emptyText=""
+        accept="image/*"
+        capture="environment"
+        disabled={uploading}
+        onChange={pick}
       />
       <p className="text-xs text-muted-foreground pointer-coarse:hidden">
         {dragging ? `Drop the photo of ${name}` : "Or drag a photo onto this card."}

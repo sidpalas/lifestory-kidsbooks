@@ -1,5 +1,5 @@
 import { UploadIcon } from "lucide-react";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
@@ -12,10 +12,16 @@ export function FileInput({
   label,
   buttonText = "Choose file",
   emptyText = "No file chosen",
+  icon = <UploadIcon />,
   className,
   onChange,
   ...props
-}: Omit<ComponentProps<"input">, "type"> & { label: string; buttonText?: string; emptyText?: string }) {
+}: Omit<ComponentProps<"input">, "type"> & {
+  label: string;
+  buttonText?: string;
+  emptyText?: string;
+  icon?: ReactNode;
+}) {
   const [chosen, setChosen] = useState<string | null>(null);
   return (
     <label className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium", className)}>
@@ -45,7 +51,7 @@ export function FileInput({
             "cursor-pointer peer-focus-visible:border-ring peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50 peer-disabled:pointer-events-none peer-disabled:opacity-50",
           )}
         >
-          <UploadIcon />
+          {icon}
           {buttonText}
         </span>
         <span className="min-w-0 truncate font-normal text-muted-foreground">{chosen ?? emptyText}</span>

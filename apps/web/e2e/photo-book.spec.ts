@@ -138,7 +138,10 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       timeout: 30_000,
     });
     await expect(page.getByTestId("photo-hero").getByRole("alert")).toHaveCount(0);
-    await page.getByLabel(`Photo of ${grownup}`).setInputFiles(photo("grownup.png"));
+    // Phones also get a button that opens the rear camera; its photo takes the same path.
+    const camera = page.getByLabel(`Take ${grownup}'s photo with the camera`);
+    await expect(camera).toHaveAttribute("capture", "environment");
+    await camera.setInputFiles(photo("grownup.png"));
     await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId("cover")).toBeVisible();
     expect(await photosOf(bookId)).toBe(2);
