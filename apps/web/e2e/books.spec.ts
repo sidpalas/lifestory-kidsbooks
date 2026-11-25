@@ -114,7 +114,8 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   // stacks under the page, where that moved the strip.
   await page.setViewportSize({ width: 800, height: 900 });
   const thumbnails = page.getByRole("region", { name: "All pages" });
-  await page.mouse.wheel(0, 400);
+  // Scrolled down to the strip, with the book's steps above it.
+  await thumbnails.evaluate((strip) => strip.scrollIntoView({ block: "end" }));
   const position = () =>
     thumbnails.evaluate((strip) => ({ scrollY: window.scrollY, top: strip.getBoundingClientRect().top }));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);

@@ -31,6 +31,25 @@ import { PROOF_TTL_MS } from "./tasks/sweep-storage.ts";
 
 const approver = alias(schema.user, "approver");
 
+/** A proof's content as one string, whatever the order of its keys and text edits. */
+const canonicalContent = (content: ProofContent) =>
+  JSON.stringify(
+    {
+      cast: content.cast,
+      art: content.art ?? {},
+      textEdits: content.textEdits.toSorted((x, y) =>
+        x.pageId === y.pageId ? x.blockIndex - y.blockIndex : x.pageId < y.pageId ? -1 : 1,
+      ),
+    },
+    (_key, value: unknown) =>
+      value && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).toSorted(([x], [y]) => (x < y ? -1 : 1)))
+        : value,
+  );
+
+/** Whether two proofs' contents show the same book. */
+export const sameProofContent = (a: ProofContent, b: ProofContent) => canonicalContent(a) === canonicalContent(b);
+
 /** The caller's role in `familyId`, or null when they aren't a member. */
 const memberRole = (userId: string, familyId: string) =>
   Database.query((db) =>
@@ -76,6 +95,8 @@ export const createProof = Effect.fn("proofs.create")(function* (input: {
 export const proofSummaries = Effect.fn("proofs.summaries")(function* (
   where: SQL | undefined,
   manifest: StoryManifest,
+  /** What a proof of the book would show now, to mark each proof current or out of date. */
+  current: ProofContent,
 ) {
   const rows = yield* Database.query((db) =>
     db
@@ -120,6 +141,7 @@ export const proofSummaries = Effect.fn("proofs.summaries")(function* (
         approvedBy: row.approvedAt ? row.approvedBy : null,
         expiresAt: row.approvedAt ? null : new Date(row.createdAt.getTime() + PROOF_TTL_MS).toISOString(),
         castNames: manifest.characterSlots.map((slot) => content.cast[slot.slotId]?.name ?? slot.label),
+        current: sameProofContent(content, current),
       } satisfies ProofSummary;
     }),
   );

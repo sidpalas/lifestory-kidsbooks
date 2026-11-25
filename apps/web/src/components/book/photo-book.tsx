@@ -19,15 +19,26 @@ import {
   MAX_SHEET_DRAWS,
   unwrapResult,
 } from "@lifestory/core/contracts";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { CameraIcon } from "lucide-react";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { BookPage, ScaledPage } from "~/components/book/BookPage";
+import { type ProofList, ProofPanel } from "~/components/book/ProofPanel";
 import { Button } from "~/components/ui/button";
 import { FileInput } from "~/components/ui/file-input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { cn } from "~/lib/utils";
+import {
+  ApproveProofResult,
+  approveProofFn,
+  BookProofsResult,
+  DeleteProofResult,
+  deleteProofFn,
+  listBookProofsFn,
+  RequestBookProofResult,
+  requestBookProofFn,
+} from "~/server/books";
 import {
   choosePageVersionFn,
   drawSheetFn,
@@ -116,32 +127,122 @@ export function PhotoBookSteps({ view, canEdit }: { view: BookView; canEdit: boo
   if (flow.status === "ordered" || flow.status === "making") {
     const drawn = flow.pages.filter((page) => page.ready).length;
     return (
-      <Notice title="Drawing your book">
+      <Notice title="Drawing your book" status={flow.status}>
         Ordered. We're drawing every page from your characters: {drawn} of {flow.pages.length || "…"} pages so far. This
         takes about a minute.
       </Notice>
     );
   }
-  if (flow.status === "changes") return <ChangesStep view={view} canEdit={canEdit} />;
+  if (flow.status === "changes") return <FinishBook view={view} canEdit={canEdit} />;
+  const proofs = <BookProofs view={view} canEdit={canEdit} />;
   if (flow.status === "in_review")
     return (
-      <Notice title="With our team">
-        We're reviewing your book before it's printed. We'll email you if anything needs changing.
+      <Notice title="With our team" status={flow.status}>
+        <p>
+          You approved your proof and sent the book. We're checking every page before it's printed, and we'll email you
+          if anything needs changing. Nothing more to do for now.
+        </p>
         <PhotoReviewNote view={view} canEdit={canEdit} />
+        {proofs}
       </Notice>
     );
   if (flow.status === "approved")
-    return <Notice title="Approved for print">We approved your book. Your approved proof is the file we print.</Notice>;
+    return (
+      <Notice title="Approved for print" status={flow.status}>
+        <p>We approved your book. Your approved proof is the file we print.</p>
+        {proofs}
+      </Notice>
+    );
   return (
-    <Notice title="We can't print this book">
-      {flow.reviewNote ?? "Our team couldn't approve it."} Reply to our email with any questions.
+    <Notice title="We can't print this book" status={flow.status}>
+      <p>{flow.reviewNote ?? "Our team couldn't approve it."} Reply to our email with any questions.</p>
+      {proofs}
     </Notice>
   );
 }
 
-function Notice({ title, children }: { title: string; children: React.ReactNode }) {
+/** Where a book is, from the photos to print, with the current stage marked. */
+const stages = ["Photos and characters", "Drawing", "Read and approve", "Our review", "Print"] as const;
+const stageOf: Record<Flow["status"], number> = {
+  draft: 0,
+  ordered: 1,
+  making: 1,
+  changes: 2,
+  in_review: 3,
+  refused: 3,
+  approved: 4,
+};
+
+function BookProgress({ status }: { status: Flow["status"] }) {
+  const current = stageOf[status];
   return (
-    <section className="flex flex-col gap-1 rounded-md border bg-muted/40 p-4 text-sm" data-testid="book-step">
+    <ol className="flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-label="Where your book is" data-testid="book-progress">
+      {stages.map((stage, i) => {
+        const done = i < current || status === "approved";
+        return (
+          <li
+            key={stage}
+            aria-current={i === current ? "step" : undefined}
+            className={cn(
+              "flex items-center gap-1",
+              i === current ? "font-semibold text-foreground" : done ? "text-foreground" : "text-muted-foreground",
+              i === current && status === "refused" && "text-destructive",
+            )}
+          >
+            <span aria-hidden>{done ? "✓" : `${i + 1}.`}</span>
+            {stage}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** The book's proofs from the server, for any member: listing, and for owners and editors making and approving. */
+function BookProofs({
+  view,
+  canEdit,
+  onProofs,
+}: {
+  view: BookView;
+  canEdit: boolean;
+  onProofs?: (list: ProofList) => void;
+}) {
+  const bookId = view.book.id;
+  // Reloads the list when the book changes (a page chosen, text saved), so each proof says whether it's current.
+  const stamp = JSON.stringify([view.cast, view.pages, view.flow.pages.map((page) => page.chosenVersion)]);
+  const load = useCallback(
+    async () => unwrapResult(BookProofsResult)(await listBookProofsFn({ data: { bookId } })),
+    [bookId],
+  );
+  return (
+    <ProofPanel
+      embedded
+      hydrated
+      load={load}
+      reloadKey={stamp}
+      request={async () => {
+        unwrapResult(RequestBookProofResult)(await requestBookProofFn({ data: { bookId } }));
+      }}
+      approve={async (proofId) => {
+        unwrapResult(ApproveProofResult)(await approveProofFn({ data: { proofId } }));
+      }}
+      remove={async (proofId) => {
+        unwrapResult(DeleteProofResult)(await deleteProofFn({ data: { proofId } }));
+      }}
+      onProofs={canEdit ? onProofs : undefined}
+    />
+  );
+}
+
+/** Scrolls to the book's pages, showing page `pageId` if given. */
+export const EDITOR_ID = "book-pages";
+export const FINISH_ID = "finish-book";
+
+function Notice({ title, status, children }: { title: string; status?: Flow["status"]; children: React.ReactNode }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-2 rounded-md border bg-muted/40 p-4 text-sm" data-testid="book-step">
+      {status && <BookProgress status={status} />}
       <h2 className="text-base font-semibold">{title}</h2>
       <div className="flex flex-col gap-2">{children}</div>
     </section>
@@ -755,27 +856,202 @@ function SheetCard({ view, slotId }: { view: BookView; slotId: string }) {
   );
 }
 
-function ChangesStep({ view, canEdit }: { view: BookView; canEdit: boolean }) {
-  const { error, pending, run } = useStep();
-  const used = view.flow.pages.filter((page) => page.latestVersion > 1).length;
+type StepState = "done" | "current" | "waiting" | "todo";
+
+function Step({
+  n,
+  title,
+  state,
+  testId,
+  children,
+}: {
+  n: number;
+  title: string;
+  state: StepState;
+  testId: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Notice title="Read your book">
-      <p>
-        Every page is drawn. You can change up to {MAX_PAGE_CHANGES} pages ({MAX_PAGE_CHANGES - used} left), edit the
-        text, then approve a proof and send the book to us for review before it's printed.
-      </p>
-      {canEdit && (
-        <Button
-          className="w-fit"
-          disabled={pending}
-          onClick={() => run(() => sendForReviewFn({ data: { bookId: view.book.id } }))}
-        >
-          Send for review
-        </Button>
+    <li
+      className={cn(
+        "flex min-w-0 gap-3 rounded-md border p-3",
+        state === "current" && "border-foreground/40 bg-background shadow-sm",
+        state === "waiting" && "border-dashed border-amber-500/70 bg-background",
       )}
+      data-testid={testId}
+      data-state={state}
+      aria-current={state === "current" ? "step" : undefined}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          state === "done"
+            ? "bg-emerald-600 text-white"
+            : state === "current"
+              ? "bg-foreground text-background"
+              : state === "waiting"
+                ? "animate-pulse bg-amber-100 text-amber-900"
+                : "border",
+        )}
+      >
+        {state === "done" ? "✓" : state === "waiting" ? "…" : n}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <h3 className="font-medium">
+          {title}
+          <span className="sr-only">
+            {state === "done"
+              ? " (done)"
+              : state === "current"
+                ? " (next)"
+                : state === "waiting"
+                  ? " (in progress)"
+                  : ""}
+          </span>
+        </h3>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The drawn book's last steps for the parent (D57), in the order they're done: read the pages (changing up to three
+ * drawings and any text), make a proof and approve it, then send the book to our review. Each step says what's left
+ * and what's still being drawn or made; the pages themselves are the editor below.
+ */
+function FinishBook({ view, canEdit }: { view: BookView; canEdit: boolean }) {
+  const { flow, manifest } = view;
+  const navigate = useNavigate();
+  const { error, pending, run } = useStep();
+  const [list, setList] = useState<ProofList | null>(null);
+  const used = flow.pages.filter((page) => page.latestVersion > 1).length;
+  const redrawing = flow.pages.filter((page) => !page.ready);
+  const changed = flow.pages.filter((page) => page.latestVersion > 1);
+  const proofs = list?.proofs ?? [];
+  const approved = proofs.filter((proof) => proof.approvedAt);
+  const approvedNow = approved.some((proof) => proof.current);
+  const making = proofs.some((proof) => proof.current && proof.status === "rendering");
+  const readyToApprove = proofs.some((proof) => proof.current && proof.status === "ready" && !proof.approvedAt);
+  const pageNumber = (pageId: string) => manifest.pages.findIndex((page) => page.pageId === pageId) + 1;
+  const showPage = (pageId?: string) => {
+    void navigate({
+      to: "/books/$bookId",
+      params: { bookId: view.book.id },
+      search: pageId ? { page: pageId } : {},
+      replace: true,
+      resetScroll: false,
+    }).then(() => document.getElementById(EDITOR_ID)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const onProofs = useCallback((next: ProofList) => setList(next), []);
+
+  const pagesState: StepState = redrawing.length > 0 ? "waiting" : proofs.length > 0 ? "done" : "current";
+  // One step is current at a time: reading until there's a proof, then the proof until it's approved, then sending.
+  const proofState: StepState = approvedNow
+    ? "done"
+    : making
+      ? "waiting"
+      : redrawing.length > 0 || proofs.length === 0
+        ? "todo"
+        : "current";
+  const sendState: StepState = approvedNow && redrawing.length === 0 ? "current" : "todo";
+  const blocked =
+    redrawing.length > 0
+      ? `Wait for page ${redrawing.map((page) => pageNumber(page.pageId)).join(", ")} to finish redrawing.`
+      : approved.length === 0
+        ? "Approve a proof first: it's the file we review and print."
+        : null;
+
+  return (
+    <section
+      id={FINISH_ID}
+      className="flex min-w-0 scroll-mt-4 flex-col gap-3 rounded-md border bg-muted/40 p-4 text-sm"
+      aria-labelledby="finish-heading"
+      data-testid="book-step"
+    >
+      <BookProgress status={flow.status} />
+      <h2 id="finish-heading" className="text-base font-semibold">
+        Read your book
+      </h2>
+      <p className="text-muted-foreground">
+        Every page is drawn. Three steps before we print it: read the pages, approve a proof, then send it to us.
+        {!canEdit && " Someone in your family who edits books does these."}
+      </p>
+      <ol className="grid gap-2 lg:grid-cols-3" aria-label="Steps to finish your book">
+        <Step n={1} title="Read every page" state={pagesState} testId="finish-pages">
+          <p>
+            Read the pages below and fix any text. You can change the drawing on up to {MAX_PAGE_CHANGES} pages (
+            {MAX_PAGE_CHANGES - used} left).
+          </p>
+          {redrawing.length > 0 && (
+            <p data-testid="finish-redrawing">
+              Redrawing page {redrawing.map((page) => pageNumber(page.pageId)).join(", ")}: about 20 seconds. You can
+              keep reading meanwhile.
+            </p>
+          )}
+          {changed.length > 0 && (
+            <ul className="flex flex-wrap gap-2" aria-label="Pages you changed">
+              {changed.map((page) => (
+                <li key={page.pageId}>
+                  <Button size="sm" variant="outline" onClick={() => showPage(page.pageId)}>
+                    Page {pageNumber(page.pageId)}:{" "}
+                    {!page.ready ? "redrawing" : page.chosenVersion === 1 ? "original kept" : "new drawing"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button
+            size="sm"
+            variant={pagesState === "current" ? "default" : "outline"}
+            className="w-fit"
+            onClick={() => showPage()}
+          >
+            Read the pages
+          </Button>
+        </Step>
+        <Step n={2} title="Make a proof and approve it" state={proofState} testId="finish-proof">
+          <p>
+            The proof is the PDF we print, with your characters and text as they are now. Download it, check every page,
+            then approve it.
+          </p>
+          {approved.length > 0 && !approvedNow && (
+            <p className="text-amber-700" data-testid="finish-proof-outdated">
+              You changed the book after approving a proof. Make a new proof and approve it, so we review and print the
+              book as it is now.
+            </p>
+          )}
+          {readyToApprove && <p className="font-medium">Your proof is ready: download it and check it.</p>}
+          <BookProofs view={view} canEdit={canEdit} onProofs={onProofs} />
+        </Step>
+        <Step n={3} title="Send it to us for review" state={sendState} testId="finish-send">
+          <p>
+            Our team checks every page before anything is printed, and emails you if something needs changing. After you
+            send it, the pages and proof can't change.
+          </p>
+          {canEdit && (
+            <>
+              {blocked && list && <p className="text-muted-foreground">{blocked}</p>}
+              {!blocked && !approvedNow && (
+                <p className="text-amber-700">
+                  Sending now sends your older approved proof, without your latest changes.
+                </p>
+              )}
+              <Button
+                className="w-fit"
+                disabled={pending || blocked !== null || !list}
+                onClick={() => run(() => sendForReviewFn({ data: { bookId: view.book.id } }))}
+              >
+                Send for review
+              </Button>
+            </>
+          )}
+        </Step>
+      </ol>
       <PhotoReviewNote view={view} canEdit={canEdit} />
       <Alert text={error} />
-    </Notice>
+    </section>
   );
 }
 

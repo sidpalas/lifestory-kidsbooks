@@ -20,6 +20,9 @@ export function ProofPanel({
   approve,
   remove,
   hydrated,
+  embedded = false,
+  onProofs,
+  reloadKey,
 }: {
   /** Lists the proofs. Must be stable for the same subject (the panel reloads when it changes). */
   load: () => Promise<ProofList>;
@@ -30,6 +33,12 @@ export function ProofPanel({
   /** Deletes a proof, approved or not, with its PDF. */
   remove: (proofId: string) => Promise<void>;
   hydrated: boolean;
+  /** Inside the book's "Finish your book" steps, which give the heading. */
+  embedded?: boolean;
+  /** Told the list each time it loads, so the steps around the panel can follow it. */
+  onProofs?: (list: ProofList) => void;
+  /** Reloads the list when it changes: the book changed, so a proof may no longer be current. */
+  reloadKey?: string;
 }) {
   const [state, setState] = useState<{ canRequest: boolean; proofs: ReadonlyArray<ProofSummary> } | null>(null);
   const [requesting, setRequesting] = useState(false);
@@ -38,6 +47,11 @@ export function ProofPanel({
   const [error, setError] = useState<string | null>(null);
 
   const rendering = state?.proofs.some((proof) => proof.status === "rendering") ?? false;
+  useEffect(() => {
+    if (state) onProofs?.(state);
+  }, [state, onProofs]);
+  // A proof of the book as it is now that's ready or on its way: another one would only repeat it.
+  const upToDate = state?.proofs.some((proof) => proof.current && proof.status !== "failed") ?? false;
 
   // Loads the list, and polls it while a proof renders (a book takes a few seconds).
   useEffect(() => {
@@ -52,7 +66,9 @@ export function ProofPanel({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [load, rendering]);
+    // reloadKey isn't read: a new one only asks for the list again.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [load, rendering, reloadKey]);
 
   const approveProof = async (proofId: string) => {
     setApproving(proofId);
@@ -103,22 +119,36 @@ export function ProofPanel({
   };
 
   return (
-    <section className="flex flex-col gap-3 rounded-md border p-4" aria-label="PDF proofs" data-testid="proofs">
+    <section
+      className={embedded ? "flex min-w-0 flex-col gap-3" : "flex flex-col gap-3 rounded-md border p-4"}
+      aria-label="PDF proofs"
+      data-testid="proofs"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="font-medium">Print proof</h2>
-          <p className="text-sm text-muted-foreground">
-            A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every
-            page, then approve it for print.
-          </p>
-        </div>
+        {!embedded && (
+          <div>
+            <h2 className="font-medium">Print proof</h2>
+            <p className="text-sm text-muted-foreground">
+              A print-ready PDF of the whole book with the characters as shown, with bleed. Download it and check every
+              page, then approve it for print.
+            </p>
+          </div>
+        )}
         {state?.canRequest && (
-          <Button onClick={() => void request()} disabled={!hydrated || requesting}>
+          <Button
+            variant={upToDate ? "outline" : "default"}
+            onClick={() => void request()}
+            disabled={!hydrated || requesting}
+          >
             {requesting ? "Starting…" : "Make a PDF proof"}
           </Button>
         )}
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       {state && state.proofs.length === 0 && <p className="text-sm text-muted-foreground">No proofs yet.</p>}
       {state && state.proofs.length > 0 && (
         <ul className="flex flex-col divide-y text-sm">
@@ -130,8 +160,9 @@ export function ProofPanel({
               data-proof-id={proof.id}
               data-status={proof.status}
               data-approved={proof.approvedAt ? "true" : "false"}
+              data-current={proof.current ? "true" : "false"}
             >
-              <span className="flex flex-col">
+              <span className="flex min-w-0 flex-col">
                 <span>
                   {proof.castNames.join(" & ")} · {new Date(proof.createdAt).toLocaleString()}
                   {proof.requestedBy && <span className="text-muted-foreground"> · by {proof.requestedBy}</span>}
@@ -148,6 +179,11 @@ export function ProofPanel({
                     </span>
                   )
                 )}
+                {!proof.current && (
+                  <span className="text-xs text-amber-700" data-testid="proof-outdated">
+                    Out of date: the book changed after this proof was made.
+                  </span>
+                )}
               </span>
               <span className="flex flex-wrap items-center gap-3">
                 {proof.status === "ready" ? (
@@ -155,10 +191,10 @@ export function ProofPanel({
                     <a className="font-medium underline" href={`/api/files/${proof.objectKey}`} download>
                       Download PDF ({proof.pageCount} pages, {formatBytes(proof.bytes ?? 0)})
                     </a>
-                    {state.canRequest && !proof.approvedAt && (
+                    {/* Only a proof of the book as it is now: approving an older one would send pages that changed. */}
+                    {state.canRequest && !proof.approvedAt && proof.current && (
                       <Button
                         size="sm"
-                        variant="outline"
                         onClick={() => void approveProof(proof.id)}
                         disabled={!hydrated || approving !== null}
                       >
@@ -167,9 +203,9 @@ export function ProofPanel({
                     )}
                   </>
                 ) : proof.status === "rendering" ? (
-                  <span className="text-muted-foreground">Rendering…</span>
+                  <span className="text-muted-foreground">Making the PDF…</span>
                 ) : (
-                  <span className="text-destructive">Failed</span>
+                  <span className="text-destructive">Failed: make another proof</span>
                 )}
                 {state.canRequest && (
                   <Button

@@ -115,7 +115,9 @@ export const ReviewBookResult = ResultSchema(
     storyId: Schema.String,
     version: Schema.Number,
     manifest: StoryManifest,
+    familyName: Schema.String,
     proofKey: Schema.NullOr(Schema.String),
+    proofCurrent: Schema.Boolean,
   }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );

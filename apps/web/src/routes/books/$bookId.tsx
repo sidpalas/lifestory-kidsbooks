@@ -15,29 +15,14 @@ import {
 } from "@lifestory/core/contracts";
 import { createFileRoute, Link, notFound, redirect, useRouter } from "@tanstack/react-router";
 import { Schema } from "effect";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
-import { PageChange, PhotoBookSteps } from "~/components/book/photo-book";
-import { ProofPanel } from "~/components/book/ProofPanel";
+import { EDITOR_ID, FINISH_ID, PageChange, PhotoBookSteps } from "~/components/book/photo-book";
 import { confirmDeleteBook } from "~/components/family-library";
 import { draftOf, PersonFields, personOf } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
-import {
-  ApproveProofResult,
-  approveProofFn,
-  DeleteProofResult,
-  deleteProofFn,
-  BookProofsResult,
-  BookResult,
-  EditBookResult,
-  getBookFn,
-  listBookProofsFn,
-  RequestBookProofResult,
-  requestBookProofFn,
-  saveTextEditFn,
-  setBookCastFn,
-} from "~/server/books";
+import { BookResult, EditBookResult, getBookFn, saveTextEditFn, setBookCastFn } from "~/server/books";
 
 export const Route = createFileRoute("/books/$bookId")({
   ssr: false,
@@ -56,14 +41,6 @@ export const Route = createFileRoute("/books/$bookId")({
 });
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
-const approveProof = async (proofId: string) => {
-  unwrapResult(ApproveProofResult)(await approveProofFn({ data: { proofId } }));
-};
-
-const deleteProof = async (proofId: string) => {
-  unwrapResult(DeleteProofResult)(await deleteProofFn({ data: { proofId } }));
-};
 
 function BookEditor() {
   const { view, canEdit } = Route.useLoaderData();
@@ -102,15 +79,6 @@ function BookEditor() {
     } catch (cause) {
       setError(message(cause));
     }
-  };
-
-  const bookId = view.book.id;
-  const loadProofs = useCallback(
-    async () => unwrapResult(BookProofsResult)(await listBookProofsFn({ data: { bookId } })),
-    [bookId],
-  );
-  const requestProof = async () => {
-    unwrapResult(RequestBookProofResult)(await requestBookProofFn({ data: { bookId } }));
   };
 
   const illustration = (index: number) =>
@@ -183,7 +151,7 @@ function BookEditor() {
 
       <PhotoBookSteps view={view} canEdit={canEdit} />
 
-      <section aria-label="Editor" className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
+      <section id={EDITOR_ID} aria-label="Editor" className="grid scroll-mt-4 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span>
@@ -216,6 +184,15 @@ function BookEditor() {
             </ScaledPage>
           </div>
           <PageChange key={`change-${page.pageId}`} view={view} pageId={page.pageId} canEdit={canEdit} />
+          {/* The last page leads back to the proof, the next step, instead of leaving the parent to find it. */}
+          {view.flow.status === "changes" && canEdit && pageIndex === manifest.pages.length - 1 && (
+            <Button
+              className="w-fit"
+              onClick={() => document.getElementById(FINISH_ID)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Done reading: make your proof ↑
+            </Button>
+          )}
           {/* Under the page, in its column: the text editor beside or below it can grow and shrink with each page's
               paragraphs without moving the strip. As wide as the page, not as all the thumbnails in one row. */}
           <section aria-label="All pages" className="w-0 min-w-full">
@@ -264,11 +241,6 @@ function BookEditor() {
           }
         />
       </section>
-
-      {/* Proofs are of the drawn book (D57), from page changes on. */}
-      {!["draft", "ordered", "making"].includes(view.flow.status) && (
-        <ProofPanel load={loadProofs} request={requestProof} approve={approveProof} remove={deleteProof} hydrated />
-      )}
     </main>
   );
 }

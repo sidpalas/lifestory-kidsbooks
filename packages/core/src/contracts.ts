@@ -282,6 +282,8 @@ export const ProofSummary = Schema.Struct({
   expiresAt: Schema.NullOr(Schema.String),
   /** Who fills each slot, by name, in slot order, so proofs of different casts can be told apart. */
   castNames: Schema.Array(Schema.String),
+  /** Whether it shows the book as it is now: the same cast, text and chosen page drawings. */
+  current: Schema.Boolean,
 });
 export type ProofSummary = typeof ProofSummary.Type;
 

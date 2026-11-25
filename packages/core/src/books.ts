@@ -18,7 +18,7 @@ import {
 } from "./book-format/index.ts";
 import { agreementIssues, resolveText, tokenIssues } from "./book-format/text.ts";
 import { AppConfig } from "./config.ts";
-import type { BookFlow, BookRole, BookSummary, BookView } from "./contracts.ts";
+import type { BookFlow, BookRole, BookSummary, BookView, ProofContent } from "./contracts.ts";
 import { CastPerson, PhotoCheckResult, type PhotoPose, photoPoses } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
@@ -349,6 +349,41 @@ export const getBook = Effect.fn("books.get")(function* (userId: string, bookId:
   return { view, canEdit };
 });
 
+/**
+ * What a proof of the book would show now (D27): the cast, the family's text edits, and each drawn page's layers in
+ * the chosen version. A new proof copies it; a proof whose content differs is out of date (`sameProofContent`).
+ */
+export const bookProofContent = Effect.fn("books.proofContent")(function* (
+  book: Effect.Success<ReturnType<typeof loadBook>>,
+  flow: BookFlow,
+) {
+  const [castRows, edits] = yield* Effect.all([
+    Database.query((db) => db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, book.id))),
+    Database.query((db) =>
+      db
+        .select({
+          pageId: schema.bookTextEdit.pageId,
+          blockIndex: schema.bookTextEdit.blockIndex,
+          content: schema.bookTextEdit.content,
+        })
+        .from(schema.bookTextEdit)
+        .where(eq(schema.bookTextEdit.bookId, book.id)),
+    ),
+  ]);
+  const cast: Record<string, CastMember> = {};
+  for (const slot of book.manifest.characterSlots) {
+    const row = castRows.find((candidate) => candidate.slotId === slot.slotId);
+    if (row) cast[slot.slotId] = castMember(yield* decodePerson(row).pipe(Effect.orDie));
+  }
+  const art = Object.fromEntries(
+    flow.pages.flatMap((page) => {
+      const layers = chosenLayers(flow, page.pageId);
+      return layers ? [[page.pageId, layers] as const] : [];
+    }),
+  );
+  return { cast, textEdits: edits, art } satisfies ProofContent;
+});
+
 /** A drawn page's layers in the version the parent chose, if the page is drawn. */
 const chosenLayers = (flow: BookFlow, pageId: string) => {
   const page = flow.pages.find((candidate) => candidate.pageId === pageId);
@@ -527,29 +562,11 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
     return yield* new InvalidInput({
       message: "A proof can be made once every page is drawn, until the book is sent for review.",
     });
-  const edits = yield* Database.query((db) =>
-    db
-      .select({
-        pageId: schema.bookTextEdit.pageId,
-        blockIndex: schema.bookTextEdit.blockIndex,
-        content: schema.bookTextEdit.content,
-      })
-      .from(schema.bookTextEdit)
-      .where(eq(schema.bookTextEdit.bookId, bookId)),
-  );
   return yield* createProof({
     familyId: book.familyId,
     bookId,
     storyVersionId: book.storyVersionId,
-    content: {
-      cast: view.cast,
-      textEdits: edits,
-      art: Object.fromEntries(
-        view.pages
-          .filter((page) => view.flow.pages.some((p) => p.pageId === page.pageId))
-          .map((page) => [page.pageId, page.layers]),
-      ),
-    },
+    content: yield* bookProofContent(book, view.flow),
     requestedBy: userId,
   });
 });
@@ -557,8 +574,11 @@ export const requestBookProof = Effect.fn("books.requestProof")(function* (userI
 /** A book's proofs, newest first, for any member of its family. */
 export const listBookProofs = Effect.fn("books.listProofs")(function* (userId: string, bookId: string) {
   const { book, canEdit } = yield* bookFor(userId, bookId, "read");
-  const proofs = yield* proofSummaries(eq(schema.proof.bookId, bookId), book.manifest);
-  return { canRequest: canEdit, proofs };
+  const current = yield* bookProofContent(book, yield* bookFlow(book));
+  const proofs = yield* proofSummaries(eq(schema.proof.bookId, bookId), book.manifest, current);
+  // Proofs are made, approved and deleted only while the parent reads the drawn book; from sending it for review on,
+  // the list is a record.
+  return { canRequest: canEdit && book.status === "changes", proofs };
 });
 
 /**

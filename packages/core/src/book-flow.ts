@@ -3,10 +3,10 @@
 // for every book; the operator reads and decides family books only through `reviewBook` and `decideBook` here.
 import { schema } from "@lifestory/db";
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 
 import { Auth, type SessionUser } from "./auth.ts";
-import { bookFlow, loadBook } from "./books.ts";
+import { bookFlow, bookProofContent, loadBook } from "./books.ts";
 import { AppConfig } from "./config.ts";
 import {
   consentStatements,
@@ -15,6 +15,7 @@ import {
   MAX_SHEET_DRAWS,
   type PhotoPose,
   policyVersion,
+  ProofContent,
 } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
@@ -23,6 +24,7 @@ import { figureRules } from "./figure.ts";
 import { Jobs } from "./jobs.ts";
 import { Mailer } from "./mailer.ts";
 import { releaseUpload, reserveUpload } from "./photo-uploads.ts";
+import { sameProofContent } from "./proofs.ts";
 import { ObjectStorage } from "./storage.ts";
 import {
   checkPhoto,
@@ -548,12 +550,19 @@ export const reviewBook = Effect.fn("bookFlow.review")(function* (operator: Sess
   const flow = yield* bookFlow(book);
   const [proof] = yield* Database.query((db) =>
     db
-      .select({ id: schema.proof.id, objectKey: schema.proof.objectKey })
+      .select({ id: schema.proof.id, objectKey: schema.proof.objectKey, content: schema.proof.content })
       .from(schema.proof)
       .where(and(eq(schema.proof.bookId, bookId), isNotNull(schema.proof.approvedAt)))
       .orderBy(sql`${schema.proof.approvedAt} desc`)
       .limit(1),
   );
+  const [family] = yield* Database.query((db) =>
+    db
+      .select({ name: schema.organization.name })
+      .from(schema.organization)
+      .where(eq(schema.organization.id, book.familyId)),
+  );
+  const proofContent = proof ? yield* Schema.decodeUnknownEffect(ProofContent)(proof.content).pipe(Effect.orDie) : null;
   return {
     flow: {
       ...flow,
@@ -567,7 +576,10 @@ export const reviewBook = Effect.fn("bookFlow.review")(function* (operator: Sess
     storyId: book.storyId,
     version: book.version,
     manifest: book.manifest,
+    familyName: family?.name ?? "",
     proofKey: proof?.objectKey ?? null,
+    /** Whether the approved proof shows the pages as chosen now; a redo since it was approved makes it out of date. */
+    proofCurrent: proofContent ? sameProofContent(proofContent, yield* bookProofContent(book, flow)) : false,
   };
 });
 
