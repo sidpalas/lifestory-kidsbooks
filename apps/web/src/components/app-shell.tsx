@@ -24,6 +24,7 @@ const places = [
   { to: "/", label: "Home", short: "Home" },
   { to: "/stories", label: "Stories", short: "Stories" },
   { to: "/books", label: "Our books", short: "Books" },
+  { to: "/people", label: "People", short: "People" },
   { to: "/sharing", label: "Sharing", short: "Sharing" },
 ] as const;
 
@@ -258,7 +259,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
 
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t bg-background md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t bg-background md:hidden"
       >
         {places.map((place) => (
           <Link

@@ -2,7 +2,7 @@ import type { ServerServices } from "@lifestory/core";
 import { expect, type Page, test } from "@playwright/test";
 import { Effect, Exit } from "effect";
 
-import { giveSheets, markDrawn, markShownBookDrawn } from "./drawn.ts";
+import { giveSheets, markDrawn, markShownBookDrawn, someoneNew } from "./drawn.ts";
 import { expectFieldsAligned } from "./layout.ts";
 
 // Personalized books, who plays each role, and the editor (milestone 1 items 2, 4, 5). The seeded parent owns
@@ -28,6 +28,7 @@ type Person = { name: string; title?: string; pronouns: string; age: string };
 /** Fills one role on the story page: who plays it (D56; no separate family members since Sid, 2026-11-24). */
 const fillRole = async (page: Page, slotId: string, person: Person) => {
   const role = page.getByTestId(`role-${slotId}`);
+  await someoneNew(role);
   await role.getByLabel("Name").fill(person.name);
   if (person.title) await role.getByLabel(/What the kids call them/).fill(person.title);
   await role.getByLabel("Pronouns").selectOption(person.pronouns);
@@ -224,6 +225,7 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   const grownupRole = page.getByTestId("role-grownup");
   await expect(grownupRole).toContainText(`${grownup} · Grandpa · they/them · older adult`);
   await grownupRole.getByRole("button", { name: "Change" }).click();
+  await grownupRole.getByRole("button", { name: "Edit details" }).click();
   await expect(grownupRole.getByLabel(/What the kids call them/)).toHaveValue("Grandpa");
   await grownupRole.getByRole("button", { name: "Cancel" }).click();
 
@@ -232,6 +234,9 @@ test("a parent says who plays each role, makes a book, edits a page's text, and 
   await expect(hero).toContainText(`${child} · she/her · young child`);
   await expect(hero).not.toContainText("Bubs");
   await hero.getByRole("button", { name: "Change" }).click();
+  // The ordered book linked the role to the family's person (D61): changing who plays it is someone new.
+  await expect(hero.getByTestId("hero-picked")).toContainText(child);
+  await someoneNew(hero);
   await expect(hero.getByLabel(/What the kids call them/)).toHaveCount(0);
   await expect(hero.getByLabel("Age").locator("option")).toHaveText(["Young child", "Older child"]);
   await hero.getByLabel("Name").fill(`Bo ${id}`);
@@ -447,11 +452,11 @@ test("a family with a book of the story is sent to it instead of silently making
     await expect(page.getByTestId("story-books").getByRole("link")).toHaveCount(2);
     await expect(page.getByRole("link", { name: "Open our book" })).toHaveCount(0);
     // People from the family's books are offered, so another copy needn't be typed again.
-    const pick = page.getByLabel("The child: someone from your other books");
+    const pick = page.getByLabel("The child: choose from your people");
     await expect(pick.locator("option")).toHaveText(["Choose…", child]);
     await pick.selectOption({ label: child });
-    await expect(page.getByTestId("role-hero").getByLabel("Name")).toHaveValue(child);
-    await page.getByLabel("A grown-up: someone from your other books").selectOption({ label: grownup });
+    await expect(page.getByTestId("hero-picked")).toContainText(child);
+    await page.getByLabel("A grown-up: choose from your people").selectOption({ label: grownup });
     await page.getByRole("button", { name: "Make another copy" }).click();
     await expect(page).toHaveURL(/\/books\/book_/);
     const newest = new URL(page.url()).pathname;
@@ -595,4 +600,85 @@ test("each book in Our books shows its cover: the drawn cover page, else the cov
   for (const key of [likeness[0]!, drawn(1)[0]!])
     expect((await outsider.request.get(`/api/files/${key}`)).status()).toBe(404);
   await outsider.close();
+});
+
+test("People lists who's in the ordered books: archiving takes a typo out of the picker, edits apply to new books only, and reusing someone brings them back", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const id = unique();
+  const typo = `Lcy ${id}`;
+  const dad = `Sam ${id}`;
+  await page.goto(`/__dev/log-me-in/people-${id}@lifestory.dev?returnTo=/`);
+  await page.goto("/stories/the-kite-day");
+  await castKiteDay(
+    page,
+    { name: typo, pronouns: "she/her", age: "Young child" },
+    { name: dad, title: "Dad", pronouns: "he/him", age: "Adult" },
+  );
+  await makeBook(page).click();
+  await page.waitForURL(/\/books\/book_/);
+  const firstBook = new URL(page.url()).pathname;
+
+  // A draft adds nobody (D61): people join when the book is ordered.
+  await page.goto("/people");
+  await expect(page.getByText("Nobody yet.")).toBeVisible();
+  await page.goto(firstBook);
+  await markShownBookDrawn(page);
+  await page.goto("/people");
+  const people = page.getByTestId("people");
+  await expect(people.getByRole("listitem")).toHaveCount(2);
+  await expect(people).toContainText(`${dad} (Dad)`);
+  await expect(people).toContainText("Nothing set. Each book reads their look from its photo.");
+  await evidence(page, "people");
+
+  // Archiving takes the typo out of the picker; Undo puts it back, and Archived lists it with Restore.
+  await page.getByRole("button", { name: `Archive ${typo}` }).click();
+  await expect(page.getByRole("status")).toContainText(`${typo} won't be offered for new books.`);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(people.getByRole("listitem")).toHaveCount(2);
+  await page.getByRole("button", { name: `Archive ${typo}` }).click();
+  await expect(people.getByRole("listitem")).toHaveCount(1);
+  await page.getByTestId("archived-people").locator("summary").click();
+  await expect(page.getByRole("button", { name: `Restore ${typo}` })).toBeVisible();
+  await evidence(page, "people-archived");
+
+  // An edit is for new books: the picker offers the new name and age, and the book already made keeps its cast.
+  await page.getByRole("button", { name: `Edit ${dad} (Dad)` }).click();
+  const edit = page.getByTestId("people").getByRole("group");
+  await edit.getByLabel("Name").fill(`Samuel ${id}`);
+  await edit.getByLabel("Age").selectOption({ label: "Older adult" });
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(people).toContainText(`Samuel ${id} (Dad)`);
+  await expect(people).toContainText("Older adult, he/him.");
+  await page.goto(firstBook);
+  await expect(page.getByTestId("role-grownup")).toContainText(`${dad} · Dad · he/him · adult`);
+
+  await page.goto("/stories/the-kite-day");
+  // Nobody fits the child's role now (the typo is archived), so it shows only the fields; the grown-up's role offers
+  // the explicit choice, from the family's people first.
+  await expect(page.getByTestId("role-hero").getByRole("radiogroup")).toHaveCount(0);
+  const grownup = page.getByTestId("role-grownup");
+  await expect(grownup.getByRole("radio", { name: "From your people" })).toBeChecked();
+  const grownupPick = page.getByLabel("A grown-up: choose from your people");
+  await expect(grownupPick.locator("option")).toHaveText(["Choose…", `Samuel ${id} (Dad)`]);
+  await expect(grownup.getByRole("link", { name: "Manage people" })).toHaveAttribute("href", "/people");
+  await grownupPick.selectOption({ label: `Samuel ${id} (Dad)` });
+  // Editing a picked person keeps them that person (D61): the order renames them, not a second person.
+  await grownup.getByRole("button", { name: "Edit details" }).click();
+  await expect(grownup).toContainText(`This changes Samuel ${id} for your next books too.`);
+  await grownup.getByLabel("Name").fill(`Sammy ${id}`);
+  await evidence(page, "story-picked-edit");
+  // Typing the archived person again and ordering the book brings them back, in both books.
+  await fillRole(page, "hero", { name: typo, pronouns: "she/her", age: "Young child" });
+  await makeBook(page).click();
+  await markShownBookDrawn(page);
+  await page.goto("/people");
+  await expect(people.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByTestId("archived-people")).toHaveCount(0);
+  await expect(people.getByRole("listitem").filter({ hasText: typo })).toContainText("In The Kite Day, The Kite Day");
+  await expect(people).not.toContainText(`Samuel ${id}`);
+  await expect(people.getByRole("listitem").filter({ hasText: `Sammy ${id}` })).toContainText(
+    "In The Kite Day, The Kite Day",
+  );
 });

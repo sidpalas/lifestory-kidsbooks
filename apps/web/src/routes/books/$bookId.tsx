@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { BookPage, ScaledPage, StoryFonts } from "~/components/book/BookPage";
 import { EDITOR_ID, FINISH_ID, PageChange, PhotoBookSteps } from "~/components/book/photo-book";
 import { confirmDeleteBook } from "~/components/family-library";
-import { draftOf, PersonFields, personOf } from "~/components/make-book";
+import { draftOf, PersonChooser, personOf } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
 import { BookResult, EditBookResult, getBookFn, saveTextEditFn, setBookCastFn } from "~/server/books";
 
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/books/$bookId")({
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function BookEditor() {
-  const { view, canEdit } = Route.useLoaderData();
+  const { view, canEdit, people } = Route.useLoaderData();
   const { page: selected } = Route.useSearch();
   const router = useRouter();
   const navigate = Route.useNavigate();
@@ -136,6 +136,7 @@ function BookEditor() {
               sheetUrl={likeness?.sheetKey ? `/api/files/${likeness.sheetKey}` : null}
               expressionsUrl={likeness?.expressionsKey ? `/api/files/${likeness.expressionsKey}` : null}
               canEdit={canEdit}
+              people={people}
               onSave={(person) =>
                 run(() => setBookCastFn({ data: { bookId: view.book.id, slotId: slot.slotId, person } }))
               }
@@ -401,6 +402,7 @@ function RoleCard({
   sheetUrl,
   expressionsUrl,
   canEdit,
+  people,
   onSave,
 }: {
   role: BookRole;
@@ -410,6 +412,8 @@ function RoleCard({
   /** The person's six expressions, drawn with the sheet; null on sheets drawn before them. */
   expressionsUrl: string | null;
   canEdit: boolean;
+  /** The family's people (D61), to pick instead of typing. */
+  people: ReadonlyArray<CastPerson>;
   onSave: (person: CastPerson) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -491,7 +495,7 @@ function RoleCard({
             setEditing(false);
           }}
         >
-          <PersonFields slot={slot} value={edited} onChange={setPerson} />
+          <PersonChooser slot={slot} value={edited} onChange={setPerson} people={people} />
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={edited.name.trim() === ""}>
               Save

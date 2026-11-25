@@ -2,6 +2,7 @@ import type { ServerServices } from "@lifestory/core";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { Effect } from "effect";
 
+import { someoneNew } from "./drawn.ts";
 import { expectContained } from "./layout.ts";
 
 // A photo book end to end on the fakes (D56, D57, D58): consent, a photo per role with one refused by the check, each
@@ -70,6 +71,7 @@ const startBook = async (page: Page, child: string, grownup: string) => {
     ["grownup", grownup, "Adult"],
   ] as const) {
     const role = page.getByTestId(`role-${slotId}`);
+    await someoneNew(role);
     await role.getByLabel("Name").fill(name);
     await role.getByLabel("Age").selectOption({ label: age });
   }

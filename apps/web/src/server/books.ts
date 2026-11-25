@@ -8,10 +8,14 @@ import {
   listBooks,
   listBookProofs,
   listCastPeople,
+  listFamilyPeople,
   listPublishedStories,
   requestBookProof,
+  requireFamilyAccess,
   saveTextEdit,
   setBookCast,
+  setPersonArchived,
+  updatePerson,
 } from "@lifestory/core";
 // Personalized books. The domain logic and every family role check are in @lifestory/core (books.ts); these adapt
 // requests to it.
@@ -20,6 +24,7 @@ import {
   BookSummary,
   BookView,
   CastPerson,
+  FamilyPerson,
   Forbidden,
   InvalidInput,
   NotAuthenticated,
@@ -102,7 +107,12 @@ export const createBookFn = createServerFn({ method: "POST" })
   );
 
 export const BookResult = ResultSchema(
-  Schema.Struct({ view: BookView, canEdit: Schema.Boolean }),
+  Schema.Struct({
+    view: BookView,
+    canEdit: Schema.Boolean,
+    /** The family's people (D61) to pick when changing who plays a role; empty for a viewer. */
+    people: Schema.Array(CastPerson),
+  }),
   Schema.Union([NotAuthenticated, NotFound, Forbidden]),
 );
 
@@ -114,7 +124,9 @@ export const getBookFn = createServerFn({ method: "GET" })
       BookResult,
       Effect.gen(function* () {
         const user = yield* currentUser;
-        return yield* getBook(user.id, data.bookId);
+        const book = yield* getBook(user.id, data.bookId);
+        const people = book.canEdit ? yield* listCastPeople(user.id, book.view.book.familyId) : [];
+        return { ...book, people };
       }),
     ),
   );
@@ -205,6 +217,52 @@ export const deleteProofFn = createServerFn({ method: "POST" })
       DeleteProofResult,
       currentUser.pipe(
         Effect.flatMap((user) => deleteProof(user.id, data.proofId)),
+        done,
+      ),
+    ),
+  );
+
+export const PeopleResult = ResultSchema(
+  Schema.Struct({ canEdit: Schema.Boolean, people: Schema.Array(FamilyPerson) }),
+  Schema.Union([NotAuthenticated, NotFound, Forbidden]),
+);
+
+/** The active family's people (D61), for the People page. */
+export const getPeopleFn = createServerFn({ method: "GET" }).handler(() =>
+  runEffect(
+    PeopleResult,
+    Effect.gen(function* () {
+      const { user, family } = yield* currentFamily;
+      const [{ canEdit }, people] = yield* Effect.all([
+        requireFamilyAccess(user.id, family.id, "read"),
+        listFamilyPeople(user.id, family.id),
+      ]);
+      return { canEdit, people };
+    }),
+  ),
+);
+
+/** Changes a person's name, title, pronouns or age for books made after (D61). */
+export const updatePersonFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ personId: Schema.String, person: CastPerson })))
+  .handler(({ data }) =>
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => updatePerson(user.id, data)),
+        done,
+      ),
+    ),
+  );
+
+/** Archives a person, so new books don't offer them, or restores them (D61). */
+export const setPersonArchivedFn = createServerFn({ method: "POST" })
+  .validator(Schema.toStandardSchemaV1(Schema.Struct({ personId: Schema.String, archived: Schema.Boolean })))
+  .handler(({ data }) =>
+    runEffect(
+      EditBookResult,
+      currentUser.pipe(
+        Effect.flatMap((user) => setPersonArchived(user.id, data)),
         done,
       ),
     ),

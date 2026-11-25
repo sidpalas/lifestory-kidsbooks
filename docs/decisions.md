@@ -300,7 +300,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   it (D28, D29's face types, D40, D41, D43, D44, D46, D50, D51, D52, D55), part generation (D30, D36), and Klein on
   Modal (D5, D25). Every parts story is a test and is deleted (below). D29's seven age buckets stay: a role's
   `ages` now feed the sheet prompt ("a young child of about six").
-- **No separate family members (Sid, 2026-11-24):** with no look to build, a person is a name, an optional title,
+- **No separate family members (Sid, 2026-11-24; reversed by D61, 2026-11-25):** with no look to build, a person is a name, an optional title,
   pronouns and an age, quick to type where the photo goes. So the Our family page and the `character` table go, and
   each book's cast holds those four for each role (migration 0018 copies them from the characters books pointed to).
   A book keeps the age it was made with, which is the age its sheet draws. Making another book offers the people from
@@ -534,6 +534,38 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   operator before payment exists).
 - **Reopen if:** parents hit the limits in normal use, payment arrives (then a paid order is the natural trigger),
   or families with several editors need a shared limit.
+
+### D61. The family's people: one row per person, kept to pick for new books, on their own People page — Decided (Sid, 2026-11-25)
+
+- **Evidence:** with no person record (D56), the picker was every distinct name, title, pronouns, age and look in
+  the family's books, drafts included. A typo or a changed look or age added an entry for good, and only deleting the
+  book removed it. Hiding entries keyed by those fields was weighed and rejected (Sid): a birthday or a typo fix makes
+  a new key, and nothing can be edited.
+- **Decided (Sid, 2026-11-25):** reverses D56's "No separate family members". `family_person` holds a name, title,
+  pronouns, age and the look corrections (`LookChoices`) of the person's newest ordered book, and `archived_at`;
+  `book_cast.person_id` links each role to one. Each book still keeps its own copy of the person, so editing or
+  archiving a person never changes a book, its sheets, pages or proofs.
+- **When people are made:** at the order (`orderBook` calls `syncBookPeople`), never from a draft. Changing an
+  ordered book's cast syncs it the same way. No "Add person".
+- **Pick or new, an explicit choice (Sid, 2026-11-25):** each role on the story page and under Change in the book
+  editor offers "From your people" (first, when anyone fits the role) or "Someone new". A picked person stays linked
+  whatever the parent edits under "Edit details", including the name ("This changes Lucy for your next books too"),
+  and the order updates the person with the book's details and look. Someone new is never linked by choice: at the
+  order they match only a person with exactly the same name, title, pronouns and age (case and spacing ignored), which
+  is how typing an archived person again brings them back; otherwise they become a new person. This replaced a
+  rule that kept a pick linked only while its name matched, which turned a renamed pick into a second person.
+- **People page (`/people`, in the nav):** each person with their age, pronouns, the books they're in, and the look
+  corrections in words ("You set: Hair colour: Blond"). Copy says what's kept here and what each book's photo
+  supplies, and why photos aren't kept. Owners and parents (`book: edit`) edit name, title, pronouns and age for new
+  books, and archive (with Undo) or restore; viewers read. The look isn't edited here: it comes with a book's photo.
+  The story page's picker offers people who aren't archived, with a "Manage people" link.
+- **Retention:** a person holds no image. Photos, sheets and pages keep D56's and D57's rules and go with their book.
+  Families delete a person's data by deleting their books; archiving deletes nothing.
+- **Migration 0027** adds the table and column and backfills one person per family and key from ordered books, with
+  the newest book's spelling and look. It only adds rows and links. Books ordered between the migration and the new
+  web image (minutes, during a deploy) get their people the next time their cast changes.
+- **Reopen if:** families want to set a look without a photo, add people before a book, or share people across
+  families.
 
 ### D60. An operator-only story: published for operators to try the pipeline, never seen by families — Decided (Sid, 2026-11-25) / Made
 

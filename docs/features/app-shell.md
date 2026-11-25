@@ -2,7 +2,7 @@
 
 ## What it is
 
-The navigation around every family page (D48): a sidebar with Home, Stories, Our books, and Sharing (who can open
+The navigation around every family page (D48): a sidebar with Home, Stories, Our books, People (D61), and Sharing (who can open
 the family's books: members and invitations); bottom tabs on phones. Who plays each role is entered per book (D56).
 Home shows a "Next step" card until the family has a book, then
 the newest book ("Pick up where you left off") and the stories. A story card shows the story's cover beside its

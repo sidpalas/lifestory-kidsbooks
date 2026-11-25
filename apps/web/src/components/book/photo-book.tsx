@@ -5,16 +5,11 @@ import {
   type BookView,
   consentStatements,
   type DataRetention,
-  eyeColours,
-  hairColours,
-  hairLengths,
-  hairTextures,
   type LookChoices,
   type LookKey,
   lookOf,
   type PhotoPose,
   photoPoses,
-  skinTones,
   MAX_PAGE_CHANGES,
   MAX_SHEET_DRAWS,
   unwrapResult,
@@ -24,6 +19,7 @@ import { CameraIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { BookPage, ScaledPage } from "~/components/book/BookPage";
+import { lookFields } from "~/components/book/look-fields";
 import { type ProofList, ProofPanel } from "~/components/book/ProofPanel";
 import { Button } from "~/components/ui/button";
 import { FileInput } from "~/components/ui/file-input";
@@ -343,27 +339,6 @@ const isPhotoFile = (file: File) => photoTypes.includes(file.type) || /\.hei[cf]
 const isFileDrag = (event: { dataTransfer: DataTransfer | null }) =>
   event.dataTransfer?.types.includes("Files") ?? false;
 
-/**
- * The look's attributes as the confirmation shows them: each option with its swatch or its description (hair length
- * and texture), if it has one.
- */
-const yesNo = [
-  { id: true, label: "Yes" },
-  { id: false, label: "No" },
-] as const;
-const lookFields: ReadonlyArray<{
-  key: LookKey;
-  label: string;
-  options: ReadonlyArray<{ id: string | boolean; label: string; swatch?: string; description?: string }>;
-}> = [
-  { key: "hairColour", label: "Hair colour", options: hairColours },
-  { key: "hairLength", label: "Hair length", options: hairLengths },
-  { key: "hairTexture", label: "Hair texture", options: hairTextures },
-  { key: "eyeColour", label: "Eyes", options: eyeColours },
-  { key: "skinTone", label: "Skin tone", options: skinTones },
-  { key: "freckles", label: "Freckles", options: yesNo },
-  { key: "glasses", label: "Glasses", options: yesNo },
-];
 const optionLabel = (options: (typeof lookFields)[number]["options"], id: string | boolean | null | undefined) =>
   options.find((option) => option.id === id)?.label ?? "Not sure";
 

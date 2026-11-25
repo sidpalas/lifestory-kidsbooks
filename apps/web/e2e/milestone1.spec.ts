@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
-import { markShownBookDrawn } from "./drawn.ts";
+import { markShownBookDrawn, someoneNew } from "./drawn.ts";
 
 // The whole milestone 1 slice (docs/brief.md, "Milestone 1 scope"), in order, as the people in it do it: the operator
 // invites a family, its owner invites a view-only grandparent, makes a book of the sample story, saying who plays each
@@ -106,10 +106,12 @@ test("milestone 1: invite, family, viewer, a book and its cast, a text edit, an 
   // them, and an age the role accepts, D29), and the text names them.
   await owner.goto("/stories/the-kite-day");
   const hero = owner.getByTestId("role-hero");
+  await someoneNew(hero);
   await hero.getByLabel("Name").fill(child);
   await hero.getByLabel("Pronouns").selectOption("she/her");
   await hero.getByLabel("Age").selectOption({ label: "Young child" });
   const grown = owner.getByTestId("role-grownup");
+  await someoneNew(grown);
   await grown.getByLabel("Name").fill(grownup);
   await grown.getByLabel("Pronouns").selectOption("he/him");
   await grown.getByLabel(/What the kids call them/).fill("Dad");

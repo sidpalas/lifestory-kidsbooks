@@ -1,12 +1,12 @@
 // Specs about a book's cast, text and proofs start from a drawn book (D57: status `changes`), as one is after the
 // order and `book.make`; photo-book.spec.ts covers the steps before it, through the real tasks.
 import type { ServerServices } from "@lifestory/core";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { Effect } from "effect";
 
 /** Moves books past the photo steps, as if ordered and drawn with the story's stock figures. */
 export const markDrawn = async (...bookIds: ReadonlyArray<string>) => {
-  const { Database, makeServerRuntime } = await import("@lifestory/core");
+  const { Database, makeServerRuntime, syncBookPeople } = await import("@lifestory/core");
   const runtime = makeServerRuntime();
   try {
     await runtime.runPromise(
@@ -14,6 +14,9 @@ export const markDrawn = async (...bookIds: ReadonlyArray<string>) => {
         Effect.promise(() =>
           pool.query("update book set status = 'changes', ordered_at = now() where id = any($1)", [bookIds]),
         ),
+      ).pipe(
+        // The order adds the book's people to the family's (D61), as orderBook does.
+        Effect.andThen(Effect.forEach(bookIds, (bookId) => syncBookPeople(bookId, { ordered: true }))),
       ) as Effect.Effect<unknown, never, ServerServices>,
     );
   } finally {
@@ -79,4 +82,11 @@ export const markShownBookDrawn = async (page: Page) => {
   await markDrawn(bookId);
   await page.reload();
   return bookId;
+};
+
+/** Types a new person into a role, past "From your people" when the family has people who fit it (D61). */
+export const someoneNew = async (role: Locator) => {
+  const choice = role.getByRole("radio", { name: "Someone new" });
+  // The radio is visually hidden behind its label, which takes the click.
+  if (await choice.count()) await role.getByText("Someone new", { exact: true }).click();
 };

@@ -7,7 +7,7 @@ import { Effect, Schema } from "effect";
 
 import { Auth, type SessionUser } from "./auth.ts";
 import { composePage, pageText, resolveText } from "./book-format/index.ts";
-import { bookFlow, bookProofContent, loadBook } from "./books.ts";
+import { bookFlow, bookProofContent, loadBook, syncBookPeople } from "./books.ts";
 import { AppConfig } from "./config.ts";
 import {
   consentStatements,
@@ -390,7 +390,11 @@ export const orderBook = Effect.fn("bookFlow.order")(function* (userId: string, 
       return true;
     }),
   );
-  if (ordered) yield* Jobs.use((jobs) => jobs.spawn(makeBook, { bookId }, { idempotencyKey: `book.make:${bookId}` }));
+  if (ordered) {
+    // The book's people join the family's (D61) once it's ordered, never from a draft.
+    yield* syncBookPeople(bookId, { ordered: true });
+    yield* Jobs.use((jobs) => jobs.spawn(makeBook, { bookId }, { idempotencyKey: `book.make:${bookId}` }));
+  }
   return { ordered };
 });
 

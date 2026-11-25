@@ -16,6 +16,7 @@ import { Route as _devIndexRouteImport } from './routes/[_][_]dev/index'
 import { Route as _devLogMeOutRouteImport } from './routes/[_][_]dev/log-me-out'
 import { Route as _devMailboxRouteImport } from './routes/[_][_]dev/mailbox'
 import { Route as FamilyAdminRouteImport } from './routes/_family/admin'
+import { Route as FamilyPeopleRouteImport } from './routes/_family/people'
 import { Route as FamilySharingRouteImport } from './routes/_family/sharing'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthorIndexRouteImport } from './routes/author/index'
@@ -67,6 +68,11 @@ const _devMailboxRoute = _devMailboxRouteImport.update({
 const FamilyAdminRoute = FamilyAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => FamilyRoute,
+} as any)
+const FamilyPeopleRoute = FamilyPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
   getParentRoute: () => FamilyRoute,
 } as any)
 const FamilySharingRoute = FamilySharingRouteImport.update({
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/admin': typeof FamilyAdminRoute
+  '/people': typeof FamilyPeopleRoute
   '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/admin': typeof FamilyAdminRoute
+  '/people': typeof FamilyPeopleRoute
   '/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/__dev/log-me-out': typeof _devLogMeOutRoute
   '/__dev/mailbox': typeof _devMailboxRoute
   '/_family/admin': typeof FamilyAdminRoute
+  '/_family/people': typeof FamilyPeopleRoute
   '/_family/sharing': typeof FamilySharingRoute
   '/api/health': typeof ApiHealthRoute
   '/author/$storyId': typeof AuthorStoryIdRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/admin'
+    | '/people'
     | '/sharing'
     | '/api/health'
     | '/author/$storyId'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/admin'
+    | '/people'
     | '/sharing'
     | '/api/health'
     | '/author/$storyId'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/__dev/log-me-out'
     | '/__dev/mailbox'
     | '/_family/admin'
+    | '/_family/people'
     | '/_family/sharing'
     | '/api/health'
     | '/author/$storyId'
@@ -396,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof FamilyAdminRouteImport
+      parentRoute: typeof FamilyRoute
+    }
+    '/_family/people': {
+      id: '/_family/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof FamilyPeopleRouteImport
       parentRoute: typeof FamilyRoute
     }
     '/_family/sharing': {
@@ -529,6 +548,7 @@ declare module '@tanstack/react-router' {
 
 interface FamilyRouteChildren {
   FamilyAdminRoute: typeof FamilyAdminRoute
+  FamilyPeopleRoute: typeof FamilyPeopleRoute
   FamilySharingRoute: typeof FamilySharingRoute
   FamilyBooksIndexRoute: typeof FamilyBooksIndexRoute
   FamilyStoriesIndexRoute: typeof FamilyStoriesIndexRoute
@@ -536,6 +556,7 @@ interface FamilyRouteChildren {
 
 const FamilyRouteChildren: FamilyRouteChildren = {
   FamilyAdminRoute: FamilyAdminRoute,
+  FamilyPeopleRoute: FamilyPeopleRoute,
   FamilySharingRoute: FamilySharingRoute,
   FamilyBooksIndexRoute: FamilyBooksIndexRoute,
   FamilyStoriesIndexRoute: FamilyStoriesIndexRoute,

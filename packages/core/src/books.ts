@@ -2,10 +2,11 @@
 // pronouns, age) and the family's text edits; each figure on a page is drawn from the book's character sheet by a task, and a page shows the stock
 // figure until its own is drawn.
 import { schema } from "@lifestory/db";
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { Effect, Schema } from "effect";
 
 import {
+  type Age,
   ageLabel,
   takesTitle,
   type CastMember,
@@ -19,7 +20,7 @@ import {
 import { agreementIssues, resolveText, tokenIssues } from "./book-format/text.ts";
 import { AppConfig } from "./config.ts";
 import type { BookFlow, BookRole, BookSummary, BookView, ProofContent } from "./contracts.ts";
-import { CastPerson, PhotoCheckResult, type PhotoPose, photoPoses } from "./contracts.ts";
+import { CastPerson, type FamilyPerson, PhotoCheckResult, type PhotoPose, photoPoses } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { BookExists, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -59,36 +60,160 @@ const castMember = (person: CastPerson): CastMember => ({
   pronouns: person.pronouns,
 });
 
-/**
- * The people in the family's books, newest first and each once (by name, title, pronouns and age), so a parent making
- * another book can pick them instead of typing them again.
- */
-export const listCastPeople = Effect.fn("books.listCastPeople")(function* (userId: string, familyId: string) {
+/** A name or title as people match it: trimmed, single-spaced, any case. */
+const norm = (text: string | null | undefined) => text?.trim().replace(/\s+/g, " ").toLowerCase() ?? "";
+/** Who a cast entry is when it isn't linked to a person (D61): name, title, pronouns and age, as typed. */
+const personKey = (person: { name: string; title: string | null; pronouns: string; age: string }) =>
+  JSON.stringify([
+    norm(person.name),
+    takesTitle(person.age as Age) ? norm(person.title) : "",
+    person.pronouns,
+    person.age,
+  ]);
+
+/** The family's people (D61), by name, each with the ordered books they're in, for the People page. */
+export const listFamilyPeople = Effect.fn("books.listFamilyPeople")(function* (userId: string, familyId: string) {
   yield* requireFamilyAccess(userId, familyId, "read");
-  const rows = yield* Database.query((db) =>
-    db
-      .select({
-        name: schema.bookCast.name,
-        title: schema.bookCast.title,
-        pronouns: schema.bookCast.pronouns,
-        age: schema.bookCast.age,
-        look: schema.bookCast.look,
-      })
-      .from(schema.bookCast)
-      .innerJoin(schema.book, eq(schema.book.id, schema.bookCast.bookId))
-      .where(eq(schema.book.familyId, familyId))
-      .orderBy(desc(schema.book.createdAt)),
+  const [rows, books] = yield* Effect.all([
+    Database.query((db) =>
+      db
+        .select()
+        .from(schema.familyPerson)
+        .where(eq(schema.familyPerson.familyId, familyId))
+        .orderBy(asc(schema.familyPerson.name)),
+    ),
+    Database.query((db) =>
+      db
+        .select({ personId: schema.bookCast.personId, id: schema.book.id, title: schema.book.title })
+        .from(schema.bookCast)
+        .innerJoin(schema.book, eq(schema.book.id, schema.bookCast.bookId))
+        .where(
+          and(eq(schema.book.familyId, familyId), ne(schema.book.status, "draft"), isNotNull(schema.bookCast.personId)),
+        )
+        .orderBy(asc(schema.book.createdAt)),
+    ),
+  ]);
+  return yield* Effect.forEach(rows, (row) =>
+    decodePerson({ ...row, personId: row.id }).pipe(
+      Effect.orDie,
+      Effect.map((person): FamilyPerson => ({
+        id: row.id,
+        person,
+        archived: row.archivedAt !== null,
+        books: books
+          .filter(
+            (book, i) =>
+              book.personId === row.id && books.findIndex((b) => b.personId === row.id && b.id === book.id) === i,
+          )
+          .map(({ id, title }) => ({ id, title })),
+      })),
+    ),
   );
-  const seen = new Set<string>();
-  const people: Array<CastPerson> = [];
-  for (const row of rows) {
-    const person = yield* decodePerson(row).pipe(Effect.orDie);
-    const key = JSON.stringify(person);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    people.push(person);
-  }
-  return people;
+});
+
+/** The people "Someone from your other books" offers: the family's people that aren't archived (D61). */
+export const listCastPeople = Effect.fn("books.listCastPeople")(function* (userId: string, familyId: string) {
+  const people = yield* listFamilyPeople(userId, familyId);
+  return people.filter((entry) => !entry.archived).map((entry) => entry.person);
+});
+
+/** A person, for a role that edits the family's books; NotFound for anyone outside the family. */
+const editablePerson = Effect.fn("books.editablePerson")(function* (userId: string, personId: string) {
+  const [row] = yield* Database.query((db) =>
+    db.select().from(schema.familyPerson).where(eq(schema.familyPerson.id, personId)),
+  );
+  if (!row) return yield* new NotFound({ entity: "person", id: personId });
+  yield* requireFamilyAccess(userId, row.familyId, "edit");
+  return row;
+});
+
+/**
+ * Changes a person's name, title, pronouns or age for the books made after (D61). Their look comes from each book's
+ * photo and their newest book's corrections, so it isn't edited here; books already made keep their own copy.
+ */
+export const updatePerson = Effect.fn("books.updatePerson")(function* (
+  userId: string,
+  input: { readonly personId: string; readonly person: CastPerson },
+) {
+  yield* editablePerson(userId, input.personId);
+  const { name, title, pronouns, age } = withTitleRule(input.person);
+  yield* Database.query((db) =>
+    db
+      .update(schema.familyPerson)
+      .set({ name, title, pronouns, age })
+      .where(eq(schema.familyPerson.id, input.personId)),
+  );
+});
+
+/** Archives a person, so new books don't offer them, or restores them (D61). Their books don't change. */
+export const setPersonArchived = Effect.fn("books.setPersonArchived")(function* (
+  userId: string,
+  input: { readonly personId: string; readonly archived: boolean },
+) {
+  yield* editablePerson(userId, input.personId);
+  yield* Database.query((db) =>
+    db
+      .update(schema.familyPerson)
+      .set({ archivedAt: input.archived ? new Date() : null })
+      .where(eq(schema.familyPerson.id, input.personId)),
+  );
+});
+
+/**
+ * Links each role of an ordered book to the family's person it is, and makes that person look like this book (D61):
+ * the person it was picked as, even after edits; for someone typed as new, the person with the same name, title,
+ * pronouns and age, else a new one. Drafts are skipped, so a draft never adds anyone. `ordered` (the order itself) also brings back
+ * an archived person: the parent reused them on purpose. Idempotent.
+ */
+export const syncBookPeople = Effect.fn("books.syncPeople")(function* (
+  bookId: string,
+  options: { readonly ordered: boolean },
+) {
+  yield* Database.query((db) =>
+    db.transaction(async (tx) => {
+      const [book] = await tx
+        .select({ familyId: schema.book.familyId, status: schema.book.status })
+        .from(schema.book)
+        .where(eq(schema.book.id, bookId));
+      if (!book || book.status === "draft") return;
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`people:${book.familyId}`}, 0))`);
+      const cast = await tx.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId));
+      const people = await tx.select().from(schema.familyPerson).where(eq(schema.familyPerson.familyId, book.familyId));
+      for (const row of cast) {
+        const values = {
+          name: row.name.trim(),
+          title: takesTitle(row.age as Age) ? row.title : null,
+          pronouns: row.pronouns,
+          age: row.age,
+          look: row.look,
+          ...(options.ordered ? { archivedAt: null } : {}),
+        };
+        // Picked from People (D61) stays that person whatever the parent edited; typed as someone new matches
+        // only an exact name, title, pronouns and age, which is how reusing an archived person brings them back.
+        const match = row.personId
+          ? people.find((person) => person.id === row.personId)
+          : people.find((person) => personKey(person) === personKey(row));
+        let personId: string;
+        if (match) {
+          personId = match.id;
+          await tx.update(schema.familyPerson).set(values).where(eq(schema.familyPerson.id, personId));
+          Object.assign(match, values);
+        } else {
+          personId = `person_${crypto.randomUUID()}`;
+          const [created] = await tx
+            .insert(schema.familyPerson)
+            .values({ id: personId, familyId: book.familyId, ...values })
+            .returning();
+          people.push(created!);
+        }
+        if (row.personId !== personId)
+          await tx
+            .update(schema.bookCast)
+            .set({ personId })
+            .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, row.slotId)));
+      }
+    }),
+  );
 });
 
 /** The family's books, newest first, for any member. */
@@ -504,6 +629,8 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
       .values({ bookId: input.bookId, slotId: input.slotId, ...person })
       .onConflictDoUpdate({ target: [schema.bookCast.bookId, schema.bookCast.slotId], set: person }),
   );
+  // An ordered book's people follow its cast (D61); a draft's wait for the order.
+  yield* syncBookPeople(input.bookId, { ordered: false });
 });
 
 /**

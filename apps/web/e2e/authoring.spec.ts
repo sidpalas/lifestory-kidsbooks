@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
-import { markShownBookDrawn } from "./drawn.ts";
+import { markShownBookDrawn, someoneNew } from "./drawn.ts";
 import { expectContained, expectFieldsAligned } from "./layout.ts";
 
 // Story authoring (D37), as an author does it: the operator lets an account author; the author starts a story, uploads
@@ -204,6 +204,7 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   await author.goto("/stories");
   await author.getByTestId("stories").getByRole("link", { name: title }).click();
   const role = author.getByTestId("role-hero");
+  await someoneNew(role);
   await role.getByLabel("Name").fill(child);
   await role.getByLabel("Pronouns").selectOption("she/her");
   await author.getByRole("button", { name: "Make the book" }).click();

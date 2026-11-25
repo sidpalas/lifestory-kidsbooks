@@ -156,8 +156,9 @@ export const lookOf = (photo: Partial<Look> | null | undefined, choices: LookCho
   Object.fromEntries(lookKeys.map((key) => [key, choices[key] ?? photo?.[key] ?? null])) as unknown as Look;
 
 /**
- * Who plays a role in one book (D56; no separate family members since Sid, 2026-11-24): a name, what the children
- * call them, pronouns for the text, and an age the role accepts, which the character sheet draws them at.
+ * Who plays a role in one book (D56): a name, what the children call them, pronouns for the text, and an age the role
+ * accepts, which the character sheet draws them at. Each book keeps its own copy; `personId` links it to the family's
+ * person it was picked as (D61).
  */
 export const CastPerson = Schema.Struct({
   name: Schema.Trim.check(Schema.isMinLength(1), Schema.isMaxLength(60)),
@@ -166,8 +167,19 @@ export const CastPerson = Schema.Struct({
   age: Age,
   /** What the parent set of their look (D56); carried to the next book that picks them, photos never are. */
   look: Schema.optionalKey(LookChoices),
+  /** The family's person (D61) this is, when picked from People or linked at the order. */
+  personId: Schema.optionalKey(Schema.NullOr(Schema.String)),
 });
 export type CastPerson = typeof CastPerson.Type;
+
+/** A person on the People page (D61): who they are now, the ordered books they're in, and whether they're archived. */
+export const FamilyPerson = Schema.Struct({
+  id: Schema.String,
+  person: CastPerson,
+  books: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+  archived: Schema.Boolean,
+});
+export type FamilyPerson = typeof FamilyPerson.Type;
 
 const Rect = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number]);
 

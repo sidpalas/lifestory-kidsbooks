@@ -1,6 +1,6 @@
-// What a family owns (docs/plan.md, "Data model"): its personalized books. A book pins one story version and stores
-// who fills each role, by name, title, pronouns and age, and the family's text edits (D56; no separate family members
-// since Sid, 2026-11-24).
+// What a family owns (docs/plan.md, "Data model"): its personalized books and the people in them. A book pins one story
+// version and stores its own copy of who fills each role, by name, title, pronouns, age and look, and the family's text
+// edits (D56); the family's people (D61) are what a new book picks from.
 import {
   boolean,
   doublePrecision,
@@ -228,6 +228,31 @@ export const consent = pgTable(
   (t) => [index("consent_user_idx").on(t.userId)],
 );
 
+/**
+ * A person in the family's books (D61): who a new book can pick instead of typing them again. Made or updated from a
+ * book's cast when the book is ordered, so a draft never adds anyone. Holds no photo or drawing; each book keeps its own
+ * copy of the person in `book_cast`, so editing or archiving a person never changes a book.
+ */
+export const familyPerson = pgTable(
+  "family_person",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    title: text("title"),
+    pronouns: text("pronouns").notNull(),
+    age: text("age").notNull(),
+    /** The look corrections of the person's newest ordered book (`LookChoices`); the rest comes from each book's photo. */
+    look: jsonb("look").$type<Record<string, string | boolean>>().notNull().default({}),
+    /** Archived people aren't offered for new books; ordering a book with them brings them back. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("family_person_family_idx").on(t.familyId)],
+);
+
 /** Who fills each of the story's roles in a book: the person as the text names them, and their age for the sheet. */
 export const bookCast = pgTable(
   "book_cast",
@@ -245,6 +270,8 @@ export const bookCast = pgTable(
     age: text("age").notNull(),
     /** What the parent set of their look (D56, `LookChoices`): each attribute they corrected; the rest is the photo's. */
     look: jsonb("look").$type<Record<string, string | boolean>>().notNull().default({}),
+    /** The family's person this role was picked as or became at the order (D61); null in a draft typed by hand. */
+    personId: text("person_id").references(() => familyPerson.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.bookId, t.slotId] })],

@@ -40,7 +40,7 @@ const titleSuggestions = [
 ];
 
 /** A person in progress: the title as typed, empty for none; kept while the age is a child's, so switching back restores it. */
-export type PersonDraft = { name: string; title: string; pronouns: PronounSet; age: Age };
+export type PersonDraft = { name: string; title: string; pronouns: PronounSet; age: Age; personId?: string | null };
 
 export const draftOf = (person: CastPerson): PersonDraft => ({ ...person, title: person.title ?? "" });
 export const blankFor = (slot: CharacterSlot): PersonDraft => ({
@@ -54,6 +54,8 @@ export const personOf = (draft: PersonDraft): CastPerson => ({
   title: (takesTitle(draft.age) && draft.title.trim()) || null,
   pronouns: draft.pronouns,
   age: draft.age,
+  // The person it was picked as (D61), edits and all; null for someone new.
+  personId: draft.personId ?? null,
 });
 
 /** Who plays one role: name, what the kids call them (only for an adult age), pronouns, and an age the role accepts. */
@@ -63,7 +65,7 @@ export function PersonFields({
   onChange,
   disabled,
 }: {
-  slot: CharacterSlot;
+  slot: Pick<CharacterSlot, "slotId" | "label" | "ages">;
   value: PersonDraft;
   onChange: (next: PersonDraft) => void;
   disabled?: boolean;
@@ -133,6 +135,135 @@ export function PersonFields({
   );
 }
 
+const choiceClass =
+  "cursor-pointer rounded px-2.5 py-1 text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring";
+
+/**
+ * Who plays a role (D61): someone from the family's people, or someone new, an explicit choice. A picked person stays
+ * that person when the parent edits their details, and the order updates them for later books; someone new never
+ * changes an existing person. Without people who fit the role, only the fields show.
+ */
+export function PersonChooser({
+  slot,
+  value,
+  onChange,
+  people,
+  disabled,
+}: {
+  slot: CharacterSlot;
+  value: PersonDraft;
+  onChange: (next: PersonDraft) => void;
+  /** The family's people that aren't archived; those of an age the role accepts are offered. */
+  people: ReadonlyArray<CastPerson>;
+  disabled?: boolean;
+}) {
+  const fits = people.filter((person) => slot.ages.includes(person.age));
+  const canPick = fits.length > 0;
+  const [mode, setMode] = useState<"people" | "new">(() =>
+    value.personId || (canPick && value.name.trim() === "") ? "people" : "new",
+  );
+  const [editing, setEditing] = useState(false);
+  const picked = value.personId ? (people.find((person) => person.personId === value.personId) ?? null) : null;
+  const choose = (next: "people" | "new") => {
+    setMode(next === "people" && !canPick ? "new" : next);
+    setEditing(false);
+    onChange({ ...blankFor(slot), personId: null });
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      {(canPick || value.personId) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            role="radiogroup"
+            aria-label={`Who plays ${slot.label.toLowerCase()}`}
+            className="flex w-fit rounded-md bg-muted p-0.5 text-xs"
+          >
+            <label className={choiceClass}>
+              <input
+                type="radio"
+                className="sr-only"
+                name={`${slot.slotId}-who`}
+                checked={mode === "people"}
+                disabled={disabled}
+                onChange={() => choose("people")}
+              />
+              From your people
+            </label>
+            <label className={choiceClass}>
+              <input
+                type="radio"
+                className="sr-only"
+                name={`${slot.slotId}-who`}
+                checked={mode === "new"}
+                disabled={disabled}
+                onChange={() => choose("new")}
+              />
+              Someone new
+            </label>
+          </div>
+          <Link
+            to="/people"
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Manage people
+          </Link>
+        </div>
+      )}
+      {mode === "people" && !value.personId && (
+        <NativeSelect
+          aria-label={`${slot.label}: choose from your people`}
+          value=""
+          disabled={disabled}
+          onChange={(event) => {
+            const person = fits[Number(event.target.value)];
+            if (person) onChange(draftOf(person));
+          }}
+        >
+          <option value="">Choose…</option>
+          {fits.map((person, i) => (
+            <option key={i} value={i}>
+              {person.title ? `${person.name} (${person.title})` : person.name}
+            </option>
+          ))}
+        </NativeSelect>
+      )}
+      {mode === "people" && value.personId && (
+        <div className="flex flex-col gap-2 rounded-md bg-muted/60 p-2">
+          <p data-testid={`${slot.slotId}-picked`}>
+            <span className="font-medium">{value.name}</span>
+            {takesTitle(value.age) && value.title.trim() && (
+              <span className="text-muted-foreground"> ({value.title.trim()})</span>
+            )}
+            <span className="text-muted-foreground">
+              {" · "}
+              {ageLabel(value.age)} · {value.pronouns}
+            </span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!editing && (
+              <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => setEditing(true)}>
+                Edit details
+              </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => choose("people")}>
+              Choose someone else
+            </Button>
+          </div>
+          {editing && (
+            <>
+              <PersonFields slot={slot} value={value} disabled={disabled} onChange={onChange} />
+              <p className="text-xs text-muted-foreground">
+                This changes {picked?.name ?? value.name} for your next books too. Books you've made keep theirs.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+      {mode === "new" && <PersonFields slot={slot} value={value} disabled={disabled} onChange={onChange} />}
+    </div>
+  );
+}
+
 export function StoryCast({
   slug,
   version,
@@ -161,7 +292,6 @@ export function StoryCast({
   const [cast, setCast] = useState<Record<string, PersonDraft>>(() =>
     Object.fromEntries(slots.map((slot) => [slot.slotId, blankFor(slot)])),
   );
-  const fits = (slot: CharacterSlot) => people.filter((person) => slot.ages.includes(person.age));
   const everyoneNamed = slots.every((slot) => cast[slot.slotId]!.name.trim() !== "");
 
   const create = async () => {
@@ -231,30 +361,10 @@ export function StoryCast({
                 <p className="font-medium">
                   {slot.label} <span className="font-normal text-muted-foreground">({agesLabel(slot)})</span>
                 </p>
-                {fits(slot).length > 0 && (
-                  <label className="flex flex-col gap-1 text-xs">
-                    <span className="text-muted-foreground">Someone from your other books</span>
-                    <NativeSelect
-                      aria-label={`${slot.label}: someone from your other books`}
-                      value=""
-                      disabled={!hydrated}
-                      onChange={(event) => {
-                        const person = fits(slot)[Number(event.target.value)];
-                        if (person) setCast((current) => ({ ...current, [slot.slotId]: draftOf(person) }));
-                      }}
-                    >
-                      <option value="">Choose…</option>
-                      {fits(slot).map((person, i) => (
-                        <option key={i} value={i}>
-                          {person.title ? `${person.name} (${person.title})` : person.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                )}
-                <PersonFields
+                <PersonChooser
                   slot={slot}
                   value={cast[slot.slotId]!}
+                  people={people}
                   disabled={!hydrated}
                   onChange={(next) => setCast((current) => ({ ...current, [slot.slotId]: next }))}
                 />
