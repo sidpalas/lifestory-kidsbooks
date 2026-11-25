@@ -46,6 +46,7 @@ describe("makeScreenCopies", () => {
       height: 398,
       alpha: true,
     });
+    expect(await size(`${plate}.w1024.webp`)).toMatchObject({ width: 1024, height: 796, alpha: true });
     expect(await size(`${plate}.w1536.webp`)).toMatchObject({ width: 1536, height: 1195, alpha: true });
     expect(await size(`${small}.w1536.webp`)).toMatchObject({ format: "webp", width: 300, height: 450 });
     expect([...objects.keys()].filter((key) => key.startsWith(svg))).toEqual([svg]);

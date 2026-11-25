@@ -10,10 +10,10 @@ export * from "./rpc.ts";
 
 /**
  * Widths in pixels of the WebP screen copies `/api/files/<key>?w=<width>` serves of PNG, JPEG, and WebP art, never
- * upscaled: 512 for thumbnails, 1536 for a page on a 2x screen. On-screen pages pick one by their size; print always
- * loads the original.
+ * upscaled: 512 for thumbnails, 1024 for a story page's pages (840 px on a 2x screen), 1536 for the book editor's page.
+ * On-screen pages pick one by their size; print always loads the original.
  */
-export const SCREEN_WIDTHS: ReadonlyArray<number> = [512, 1536];
+export const SCREEN_WIDTHS: ReadonlyArray<number> = [512, 1024, 1536];
 
 /** Better Auth's minimum, and what every password form checks before submitting. */
 export const MIN_PASSWORD_LENGTH = 12;

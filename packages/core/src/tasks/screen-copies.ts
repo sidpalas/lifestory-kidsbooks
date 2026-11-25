@@ -59,7 +59,8 @@ const SHOWN_BOOK_ART = /^families\/[^/]+\/books\/[^/]+\/(pages|likeness\/cover)\
 /**
  * Backfill for art stored before screen copies (`node packages/core/src/tasks/screen-copies.ts`): spawns the task once
  * per story version and per book, for the art pages show. Rerunning is harmless: the same idempotency keys spawn
- * nothing new, and a task finds copies already made.
+ * nothing new, and a task finds copies already made. A new width in SCREEN_WIDTHS changes the keys, so a rerun
+ * then makes the copies at that width.
  */
 if (import.meta.main) {
   const { makeServerRuntime } = await import("../runtime.ts");
@@ -85,7 +86,7 @@ if (import.meta.main) {
       ),
     );
     for (const [owner, keys] of owners) {
-      await runtime.runPromise(spawnScreenCopies(keys, `screen-copies-backfill:${owner}`));
+      await runtime.runPromise(spawnScreenCopies(keys, `screen-copies-backfill:${SCREEN_WIDTHS.join("-")}:${owner}`));
       console.log(`${owner}: ${keys.length} files`);
     }
     console.log(`checked ${owners.size} story versions and books; spawned tasks for their PNG, JPEG, and WebP art`);
