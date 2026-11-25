@@ -59,6 +59,9 @@ with the message on the person's card, and that an unpaid order raises nothing w
   says `standard` until zero data retention is on for the project. Don't run them unless asked: a book costs about US$1.24 worst case.
 - Photos are deleted right after the order by default. If the parent opts in to photo review, the operator sees
   them beside the sheets, and they go at approval, refusal, or 30 days after the order.
+- Each person's photo and sheet cards fit their column at 320 and 390 px (`photo-book.spec.ts`, `expectContained`):
+  buttons named after the person wrap, and a select is as wide as its longest option unless it may shrink (`min-w-0`).
+  Keep that when the photo step changes.
 - Figures on one page must not touch or overlap; the import refuses such pages.
 - A generated figure keeps only the parts of the drawing attached to the bald figure, within a generous backstop
   (the bald figure dilated, plus an ellipse round the head for hair, hats and helmets) that fades instead of

@@ -257,13 +257,14 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
     void run(() => setLookFn({ data: { bookId: view.book.id, slotId, look: next as LookChoices } }));
   };
   return (
-    <div className="flex flex-col gap-2" data-testid={`look-${slotId}`}>
+    <div className="@container flex flex-col gap-2" data-testid={`look-${slotId}`}>
       <p className="text-xs text-muted-foreground">
         {locked
           ? `How we drew ${name}. To change it, write a note under their sheet.`
           : `How ${name} looks, from the photo. Fix anything that's wrong before you draw them: it goes along with the photo.`}
       </p>
-      <dl className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+      {/* Two columns by the card's width, not the window's: from 768 px two cards share the row. */}
+      <dl className="grid grid-cols-1 gap-x-3 gap-y-2 @[22rem]:grid-cols-2">
         {lookFields.map((field) => {
           const chosen = choices[field.key] !== undefined;
           const fromPhoto = photo?.[field.key] ?? null;

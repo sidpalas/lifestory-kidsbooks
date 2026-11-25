@@ -170,11 +170,12 @@ export function FamilyPanel({ family }: { family: FamilyOverview }) {
               </p>
             </div>
             <form
-              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
               onSubmit={invite}
               aria-label="Invite someone"
             >
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-1">
+              {/* Room for an address: with less, the role and button go on the next line instead. */}
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-[1_1_16rem]">
                 <Label htmlFor="invite-email">Email</Label>
                 <Input
                   id="invite-email"

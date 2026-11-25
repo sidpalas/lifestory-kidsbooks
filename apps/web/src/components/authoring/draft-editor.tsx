@@ -546,7 +546,7 @@ function StoryTab({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7"
+                className="min-h-7 py-1"
                 onClick={() => change((d) => ({ ...d, fonts: d.fonts.filter((f) => f !== font) }))}
               >
                 Remove
@@ -600,7 +600,8 @@ function StoryTab({
           return (
             <div
               key={name}
-              className="grid grid-cols-2 items-end gap-2 md:grid-cols-5"
+              // From lg the preview takes the right of the row: five columns only once the form has room again.
+              className="grid grid-cols-2 items-end gap-2 md:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5"
               data-testid={`text-style-${name}`}
             >
               <label className="flex flex-col gap-1 text-xs font-medium">
@@ -970,13 +971,19 @@ function PageTab({
                   </p>
                 )}
                 <span className="flex-1" />
-                <Button size="sm" variant="ghost" className="h-7" onClick={() => moveFrame(f - 1)} disabled={f === 0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-7 py-1"
+                  onClick={() => moveFrame(f - 1)}
+                  disabled={f === 0}
+                >
                   Read earlier
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7"
+                  className="min-h-7 py-1"
                   onClick={() => moveFrame(f + 1)}
                   disabled={f === page.frames.length - 1}
                 >
@@ -985,7 +992,7 @@ function PageTab({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7"
+                  className="min-h-7 py-1"
                   onClick={() => setPage((p) => ({ ...p, frames: p.frames.filter((_x, i) => i !== f) }))}
                 >
                   Remove frame
@@ -1014,7 +1021,7 @@ function PageTab({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7"
+                        className="min-h-7 py-1"
                         onClick={() => setParagraphs((ps) => ps.filter((_t, i) => i !== b))}
                       >
                         Remove
@@ -1057,7 +1064,7 @@ function PageTab({
               key={preset}
               size="sm"
               variant="outline"
-              className="h-7"
+              className="min-h-7 py-1"
               onClick={() =>
                 setPage((p) => ({ ...p, frames: [...p.frames, newFrame(draft.trim, preset, nextFrameId(p.frames))] }))
               }
@@ -1093,13 +1100,19 @@ function PageTab({
                     : `Figure: ${draft.characterSlots.find((s) => s.slotId === layer.slotId)?.label ?? layer.slotId}`}
                 </span>
                 <span className="flex-1" />
-                <Button size="sm" variant="ghost" className="h-7" onClick={() => move(l, l - 1)} disabled={l === 0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-7 py-1"
+                  onClick={() => move(l, l - 1)}
+                  disabled={l === 0}
+                >
                   Down
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7"
+                  className="min-h-7 py-1"
                   onClick={() => move(l, l + 1)}
                   disabled={l === page.illustration.layers.length - 1}
                 >
@@ -1108,7 +1121,7 @@ function PageTab({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7"
+                  className="min-h-7 py-1"
                   onClick={() => setLayers((layers) => layers.filter((_x, i) => i !== l))}
                 >
                   Remove

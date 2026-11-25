@@ -2,6 +2,8 @@ import type { ServerServices } from "@lifestory/core";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { Effect } from "effect";
 
+import { expectContained } from "./layout.ts";
+
 // A photo book end to end on the fakes (D56, D57, D58): consent, a photo per role with one refused by the check, each
 // person drawn when the parent asks, two notes that use the child's last drawings (then their photo can't change), the order (photos gone), three page changes kept or used, a proof, review and the
 // operator's approval; a second book opted in to photo review, whose photos the operator sees and approval deletes;
@@ -177,6 +179,15 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(page.getByTestId("look-hero").getByLabel(`${child}'s hair length`)).toBeDisabled();
     expect(await photosOf(bookId)).toBe(2);
     await evidence(page, "photo-preview");
+    // On a phone each person's photo and sheet card fits its column: the buttons named after the person wrap instead
+    // of widening the card off the screen.
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const card of await page.getByTestId(/^(photo-(hero|grownup)|sheet-card-.+)$/).all())
+        await expectContained(card);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     // Two notes on the child, each using one of their drawings and editing their current sheet (D56); the
     // grown-up's sheet doesn't change. Then the child has no drawings left, and their photo can't change.
@@ -289,6 +300,9 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(operator.page.getByTestId(/^review-photo-/)).toHaveCount(0);
     await expect(operator.page.getByTestId("review-page-p01")).toContainText("version 2 of 2");
     await evidence(operator.page, "photo-review");
+    await operator.page.setViewportSize({ width: 320, height: 720 });
+    await expectContained(operator.page.getByRole("button", { name: "Approve for print" }).locator(".."));
+    await operator.page.setViewportSize({ width: 1280, height: 720 });
     await operator.page.getByRole("button", { name: "Approve for print" }).click();
     await expect(operator.page.getByTestId("review-status")).toContainText("approved");
     await page.reload();

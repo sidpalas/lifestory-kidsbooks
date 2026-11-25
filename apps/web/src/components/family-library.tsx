@@ -112,7 +112,9 @@ export function StoryList({
   canEdit: boolean;
 }) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2" data-testid="stories">
+    // Columns by the room the list has, not the window's width (the sidebar takes some of it): a second column only
+    // when each card keeps room for its picture beside a readable summary and button.
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] gap-3" data-testid="stories">
       {stories.map((story) => {
         const ours = books.filter((book) => book.storySlug === story.slug);
         return (

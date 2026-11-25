@@ -42,6 +42,13 @@ the Menu sheet's switcher, Sign out, Studio and Admin links.
 - Testids for who's signed in and the family name live only in the desktop sidebar; the phone top bar and Menu sheet
   repeat them without testids, so specs stay unambiguous. The sheet is a native `<dialog>` opened with `showModal()`,
   so Esc and focus containment come from the browser; a click on its backdrop closes it.
+- The story list's columns follow the room it has, not the window: from 768 px the sidebar takes 224 px, so two columns
+  there squeezed the summary to a word per line and pushed the button out of the card. A card is at least 22rem
+  wide. `stories.spec.ts` checks the card from 1440 down to 320 px with `expectContained` (`e2e/layout.ts`), which
+  catches content sticking out of a card even when the page doesn't scroll sideways.
+- Buttons wrap a label longer than their container instead of overflowing it (`ui/button.tsx`: sizes are minimum
+  heights). Override a button's height with `min-h-*`, not `h-*`, and let a row of several buttons `flex-wrap`.
+- Studio's bar says "Studio" alone under 640 px so it stays one line; `authoring.spec.ts` checks it at 320 px.
 - The shell's data (`getHome`) reloads with each navigation; keep it small.
 - `/sharing` lists members (`member` rows) and pending invitations (`invitation` rows) apart from the invite form; a
   member whose name is their email shows it once. On phones the role pill sits under the identity; `families.spec.ts`

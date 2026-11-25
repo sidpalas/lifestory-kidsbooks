@@ -165,7 +165,7 @@ function Authors({ authors }: { authors: ReadonlyArray<{ userId: string; name: s
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7"
+                className="min-h-7 py-1"
                 onClick={() => void revokeAuthorFn({ data: { userId: author.userId } }).then(load)}
               >
                 Remove

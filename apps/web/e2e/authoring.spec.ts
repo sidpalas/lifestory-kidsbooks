@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 
 import { markShownBookDrawn } from "./drawn.ts";
-import { expectFieldsAligned } from "./layout.ts";
+import { expectContained, expectFieldsAligned } from "./layout.ts";
 
 // Story authoring (D37), as an author does it: the operator lets an account author; the author starts a story, uploads
 // static fonts and sets text styles and the photo style (D56), defines a role with its outfit and stock sheet, lays out a
@@ -51,6 +51,12 @@ test("authoring: an invited author writes, checks, and publishes a story, and a 
   const author = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage();
   await author.goto(`/__dev/log-me-in/${authorEmail}?returnTo=/author`);
   await expect(author.getByTestId("not-an-author")).toBeVisible();
+  // Studio's bar stays one line on a 320 px phone.
+  await author.setViewportSize({ width: 320, height: 720 });
+  const bar = author.locator("header").filter({ hasText: "Back to family" });
+  await expectContained(bar);
+  expect((await bar.boundingBox())!.height).toBeLessThan(60);
+  await author.setViewportSize({ width: 1440, height: 1000 });
 
   // 1. The operator lets the account author.
   const operator = await (await browser.newContext()).newPage();

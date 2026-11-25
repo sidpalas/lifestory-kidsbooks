@@ -4,8 +4,10 @@ import type * as React from "react";
 
 import { cn } from "~/lib/utils";
 
+// A label longer than the room it has wraps instead of pushing the button out of its card (names fill some labels):
+// sizes set a minimum height, one line looks as it always did, and the button is never wider than its container.
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-md text-center text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -17,9 +19,9 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        default: "min-h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "min-h-8 gap-1.5 rounded-md px-3 py-1.5 has-[>svg]:px-2.5",
+        lg: "min-h-10 rounded-md px-6 py-2 has-[>svg]:px-4",
         icon: "size-9",
       },
     },

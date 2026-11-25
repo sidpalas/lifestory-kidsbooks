@@ -21,6 +21,31 @@ const fieldRows = (grid: Locator) =>
   });
 
 /**
+ * Checks `box` fits inside its parent and nothing in it sticks out of its sides. A button that can't wrap, or a select
+ * as wide as its longest option, pushes out of a card or widens it past its column often without the page scrolling
+ * sideways, so a scrollWidth check misses it. What sits in a box that scrolls or clips sideways (a page strip) is left
+ * to that box.
+ */
+export const expectContained = async (box: Locator) => {
+  const outside = await box.evaluate((root) => {
+    const found: string[] = [];
+    const clips = (el: Element | null): boolean =>
+      !!el && el !== root && (getComputedStyle(el).overflowX !== "visible" || clips(el.parentElement));
+    const pairs: Array<[Element, Element]> = root.parentElement ? [[root, root.parentElement]] : [];
+    for (const el of root.querySelectorAll("*")) if (!clips(el.parentElement)) pairs.push([el, root]);
+    for (const [el, outer] of pairs) {
+      const [inner, room] = [el.getBoundingClientRect(), outer.getBoundingClientRect()];
+      if (inner.width > 0 && (inner.left < room.left - 1 || inner.right > room.right + 1))
+        found.push(
+          `${el === root ? "the box" : el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 40)}"`,
+        );
+    }
+    return found;
+  });
+  expect(outside, `inside ${Math.round((await box.boundingBox())!.width)} px`).toEqual([]);
+};
+
+/**
  * Checks the grid's fields line up row by row. `wraps` says a label in it should wrap at this width, so the check
  * covers the case it guards; `stacked` says the fields should be one per row (a phone).
  */

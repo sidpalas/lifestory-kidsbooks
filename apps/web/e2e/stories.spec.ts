@@ -4,6 +4,8 @@ import { extname } from "node:path";
 import { expect, test } from "@playwright/test";
 import { Effect } from "effect";
 
+import { expectContained } from "./layout.ts";
+
 // A new account has a family with nobody in it yet; the story's pages show its own characters.
 const newReader = () =>
   `/__dev/log-me-in/reader-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}@lifestory.dev`;
@@ -176,4 +178,23 @@ test("each story's card shows its cover: the newest published version's page wit
   await expect(page.getByTestId("stories").getByRole("link", { name: title })).toHaveCount(1);
   await cover.click();
   await expect(page).toHaveURL(new RegExp(`/stories/e2e-cover-${id}$`));
+});
+
+test("a story card keeps its summary beside the cover readable and its button inside, at every width", async ({
+  page,
+}) => {
+  // Between 640 and ~900 px the sidebar leaves the list half the window: two columns there squeezed the summary to a
+  // word per line and pushed the button out of the card (Sid, 2026-11-25).
+  await page.goto(`${newReader()}?returnTo=/`);
+  const card = page
+    .getByTestId("stories")
+    .locator(":scope > li")
+    .filter({ has: page.getByRole("link", { name: "The Kite Day", exact: true }) });
+  for (const width of [1440, 1024, 820, 768, 700, 640, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectContained(card);
+    const cover = (await card.getByTestId("story-cover").boundingBox())!;
+    const summary = (await card.getByText("A child and a grown-up fly a kite").boundingBox())!;
+    expect(summary.width, `at ${width} px`).toBeGreaterThanOrEqual(cover.width);
+  }
 });

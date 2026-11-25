@@ -236,7 +236,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: React.Re
           <Button
             variant="link"
             size="sm"
-            className="h-auto p-0 text-xs"
+            className="h-auto min-h-0 p-0 text-xs"
             onClick={() => void leave()}
             disabled={!hydrated}
           >
@@ -307,18 +307,22 @@ export function StudioBar() {
   const hydrated = useHydrated();
   const leave = useSignOut();
   return (
-    <header className="flex items-center gap-4 bg-[oklch(0.27_0.02_60)] px-4 py-3 text-[oklch(0.93_0.01_85)] sm:px-6">
+    <header className="flex items-center gap-3 bg-[oklch(0.27_0.02_60)] px-4 py-3 whitespace-nowrap text-[oklch(0.93_0.01_85)] sm:gap-4 sm:px-6">
+      {/* Phones keep the bar on one line: "Studio" alone, as the family's top bar says only "Lifestory". */}
       <Link to="/author" className="font-semibold">
-        Lifestory Studio
+        <span className="max-sm:hidden">Lifestory </span>Studio
       </Link>
       <span className="flex-1" />
-      <Link to="/" className="rounded-md border border-[oklch(0.72_0.02_60)] px-3 py-1 text-sm hover:bg-white/10">
+      <Link
+        to="/"
+        className="rounded-md border border-[oklch(0.72_0.02_60)] px-2.5 py-1 text-sm hover:bg-white/10 sm:px-3"
+      >
         Back to family
       </Link>
       <Button
         variant="link"
         size="sm"
-        className="h-auto p-0 text-xs text-[oklch(0.93_0.01_85)]"
+        className="h-auto min-h-0 p-0 text-xs text-[oklch(0.93_0.01_85)]"
         onClick={() => void leave()}
         disabled={!hydrated}
       >
