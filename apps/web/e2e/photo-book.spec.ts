@@ -354,6 +354,27 @@ test("an account's photo uploads are limited in bursts and in total, counting ev
     );
     expect(await counted()).toBe(limits.burst.count);
 
+    // What the limit protects is the check (Sid): only stored uploads start `photo.check`, the only caller of
+    // PhotoCheck's moderation and inspection. The 21st upload in the window is refused and starts nothing.
+    const checks = async () =>
+      (
+        await sql<{ upload_id: string }>(
+          "select params->>'uploadId' as upload_id from absurd.t_default where task_name = 'photo.check' and params->>'bookId' = $1",
+          [bookId],
+        )
+      )
+        .map((row) => row.upload_id)
+        .toSorted();
+    const stored = async () =>
+      (await sql<{ id: string }>("select id from photo_upload where book_id = $1", [bookId]))
+        .map((row) => row.id)
+        .toSorted();
+    expect(await checks()).toEqual(await stored());
+    const next = await upload("hero", `child-${limits.burst.count + 1}.png`);
+    expect(next.status()).toBe(429);
+    expect(await checks()).toHaveLength(limits.burst.count);
+    expect(await checks()).toEqual(await stored());
+
     // A day later the burst has passed; with one upload left of the allowance, three at once store one.
     await sql("update photo_upload set created_at = now() - interval '1 day' where user_id = $1", [userId]);
     await sql(

@@ -43,7 +43,7 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 bad photo, a refused two-file drop, a dropped photo and one from the camera input, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
 deletes, and the 24 h sweep of an abandoned draft. A second test covers the upload limits (D59): a refused request
-not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, the total allowance
+not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, a check task for each stored upload and none for a refused one (the 21st in 10 minutes), the total allowance
 with the message on the person's card, and that an unpaid order raises nothing while an approved book does. Other book specs start from a drawn book with `markDrawn`
 (`e2e/drawn.ts`).
 
