@@ -1,5 +1,5 @@
-// The durable workflows of a photo book (D56, D57): checking each photo, drawing the character sheets and the cover,
-// the change rounds, the order's page drawing, and releasing the photos. Every side effect is a step and every image
+// The durable workflows of a photo book (D56, D57): checking each photo, drawing each person's character sheet and
+// the cover, the order's page drawing, and releasing the photos. Every side effect is a step and every image
 // goes through `generateImage`, so a rerun never pays twice; object keys derive from the book, page, slot, version
 // and upload, so a rerun overwrites the same objects.
 import { schema } from "@lifestory/db";
@@ -179,18 +179,21 @@ const sheetsAtStart = (ctx: TaskContext, bookId: string) =>
     ),
   );
 
-/** Draws the cover from the current sheets and marks the likeness ready. */
+/**
+ * Draws the cover from the current sheets and marks the likeness ready, unless meanwhile another person's sheet
+ * started drawing or a new photo cleared one: that drawing draws the cover again.
+ */
 const drawCover = Effect.fn("photoBooks.drawCover")(function* (
   ctx: TaskContext,
   book: LoadedBook,
   sheets: Readonly<Record<string, string>>,
-  round: number,
+  drawId: string,
 ) {
   const page = coverPage(book.manifest);
   const cover = page
     ? yield* drawPageFigures(ctx, book, page, sheets, {
-        tag: `cover-r${round}`,
-        outputBase: `${bookPrefix(book.familyId, book.id)}likeness/cover/r${round}`,
+        tag: `cover-${drawId}`,
+        outputBase: `${bookPrefix(book.familyId, book.id)}likeness/cover/${drawId}`,
       })
     : [];
   yield* step(
@@ -200,19 +203,16 @@ const drawCover = Effect.fn("photoBooks.drawCover")(function* (
       db
         .update(schema.book)
         .set({ cover: cover.map((figure) => figure.key), likenessStatus: "ready" })
-        .where(eq(schema.book.id, book.id)),
+        .where(
+          and(
+            eq(schema.book.id, book.id),
+            sql`not exists (select 1 from ${schema.bookLikeness} where ${schema.bookLikeness.bookId} = ${book.id}
+              and (${schema.bookLikeness.drawing} or ${schema.bookLikeness.sheetKey} is null))`,
+          ),
+        ),
     ).pipe(Effect.as(null)),
   );
 });
-
-const markLikenessFailed = (ctx: TaskContext, bookId: string) =>
-  step(
-    ctx,
-    "failed",
-    Database.query((db) =>
-      db.update(schema.book).set({ likenessStatus: "failed" }).where(eq(schema.book.id, bookId)),
-    ).pipe(Effect.as(null)),
-  );
 
 /** A role's likeness while `uploadId` is still its photo and not deleted, else null. */
 const currentUpload = (bookId: string, slotId: string, uploadId: string) =>
@@ -234,7 +234,7 @@ const uploadedPhoto = (bookId: string, slotId: string, uploadId: string, fileNam
 
 /**
  * Checks one uploaded photo (D56): moderation with per-category thresholds, then the vision model, then the rules in
- * code. A refused photo is deleted at once. When every role's photo has passed, starts the sheets.
+ * code. A refused photo is deleted at once. A passed photo is drawn only when the parent asks ("Draw {name}").
  */
 export const checkPhoto = defineTask({
   name: "photo.check",
@@ -313,91 +313,21 @@ export const checkPhoto = defineTask({
           return result.status;
         }),
       );
-      if (status !== "passed") return { status };
-
-      yield* step(
-        ctx,
-        "preview",
-        Effect.gen(function* () {
-          const book = yield* loadBook(bookId).pipe(Effect.orDie);
-          const rows = yield* likenesses(bookId);
-          const passed = book.manifest.characterSlots.map((slot) =>
-            rows.find((row) => row.slotId === slot.slotId && row.checkStatus === "passed" && row.photoKey),
-          );
-          if (book.status !== "draft" || passed.some((row) => !row)) return null;
-          const uploads = passed.map((row) => `${row!.slotId}=${row!.uploadId}`).join(",");
-          yield* Database.query((db) =>
-            db
-              .update(schema.book)
-              .set({ likenessStatus: "drawing", likenessRound: 0 })
-              .where(eq(schema.book.id, bookId)),
-          );
-          return yield* (yield* Jobs)
-            .spawn(previewLikeness, { bookId, uploads }, { idempotencyKey: `likeness.preview:${bookId}:${uploads}` })
-            .pipe(Effect.orDie);
-        }),
-      );
       return { status };
     }),
 });
 
-/** Draws a character sheet per role from its photo and the story's style reference, then the cover (D56). */
-export const previewLikeness = defineTask({
-  name: "likeness.preview",
-  /** `uploads` names the photos (`slot=uploadId,...`), so a new photo makes a new preview. */
-  params: Schema.Struct({ bookId: Schema.String, uploads: Schema.String }),
-  run: ({ bookId, uploads }, ctx) =>
-    Effect.gen(function* () {
-      const book = yield* loadBook(bookId).pipe(Effect.orDie);
-      const style = book.manifest.photo!;
-      const rows = yield* step(ctx, "photos", likenesses(bookId));
-      const cast = yield* Database.query((db) =>
-        db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId)),
-      );
-      const sheets: Record<string, string> = {};
-      for (const slot of book.manifest.characterSlots) {
-        const row = rows.find((candidate) => candidate.slotId === slot.slotId);
-        const person = cast.find((candidate) => candidate.slotId === slot.slotId);
-        if (!row?.photoKey || !person)
-          return yield* Effect.die(new Error(`book ${bookId}: ${slot.slotId} has no photo`));
-        const sheet = yield* generateImage(ctx, `sheet:${slot.slotId}`, {
-          key: `sheet:${bookId}:${slot.slotId}:${row.uploadId}`,
-          prompt: photoPrompts[style.promptVersion].sheet({
-            style,
-            age: person.age as never,
-            outfit: slot.outfit,
-            hair: row.hair as Hair | null,
-          }),
-          width: 1536,
-          height: 1024,
-          references: [row.photoKey, storyAssetKey(book.storyId, book.version, style.styleReference)],
-          outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slot.slotId}/sheet-${row.uploadId}`,
-        });
-        sheets[slot.slotId] = sheet.key;
-        yield* step(
-          ctx,
-          `sheet:${slot.slotId}:store`,
-          Database.query((db) =>
-            db
-              .update(schema.bookLikeness)
-              .set({ sheetKey: sheet.key })
-              .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slot.slotId))),
-          ).pipe(Effect.as(null)),
-        );
-      }
-      yield* drawCover(ctx, book, sheets, 0);
-      return { uploads };
-    }).pipe(Effect.catchTag("GenerationFailed", () => markLikenessFailed(ctx, bookId))),
-});
-
 /**
- * One round of changes to the sheets (D56, approved by Sid): each note edits that role's current sheet, one edit per
- * note, then the cover is redrawn. LIKENESS_REVISE_MODE=fresh draws a fresh sheet from the photo with the note instead.
+ * Draws one person's character sheet (D56), as the parent asked: "Draw {name}" draws it from the photo and the
+ * story's style reference; a note edits the current sheet (LIKENESS_REVISE_MODE=fresh draws a fresh sheet from the
+ * photo with the note instead). Once every person has a sheet and none is drawing, draws the cover. A failed drawing
+ * gives the person's drawing back.
  */
-export const reviseLikeness = defineTask({
-  name: "likeness.revise",
-  params: Schema.Struct({ bookId: Schema.String, round: Schema.Number }),
-  run: ({ bookId, round }, ctx) =>
+export const drawLikenessSheet = defineTask({
+  name: "likeness.sheet",
+  /** `draw` is the person's drawing number (1 to MAX_SHEET_DRAWS); `drawId` keys its generations and objects. */
+  params: Schema.Struct({ bookId: Schema.String, slotId: Schema.String, draw: Schema.Number, drawId: Schema.String }),
+  run: ({ bookId, slotId, draw, drawId }, ctx) =>
     Effect.gen(function* () {
       const mode = yield* Config.Literals(["edit", "fresh"], "LIKENESS_REVISE_MODE").pipe(
         Config.withDefault("edit" as const),
@@ -406,44 +336,88 @@ export const reviseLikeness = defineTask({
       const book = yield* loadBook(bookId).pipe(Effect.orDie);
       const style = book.manifest.photo!;
       const prompts = photoPrompts[style.promptVersion];
-      const rows = yield* step(ctx, "likenesses", likenesses(bookId));
-      const sheets = yield* sheetsAtStart(ctx, bookId);
-      const cast = yield* Database.query((db) =>
-        db.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId)),
+      const slot = book.manifest.characterSlots.find((candidate) => candidate.slotId === slotId);
+      const row = yield* step(
+        ctx,
+        "likeness",
+        likenesses(bookId).pipe(Effect.map((rows) => rows.find((candidate) => candidate.slotId === slotId) ?? null)),
       );
-      for (const row of rows) {
-        const note = row.notes.find((candidate) => candidate.round === round)?.note;
-        if (!note) continue;
-        const slot = book.manifest.characterSlots.find((candidate) => candidate.slotId === row.slotId)!;
-        const person = cast.find((candidate) => candidate.slotId === row.slotId)!;
-        const fresh = mode === "fresh" && row.photoKey;
-        const sheet = yield* generateImage(ctx, `revise:${row.slotId}`, {
-          key: `revise:${bookId}:${row.slotId}:${round}`,
-          prompt: fresh
-            ? `${prompts.sheet({ style, age: person.age as never, outfit: slot.outfit, hair: row.hair as Hair | null })} Also: ${note}.`
-            : prompts.revise(note),
-          width: 1536,
-          height: 1024,
-          references: fresh
-            ? [row.photoKey!, storyAssetKey(book.storyId, book.version, style.styleReference)]
-            : [sheets[row.slotId]!],
-          outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${row.slotId}/sheet-r${round}`,
-        });
-        sheets[row.slotId] = sheet.key;
-        yield* step(
-          ctx,
-          `revise:${row.slotId}:store`,
-          Database.query((db) =>
+      const [person] = yield* Database.query((db) =>
+        db
+          .select({ age: schema.bookCast.age })
+          .from(schema.bookCast)
+          .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
+      );
+      if (!slot || !row?.photoKey || !person)
+        return yield* Effect.die(new Error(`book ${bookId}: ${slotId} has no photo`));
+      const note = row.notes.findLast((candidate) => candidate.round === draw)?.note;
+      const fresh = !note || !row.sheetKey || mode === "fresh";
+      const sheetPrompt = prompts.sheet({
+        style,
+        age: person.age as never,
+        outfit: slot.outfit,
+        hair: row.hair as Hair | null,
+      });
+      const sheet = yield* generateImage(ctx, "sheet", {
+        key: `sheet:${bookId}:${slotId}:${drawId}`,
+        prompt: !note ? sheetPrompt : fresh ? `${sheetPrompt} Also: ${note}.` : prompts.revise(note),
+        width: 1536,
+        height: 1024,
+        references: fresh
+          ? [row.photoKey, storyAssetKey(book.storyId, book.version, style.styleReference)]
+          : [row.sheetKey!],
+        outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/sheet-${drawId}`,
+      });
+      // Store the sheet, then see whether the cover is due: every person drawn and nobody drawing.
+      const sheets = yield* step(
+        ctx,
+        "store",
+        Effect.gen(function* () {
+          yield* Database.query((db) =>
             db
               .update(schema.bookLikeness)
-              .set({ sheetKey: sheet.key })
-              .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, row.slotId))),
+              .set({ sheetKey: sheet.key, drawing: false })
+              .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId))),
+          );
+          const rows = yield* likenesses(bookId);
+          if (rows.some((candidate) => candidate.drawing)) return null;
+          const drawn = book.manifest.characterSlots.map(
+            (candidate) => rows.find((r) => r.slotId === candidate.slotId)?.sheetKey,
+          );
+          if (drawn.some((key) => !key)) {
+            yield* Database.query((db) =>
+              db.update(schema.book).set({ likenessStatus: "waiting" }).where(eq(schema.book.id, bookId)),
+            );
+            return null;
+          }
+          return Object.fromEntries(rows.flatMap((r) => (r.sheetKey ? [[r.slotId, r.sheetKey] as const] : [])));
+        }),
+      );
+      if (sheets) yield* drawCover(ctx, book, sheets, drawId);
+      return { draw };
+    }).pipe(
+      Effect.catchTag("GenerationFailed", () =>
+        step(
+          ctx,
+          "failed",
+          Database.query((db) =>
+            db.transaction(async (tx) => {
+              await tx
+                .update(schema.bookLikeness)
+                .set({ drawing: false, draws: sql`${schema.bookLikeness.draws} - 1` })
+                .where(
+                  and(
+                    eq(schema.bookLikeness.bookId, bookId),
+                    eq(schema.bookLikeness.slotId, slotId),
+                    eq(schema.bookLikeness.drawing, true),
+                  ),
+                );
+              await tx.update(schema.book).set({ likenessStatus: "failed" }).where(eq(schema.book.id, bookId));
+            }),
           ).pipe(Effect.as(null)),
-        );
-      }
-      yield* drawCover(ctx, book, sheets, round);
-      return { round };
-    }).pipe(Effect.catchTag("GenerationFailed", () => markLikenessFailed(ctx, bookId))),
+        ),
+      ),
+    ),
 });
 
 /**

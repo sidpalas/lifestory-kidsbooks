@@ -2,8 +2,8 @@ import type { ServerServices } from "@lifestory/core";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { Effect } from "effect";
 
-// A photo book end to end on the fakes (D56, D57, D58): consent, a photo per role with one refused by the check, the
-// sheets and two change rounds, the order (photos gone), three page changes kept or used, a proof, review and the
+// A photo book end to end on the fakes (D56, D57, D58): consent, a photo per role with one refused by the check, each
+// person drawn when the parent asks, two notes that use the child's last drawings (then their photo can't change), the order (photos gone), three page changes kept or used, a proof, review and the
 // operator's approval; a second book opted in to photo review, whose photos the operator sees and approval deletes;
 // and the sweep of a draft left for a day.
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -76,7 +76,16 @@ const startBook = async (page: Page, child: string, grownup: string) => {
   return new URL(page.url()).pathname.split("/").pop()!;
 };
 
-/** Consent, then a passing photo per role; waits for the sheets and the cover. */
+/** Draws each person once their photo passes ("Draw {name}"), then waits for the sheets and the cover. */
+const drawEveryone = async (page: Page, names: ReadonlyArray<string>) => {
+  for (const name of names)
+    await page.getByRole("button", { name: `Draw ${name} (3 drawings left)` }).click({ timeout: 30_000 });
+  await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("sheet-grownup")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("cover")).toBeVisible({ timeout: 60_000 });
+};
+
+/** Consent, then a passing photo per role; draws everyone and waits for the sheets and the cover. */
 const addPhotos = async (page: Page, child: string, grownup: string, shareWithReview: boolean) => {
   await page.getByLabel("I'm 18 or older.").check();
   await page.getByLabel(/^I have the right to use each photo/).check();
@@ -85,9 +94,7 @@ const addPhotos = async (page: Page, child: string, grownup: string, shareWithRe
   await page.getByRole("button", { name: "Agree and add photos" }).click();
   await page.getByLabel(`Photo of ${child}`).setInputFiles(photo("child.png"));
   await page.getByLabel(`Photo of ${grownup}`).setInputFiles(photo("grownup.png"));
-  await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByTestId("sheet-grownup")).toBeVisible();
-  await expect(page.getByTestId("cover")).toBeVisible();
+  await drawEveryone(page, [child, grownup]);
 };
 
 const makeAndWait = async (page: Page) => {
@@ -142,33 +149,58 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     const camera = page.getByLabel(`Take ${grownup}'s photo with the camera`);
     await expect(camera).toHaveAttribute("capture", "environment");
     await camera.setInputFiles(photo("grownup.png"));
-    await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByTestId("cover")).toBeVisible();
+    // Nothing is drawn until the parent asks, one person at a time (D56).
+    await expect(page.getByTestId("photo-status-grownup")).toHaveText("This photo works.", { timeout: 30_000 });
+    expect(await sql("select likeness_status from book where id = $1", [bookId])).toEqual([
+      { likeness_status: "waiting" },
+    ]);
+    await expect(page.getByRole("button", { name: `Draw ${grownup} (3 drawings left)` })).toBeVisible();
+    await evidence(page, "photo-draw");
+    await drawEveryone(page, [child, grownup]);
     expect(await photosOf(bookId)).toBe(2);
     await evidence(page, "photo-preview");
 
-    // Two rounds of changes, each a note that edits that person's current sheet (D56), then no more.
-    for (const [round, left] of [
-      [1, "2 rounds left"],
-      [2, "1 round left"],
-    ] as const) {
-      await page.getByLabel(`What to change about ${child}`).fill(`round ${round}: curlier hair`);
-      await page.getByRole("button", { name: `Ask for these changes (${left})` }).click();
-      // Drawn when the book reports the round ready; the button alone may still be the page from before the click.
-      await expect
-        .poll(() => sql("select likeness_round, likeness_status from book where id = $1", [bookId]), {
-          timeout: 60_000,
-        })
-        .toEqual([{ likeness_round: round, likeness_status: "ready" }]);
-      await page.reload();
-    }
-    await expect(page.getByLabel(`What to change about ${child}`)).toHaveCount(0);
-    const sheets = await sql<{ slot_id: string; sheet_key: string }>(
+    // Two notes on the child, each using one of their drawings and editing their current sheet (D56); the
+    // grown-up's sheet doesn't change. Then the child has no drawings left, and their photo can't change.
+    const firstSheets = await sql<{ slot_id: string; sheet_key: string }>(
       "select slot_id, sheet_key from book_likeness where book_id = $1 order by slot_id",
       [bookId],
     );
-    expect(sheets.find((row) => row.slot_id === "hero")!.sheet_key).toMatch(/sheet-r2\.png$/);
-    expect(sheets.find((row) => row.slot_id === "grownup")!.sheet_key).not.toMatch(/sheet-r/);
+    for (const [draw, left] of [
+      [2, "2 drawings left"],
+      [3, "1 drawing left"],
+    ] as const) {
+      await page.getByLabel(`What to change about ${child}`).fill(`drawing ${draw}: curlier hair`);
+      await page.getByRole("button", { name: `Redraw ${child} with this note (${left})` }).click();
+      await expect
+        .poll(
+          () =>
+            sql(
+              `select l.draws, l.drawing, b.likeness_status from book_likeness l join book b on b.id = l.book_id
+               where l.book_id = $1 and l.slot_id = 'hero'`,
+              [bookId],
+            ),
+          { timeout: 60_000 },
+        )
+        .toEqual([{ draws: draw, drawing: false, likeness_status: "ready" }]);
+      await page.reload();
+    }
+    await expect(page.getByLabel(`What to change about ${child}`)).toHaveCount(0);
+    await expect(page.getByTestId("sheet-card-hero")).toContainText(`That was the last drawing of ${child}.`);
+    await expect(page.getByLabel(`What to change about ${grownup}`)).toBeVisible();
+    const sheets = await sql<{ slot_id: string; sheet_key: string; draws: number; notes: Array<{ round: number }> }>(
+      "select slot_id, sheet_key, draws, notes from book_likeness where book_id = $1 order by slot_id",
+      [bookId],
+    );
+    const before = (slotId: string) => firstSheets.find((row) => row.slot_id === slotId)!.sheet_key;
+    const after = (slotId: string) => sheets.find((row) => row.slot_id === slotId)!;
+    expect(after("hero").sheet_key).not.toBe(before("hero"));
+    expect(after("hero").notes.map((note) => note.round)).toEqual([2, 3]);
+    expect(after("grownup")).toMatchObject({ sheet_key: before("grownup"), draws: 1, notes: [] });
+    await page.getByLabel(`Photo of ${child}`).setInputFiles(photo("child-again.png"));
+    await expect(page.getByTestId("photo-hero").getByRole("alert")).toHaveText(
+      `You've used all 3 drawings of ${child}, so their photo can't change.`,
+    );
 
     // Until the order, the sheets show only in the preview step, not with the cast.
     await expect(page.getByTestId("role-hero").getByRole("button", { name: /character sheet/ })).toHaveCount(0);

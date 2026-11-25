@@ -3,8 +3,8 @@
 ## What it is
 
 A parent puts their family into a story (D56): one photo per role, checked in seconds (`photo.check`), then a
-character sheet per role and a cover (`likeness.preview`), up to two rounds of notes that edit the sheets
-(`likeness.revise`), and "Make my book", which is the order (D57). The order deletes the photos, unless the parent
+"Draw {name}" for each person's character sheet, then a cover once everyone is drawn (`likeness.sheet`); three drawings per
+person, where a note that edits their sheet or a new photo uses one, and "Make my book", which is the order (D57). The order deletes the photos, unless the parent
 opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
 `page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
 proof and sends the book for review. The operator redoes a page, refuses the book with a note, or approves it for
@@ -17,7 +17,7 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 - `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
   (`POST /api/books/<id>/photos`, resized to 1536 px in the browser; chosen with the button or dropped on that
   person's card, where a drop of several files or a non-photo uploads nothing and says why; on touch screens a
-  "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), the sheets and cover with two change rounds,
+  "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), each person's "Draw {name}", their sheet with a note for another drawing (drawings left shown), the cover,
   "Make my book", then the page-change form under each page and "Send for review". Proofs appear from page changes on.
   From the order on, each cast card shows that role's approved sheet as a thumbnail that opens it across the card
   (with a full-size link), for every family member, viewers included; display only, never a printed page.
@@ -40,7 +40,7 @@ print (`book.release`). Built on the fakes; the Dream Adventure import and a rea
 ## Verify
 
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
-bad photo, a refused two-file drop, a dropped photo and one from the camera input, two rounds, the order with the photos gone from storage, three page changes with keep and use-new, a
+bad photo, a refused two-file drop, a dropped photo and one from the camera input, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, a refused new photo for the child, the order with the photos gone from storage, three page changes with keep and use-new, a
 proof, operator approval, a second book opted in to photo review whose photos the operator sees and approval
 deletes, and the 24 h sweep of an abandoned draft. A second test covers the upload limits (D59): a refused request
 not counted, a refused photo counted, a burst sent at once of which exactly the limit is stored, a check task for each stored upload and none for a refused one (the 21st in 10 minutes), the total allowance

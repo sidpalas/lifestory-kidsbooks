@@ -58,8 +58,6 @@ export const book = pgTable(
     /** The parent let our team see the photos while reviewing the book (D56); off by default. */
     photoReview: boolean("photo_review").notNull().default(false),
     likenessStatus: likenessStatus("likeness_status").notNull().default("waiting"),
-    /** Change rounds asked for on the sheets so far (D56: at most two). */
-    likenessRound: integer("likeness_round").notNull().default(0),
     /** The cover's drawn figure layers, one per figure of the first page, bottom to top; null before the first sheets. */
     cover: jsonb("cover").$type<ReadonlyArray<string>>(),
     orderedAt: timestamp("ordered_at", { withTimezone: true }),
@@ -96,7 +94,11 @@ export const bookLikeness = pgTable(
     /** Hair chips: colour, length, texture. */
     hair: jsonb("hair").$type<{ colour: string; length: string; texture: string }>(),
     sheetKey: text("sheet_key"),
-    /** Each round's note on this character, oldest first. */
+    /** Sheets started for this person, the first included (D56: at most three); a failed drawing doesn't count. */
+    draws: integer("draws").notNull().default(0),
+    /** A sheet for this person is being drawn. */
+    drawing: boolean("drawing").notNull().default(false),
+    /** Each note on this character, oldest first; `round` is the drawing it asked for (2 or 3). */
     notes: jsonb("notes").$type<ReadonlyArray<{ round: number; note: string }>>().notNull().default([]),
     consentId: text("consent_id").references(() => consent.id, { onDelete: "set null" }),
     ...timestamps,

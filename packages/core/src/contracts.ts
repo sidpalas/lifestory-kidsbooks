@@ -352,8 +352,11 @@ export const consentStatements = (retention: DataRetention) =>
     },
   ] as const;
 
-/** How many rounds of changes a parent may ask for on the sheets, and how many pages they may change (D56, D57). */
-export const MAX_LIKENESS_ROUNDS = 2;
+/**
+ * How many sheets a parent may have drawn of each person, the first included: each note or new photo after the first
+ * sheet uses one (D56, Sid 2026-11-25). And how many pages they may change (D57).
+ */
+export const MAX_SHEET_DRAWS = 3;
 export const MAX_PAGE_CHANGES = 3;
 
 export const BookStatus = Schema.Literals([
@@ -377,7 +380,6 @@ export const BookFlow = Schema.Struct({
   photoReview: Schema.Boolean,
   consented: Schema.Boolean,
   likenessStatus: Schema.Literals(["waiting", "drawing", "ready", "failed"]),
-  likenessRound: Schema.Number,
   /** The cover page with the drawn figures, once the sheets are drawn. */
   cover: Schema.NullOr(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Layer) })),
   likenesses: Schema.Array(
@@ -389,6 +391,9 @@ export const BookFlow = Schema.Struct({
       /** Whether the photo is still kept, and its key for the family (and the operator on an opted-in book). */
       photoKey: Schema.NullOr(Schema.String),
       sheetKey: Schema.NullOr(Schema.String),
+      /** Sheets started for this person, the first included, out of MAX_SHEET_DRAWS; and whether one is drawing. */
+      draws: Schema.Number,
+      drawing: Schema.Boolean,
       notes: Schema.Array(Schema.Struct({ round: Schema.Number, note: Schema.String })),
     }),
   ),

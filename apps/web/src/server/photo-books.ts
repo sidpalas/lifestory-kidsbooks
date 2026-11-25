@@ -1,10 +1,10 @@
 // A photo book's steps (D56, D57): the domain logic and every role check are in @lifestory/core (book-flow.ts); these
 // adapt requests to it. The photo itself goes through the server route /api/books/$bookId/photos.
 import {
-  askLikenessChanges,
   Auth,
   choosePageVersion,
   decideBook,
+  drawSheet,
   listReviewQueue,
   orderBook,
   recordConsent,
@@ -53,11 +53,13 @@ export const withdrawPhotoReviewFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(BookId))
   .handler(({ data }) => respond((user) => withdrawPhotoReview(user.id, data.bookId)));
 
-export const askLikenessChangesFn = createServerFn({ method: "POST" })
+export const drawSheetFn = createServerFn({ method: "POST" })
   .validator(
-    Schema.toStandardSchemaV1(Schema.Struct({ bookId: Schema.String, notes: Schema.Record(Schema.String, Note) })),
+    Schema.toStandardSchemaV1(
+      Schema.Struct({ bookId: Schema.String, slotId: Schema.String, note: Schema.optionalKey(Note) }),
+    ),
   )
-  .handler(({ data }) => respond((user) => askLikenessChanges(user.id, data)));
+  .handler(({ data }) => respond((user) => drawSheet(user.id, data)));
 
 export const orderBookFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(BookId))

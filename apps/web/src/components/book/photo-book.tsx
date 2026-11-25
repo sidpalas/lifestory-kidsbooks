@@ -1,5 +1,5 @@
-// A photo book's steps on the book page (D56, D57): consent, a photo per role, the character sheets and cover with up
-// to two rounds of changes, "Make my book", then page changes and sending the book for review. Everything here reads
+// A photo book's steps on the book page (D56, D57): consent, a photo per role, each person's character sheet drawn
+// when the parent asks (three drawings each: the first, then notes or new photos), the cover, "Make my book", then page changes and sending the book for review. Everything here reads
 // `view.flow`; while something is being checked or drawn, the page reloads its data every two seconds.
 import {
   type BookView,
@@ -9,8 +9,8 @@ import {
   hairColours,
   hairLengths,
   hairTextures,
-  MAX_LIKENESS_ROUNDS,
   MAX_PAGE_CHANGES,
+  MAX_SHEET_DRAWS,
   unwrapResult,
 } from "@lifestory/core/contracts";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -23,8 +23,8 @@ import { FileInput } from "~/components/ui/file-input";
 import { NativeSelect } from "~/components/ui/native-select";
 import { cn } from "~/lib/utils";
 import {
-  askLikenessChangesFn,
   choosePageVersionFn,
+  drawSheetFn,
   FlowStepResult,
   orderBookFn,
   recordConsentFn,
@@ -40,9 +40,7 @@ const fileUrl = (key: string) => `/api/files/${key}`;
 
 /** Whether the server is still working on something the page shows. */
 export const flowBusy = (flow: Flow) =>
-  flow.likenesses.some((likeness) => likeness.checkStatus === "checking") ||
-  // The last photo's check passes a moment before it starts the drawing; keep polling across that gap.
-  (flow.likenessStatus === "waiting" && flow.likenesses.every((likeness) => likeness.checkStatus === "passed")) ||
+  flow.likenesses.some((likeness) => likeness.checkStatus === "checking" || likeness.drawing) ||
   flow.likenessStatus === "drawing" ||
   flow.status === "ordered" ||
   flow.status === "making" ||
@@ -436,59 +434,34 @@ function PhotoReviewNote({ view, canEdit }: { view: BookView; canEdit: boolean }
 
 function PreviewStep({ view }: { view: BookView }) {
   const { flow, manifest } = view;
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const changes = useStep();
   const order = useStep();
-  if (flow.likenessStatus === "waiting") return null;
-  if (flow.likenessStatus === "drawing")
-    return (
-      <Notice title="Drawing your characters">
-        Each person's character sheet, then a cover with everyone on it: about 45 seconds.
-      </Notice>
-    );
-  if (flow.likenessStatus === "failed")
-    return (
-      <Notice title="We couldn't draw the characters">
-        Try another photo, or reply to any of our emails and we'll look into it.
-      </Notice>
-    );
+  if (!flow.likenesses.some((likeness) => likeness.checkStatus === "passed" || likeness.sheetKey)) return null;
   const coverIndex = flow.cover ? manifest.pages.findIndex((page) => page.pageId === flow.cover!.pageId) : -1;
-  const roundsLeft = MAX_LIKENESS_ROUNDS - flow.likenessRound;
+  const ready = flow.likenessStatus === "ready";
   return (
     <section className="flex flex-col gap-3" aria-labelledby="preview-heading" data-testid="book-step">
       <h2 id="preview-heading" className="text-base font-semibold">
         Your characters
       </h2>
+      <p className="text-sm text-muted-foreground">
+        Draw each person once their photo is right. You get {MAX_SHEET_DRAWS} drawings of each person: the first, then a
+        note on their sheet or a new photo uses one.
+      </p>
       <div className="grid gap-3 md:grid-cols-2">
-        {manifest.characterSlots.map((slot) => {
-          const likeness = flow.likenesses.find((candidate) => candidate.slotId === slot.slotId)!;
-          const role = view.roles.find((candidate) => candidate.slotId === slot.slotId);
-          return (
-            <figure key={slot.slotId} className="flex flex-col gap-2 rounded-md border p-3 text-sm">
-              {likeness.sheetKey && (
-                <img
-                  src={fileUrl(likeness.sheetKey)}
-                  alt={`${role?.person.name}'s character sheet`}
-                  className="w-full rounded"
-                  data-testid={`sheet-${slot.slotId}`}
-                />
-              )}
-              <figcaption>{role?.person.name}</figcaption>
-              {roundsLeft > 0 && (
-                <textarea
-                  aria-label={`What to change about ${role?.person.name}`}
-                  placeholder="Anything to change? For example: curlier hair, freckles."
-                  className="min-h-16 rounded-md border bg-transparent p-2 text-sm"
-                  value={notes[slot.slotId] ?? ""}
-                  maxLength={300}
-                  onChange={(event) => setNotes({ ...notes, [slot.slotId]: event.target.value })}
-                />
-              )}
-            </figure>
-          );
-        })}
+        {manifest.characterSlots.map((slot) => (
+          <SheetCard key={slot.slotId} view={view} slotId={slot.slotId} />
+        ))}
       </div>
-      {flow.cover && coverIndex >= 0 && (
+      {flow.likenessStatus === "drawing" && flow.likenesses.every((likeness) => !likeness.drawing) && (
+        <p className="text-sm">Drawing the cover with everyone on it…</p>
+      )}
+      {flow.likenessStatus === "failed" && (
+        <p role="alert" className="text-sm text-destructive">
+          We couldn't finish that drawing; it didn't use one of your drawings. Try again, or reply to any of our emails
+          and we'll look into it.
+        </p>
+      )}
+      {ready && flow.cover && coverIndex >= 0 && (
         <div className="w-fit rounded-sm shadow ring-1 ring-black/10" data-testid="cover">
           <ScaledPage trim={manifest.trim} scale={0.4}>
             <BookPage
@@ -501,33 +474,85 @@ function PreviewStep({ view }: { view: BookView }) {
           </ScaledPage>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        {roundsLeft > 0 && (
+      {ready && (
+        <>
+          <Button
+            className="w-fit"
+            disabled={order.pending}
+            onClick={() => order.run(() => orderBookFn({ data: { bookId: view.book.id } }))}
+          >
+            Make my book
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            "Make my book" places your order: we draw every page from these characters and delete the photos
+            {flow.photoReview ? " once our team has reviewed the book" : ""}. You can then change up to{" "}
+            {MAX_PAGE_CHANGES} pages. <Policies />
+          </p>
+        </>
+      )}
+      <Alert text={order.error} />
+    </section>
+  );
+}
+
+/** One person's sheet: "Draw {name}" when there's none, else the sheet and a note for another drawing. */
+function SheetCard({ view, slotId }: { view: BookView; slotId: string }) {
+  const slot = view.manifest.characterSlots.find((candidate) => candidate.slotId === slotId)!;
+  const name = view.roles.find((candidate) => candidate.slotId === slotId)?.person.name ?? slot.label;
+  const likeness = view.flow.likenesses.find((candidate) => candidate.slotId === slotId)!;
+  const [note, setNote] = useState("");
+  const { error, pending, run } = useStep();
+  const left = MAX_SHEET_DRAWS - likeness.draws;
+  const drawingsLeft = `${left} ${left === 1 ? "drawing" : "drawings"} left`;
+  return (
+    <figure className="flex flex-col gap-2 rounded-md border p-3 text-sm" data-testid={`sheet-card-${slotId}`}>
+      {likeness.sheetKey && (
+        <img
+          src={fileUrl(likeness.sheetKey)}
+          alt={`${name}'s character sheet`}
+          className="w-full rounded"
+          data-testid={`sheet-${slotId}`}
+        />
+      )}
+      <figcaption className="font-medium">{name}</figcaption>
+      {likeness.drawing ? (
+        <p>Drawing {name}: about 20 seconds.</p>
+      ) : likeness.checkStatus !== "passed" || !likeness.photoKey ? (
+        !likeness.sheetKey && <p className="text-muted-foreground">Add a photo of {name} that passes the check.</p>
+      ) : left <= 0 ? (
+        <p className="text-muted-foreground">That was the last drawing of {name}.</p>
+      ) : !likeness.sheetKey ? (
+        <Button
+          className="w-fit"
+          disabled={pending}
+          onClick={() => run(() => drawSheetFn({ data: { bookId: view.book.id, slotId } }))}
+        >
+          Draw {name} ({drawingsLeft})
+        </Button>
+      ) : (
+        <>
+          <textarea
+            aria-label={`What to change about ${name}`}
+            placeholder="Anything to change? For example: curlier hair, freckles."
+            className="min-h-16 rounded-md border bg-transparent p-2 text-sm"
+            value={note}
+            maxLength={300}
+            onChange={(event) => setNote(event.target.value)}
+          />
           <Button
             variant="outline"
-            disabled={changes.pending || Object.values(notes).every((note) => note.trim() === "")}
+            className="w-fit"
+            disabled={pending || note.trim() === ""}
             onClick={async () => {
-              if (await changes.run(() => askLikenessChangesFn({ data: { bookId: view.book.id, notes } })))
-                setNotes({});
+              if (await run(() => drawSheetFn({ data: { bookId: view.book.id, slotId, note } }))) setNote("");
             }}
           >
-            Ask for these changes ({roundsLeft} {roundsLeft === 1 ? "round" : "rounds"} left)
+            Redraw {name} with this note ({drawingsLeft})
           </Button>
-        )}
-        <Button
-          disabled={order.pending}
-          onClick={() => order.run(() => orderBookFn({ data: { bookId: view.book.id } }))}
-        >
-          Make my book
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        "Make my book" places your order: we draw every page from these characters and delete the photos
-        {flow.photoReview ? " once our team has reviewed the book" : ""}. You can then change up to {MAX_PAGE_CHANGES}{" "}
-        pages. <Policies />
-      </p>
-      <Alert text={changes.error ?? order.error} />
-    </section>
+        </>
+      )}
+      <Alert text={error} />
+    </figure>
   );
 }
 

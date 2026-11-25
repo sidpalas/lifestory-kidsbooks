@@ -256,7 +256,6 @@ export const loadBook = Effect.fn("books.load")(function* (bookId: string) {
         status: schema.book.status,
         photoReview: schema.book.photoReview,
         likenessStatus: schema.book.likenessStatus,
-        likenessRound: schema.book.likenessRound,
         cover: schema.book.cover,
         orderedAt: schema.book.orderedAt,
         reviewNote: schema.book.reviewNote,
@@ -362,6 +361,8 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
       hair: row?.hair ? yield* Schema.decodeUnknownEffect(Hair)(row.hair).pipe(Effect.orDie) : null,
       photoKey: row?.photoKey ?? null,
       sheetKey: row?.sheetKey ?? null,
+      draws: row?.draws ?? 0,
+      drawing: row?.drawing ?? false,
       notes: row?.notes ?? [],
     });
   }
@@ -397,7 +398,6 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
     photoReview: book.photoReview,
     consented: consents.length > 0,
     likenessStatus: book.likenessStatus,
-    likenessRound: book.likenessRound,
     cover:
       cover && book.cover
         ? {

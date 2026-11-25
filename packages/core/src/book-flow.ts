@@ -8,7 +8,7 @@ import { Effect } from "effect";
 import { Auth, type SessionUser } from "./auth.ts";
 import { bookFlow, loadBook } from "./books.ts";
 import { AppConfig } from "./config.ts";
-import { consentStatements, type Hair, MAX_LIKENESS_ROUNDS, MAX_PAGE_CHANGES, policyVersion } from "./contracts.ts";
+import { consentStatements, type Hair, MAX_PAGE_CHANGES, MAX_SHEET_DRAWS, policyVersion } from "./contracts.ts";
 import { Database } from "./database.ts";
 import { Forbidden, InvalidInput, NotFound } from "./errors.ts";
 import { requireFamilyAccess } from "./families.ts";
@@ -21,10 +21,10 @@ import {
   checkPhoto,
   deleteBookPhotos,
   drawPage,
+  drawLikenessSheet,
   makeBook,
   photoObjectKey,
   releaseBook,
-  reviseLikeness,
 } from "./tasks/photo-books.ts";
 
 /** The longest photo the server takes; the browser resizes to at most 1536 px first (D56). */
@@ -111,10 +111,34 @@ export const withdrawPhotoReview = Effect.fn("bookFlow.withdrawPhotoReview")(fun
   if (book.status !== "draft") yield* deleteBookPhotos(book.familyId, bookId).pipe(Effect.orDie);
 });
 
+/** A person's likeness row and their name, for the per-person checks of the photo and sheet steps. */
+const likenessOf = (bookId: string, slotId: string) =>
+  Database.query((db) =>
+    db
+      .select({
+        name: schema.bookCast.name,
+        photoKey: schema.bookLikeness.photoKey,
+        checkStatus: schema.bookLikeness.checkStatus,
+        sheetKey: schema.bookLikeness.sheetKey,
+        draws: schema.bookLikeness.draws,
+        drawing: schema.bookLikeness.drawing,
+      })
+      .from(schema.bookCast)
+      .leftJoin(
+        schema.bookLikeness,
+        and(
+          eq(schema.bookLikeness.bookId, schema.bookCast.bookId),
+          eq(schema.bookLikeness.slotId, schema.bookCast.slotId),
+        ),
+      )
+      .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
+  ).pipe(Effect.map(([row]) => row));
+
 /**
  * Stores a role's photo and starts its check (D56). The parent consents first; a new photo replaces the role's
- * earlier one, whose object is deleted, and the sheets are drawn again once every role's photo passes. Each stored
- * photo counts toward the account's upload limits (D59).
+ * earlier one, whose object is deleted, along with that person's sheet: "Draw {name}" draws it again, which uses one
+ * of their drawings, so a person whose drawings are used up takes no new photo. Each stored photo counts toward the
+ * account's upload limits (D59).
  */
 export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
   userId: string,
@@ -143,6 +167,12 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
       .limit(1),
   );
   if (!consent) return yield* new InvalidInput({ message: "Agree to how photos are used before uploading." });
+  const person = yield* likenessOf(book.id, input.slotId);
+  if (person?.drawing) return yield* new InvalidInput({ message: `Wait for ${person.name}'s drawing to finish.` });
+  if (person && (person.draws ?? 0) >= MAX_SHEET_DRAWS)
+    return yield* new InvalidInput({
+      message: `You've used all ${MAX_SHEET_DRAWS} drawings of ${person.name}, so their photo can't change.`,
+    });
 
   const uploadId = `up_${crypto.randomUUID()}`;
   yield* reserveUpload(userId, { id: uploadId, bookId: book.id });
@@ -166,6 +196,7 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
     check: null,
     hair: input.hair,
     consentId: consent.id,
+    sheetKey: null,
   };
   yield* Database.query((db) =>
     db.transaction(async (tx) => {
@@ -173,12 +204,8 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
         .insert(schema.bookLikeness)
         .values({ bookId: book.id, slotId: input.slotId, ...values })
         .onConflictDoUpdate({ target: [schema.bookLikeness.bookId, schema.bookLikeness.slotId], set: values });
-      // New photos mean new sheets: the preview starts again from round 0.
-      await tx
-        .update(schema.book)
-        .set({ likenessStatus: "waiting", likenessRound: 0, cover: null })
-        .where(eq(schema.book.id, book.id));
-      await tx.update(schema.bookLikeness).set({ notes: [] }).where(eq(schema.bookLikeness.bookId, book.id));
+      // A new photo means a new sheet for this person, and a new cover once it's drawn; nobody else changes.
+      await tx.update(schema.book).set({ likenessStatus: "waiting", cover: null }).where(eq(schema.book.id, book.id));
     }),
   );
   if (previous?.photoKey) yield* storage.delete(previous.photoKey).pipe(Effect.ignore);
@@ -192,39 +219,64 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
   return { uploadId };
 });
 
-/** A round of changes to the sheets (D56): at most one note per role, at most two rounds. */
-export const askLikenessChanges = Effect.fn("bookFlow.askLikenessChanges")(function* (
+/**
+ * Draws one person's sheet (D56, Sid 2026-11-25): "Draw {name}" once their photo has passed and they have no sheet
+ * (the first, or after a new photo), or a note on their current sheet. Each uses one of the person's
+ * MAX_SHEET_DRAWS drawings; nobody else's sheet changes.
+ */
+export const drawSheet = Effect.fn("bookFlow.drawSheet")(function* (
   userId: string,
-  input: { readonly bookId: string; readonly notes: Readonly<Record<string, string>> },
+  input: { readonly bookId: string; readonly slotId: string; readonly note?: string },
 ) {
   const book = yield* editableBook(userId, input.bookId);
   yield* requireStatus(book, ["draft"], "This book is already ordered.");
-  if (book.likenessStatus !== "ready")
-    return yield* new InvalidInput({ message: "Wait for the characters to be drawn first." });
-  if (book.likenessRound >= MAX_LIKENESS_ROUNDS)
-    return yield* new InvalidInput({ message: `You've used both rounds of changes.` });
-  const notes = Object.entries(input.notes)
-    .map(([slotId, note]) => [slotId, note.trim().slice(0, 300)] as const)
-    .filter(([, note]) => note.length > 0);
-  if (notes.length === 0) return yield* new InvalidInput({ message: "Write what to change for at least one person." });
-  const round = book.likenessRound + 1;
-  yield* Database.query((db) =>
+  const person = yield* likenessOf(book.id, input.slotId);
+  if (!person) return yield* new NotFound({ entity: "role", id: input.slotId });
+  if (person.checkStatus !== "passed" || !person.photoKey)
+    return yield* new InvalidInput({ message: `Add a photo of ${person.name} that passes the check first.` });
+  if (person.drawing) return yield* new InvalidInput({ message: `${person.name} is being drawn already.` });
+  if ((person.draws ?? 0) >= MAX_SHEET_DRAWS)
+    return yield* new InvalidInput({ message: `You've used all ${MAX_SHEET_DRAWS} drawings of ${person.name}.` });
+  const note = person.sheetKey ? (input.note ?? "").trim().slice(0, 300) : "";
+  if (person.sheetKey && !note)
+    return yield* new InvalidInput({ message: `Write what to change about ${person.name}.` });
+  const draw = (person.draws ?? 0) + 1;
+  // Only one drawing starts per person: the update matches only while nobody else started it meanwhile.
+  const started = yield* Database.query((db) =>
     db.transaction(async (tx) => {
-      for (const [slotId, note] of notes)
-        await tx
-          .update(schema.bookLikeness)
-          .set({ notes: sql`${schema.bookLikeness.notes} || ${JSON.stringify([{ round, note }])}::jsonb` })
-          .where(and(eq(schema.bookLikeness.bookId, book.id), eq(schema.bookLikeness.slotId, slotId)));
-      await tx
-        .update(schema.book)
-        .set({ likenessRound: round, likenessStatus: "drawing" })
-        .where(eq(schema.book.id, book.id));
+      const rows = await tx
+        .update(schema.bookLikeness)
+        .set({
+          draws: draw,
+          drawing: true,
+          ...(note
+            ? { notes: sql`${schema.bookLikeness.notes} || ${JSON.stringify([{ round: draw, note }])}::jsonb` }
+            : {}),
+        })
+        .where(
+          and(
+            eq(schema.bookLikeness.bookId, book.id),
+            eq(schema.bookLikeness.slotId, input.slotId),
+            eq(schema.bookLikeness.drawing, false),
+            eq(schema.bookLikeness.draws, draw - 1),
+          ),
+        )
+        .returning({ slotId: schema.bookLikeness.slotId });
+      if (rows.length > 0)
+        await tx.update(schema.book).set({ likenessStatus: "drawing" }).where(eq(schema.book.id, book.id));
+      return rows.length > 0;
     }),
   );
+  if (!started) return yield* new InvalidInput({ message: `${person.name} is being drawn already.` });
+  const drawId = `d${draw}-${crypto.randomUUID().slice(0, 8)}`;
   yield* Jobs.use((jobs) =>
-    jobs.spawn(reviseLikeness, { bookId: book.id, round }, { idempotencyKey: `likeness.revise:${book.id}:${round}` }),
+    jobs.spawn(
+      drawLikenessSheet,
+      { bookId: book.id, slotId: input.slotId, draw, drawId },
+      { idempotencyKey: `likeness.sheet:${book.id}:${input.slotId}:${drawId}` },
+    ),
   );
-  return { round };
+  return { draw };
 });
 
 /** "Make my book" (D57): the order. Every sheet must be drawn; the order row records the price as shown. */

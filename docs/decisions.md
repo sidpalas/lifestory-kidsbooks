@@ -306,9 +306,12 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   the family's earlier books, so nobody is typed twice. Supersedes D48's Our family page.
 - **The parent's path:** the story page shows the illustrator's stock characters. "Put your family in this book"
   makes a draft book. The parent says who plays each role (every role, not only the hero) and uploads
-  one photo each, with hair chips. Each photo is checked in about 3 s. About 45 s after the last one passes, the
-  parent sees each character sheet and a cover with everyone on it, and can ask for up to two rounds of changes,
-  one note per character. "Make my book" places the order (D57).
+  one photo each, with hair chips. Each photo is checked in about 3 s. Once a person's photo passes, "Draw {name}"
+  draws their sheet (about 20 s); once everyone has one, the cover with everyone on it follows. **Drawings (Sid,
+  2026-11-25):** each person gets three drawings, the first included; a note on their sheet or a new photo after
+  it uses one, and nobody else's sheet changes. A person with no drawings left takes no new photo, and a failed
+  drawing gives its drawing back (`book_likeness.draws`, `MAX_SHEET_DRAWS`). This replaces the book-wide two rounds
+  of changes, where any new photo reset every sheet. "Make my book" places the order (D57).
 - **Generation (plan: the "Photo-to-hero approach summary" and "Photo books: plan and UX" artifacts, threads
   T-8b52103b-ac29-4045-8048-12ef3cf41c6f and T-01a1fb83-7824-71fa-8625-bfe2dcc7ccda):**
   - **Model:** OpenAI `gpt-image-2.5-sunburst` through `/v1/images/edits` with several images, quality medium,
@@ -318,11 +321,11 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     age the parent chose for them (one the role accepts), front, three-quarter and back views, in the slot's stock outfit, with the hair in words. The book
     owns it, because it carries that story's style.
   - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
-    from the sheets (`likeness.revise`). **Approved by Sid (2026-11-24)** over his first choice of a
+    from the sheets (`likeness.sheet` with a note). **Approved by Sid (2026-11-24)** over his first choice of a
     fresh sheet from the photo each round, on this evidence. Drift test, three rounds: chained edits kept outline overlap ≥ 0.994 with body
     change ≤ 14/255; fresh sheets fell to 0.797 overlap with ≤ 77/255 and drew a different-looking child each round.
     The mode and prompt are configuration, so the fresh-sheet path stays available. After about 5 edits, the sheet
-    is rebuilt once from the photo with the latest sheet as a reference (untested; only before the order, and unreachable with two rounds).
+    is rebuilt once from the photo with the latest sheet as a reference (untested; only before the order, and unreachable with three drawings per person).
   - **Each figure on each page** is redrawn from the page reference (plate plus the bald figure, cropped to the
     figure's window) and the approved sheet, on a transparent background, never from the photo. The model draws
     what the figure wears and holds; only scenery occluders are composited over it. Production checks: retry an
@@ -373,8 +376,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | Task | Spawned by | Steps |
   | --- | --- | --- |
   | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
-  | `likeness.preview` | the last photo passing | a sheet per role, then the cover, one call per figure; keyed by book |
-  | `likeness.revise` | each change round | one sheet edit per note, then the cover; keyed by book and round |
+  | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note), then the cover once everyone has a sheet and none is drawing; keyed by book, person and drawing |
   | `book.make` | the order (D57) | delete the book's photos unless the parent opted in to photo review, then spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
   | `page.figure` | `book.make`, a page change, the operator's redo | generate, the checks above, tint, store; keyed by book, page, slot and version |
   | `book.release` | the operator's approval (D57) | delete any photos kept for review; when print ordering arrives, sending the file to the printer becomes the step before it |
@@ -415,13 +417,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   objects are deleted by a one-off command in the same phase; Sid is the only user and gave that go with the plan.
   Order: the photo flow lands, then the wipe, then the migration.
 - **Cost (estimates from measured calls):** a sheet US$0.032, a figure US$0.036, a sheet edit US$0.023, a check
-  about US$0.002. Worst case with two rounds, 23 pages, 3 page changes and 10% retries: about US$1.24 for a child
+  about US$0.002. Worst case with two notes per person, 23 pages, 3 page changes and 10% retries: about US$1.24 for a child
   alone, US$1.55 with a grandparent on 4 pages.
 - **Why:** families want their own child, and composed parts didn't look good enough after long testing. A sheet
   in the middle removed page-to-page drift on all 15 test pages, where pages drawn straight from the photo drifted
   in hair colour, length and freckles, and no page needs the photo, so a page change or a redo never reads it.
 - **Rejected:** composable figure, hair and accessory layers with recolour (D26's system); pages straight from the
-  photo; page changes as edits of the current page; preview rounds as fresh sheets (the drift test above); a
+  photo; page changes as edits of the current page; sheet notes as fresh sheets (the drift test above); a
   third-party photo-quality API (another vendor and agreement).
 - **Reopen if:** a real child's photo comes out clearly worse than the adult photos tested (to be tried once ZDR is
   active), authors need touching figures (then test both figures in one call), the check refuses good photos, or a
@@ -480,10 +482,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 
 - **Asked (Sid, 2026-11-25):** rate limit the photos an account can upload, or cap them, raising the cap when they
   order a book.
-- **Why uploads cost:** a photo's check is about US$0.002 (D56), but a photo that passes on a book whose roles all
-  have photos starts `likeness.preview`, which draws every role's sheet (US$0.032 each) and the cover's figures
-  (US$0.036 each, up to three tries) again, about US$0.14–0.28 for The Kite Day's two roles. Replacing one photo
-  redraws every sheet. Deleting a draft doesn't undo any of it, and the sweep deletes drafts after a day (D57).
+- **Why uploads cost:** a photo's check is about US$0.002 (D56). Drawing is no longer started by an upload: the
+  parent asks for each person's sheet ("Draw {name}", US$0.032, then the cover's figures at US$0.036 each, up to
+  three tries), and each person has three drawings (D56), so uploads can't loop drawing. The limits keep uploads
+  from looping the check. Deleting a draft doesn't undo any of it, and the sweep deletes drafts after a day (D57).
 - **What counts:** every upload the server stored: replacements, photos the check refuses, and photos replaced
   before their check ran. A request refused before anything is stored (wrong type, too large, no consent, not a
   draft, over a limit) doesn't. Counted per account (the uploader), in `photo_upload`, which keeps an ID per upload
