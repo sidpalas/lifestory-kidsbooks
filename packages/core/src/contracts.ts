@@ -80,20 +80,24 @@ export const hairColours = [
 export const HairColour = Schema.Literals(hairColours.map((colour) => colour.id));
 export type HairColour = typeof HairColour.Type;
 
+/**
+ * Hair lengths and textures, each with what it means for the parent choosing it (Sid, 2026-11-25). The sheet prompt
+ * says the label ("chin to shoulder, wavy, brown hair"), so a description only spells out what that label means.
+ */
 export const hairLengths = [
-  { id: "none", label: "No hair" },
-  { id: "very-short", label: "Very short" },
-  { id: "short", label: "Short" },
-  { id: "medium", label: "Chin to shoulder" },
-  { id: "long", label: "Long" },
+  { id: "none", label: "No hair", description: "Bald, or shaved to the skin." },
+  { id: "very-short", label: "Very short", description: "Cropped close to the head, like a buzz cut." },
+  { id: "short", label: "Short", description: "Above the ears and collar." },
+  { id: "medium", label: "Chin to shoulder", description: "Covers the ears and ends between chin and shoulders." },
+  { id: "long", label: "Long", description: "Reaches past the shoulders." },
 ] as const;
 export const HairLength = Schema.Literals(hairLengths.map((length) => length.id));
 
 export const hairTextures = [
-  { id: "straight", label: "Straight" },
-  { id: "wavy", label: "Wavy" },
-  { id: "curly", label: "Curly" },
-  { id: "coily", label: "Coily" },
+  { id: "straight", label: "Straight", description: "Falls flat, with no bend." },
+  { id: "wavy", label: "Wavy", description: "Loose S-shaped bends, not full loops." },
+  { id: "curly", label: "Curly", description: "Springy loops or ringlets you could fit a finger in." },
+  { id: "coily", label: "Coily", description: "Tight coils or zigzags, often dense and springy." },
 ] as const;
 export const HairTexture = Schema.Literals(hairTextures.map((texture) => texture.id));
 

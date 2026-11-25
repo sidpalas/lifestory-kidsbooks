@@ -224,7 +224,10 @@ const isPhotoFile = (file: File) => photoTypes.includes(file.type) || /\.hei[cf]
 const isFileDrag = (event: { dataTransfer: DataTransfer | null }) =>
   event.dataTransfer?.types.includes("Files") ?? false;
 
-/** The look's attributes as the confirmation shows them: each option with its swatch, if it has one. */
+/**
+ * The look's attributes as the confirmation shows them: each option with its swatch or its description (hair length
+ * and texture), if it has one.
+ */
 const yesNo = [
   { id: true, label: "Yes" },
   { id: false, label: "No" },
@@ -232,7 +235,7 @@ const yesNo = [
 const lookFields: ReadonlyArray<{
   key: LookKey;
   label: string;
-  options: ReadonlyArray<{ id: string | boolean; label: string; swatch?: string }>;
+  options: ReadonlyArray<{ id: string | boolean; label: string; swatch?: string; description?: string }>;
 }> = [
   { key: "hairColour", label: "Hair colour", options: hairColours },
   { key: "hairLength", label: "Hair length", options: hairLengths },
@@ -276,7 +279,10 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
           const chosen = choices[field.key] !== undefined;
           const fromPhoto = photo?.[field.key] ?? null;
           const value = look[field.key];
-          const swatch = field.options.find((option) => option.id === value)?.swatch;
+          const selected = field.options.find((option) => option.id === value);
+          const swatch = selected?.swatch;
+          const described = field.options.some((option) => option.description);
+          const descriptionId = `look-${slotId}-${field.key}-description`;
           return (
             <div key={field.key} className="flex flex-col gap-0.5 text-xs">
               <dt className="flex items-center justify-between gap-2 font-medium">
@@ -293,6 +299,7 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
                 />
                 <NativeSelect
                   aria-label={`${name}'s ${field.label.toLowerCase()}`}
+                  aria-describedby={selected?.description ? descriptionId : undefined}
                   className="h-8 min-w-0 flex-1 text-xs"
                   value={value === null ? "" : String(value)}
                   disabled={locked || pending}
@@ -306,6 +313,28 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
                   ))}
                 </NativeSelect>
               </dd>
+              {selected?.description && (
+                <dd id={descriptionId} className="text-muted-foreground" data-testid={descriptionId}>
+                  {selected.description}
+                </dd>
+              )}
+              {described && (
+                <dd>
+                  <details className="text-muted-foreground">
+                    <summary className="cursor-pointer underline-offset-2 hover:underline">
+                      What each {field.label.toLowerCase()} means
+                    </summary>
+                    <dl className="mt-1 flex flex-col gap-1.5 border-l-2 pl-2 leading-snug">
+                      {field.options.map((option) => (
+                        <div key={String(option.id)}>
+                          <dt className="inline font-medium text-foreground">{option.label}:</dt>{" "}
+                          <dd className="inline">{option.description}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
+                </dd>
+              )}
               {chosen && fromPhoto !== null && fromPhoto !== value && (
                 <dd className="text-amber-700">
                   The photo looked {optionLabel(field.options, fromPhoto).toLowerCase()}.

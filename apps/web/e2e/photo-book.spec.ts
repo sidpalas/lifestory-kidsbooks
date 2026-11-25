@@ -166,6 +166,13 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(look).toContainText("From the photo");
     await length.selectOption({ label: "Long" });
     await expect(length).toHaveValue("long");
+    // Each length and texture says what it means: the chosen one under its dropdown, and all of them on request.
+    await expect(length).toHaveAccessibleDescription("Reaches past the shoulders.");
+    await expect(look.getByLabel(`${child}'s hair texture`)).toHaveAccessibleDescription(
+      "Loose S-shaped bends, not full loops.",
+    );
+    await look.getByText("What each hair texture means").click();
+    await expect(look).toContainText("Coily: Tight coils or zigzags, often dense and springy.");
     await expect(look).toContainText("You set this");
     await expect(look).toContainText("The photo looked short.");
 
@@ -220,8 +227,11 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await evidence(page, "photo-preview");
     // On a phone each person's photo and sheet card fits its column: the buttons named after the person wrap instead
     // of widening the card off the screen.
+    await page.getByTestId("look-hero").getByText("What each hair length means").click();
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 800 });
+      if (width === 320 && process.env.E2E_SCREENSHOTS)
+        await page.getByTestId("look-hero").screenshot({ path: `${process.env.E2E_SCREENSHOTS}/look-320.png` });
       for (const card of await page.getByTestId(/^(photo-(hero|grownup)|pose-.+|sheet-card-.+)$/).all())
         await expectContained(card);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

@@ -390,7 +390,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **The look, confirmed (Sid, 2026-11-25):** the check also reads hair colour, length and texture, eye colour,
   skin tone, freckles and glasses, each null when the photo doesn't show it. Once a photo passes, the parent sees each
   attribute with a swatch, labelled "From the photo" or "You set this"; where their choice differs from the photo,
-  the photo's reading shows too. Their corrections go over the photo's reading attribute by attribute (`lookOf`), and
+  the photo's reading shows too. Hair length and texture each say what they mean, the chosen one under its
+  dropdown and all of them behind "What each … means" ("Short: above the ears and collar", "Wavy: loose S-shaped bends,
+  not full loops"; Sid asked for this). The prompt still says the label; a description only explains it. Their corrections go over the photo's reading attribute by attribute (`lookOf`), and
   the sheet prompt says what's known. They're stored on the cast (`book_cast.look`), so a person picked from an
   earlier book brings them; the photo never carries over. The look locks at the first drawing; a note changes it
   after. Replaces the blank hair chips, which defaulted to long hair for Lucy (her hair is short) and overrode the
