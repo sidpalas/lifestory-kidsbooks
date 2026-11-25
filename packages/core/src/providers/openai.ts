@@ -19,6 +19,8 @@ import { ObjectStorage } from "../storage.ts";
 export const openAIPrices: Readonly<
   Record<string, { readonly imageInput: number; readonly textInput: number; readonly output: number }>
 > = {
+  // OpenAI's model page, 2026-11-25: the same token rates as 2.6.
+  "gpt-image-2.5-sunburst": { imageInput: 8, textInput: 5, output: 30 },
   "gpt-image-2.6-sunburst": { imageInput: 8, textInput: 5, output: 30 },
   "gpt-image-2.6-flare": { imageInput: 8, textInput: 5, output: 30 },
 };

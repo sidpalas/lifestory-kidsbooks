@@ -53,7 +53,9 @@ deletes, and the 24 h sweep of an abandoned draft. Other book specs start from a
 - Photos are deleted right after the order by default. If the parent opts in to photo review, the operator sees
   them beside the sheets, and they go at approval, refusal, or 30 days after the order.
 - Figures on one page must not touch or overlap; the import refuses such pages.
-- A generated figure is clipped to its keep zone (the bald figure dilated, plus a hair zone above the head), not its
-  box: on p04 the model redrew the elephant behind the hero inside the box. Pages that lose many pixels to the clip
-  are flagged in review. Art for photo stories needs tight figure cuts and a scenery occluder over any body edge the
+- A generated figure keeps only the parts of the drawing attached to the bald figure, within a generous backstop
+  (the bald figure dilated, plus an ellipse round the head for hair, hats and helmets) that fades instead of
+  cutting: on p04 the model once redrew the elephant behind the hero, which this drops whole. A figure that loses
+  more than 5% to the clip, or runs off its window, is drawn again; the least clipped of three tries is kept and
+  flagged in review. Art for photo stories needs tight figure cuts and a scenery occluder over any body edge the
   scenery hides (D56).

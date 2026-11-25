@@ -123,6 +123,31 @@ describe("fitFigure", () => {
     expect(at(100, 150).slice(0, 3)).toEqual([100, 80, 60]);
   });
 
+  it("keeps long hair below the head, fades an arm reaching past the backstop, and reports running off the window", async () => {
+    const bald = await sharp(await canvas(size, [{ ...baldRect, rgb: [100, 80, 60] }]))
+      .raw()
+      .toBuffer();
+    const output = await canvas(size, [
+      { ...baldRect, rgb: [200, 200, 200] },
+      // Long hair hanging beside the body, well below the head: attached, outside the bald outline.
+      { left: 50, top: 60, width: 20, height: 120, rgb: [200, 200, 200] },
+      // An arm reaching to the canvas edge, past the backstop (bald figure + 25% of its larger side = x 180).
+      { left: 130, top: 100, width: 70, height: 20, rgb: [200, 200, 200] },
+    ]);
+    const fitted = await fitFigure({ output, bald, head: [...head], window: [...window], size, tint: false });
+    const pixels = await sharp(fitted.png).raw().toBuffer();
+    const alpha = (x: number, y: number) => pixels[(y * size.width + x) * 4 + 3]!;
+
+    expect(alpha(52, 170)).toBe(255);
+    expect(alpha(150, 110)).toBe(255);
+    expect(alpha(195, 110)).toBe(0);
+    // No straight cut: the arm fades out across the backstop's edge.
+    expect([176, 177, 178, 179, 180, 181].some((x) => alpha(x, 110) > 0 && alpha(x, 110) < 255)).toBe(true);
+    expect(fitted.offWindow).toBe(true);
+    expect(fitted.clippedShare).toBeGreaterThan(0);
+    expect(fitted.clippedShare).toBeLessThan(0.05);
+  });
+
   it("rescales a figure drawn too small onto the bald figure's box, and refuses one without transparency", async () => {
     const bald = await sharp(await canvas(size, [{ ...baldRect, rgb: [100, 80, 60] }]))
       .raw()

@@ -11,14 +11,29 @@ export const figureRules = {
   alphaFloor: 0.1,
   /** Rescale the drawn figure onto the bald one when their overlap is below this (p04's lying hero fitted at 0.596). */
   rescaleBelowIoU: 0.5,
-  /** The keep zone: the bald figure's alpha dilated by this share of its larger side... */
+  /**
+   * What counts as the figure: each connected part of the drawing that comes within this share of the bald figure's
+   * larger side. Separate parts further away (a second Tiny, scenery) are dropped whole, never cut through.
+   */
   keepDilate: 0.08,
-  /** ...plus the head's box grown by this share of its size up and to the sides, for hair. */
-  hairGrow: 0.4,
+  /**
+   * The backstop for attached parts: the bald figure dilated by this share of its larger side, plus the hair zone. A
+   * real child is rarely the bald drawing's exact shape (a toddler's bigger head, a helmet sized to it, long hair).
+   */
+  outerDilate: 0.25,
+  /** The hair zone: an ellipse round the head's box, grown by this share of its size in every direction. */
+  hairGrow: 0.6,
+  /** The backstop's edge fades over this many pixels of the generation canvas, so a cut is never a straight line. */
+  featherPx: 4,
   /** Contrast scale of the tint, clamped. */
   tintContrast: [0.6, 1.2] as const,
-  /** The review queue flags a page whose figure lost more than this share of its pixels to the clip. */
+  /**
+   * A figure that lost more than this share of its pixels to the clip, or runs off its window, is drawn again; after
+   * the last try the best one is kept and the review queue flags the page.
+   */
   flagClippedShare: 0.05,
+  /** Running off the window: drawn pixels on the canvas edge, where the bald figure isn't, over this share of it. */
+  edgeShare: 0.01,
 } as const;
 
 /** The illustration's aspect, width over height: the whole page with bleed, or its left half. */
@@ -156,13 +171,47 @@ export const dilate = (mask: Mask, width: number, height: number, r: number) => 
   return pass(pass(mask, "x"), "y");
 };
 
+/** The drawing's parts (4-connected) that come within the `near` mask; the rest is cleared. Returns the kept mask. */
+const attachedParts = (mask: Mask, near: Mask, width: number) => {
+  const kept = new Uint8Array(mask.length);
+  const seen = new Uint8Array(mask.length);
+  const stack: Array<number> = [];
+  const part: Array<number> = [];
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || seen[start]) continue;
+    let touches = false;
+    part.length = 0;
+    stack.push(start);
+    seen[start] = 1;
+    while (stack.length) {
+      const i = stack.pop()!;
+      part.push(i);
+      if (near[i]) touches = true;
+      const x = i % width;
+      for (const j of [x > 0 ? i - 1 : -1, x < width - 1 ? i + 1 : -1, i - width, i + width]) {
+        if (j < 0 || j >= mask.length || seen[j] || !mask[j]) continue;
+        seen[j] = 1;
+        stack.push(j);
+      }
+    }
+    if (touches) for (const i of part) kept[i] = 1;
+  }
+  return kept;
+};
+
 export interface FittedFigure {
   readonly png: Uint8Array;
   readonly iou: number;
   readonly rescaled: boolean;
-  /** Share of the drawn figure's pixels outside the keep zone, which the clip removed. */
+  /** Share of the drawn figure's pixels the clip removed: detached parts and what reached past the backstop. */
   readonly clippedShare: number;
+  /** The drawing runs off its window where the bald figure doesn't: part of the child is missing. */
+  readonly offWindow: boolean;
 }
+
+/** Whether a fitted figure is good enough to keep without another try (figureRules.flagClippedShare). */
+export const figureAcceptable = (figure: Pick<FittedFigure, "clippedShare" | "offWindow">) =>
+  figure.clippedShare <= figureRules.flagClippedShare && !figure.offWindow;
 
 /** The model drew no transparency, or nothing at all: retry the generation. */
 export class FigureUnusable extends Error {}
@@ -191,49 +240,85 @@ export const fitFigure = async (input: {
 
   const bald = maskOf(input.bald, floor);
   const baldBox = bounds(bald, width)!;
+  const side = Math.max(baldBox.x1 - baldBox.x0, baldBox.y1 - baldBox.y0);
+
+  // Drop parts of the drawing that don't belong to the figure, whole.
+  const attached = attachedParts(drawn, dilate(bald, width, height, Math.round(figureRules.keepDilate * side)), width);
+  let detached = 0;
+  for (let i = 0; i < drawn.length; i++)
+    if (drawn[i] && !attached[i]) {
+      rgba[i * 4 + 3] = 0;
+      drawn[i] = 0;
+      detached++;
+    }
+
   let overlap = iou(drawn, bald);
   let rescaled = false;
   if (overlap < figureRules.rescaleBelowIoU) {
-    const box = bounds(drawn, width)!;
-    const piece = await sharp(rgba, { raw: { width, height, channels: 4 } })
-      .extract({ left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0 })
-      .resize(baldBox.x1 - baldBox.x0, baldBox.y1 - baldBox.y0, { fit: "fill" })
-      .png()
-      .toBuffer();
-    const moved = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-      .composite([{ input: piece, left: baldBox.x0, top: baldBox.y0 }])
-      .raw()
-      .toBuffer();
-    const movedMask = maskOf(moved, floor);
-    const movedIoU = iou(movedMask, bald);
-    if (movedIoU > overlap) {
-      rgba = moved;
-      drawn = movedMask;
-      overlap = movedIoU;
-      rescaled = true;
+    const box = bounds(drawn, width);
+    if (box) {
+      const piece = await sharp(rgba, { raw: { width, height, channels: 4 } })
+        .extract({ left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0 })
+        .resize(baldBox.x1 - baldBox.x0, baldBox.y1 - baldBox.y0, { fit: "fill" })
+        .png()
+        .toBuffer();
+      const moved = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+        .composite([{ input: piece, left: baldBox.x0, top: baldBox.y0 }])
+        .raw()
+        .toBuffer();
+      const movedMask = maskOf(moved, floor);
+      const movedIoU = iou(movedMask, bald);
+      if (movedIoU > overlap) {
+        rgba = moved;
+        drawn = movedMask;
+        overlap = movedIoU;
+        rescaled = true;
+      }
     }
   }
 
-  const radius = Math.round(figureRules.keepDilate * Math.max(baldBox.x1 - baldBox.x0, baldBox.y1 - baldBox.y0));
-  const keep = dilate(bald, width, height, radius);
+  // The backstop: the bald figure dilated generously, plus an ellipse round the head for hair, hats and helmets.
+  const backstop = dilate(bald, width, height, Math.round(figureRules.outerDilate * side));
   const head = inWindow(input.head, input.window, input.size);
-  const grow = figureRules.hairGrow;
-  const hx0 = Math.max(0, Math.floor(head.left - head.width * grow));
-  const hx1 = Math.min(width, Math.ceil(head.left + head.width * (1 + grow)));
-  const hy0 = Math.max(0, Math.floor(head.top - head.height * grow));
-  const hy1 = Math.min(height, head.top + head.height);
-  for (let y = hy0; y < hy1; y++) for (let x = hx0; x < hx1; x++) keep[y * width + x] = 1;
+  const cx = head.left + head.width / 2;
+  const cy = head.top + head.height / 2;
+  const rx = head.width / 2 + head.width * figureRules.hairGrow;
+  const ry = head.height / 2 + head.height * figureRules.hairGrow;
+  for (let y = Math.max(0, Math.floor(cy - ry)); y < Math.min(height, Math.ceil(cy + ry)); y++)
+    for (let x = Math.max(0, Math.floor(cx - rx)); x < Math.min(width, Math.ceil(cx + rx)); x++)
+      if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1) backstop[y * width + x] = 1;
+
+  // Off the window: drawn pixels on the canvas edge where the backstop doesn't reach it.
+  let edge = 0;
+  const border = [
+    ...Array.from({ length: width }, (_, x) => [x, (height - 1) * width + x]),
+    ...Array.from({ length: height - 2 }, (_, y) => [(y + 1) * width, (y + 1) * width + width - 1]),
+  ].flat();
+  for (const i of border) if (drawn[i] && !backstop[i]) edge++;
+  const offWindow = edge > figureRules.edgeShare * 2 * (width + height);
+
+  // Fade across the backstop's edge instead of cutting on it.
+  const soft = await sharp(Buffer.from(backstop.map((v) => v * 255)), { raw: { width, height, channels: 1 } })
+    .blur(Math.max(0.3, figureRules.featherPx / 2))
+    .extractChannel(0)
+    .raw()
+    .toBuffer();
   let kept = 0,
-    clipped = 0;
+    faded = 0;
   for (let i = 0; i < drawn.length; i++) {
     if (!drawn[i]) continue;
-    if (keep[i]) kept++;
-    else {
-      clipped++;
+    const factor = Math.min(1, (soft[i]! / 255) * 2);
+    if (factor < 0.5) {
       rgba[i * 4 + 3] = 0;
       drawn[i] = 0;
+      faded++;
+      continue;
     }
+    if (factor < 1) rgba[i * 4 + 3] = Math.round(rgba[i * 4 + 3]! * factor);
+    kept++;
   }
+  // Measured after any rescale, so a figure drawn at another size counts its own pixels.
+  const clipped = detached + faded;
 
   if (input.tint && kept > 0) {
     const stats = (pixels: Buffer, mask: Mask) => {
@@ -273,6 +358,7 @@ export const fitFigure = async (input: {
     png: new Uint8Array(png),
     iou: Math.round(overlap * 1000) / 1000,
     rescaled,
-    clippedShare: Math.round((clipped / (kept + clipped)) * 10000) / 10000,
+    clippedShare: Math.round((clipped / (clipped + kept)) * 10000) / 10000,
+    offWindow,
   };
 };

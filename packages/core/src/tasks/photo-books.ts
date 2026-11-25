@@ -13,6 +13,7 @@ import { type Hair, PhotoCheckResult, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
 import { GenerationFailed } from "../errors.ts";
 import {
+  figureAcceptable,
   FigureUnusable,
   fitFigure,
   generationSize,
@@ -64,8 +65,8 @@ const ATTEMPTS = 3;
 
 /**
  * Draws every figure of a page from the book's sheets (D56), back to front, each seeing the others bald: the page
- * reference, the model call on a transparent background, then the checks. An output with no transparency is drawn
- * again, up to three times. `tag` names the drawing (`v1`, `v2`, `cover-r0`) and keys its generations and objects.
+ * reference, the model call on a transparent background, then the checks. An output with no transparency, or one the
+ * checks don't accept (too much clipped, or off its window), is drawn again, up to three times. `tag` names the drawing (`v1`, `v2`, `cover-r0`) and keys its generations and objects.
  */
 export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function* (
   ctx: TaskContext,
@@ -103,8 +104,10 @@ export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function*
         return referenceKey;
       }).pipe(Effect.orDie),
     );
+    // Each try that comes back usable is kept; one the checks accept ends the tries, else the least clipped wins.
     let result: DrawnFigure | null = null;
-    for (let attempt = 0; attempt < ATTEMPTS && !result; attempt++) {
+    let accepted = false;
+    for (let attempt = 0; attempt < ATTEMPTS && !accepted; attempt++) {
       const generated = yield* generateImage(ctx, `${name}:a${attempt}`, {
         key: `figure:${book.id}:${options.tag}:${page.pageId}:${index}:${attempt}`,
         prompt: photoPrompts[style.promptVersion].figure({ style, ...(options.note ? { note: options.note } : {}) }),
@@ -134,20 +137,25 @@ export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function*
             Effect.orDie,
           );
           if (!checked) return null;
-          const key = `${options.outputBase}/${index}.png`;
+          const key = `${options.outputBase}/${index}${attempt === 0 ? "" : `-a${attempt}`}.png`;
           yield* storage.put(key, checked.png, "image/png");
           return {
-            figure: index,
-            slotId: figure.slotId,
-            key,
-            generationId: generated.generationId,
-            iou: checked.iou,
-            rescaled: checked.rescaled,
-            clippedShare: checked.clippedShare,
+            drawn: {
+              figure: index,
+              slotId: figure.slotId,
+              key,
+              generationId: generated.generationId,
+              iou: checked.iou,
+              rescaled: checked.rescaled,
+              clippedShare: checked.clippedShare,
+            },
+            acceptable: figureAcceptable(checked),
           };
         }).pipe(Effect.orDie),
       );
-      result = fitted;
+      if (!fitted) continue;
+      if (!result || fitted.drawn.clippedShare < result.clippedShare) result = fitted.drawn;
+      accepted = fitted.acceptable;
     }
     if (!result)
       return yield* new GenerationFailed({

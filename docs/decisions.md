@@ -334,6 +334,13 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     plus a hair zone: the head's box (recorded per figure at import) grown about 40% up and to the sides. Both are
     configuration. `page.figure` stores the share of output pixels it clipped away, and the review queue (D57) flags
     pages above a threshold.
+  - **Revised after the first real book (Sid, 2026-11-25):** a toddler's book (Lucy) had her helmet (p09) and long
+    hair (p04, p23) cut on straight lines, because a real child is rarely the bald drawing's shape. The keep zone is
+    now: each connected part of the drawing that comes within 8% of the bald figure (separate parts, such as a
+    second Tiny, are dropped whole), limited by a backstop of the bald figure dilated 25% plus an ellipse round the
+    head grown 60% in every direction, faded over a few pixels instead of cut. A figure that still loses more than 5%,
+    or runs off its window, is drawn again (up to three tries, then the least clipped is kept and flagged). On
+    Dream Adventure's 17 stock drawings this clips 0% (was up to 11%, p14's jacket cut straight).
   - **Illustrator rules (authoring docs):** cut each figure's layer tight, with no band of background around it;
     where scenery covers the body (a blanket over the torso), put it in a scenery occluder that also covers the
     shoulder and neck edge, so anything the model invents underneath stays hidden; draw a clear boundary between
