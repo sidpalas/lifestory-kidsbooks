@@ -331,7 +331,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
     figure's window) and the approved sheet, on a transparent background, never from the photo. The model draws
     what the figure wears and holds; only scenery occluders are composited over it. Production checks: retry an
     output with no transparent pixels, an alpha floor of 0.1, rescale when the fit IoU against the bald figure is
-    below **0.5** (p04's lying hero fitted correctly at 0.596), clip to the figure's keep zone, then tint.
+    below **0.5** (p04's lying hero fitted correctly at 0.596), clip to the figure's keep zone, then tint. The
+    rescale uses one scale for both axes (2026-11-26): stretching each axis to the bald box squashed faces by up to
+    22% when a top knot or a window edge made the drawing another shape.
   - **Keep zone, not the figure's box:** on p04 the model drew a second copy of Tiny, the elephant in the plate that
     the bald head rests against, plus an invented shirt and shoulder, all inside the hero's box (one sample; p23 with
     the same prompt didn't). The layer is clipped to the bald figure's alpha dilated by a few percent of its size,

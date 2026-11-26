@@ -225,6 +225,24 @@ describe("fitFigure", () => {
     expect(fitted.rescaled).toBe(true);
     expect(fitted.iou).toBeGreaterThan(0.95);
 
+    // A drawing of another shape than the bald figure (a top knot, a figure the window cuts off) keeps its proportions:
+    // 30×150 is 1:5, the bald box 60×200 is 3:10, and stretching to fit would squash the face.
+    const narrow = await canvas(size, [{ left: 60, top: 40, width: 30, height: 150, rgb: [100, 80, 60] }]);
+    const even = await fitFigure({ output: narrow, bald, head: [...head], window: [...window], size, tint: false });
+    expect(even.rescaled).toBe(true);
+    const alpha = await sharp(even.png).extractChannel(3).raw().toBuffer();
+    const xs: number[] = [],
+      ys: number[] = [];
+    for (let i = 0; i < alpha.length; i++)
+      if (alpha[i]! > 127) {
+        xs.push(i % size.width);
+        ys.push(Math.floor(i / size.width));
+      }
+    const drawnWidth = Math.max(...xs) - Math.min(...xs) + 1;
+    const drawnHeight = Math.max(...ys) - Math.min(...ys) + 1;
+    expect(drawnWidth / drawnHeight).toBeCloseTo(30 / 150, 1);
+    expect(drawnWidth).toBeGreaterThan(30);
+
     const opaque = await sharp({ create: { ...size, channels: 4, background: "#fff" } })
       .png()
       .toBuffer();

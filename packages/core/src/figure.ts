@@ -139,6 +139,51 @@ const bounds = (mask: Mask, width: number) => {
   }
   return x1 < 0 ? null : { x0, y0, x1: x1 + 1, y1: y1 + 1 };
 };
+type Box = NonNullable<ReturnType<typeof bounds>>;
+
+/**
+ * Where to put the drawing when it's rescaled onto the bald figure: one scale for both axes, between the two that
+ * would match the bald box's width or its height, and an alignment to the box's start, centre or end on each axis,
+ * whichever overlaps the bald figure most (sampled on a coarse grid).
+ */
+const evenFit = (drawn: Mask, bald: Mask, width: number, height: number, box: Box, baldBox: Box) => {
+  const bw = box.x1 - box.x0,
+    bh = box.y1 - box.y0;
+  const tw = baldBox.x1 - baldBox.x0,
+    th = baldBox.y1 - baldBox.y0;
+  const [lo, hi] = [Math.min(tw / bw, th / bh), Math.max(tw / bw, th / bh)];
+  const step = Math.max(1, Math.round(Math.max(width, height) / 300));
+  let best = { left: baldBox.x0, top: baldBox.y0, width: tw, height: th, score: -1 };
+  for (let k = 0; k <= 8; k++) {
+    const s = lo + ((hi - lo) * k) / 8;
+    const w = Math.max(1, Math.round(bw * s)),
+      h = Math.max(1, Math.round(bh * s));
+    for (const left of [baldBox.x0, Math.round((baldBox.x0 + baldBox.x1 - w) / 2), baldBox.x1 - w])
+      for (const top of [baldBox.y0, Math.round((baldBox.y0 + baldBox.y1 - h) / 2), baldBox.y1 - h]) {
+        let both = 0,
+          either = 0;
+        for (let y = 0; y < height; y += step)
+          for (let x = 0; x < width; x += step) {
+            const u = x - left,
+              v = y - top;
+            const d =
+              u >= 0 && v >= 0 && u < w && v < h
+                ? drawn[
+                    (box.y0 + Math.min(bh - 1, Math.floor(v / s))) * width +
+                      box.x0 +
+                      Math.min(bw - 1, Math.floor(u / s))
+                  ]!
+                : 0;
+            const b = bald[y * width + x]!;
+            both += d & b;
+            either += d | b;
+          }
+        const score = either ? both / either : 0;
+        if (score > best.score) best = { left, top, width: w, height: h, score };
+      }
+  }
+  return best;
+};
 
 export const iou = (a: Mask, b: Mask) => {
   let both = 0,
@@ -257,15 +302,26 @@ export const fitFigure = async (input: {
   if (overlap < figureRules.rescaleBelowIoU) {
     const box = bounds(drawn, width);
     if (box) {
+      // One scale for both axes, so a face keeps its proportions: a top knot or a figure the window cuts off makes the
+      // drawing's box another shape than the bald figure's, and stretching it to fit squashed the face.
+      const at = evenFit(drawn, bald, width, height, box, baldBox);
       const piece = await sharp(rgba, { raw: { width, height, channels: 4 } })
         .extract({ left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0 })
-        .resize(baldBox.x1 - baldBox.x0, baldBox.y1 - baldBox.y0, { fit: "fill" })
-        .png()
-        .toBuffer();
-      const moved = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-        .composite([{ input: piece, left: baldBox.x0, top: baldBox.y0 }])
+        .resize(at.width, at.height, { fit: "fill" })
         .raw()
         .toBuffer();
+      const moved = Buffer.alloc(width * height * 4);
+      for (let y = Math.max(0, at.top); y < Math.min(height, at.top + at.height); y++) {
+        const x0 = Math.max(0, at.left);
+        const x1 = Math.min(width, at.left + at.width);
+        if (x1 <= x0) break;
+        piece.copy(
+          moved,
+          (y * width + x0) * 4,
+          ((y - at.top) * at.width + x0 - at.left) * 4,
+          ((y - at.top) * at.width + x1 - at.left) * 4,
+        );
+      }
       const movedMask = maskOf(moved, floor);
       const movedIoU = iou(movedMask, bald);
       if (movedIoU > overlap) {
