@@ -1,5 +1,5 @@
 // Photo upload limits per account (D59): photos cost a check, and a passing one on a book whose roles all have photos
-// draws every sheet and the cover again, so an account can store only so many. Every stored upload counts (a
+// draws every sheet again, so an account can store only so many. Every stored upload counts (a
 // replacement, a photo the check refuses, one replaced before its check ran); a request refused before storing
 // anything (wrong type, too large, no consent, a limit) doesn't. Uploads are recorded in `photo_upload` under a lock
 // per account, so concurrent uploads can't pass a limit together.

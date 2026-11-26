@@ -250,8 +250,8 @@ export const uploadPhoto = Effect.fn("bookFlow.uploadPhoto")(function* (
           .insert(schema.bookLikeness)
           .values({ bookId: book.id, slotId: input.slotId, ...values })
           .onConflictDoUpdate({ target: [schema.bookLikeness.bookId, schema.bookLikeness.slotId], set: values });
-        // A new photo means a new sheet for this person, and a new cover once it's drawn; nobody else changes.
-        await tx.update(schema.book).set({ likenessStatus: "waiting", cover: null }).where(eq(schema.book.id, book.id));
+        // A new photo means a new sheet for this person; nobody else changes.
+        await tx.update(schema.book).set({ likenessStatus: "waiting" }).where(eq(schema.book.id, book.id));
       }),
     );
     if (previous?.photoKey) yield* storage.delete(previous.photoKey).pipe(Effect.ignore);

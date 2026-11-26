@@ -248,7 +248,7 @@ const PROOF_KEY = /^families\/([^/]+)\/proofs\/([^/]+)\.pdf$/;
  */
 export const canReadFamilyFile = Effect.fn("proofs.canReadFamilyFile")(function* (userId: string, key: string) {
   if (key.includes("..")) return false;
-  // A book's sheets, cover and pages for its family's members; its photos only for those who edit books (D56).
+  // A book's sheets and pages for its family's members; its photos only for those who edit books (D56).
   const book = BOOK_FILE_KEY.exec(key);
   if (book) {
     const [familyId, bookId, area] = [book[1]!, book[2]!, book[3]!];

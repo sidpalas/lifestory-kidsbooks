@@ -3,7 +3,7 @@
 ## What it is
 
 A parent puts their family into a story (D56): one photo per role, checked in seconds (`photo.check`), then a
-"Draw {name}" for each person's character sheet, then a cover once everyone is drawn (`likeness.sheet`); three drawings per
+"Draw {name}" for each person's character sheet (`likeness.sheet`), with no cover preview: the cover is drawn with the pages after the order; three drawings per
 person, where a note that edits their sheet or a new photo uses one, and "Make my book", which is the order (D57). The order deletes the photos, unless the parent
 opted in to photo review, and draws every figure on every page from the approved sheets (`book.make`,
 `page.figure`). The parent then changes up to 3 pages, keeping the original or the new version of each, approves a
@@ -18,8 +18,8 @@ pages, or both, or approves it for print (`book.release`). Built on the fakes; t
 - `/books/<id>`: the steps above the editor (`components/book/photo-book.tsx`): consent, a photo per role
   (`POST /api/books/<id>/photos`, resized to 1536 px in the browser; chosen with the button or dropped on that
   person's card, where a drop of several files or a non-photo uploads nothing and says why; on touch screens a
-  "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), up to three optional extra photos per person, one slot per pose with its own buttons and drop target, each person's look read from the photo to confirm or correct (swatches, "From the photo" or "You set this"), "Draw {name}", their sheet and six expressions with a note for another drawing (drawings left shown), the cover,
-  "Make my book", then the page-change form under each page and "Read your book": two steps in order above the
+  "Take a photo" button opens the rear camera, since Android 14+ Chrome's picker doesn't offer it), up to three optional extra photos per person, one slot per pose with its own buttons and drop target, each person's look read from the photo to confirm or correct (swatches, "From the photo" or "You set this"), "Draw {name}", their sheet and six expressions with a note for another drawing (drawings left shown),
+  "Make my book" once everyone is drawn, then the page-change form under each page and "Read your book": two steps in order above the
   editor (read every page, with the changed pages linked; make a proof and approve it, which sends the book for
   review in the same click), one marked current, a step with a redraw or a render under way marked in progress. Only
   a proof of the book as it is now (cast, text, chosen drawings) offers "Approve and send for review", and none while
@@ -53,7 +53,7 @@ pages, or both, or approves it for print (`book.release`). Built on the fakes; t
 ## Verify
 
 `mise run verify -- e2e -- photo-book` (`apps/web/e2e/photo-book.spec.ts`, about 60 s): a two-role book through the check with one
-bad photo, a refused two-file drop, a dropped photo and one from the camera input, a corrected hair length that reaches the sheet prompt, an extra photo of someone else refused and a passing one sent to the sheet, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, a refused new photo for the child, the order with the photos gone from storage and each person's sheet and expressions kept and shown with the cast, three page changes with keep and use-new, the
+bad photo, a refused two-file drop, a dropped photo and one from the camera input, a corrected hair length that reaches the sheet prompt, an extra photo of someone else refused and a passing one sent to the sheet, "Draw {name}" for each person, two notes using the child's last drawings while the grown-up's sheet stays, no cover generated through those drawings, a refused new photo for the child, the order with the photos gone from storage and the cover page drawn from the final sheets and each person's sheet and expressions kept and shown with the cast, three page changes with keep and use-new, the
 "Read your book" steps (the last page leading back to the proof, a proof out of date after a text edit with nothing to
 approve and the server refusing it, a new proof with the edit current, the card contained at 320 and 390 px, then
 "Approve and send for review"), the operator's character cards and decision contained at 320 and 390 px, the parent's rewritten text on the

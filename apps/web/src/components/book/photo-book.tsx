@@ -1,5 +1,5 @@
 // A photo book's steps on the book page (D56, D57): consent, a photo per role, each person's character sheet drawn
-// when the parent asks (three drawings each: the first, then notes or new photos), the cover, "Make my book", then page changes and sending the book for review. Everything here reads
+// when the parent asks (three drawings each: the first, then notes or new photos), "Make my book", then page changes and sending the book for review. Everything here reads
 // `view.flow`; while something is being checked or drawn, the page reloads its data every two seconds.
 import {
   type BookView,
@@ -721,7 +721,6 @@ function PreviewStep({ view }: { view: BookView }) {
   const { flow, manifest } = view;
   const order = useStep();
   if (!flow.likenesses.some((likeness) => likeness.checkStatus === "passed" || likeness.sheetKey)) return null;
-  const coverIndex = flow.cover ? manifest.pages.findIndex((page) => page.pageId === flow.cover!.pageId) : -1;
   const ready = flow.likenessStatus === "ready";
   return (
     <section className="flex flex-col gap-3" aria-labelledby="preview-heading" data-testid="book-step">
@@ -737,27 +736,11 @@ function PreviewStep({ view }: { view: BookView }) {
           <SheetCard key={slot.slotId} view={view} slotId={slot.slotId} />
         ))}
       </div>
-      {flow.likenessStatus === "drawing" && flow.likenesses.every((likeness) => !likeness.drawing) && (
-        <p className="text-sm">Drawing the cover with everyone on it…</p>
-      )}
       {flow.likenessStatus === "failed" && (
         <p role="alert" className="text-sm text-destructive">
           We couldn't finish that drawing; it didn't use one of your drawings. Try again, or reply to any of our emails
           and we'll look into it.
         </p>
-      )}
-      {ready && flow.cover && coverIndex >= 0 && (
-        <div className="w-fit rounded-sm shadow ring-1 ring-black/10" data-testid="cover">
-          <ScaledPage trim={manifest.trim} scale={0.4}>
-            <BookPage
-              manifest={manifest}
-              page={manifest.pages[coverIndex]!}
-              text={view.pages[coverIndex]!.text.map((block) => ({ style: block.style, text: block.text }))}
-              illustration={flow.cover.layers.map((layer) => ({ url: fileUrl(layer.key), rect: layer.rect }))}
-              cast={view.cast}
-            />
-          </ScaledPage>
-        </div>
       )}
       {ready && (
         <>

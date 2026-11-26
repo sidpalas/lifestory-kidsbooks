@@ -11,7 +11,6 @@ import {
   takesTitle,
   type CastMember,
   composePage,
-  coverPage,
   coverThumbnail,
   decodeStoryManifest,
   pageText,
@@ -230,7 +229,6 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
         storyTitle: schema.story.title,
         version: schema.storyVersion.version,
         status: schema.book.status,
-        likenessCover: schema.book.cover,
         name: schema.bookCast.name,
       })
       .from(schema.book)
@@ -252,7 +250,6 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
       storyTitle: string;
       version: number;
       status: string;
-      likenessCover: ReadonlyArray<string> | null;
       names: Array<string>;
     }
   >();
@@ -298,14 +295,14 @@ export const listBooks = Effect.fn("books.list")(function* (userId: string, fami
   for (const row of versions) manifests.set(row.id, yield* decodeStoryManifest(row.manifest).pipe(Effect.orDie));
   const summaries: ReadonlyArray<BookSummary> = [...books.values()]
     .toReversed()
-    .map(({ names, storyId, storyVersionId, likenessCover, ...book }) => {
+    .map(({ names, storyId, storyVersionId, ...book }) => {
       const manifest = manifests.get(storyVersionId)!;
       const story = { storyId, version: book.version };
-      // The cover page as drawn for the book, else the cover drawn from its sheets, else the stock figures (D56).
+      // The cover page as drawn for the book, else the stock figures (D56).
       const pageId = coverThumbnail(story, manifest)?.pageId;
       const drawn = art.filter((row) => row.bookId === book.id && row.pageId === pageId);
       const cover = coverThumbnail(story, manifest, (_figure, index) =>
-        drawn.length > 0 ? drawn.find((row) => row.figure === index)?.objectKey : likenessCover?.[index],
+        drawn.length > 0 ? drawn.find((row) => row.figure === index)?.objectKey : undefined,
       );
       return { ...book, cast: names.join(", "), cover };
     });
@@ -400,7 +397,6 @@ export const loadBook = Effect.fn("books.load")(function* (bookId: string) {
         status: schema.book.status,
         photoReview: schema.book.photoReview,
         likenessStatus: schema.book.likenessStatus,
-        cover: schema.book.cover,
         orderedAt: schema.book.orderedAt,
         reviewNote: schema.book.reviewNote,
         storyId: schema.story.id,
@@ -516,7 +512,7 @@ const chosenLayers = (flow: BookFlow, pageId: string) => {
 };
 
 /**
- * A book's photo-book state (D56, D57): likenesses, the cover, and each drawn page's versions composed for BookPage.
+ * A book's photo-book state (D56, D57): likenesses and each drawn page's versions composed for BookPage.
  * Shared with the operator's review, which sees the same, photos included only on an opted-in book.
  */
 export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<ReturnType<typeof loadBook>>) {
@@ -530,7 +526,6 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
     ),
   ]);
   const story = { storyId: book.storyId, version: book.version };
-  const cover = coverPage(book.manifest);
   const likenesses: Array<BookFlow["likenesses"][number]> = [];
   for (const slot of book.manifest.characterSlots) {
     const row = likenessRows.find((candidate) => candidate.slotId === slot.slotId);
@@ -595,13 +590,6 @@ export const bookFlow = Effect.fn("books.flow")(function* (book: Effect.Success<
     photoReview: book.photoReview,
     consented: consents.length > 0,
     likenessStatus: book.likenessStatus,
-    cover:
-      cover && book.cover
-        ? {
-            pageId: cover.pageId,
-            layers: composePage(story, cover, (_figure, index) => book.cover![index]),
-          }
-        : null,
     likenesses,
     pages,
     reviewNote: book.reviewNote,

@@ -210,8 +210,7 @@ export const BookSummary = Schema.Struct({
   cast: Schema.String,
   status: Schema.String,
   /**
-   * The book's cover: the cover page as drawn for the book, else the cover drawn from its character sheets, else the
-   * story version's stock figures (D56).
+   * The book's cover: the cover page as drawn for the book, else the story version's stock figures (D56).
    */
   cover: Schema.NullOr(CoverThumbnail),
 });
@@ -475,8 +474,6 @@ export const BookFlow = Schema.Struct({
   photoReview: Schema.Boolean,
   consented: Schema.Boolean,
   likenessStatus: Schema.Literals(["waiting", "drawing", "ready", "failed"]),
-  /** The cover page with the drawn figures, once the sheets are drawn. */
-  cover: Schema.NullOr(Schema.Struct({ pageId: Schema.String, layers: Schema.Array(Layer) })),
   likenesses: Schema.Array(
     Schema.Struct({
       slotId: Schema.String,

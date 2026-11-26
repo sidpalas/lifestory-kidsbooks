@@ -1,5 +1,5 @@
-// The durable workflows of a photo book (D56, D57): checking each photo, drawing each person's character sheet and
-// the cover, the order's page drawing, and releasing the photos. Every side effect is a step and every image
+// The durable workflows of a photo book (D56, D57): checking each photo, drawing each person's character sheet, the
+// order's page drawing (the cover page among them), and releasing the photos. Every side effect is a step and every image
 // goes through `generateImage`, so a rerun never pays twice; object keys derive from the book, page, slot, version
 // and upload, so a rerun overwrites the same objects.
 import { schema } from "@lifestory/db";
@@ -7,7 +7,7 @@ import type { TaskContext } from "absurd-sdk";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Config, Effect, Schema } from "effect";
 
-import { type Age, coverPage, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
+import { type Age, type Page, pageFigures, type PhotoFigure, storyAssetKey } from "../book-format/index.ts";
 import { loadBook } from "../books.ts";
 import { LookChoices, lookOf, PhotoCheckResult, PhotoPose, photoPoses, type PhotoReport } from "../contracts.ts";
 import { Database } from "../database.ts";
@@ -28,7 +28,7 @@ import { photoPrompts } from "../photo-prompts.ts";
 import { ObjectStorage } from "../storage.ts";
 import { spawnScreenCopies } from "./screen-copies.ts";
 
-/** Everything a book owns in storage (D31): photos, likeness (sheets, cover), and pages. Deleted with the book. */
+/** Everything a book owns in storage (D31): photos, likeness (sheets), and pages. Deleted with the book. */
 export const bookPrefix = (familyId: string, bookId: string) => `families/${familyId}/books/${bookId}/`;
 export const photoObjectKey = (familyId: string, bookId: string, slotId: string, uploadId: string) =>
   `${bookPrefix(familyId, bookId)}photos/${slotId}/${uploadId}`;
@@ -73,7 +73,7 @@ const ATTEMPTS = 3;
 /**
  * Draws every figure of a page from the book's sheets (D56), back to front, each seeing the others bald: the page
  * reference, the model call on a transparent background, then the checks. An output with no transparency, or one the
- * checks don't accept (too much clipped, or off its window), is drawn again, up to three times. `tag` names the drawing (`v1`, `v2`, `cover-r0`) and keys its generations and objects.
+ * checks don't accept (too much clipped, or off its window), is drawn again, up to three times. `tag` names the drawing (`v1`, `v2`) and keys its generations and objects.
  */
 export const drawPageFigures = Effect.fn("photoBooks.drawPageFigures")(function* (
   ctx: TaskContext,
@@ -210,50 +210,6 @@ const expressionsAtStart = (ctx: TaskContext, bookId: string) =>
       ),
     ),
   );
-
-/**
- * Draws the cover from the current sheets and marks the likeness ready, unless meanwhile another person's sheet
- * started drawing or a new photo cleared one: that drawing draws the cover again.
- */
-const drawCover = Effect.fn("photoBooks.drawCover")(function* (
-  ctx: TaskContext,
-  book: LoadedBook,
-  sheets: Readonly<Record<string, string>>,
-  drawId: string,
-) {
-  const page = coverPage(book.manifest);
-  const cover = page
-    ? yield* drawPageFigures(ctx, book, page, sheets, {
-        tag: `cover-${drawId}`,
-        outputBase: `${bookPrefix(book.familyId, book.id)}likeness/cover/${drawId}`,
-        expressions: yield* expressionsAtStart(ctx, book.id),
-      })
-    : [];
-  yield* step(
-    ctx,
-    "ready",
-    Database.query((db) =>
-      db
-        .update(schema.book)
-        .set({ cover: cover.map((figure) => figure.key), likenessStatus: "ready" })
-        .where(
-          and(
-            eq(schema.book.id, book.id),
-            sql`not exists (select 1 from ${schema.bookLikeness} where ${schema.bookLikeness.bookId} = ${book.id}
-              and (${schema.bookLikeness.drawing} or ${schema.bookLikeness.sheetKey} is null))`,
-          ),
-        ),
-    ).pipe(Effect.as(null)),
-  );
-  yield* step(
-    ctx,
-    "cover screen copies",
-    spawnScreenCopies(
-      cover.map((figure) => figure.key),
-      `screen-copies:${book.id}:cover-${drawId}`,
-    ).pipe(Effect.orDie, Effect.as(null)),
-  );
-});
 
 /** A role's likeness while `uploadId` is still its photo and not deleted, else null. */
 const currentUpload = (bookId: string, slotId: string, uploadId: string, pose?: PhotoPose) =>
@@ -406,7 +362,7 @@ export const checkPhoto = defineTask({
                 if (cleared.length > 0)
                   await tx
                     .update(schema.book)
-                    .set({ likenessStatus: "waiting", cover: null })
+                    .set({ likenessStatus: "waiting" })
                     .where(and(eq(schema.book.id, bookId), eq(schema.book.status, "draft")));
               }),
             );
@@ -434,8 +390,8 @@ export const checkPhoto = defineTask({
 /**
  * Draws one person's character sheet (D56), as the parent asked: "Draw {name}" draws it from the photo and the
  * story's style reference; a note edits the current sheet (LIKENESS_REVISE_MODE=fresh draws a fresh sheet from the
- * photo with the note instead). Once every person has a sheet and none is drawing, draws the cover. A failed drawing
- * gives the person's drawing back.
+ * photo with the note instead). Once every person has a sheet and none is drawing, the book is ready to order; the
+ * cover is drawn with the other pages after the order. A failed drawing gives the person's drawing back.
  */
 export const drawLikenessSheet = defineTask({
   name: "likeness.sheet",
@@ -521,32 +477,30 @@ export const drawLikenessSheet = defineTask({
         references: [sheet.key],
         outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/expressions-${drawId}`,
       });
-      // Store the sheet, then see whether the cover is due: every person drawn and nobody drawing.
-      const sheets = yield* step(
+      // Store the sheet; the last sheet to finish makes the book ready to order (every person drawn, nobody drawing).
+      yield* step(
         ctx,
-        "store",
-        Effect.gen(function* () {
-          yield* Database.query((db) =>
-            db
+        "store sheet",
+        Database.query((db) =>
+          db.transaction(async (tx) => {
+            // Sheets finishing together take turns here, so the last one sees every other sheet stored.
+            await tx.execute(sql`select 1 from book where id = ${bookId} for update`);
+            await tx
               .update(schema.bookLikeness)
               .set({ sheetKey: sheet.key, expressionsKey: expressions.key, drawing: false })
-              .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId))),
-          );
-          const rows = yield* likenesses(bookId);
-          if (rows.some((candidate) => candidate.drawing)) return null;
-          const drawn = book.manifest.characterSlots.map(
-            (candidate) => rows.find((r) => r.slotId === candidate.slotId)?.sheetKey,
-          );
-          if (drawn.some((key) => !key)) {
-            yield* Database.query((db) =>
-              db.update(schema.book).set({ likenessStatus: "waiting" }).where(eq(schema.book.id, bookId)),
+              .where(and(eq(schema.bookLikeness.bookId, bookId), eq(schema.bookLikeness.slotId, slotId)));
+            const rows = await tx.select().from(schema.bookLikeness).where(eq(schema.bookLikeness.bookId, bookId));
+            if (rows.some((candidate) => candidate.drawing)) return;
+            const drawn = book.manifest.characterSlots.every((candidate) =>
+              rows.some((r) => r.slotId === candidate.slotId && r.sheetKey),
             );
-            return null;
-          }
-          return Object.fromEntries(rows.flatMap((r) => (r.sheetKey ? [[r.slotId, r.sheetKey] as const] : [])));
-        }),
+            await tx
+              .update(schema.book)
+              .set({ likenessStatus: drawn ? "ready" : "waiting" })
+              .where(eq(schema.book.id, bookId));
+          }),
+        ).pipe(Effect.as(null)),
       );
-      if (sheets) yield* drawCover(ctx, book, sheets, drawId);
       return { draw };
     }).pipe(
       Effect.catchTag("GenerationFailed", () =>

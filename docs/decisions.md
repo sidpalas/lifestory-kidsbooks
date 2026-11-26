@@ -308,7 +308,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **The parent's path:** the story page shows the illustrator's stock characters. "Put your family in this book"
   makes a draft book. The parent says who plays each role (every role, not only the hero) and uploads
   one photo each. Each photo is checked in about 3 s, and the check reads how the person looks. Once a person's photo passes, "Draw {name}"
-  draws their sheet (about 20 s); once everyone has one, the cover with everyone on it follows. **Drawings (Sid,
+  draws their sheet (about 20 s); once everyone has one, "Make my book" is offered. **No cover preview (Sid,
+  2026-11-26: "the character sheet is sufficient"):** the sheets used to be followed by the cover drawn from them,
+  extra waiting and figure calls for every drawing; the cover is now drawn only with the other pages after the order
+  (`book.make` draws the cover page like any page), and `book.cover` is no longer written or read. **Drawings (Sid,
   2026-11-25):** each person gets three drawings, the first included; a note on their sheet or a new photo after
   it uses one, and nobody else's sheet changes. A person with no drawings left takes no new photo, and a failed
   drawing gives its drawing back (`book_likeness.draws`, `MAX_SHEET_DRAWS`). This replaces the book-wide two rounds
@@ -321,8 +324,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   - **Character sheet**, once per role per book, from the photo and the story's style reference: the person at the
     age the parent chose for them (one the role accepts), front, three-quarter and back views, in the slot's stock outfit, with the confirmed look in words. The book
     owns it, because it carries that story's style.
-  - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023), and the cover is redrawn
-    from the sheets (`likeness.sheet` with a note). **Approved by Sid (2026-11-24)** over his first choice of a
+  - **Preview changes edit the current sheet** with the note, one edit per note (US$0.023)
+    (`likeness.sheet` with a note). **Approved by Sid (2026-11-24)** over his first choice of a
     fresh sheet from the photo each round, on this evidence. Drift test, three rounds: chained edits kept outline overlap ≥ 0.994 with body
     change ≤ 14/255; fresh sheets fell to 0.797 overlap with ≤ 77/255 and drew a different-looking child each round.
     The mode and prompt are configuration, so the fresh-sheet path stays available. After about 5 edits, the sheet
@@ -405,7 +408,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   | Task | Spawned by | Steps |
   | --- | --- | --- |
   | `photo.check` | each upload | moderation, vision check, store the result; delete the photo on refusal |
-  | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note) and their expressions from it, then the cover once everyone has a sheet and none is drawing; keyed by book, person and drawing |
+  | `likeness.sheet` | "Draw {name}", or a note on that person's sheet | one person's sheet (from the photo, or an edit with the note) and their expressions from it; the last to finish marks the book ready to order; keyed by book, person and drawing |
   | `book.make` | the order (D57) | delete the book's photos unless the parent opted in to photo review, then spawn `page.figure` for every figure, five at a time, wait, mark the book ready for page changes |
   | `page.figure` | `book.make`, a page change | generate, the checks above, tint, store; keyed by book, page, slot and version |
   | `book.release` | the operator's approval (D57) | delete any photos kept for review; when print ordering arrives, sending the file to the printer becomes the step before it |
@@ -424,7 +427,7 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   An opted-in book keeps its photos until the operator approves it (`book.release`) or refuses it, and at most 30
   days after the order (the 30 days are Made; Sid can veto). The parent can withdraw it until approval, which
   deletes the photos at once. The consent row records the choice (D58).
-- **Storage and processors:** sheets, the cover and preview
+- **Storage and processors:** sheets and preview
   rounds live under `…/books/<bookId>/likeness/` and pages, both versions of a changed one, under `…/pages/`, all
   deleted with the book. Only the worker reads photos and only OpenAI receives them, twice (the check and the
   sheet; an extra photo a third time, with the main one, to compare them), never for pages. The operator sees them only on an opted-in book, through `reviewBook` (D57).
@@ -515,8 +518,8 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
 - **Asked (Sid, 2026-11-25):** rate limit the photos an account can upload, or cap them, raising the cap when they
   order a book.
 - **Why uploads cost:** a photo's check is about US$0.002 (D56). Drawing is no longer started by an upload: the
-  parent asks for each person's sheet ("Draw {name}", US$0.032, then the cover's figures at US$0.036 each, up to
-  three tries), and each person has three drawings (D56), so uploads can't loop drawing. The limits keep uploads
+  parent asks for each person's sheet ("Draw {name}", US$0.032; until 2026-11-26 also the cover's figures at
+  US$0.036 each, up to three tries), and each person has three drawings (D56), so uploads can't loop drawing. The limits keep uploads
   from looping the check. Deleting a draft doesn't undo any of it, and the sweep deletes drafts after a day (D57).
 - **What counts:** every upload the server stored: replacements, photos the check refuses, and photos replaced
   before their check ran. A request refused before anything is stored (wrong type, too large, no consent, not a

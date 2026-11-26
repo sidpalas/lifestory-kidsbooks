@@ -39,7 +39,7 @@ export const bookStatus = pgEnum("book_status", [
   "refused",
 ]);
 
-/** Where a draft's character sheets and cover are (D56): waiting for photos, being drawn, ready, or failed. */
+/** Where a draft's character sheets are (D56): waiting for photos, being drawn, ready, or failed. */
 export const likenessStatus = pgEnum("likeness_status", ["waiting", "drawing", "ready", "failed"]);
 
 /** A family's personalized copy of one story version. */
@@ -58,7 +58,7 @@ export const book = pgTable(
     /** The parent let our team see the photos while reviewing the book (D56); off by default. */
     photoReview: boolean("photo_review").notNull().default(false),
     likenessStatus: likenessStatus("likeness_status").notNull().default("waiting"),
-    /** The cover's drawn figure layers, one per figure of the first page, bottom to top; null before the first sheets. */
+    /** No longer written or read: the cover preview drawn from the sheets, before the cover was left to the order. */
     cover: jsonb("cover").$type<ReadonlyArray<string>>(),
     orderedAt: timestamp("ordered_at", { withTimezone: true }),
     /** The operator's decision (D57): who, when, and the note sent with a refusal. */

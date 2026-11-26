@@ -80,16 +80,16 @@ const startBook = async (page: Page, child: string, grownup: string) => {
   return new URL(page.url()).pathname.split("/").pop()!;
 };
 
-/** Draws each person once their photo passes ("Draw {name}"), then waits for the sheets and the cover. */
+/** Draws each person once their photo passes ("Draw {name}"), then waits for the sheets and "Make my book". */
 const drawEveryone = async (page: Page, names: ReadonlyArray<string>) => {
   for (const name of names)
     await page.getByRole("button", { name: `Draw ${name} (3 drawings left)` }).click({ timeout: 30_000 });
   await expect(page.getByTestId("sheet-hero")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId("sheet-grownup")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByTestId("cover")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Make my book" })).toBeVisible({ timeout: 60_000 });
 };
 
-/** Consent, then a passing photo per role; draws everyone and waits for the sheets and the cover. */
+/** Consent, then a passing photo per role; draws everyone and waits for the sheets and "Make my book". */
 const addPhotos = async (page: Page, child: string, grownup: string, shareWithReview: boolean) => {
   await page.getByLabel("I'm 18 or older.").check();
   await page.getByLabel(/^I have the right to use each photo/).check();
@@ -288,6 +288,14 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       `You've used all 3 drawings of ${child}, so their photo can't change.`,
     );
 
+    // Drawing and redrawing sheets draws no cover: the cover is drawn with the other pages after the order.
+    expect(
+      await sql("select count(*)::int as n from generation where request->>'outputKey' like $1", [
+        `%/books/${bookId}/likeness/cover/%`,
+      ]),
+    ).toEqual([{ n: 0 }]);
+    await expect(page.getByText(/Drawing the cover/)).toHaveCount(0);
+
     // Until the order, the sheets show only in the preview step, not with the cast.
     await expect(page.getByTestId("role-hero").getByRole("button", { name: /character sheet/ })).toHaveCount(0);
 
@@ -321,6 +329,16 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await evidence(page, "photo-cast-sheets");
     const art = await sql<{ n: number }>("select count(*)::int as n from book_page_art where book_id = $1", [bookId]);
     expect(art[0]!.n).toBe(5);
+    // The cover page (p01, both roles) is drawn by the order, from the final sheets: the hero's third drawing.
+    const coverFigures = await sql<{ slot_id: string; references: Array<string> }>(
+      `select a.slot_id, g.request->'references' as references from book_page_art a join generation g on g.id = a.generation_id
+       where a.book_id = $1 and a.page_id = 'p01' and a.version = 1 order by a.figure`,
+      [bookId],
+    );
+    expect(coverFigures.map((figure) => [figure.slot_id, figure.references[1]])).toEqual([
+      ["hero", after("hero").sheet_key],
+      ["grownup", after("grownup").sheet_key],
+    ]);
 
     // Three page changes: use the new drawing on two, keep the original on one; then no fourth.
     const strip = page.getByRole("region", { name: "All pages" });

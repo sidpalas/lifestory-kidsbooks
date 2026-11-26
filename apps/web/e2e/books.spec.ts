@@ -476,10 +476,7 @@ test("a family with a book of the story is sent to it instead of silently making
   }
 });
 
-test("each book in Our books shows its cover: the drawn cover page, else the cover from the sheets, else stock figures", async ({
-  page,
-  browser,
-}) => {
+test("each book in Our books shows its cover: the drawn cover page, else stock figures", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const id = unique();
   const child = `Bo ${id}`;
@@ -551,13 +548,6 @@ test("each book in Our books shows its cover: the drawn cover page, else the cov
   await loaded();
   await evidence(page, "books-cover-stock");
 
-  // With the cover drawn from the sheets: its figures over the plate.
-  const likeness = [`${prefix}/likeness/cover/r0/0.svg`, `${prefix}/likeness/cover/r0/1.svg`];
-  await store(likeness, "update book set cover = $2 where id = $1", [bookId, JSON.stringify(likeness)]);
-  await page.reload();
-  expect(await sources()).toEqual([plate, ...likeness.map((key) => `/api/files/${key}`)]);
-  await loaded();
-
   // With the cover page drawn for the book: the version the parent chose, not another.
   const drawn = (version: number) => [0, 1].map((figure) => `${prefix}/pages/p01/v${version}/${figure}.svg`);
   await store(
@@ -597,8 +587,7 @@ test("each book in Our books shows its cover: the drawn cover page, else the cov
   const outsider = await browser.newPage();
   await outsider.goto(`/__dev/log-me-in/outsider-${id}@lifestory.dev?returnTo=/books`);
   await expect(outsider.getByTestId("book-cover")).toHaveCount(0);
-  for (const key of [likeness[0]!, drawn(1)[0]!])
-    expect((await outsider.request.get(`/api/files/${key}`)).status()).toBe(404);
+  expect((await outsider.request.get(`/api/files/${drawn(1)[0]}`)).status()).toBe(404);
   await outsider.close();
 });
 

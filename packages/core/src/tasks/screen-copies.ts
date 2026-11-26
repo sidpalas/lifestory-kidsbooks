@@ -51,10 +51,10 @@ export const spawnStoryScreenCopies = Effect.fn("screenImages.spawnStory")(funct
 });
 
 /**
- * The art shown on screen among a book's files: its drawn page figures and cover figures, not the photos, the page
+ * The art shown on screen among a book's files: its drawn page figures, not the photos, the page
  * references the model saw, or its raw drawings before fitting.
  */
-const SHOWN_BOOK_ART = /^families\/[^/]+\/books\/[^/]+\/(pages|likeness\/cover)\/.+\/\d+(-a\d+)?\.png$/;
+const SHOWN_BOOK_ART = /^families\/[^/]+\/books\/[^/]+\/pages\/.+\/\d+(-a\d+)?\.png$/;
 
 /**
  * Backfill for art stored before screen copies (`node packages/core/src/tasks/screen-copies.ts`): spawns the task once
