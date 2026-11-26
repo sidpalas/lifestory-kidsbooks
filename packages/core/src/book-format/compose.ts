@@ -1,7 +1,7 @@
 // A page's illustration as object storage keys for BookPage, bottom to top (D56): the illustrator's art as drawn,
 // and each figure as the family's drawing of it, else the story's stock drawing, else the bald reference. Pure and
 // browser-safe: drawing a figure happens in tasks, never when a page is shown.
-import { type Page, pageFigures, type PhotoFigure, type Rect, storyAssetKey, type StoryManifest } from "./manifest.ts";
+import { type Page, type PhotoFigure, type Rect, storyAssetKey, type StoryManifest } from "./manifest.ts";
 
 export type PlacedRect = readonly [number, number, number, number];
 
@@ -34,15 +34,16 @@ export const composePage = (
 };
 
 /**
- * A thumbnail of the cover page (else the first page): its illustration area's size, for its shape, and its layers,
- * each figure from `drawn` as in composePage. Null for a story without pages.
+ * A thumbnail of the cover, which is always page 1: the front of a printed book and the first page of a digital one.
+ * Its illustration area's size, for its shape, and its layers, each figure from `drawn` as in composePage. Null for a
+ * story without pages.
  */
 export const coverThumbnail = (
   story: { readonly storyId: string; readonly version: number },
   manifest: StoryManifest,
   drawn?: (figure: PhotoFigure, index: number) => string | undefined,
 ) => {
-  const page = coverPage(manifest) ?? manifest.pages[0];
+  const page = manifest.pages[0];
   if (!page) return null;
   const { trim } = manifest;
   return {
@@ -51,14 +52,4 @@ export const coverThumbnail = (
     heightIn: trim.heightIn + 2 * trim.bleedIn,
     layers: composePage(story, page, drawn),
   };
-};
-
-/** The page the cover is drawn from: the first with every role on it, else the first with any figure. */
-export const coverPage = (manifest: StoryManifest): Page | undefined => {
-  const slots = manifest.characterSlots.map((slot) => slot.slotId);
-  const withFigures = manifest.pages.filter((page) => pageFigures(page).length > 0);
-  return (
-    withFigures.find((page) => slots.every((slotId) => pageFigures(page).some((f) => f.slotId === slotId))) ??
-    withFigures[0]
-  );
 };

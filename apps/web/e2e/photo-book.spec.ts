@@ -329,7 +329,7 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await evidence(page, "photo-cast-sheets");
     const art = await sql<{ n: number }>("select count(*)::int as n from book_page_art where book_id = $1", [bookId]);
     expect(art[0]!.n).toBe(5);
-    // The cover page (p01, both roles) is drawn by the order, from the final sheets: the hero's third drawing.
+    // The cover, page 1, is drawn by the order from the final sheets: the hero's third drawing.
     const coverFigures = await sql<{ slot_id: string; references: Array<string> }>(
       `select a.slot_id, g.request->'references' as references from book_page_art a join generation g on g.id = a.generation_id
        where a.book_id = $1 and a.page_id = 'p01' and a.version = 1 order by a.figure`,

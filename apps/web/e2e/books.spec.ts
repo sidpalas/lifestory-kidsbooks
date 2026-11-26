@@ -539,7 +539,7 @@ test("each book in Our books shows its cover: the drawn cover page, else stock f
       )
       .toBe(true);
 
-  // Before anything is drawn: the story version's cover page (p01, with both roles) in stock figures.
+  // Before anything is drawn: the story version's cover, page 1, in stock figures.
   await page.goto("/books");
   const [plate, ...stock] = await sources();
   expect(plate).toMatch(/^\/api\/files\/stories\/[^/]+\/v\d+\/pages\/p01\/.+/);

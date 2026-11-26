@@ -311,8 +311,9 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   draws their sheet (about 20 s); once everyone has one, "Make my book" is offered. **No cover preview (Sid,
   2026-11-26: "the character sheet is sufficient"):** the sheets used to be followed by the cover drawn from them,
   extra waiting and figure calls for every drawing; the cover is now drawn only with the other pages after the order
-  (`book.make` draws the cover page like any page), and migration 0028 drops the `book.cover` column that held the preview's figures; the cover is the
-  manifest's cover page, stored with the other pages in `book_page_art`. **Drawings (Sid,
+  (`book.make` draws the cover page like any page), and migration 0028 drops the `book.cover` column that held the preview's figures; the cover is
+  always page 1 (Sid, 2026-11-26: the front of a printed book, the first page of a digital one; it replaced "the
+  first page with every role"), stored with the other pages in `book_page_art`. **Drawings (Sid,
   2026-11-25):** each person gets three drawings, the first included; a note on their sheet or a new photo after
   it uses one, and nobody else's sheet changes. A person with no drawings left takes no new photo, and a failed
   drawing gives its drawing back (`book_likeness.draws`, `MAX_SHEET_DRAWS`). This replaces the book-wide two rounds

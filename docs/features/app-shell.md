@@ -6,7 +6,7 @@ The navigation around every family page (D48): a sidebar with Home, Stories, Our
 the family's books: members and invitations); bottom tabs on phones. Who plays each role is entered per book (D56).
 Home shows a "Next step" card until the family has a book, then
 the newest book ("Pick up where you left off") and the stories. A story card shows the story's cover beside its
-title: the cover page (the first with every role) of its newest published version, with the illustrator's stock
+title: the cover, always page 1 (the front of a printed book, the first page of a digital one), of its newest published version, with the illustrator's stock
 figures, as the story page draws it; nothing is generated for it. Each book in Our books shows its own cover the same
 way: the cover page as drawn for the book (the version the parent chose), else its story version's stock figures; again nothing is generated for it, and its images are the family's
 files and the pinned version's assets, under the usual file rules. A story card's button opens the family's book of it, or the

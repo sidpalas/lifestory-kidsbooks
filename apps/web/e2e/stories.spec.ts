@@ -101,7 +101,7 @@ test("story assets need a session and a story the user may read", async ({ page,
   expect((await page.request.get("/api/files/stories/no_such_story/v1/pages/p01/plate.svg")).status()).toBe(404);
 });
 
-test("each story's card shows its cover: the newest published version's page with every role, in stock figures", async ({
+test("each story's card shows its cover: page 1 of the newest published version, in stock figures", async ({
   page,
 }) => {
   // Imported here, not at the top (AGENTS.md, "Orb size").
@@ -116,7 +116,8 @@ test("each story's card shows its cover: the newest published version's page wit
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const storyId = `story_e2e_cover_${id}`;
   const title = `Cover Picnic ${id}`;
-  // Version 2 takes the grown-up off page 1, so page 3 is the first with both roles; version 3 is an unpublished draft.
+  // Version 2 takes the grown-up off page 1, which stays the cover (page 3 has both roles); version 3 is an unpublished
+  // draft.
   const v2 = structuredClone(manifest);
   v2.pages[0].illustration.layers = v2.pages[0].illustration.layers.filter(
     (layer: { slotId: string | null }) => layer.slotId !== "grownup",
@@ -153,11 +154,10 @@ test("each story's card shows its cover: the newest published version's page wit
 
   await page.goto(`${newReader()}?returnTo=/stories`);
   const cover = page.getByTestId("stories").getByRole("listitem").filter({ hasText: title }).getByTestId("story-cover");
-  const files = `/api/files/stories/${storyId}/v2/pages/p03`;
-  await expect(cover.locator("img")).toHaveCount(3);
+  const files = `/api/files/stories/${storyId}/v2/pages/p01`;
+  await expect(cover.locator("img")).toHaveCount(2);
   expect(await cover.locator("img").evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")))).toEqual([
     `${files}/plate.svg`,
-    `${files}/grownup/stock.svg`,
     `${files}/hero/stock.svg`,
   ]);
   await expect
