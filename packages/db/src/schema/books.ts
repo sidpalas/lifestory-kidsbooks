@@ -58,8 +58,6 @@ export const book = pgTable(
     /** The parent let our team see the photos while reviewing the book (D56); off by default. */
     photoReview: boolean("photo_review").notNull().default(false),
     likenessStatus: likenessStatus("likeness_status").notNull().default("waiting"),
-    /** No longer written or read: the cover preview drawn from the sheets, before the cover was left to the order. */
-    cover: jsonb("cover").$type<ReadonlyArray<string>>(),
     orderedAt: timestamp("ordered_at", { withTimezone: true }),
     /** The operator's decision (D57): who, when, and the note sent with a refusal. */
     reviewedBy: text("reviewed_by").references(() => user.id, { onDelete: "set null" }),
