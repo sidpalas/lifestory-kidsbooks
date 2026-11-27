@@ -15,7 +15,7 @@ sketch, with wobbly overlapping strokes, unerased construction lines and lots of
 The art is AI-generated (OpenAI `gpt-image-2.6-sunburst`, prompts in `gen.mjs`; stock figures with
 `gpt-image-2.5-sunburst`); OpenAI assigns its output to the customer (Services Agreement §4.1). No real person's photo
 is in it. A first, more polished pencil round was replaced at Sid's request (2026-11-27); with it, the whole story cost
-about US$1.98 (v1 and v2). The images and the built story stay out of the repository; these scripts rebuild them:
+about US$1.98 (v1 to v3). The images and the built story stay out of the repository; these scripts rebuild them:
 
 ```sh
 node fixtures/art-sources/moon-walk/gen.mjs <raw dir>                          # with OPENAI_API_KEY; ~US$0.60
@@ -37,3 +37,8 @@ colour): the model drew the bald child cooler than the dad, and the tint carried
 
 v2 (Sid, 2026-11-27) re-toned the figures as above and made the child smaller beside the dad: about 52% of his
 height standing (p01), 63% on p02 and 70% sitting on p04. The child's stock figures were redrawn for US$0.14.
+
+v3 (Sid, 2026-11-27) made every figure equally light: the model shaded some bald figures much heavier than others
+(mean ink 20 to 57 levels below the paper, darkest on the cover, the dad on p02 and the child on p03), and the tint
+copied that into the book. `compose.mjs` scales each figure's ink to the same mean (`INK`); the stock figures were
+re-fitted from the same drawings, at no cost.

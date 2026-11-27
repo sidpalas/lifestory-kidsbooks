@@ -11,6 +11,8 @@ const sharp = createRequire(new URL("../../../packages/core/x.js", import.meta.u
 const [raw, out] = process.argv.slice(2);
 if (!raw || !out) throw new Error("usage: compose.mjs <raw dir> <export dir>");
 const C = 2625; // 8.5 in plus 0.125 in bleed each side, at 300 px/in
+/** Every figure's mean ink, in lightness levels below the paper (0–255), as light as the lightest drawn one. */
+const INK = 26;
 const kite = new URL("../../stories/kite-day/", import.meta.url).pathname;
 
 // Per page, back to front: the box (thousandths of the canvas) each figure is fitted into, its head in the raw
@@ -154,17 +156,29 @@ for (const page of pages) {
     // illustrator's figure layer: fitFigure's tint and overlap checks compare against it.
     const paper = await paperOf(join(raw, `${page.pageId}-plate.png`));
     const inside = silhouette(data, info.width, info.height, 10);
-    // Every figure is then graphite on that paper: its lightness times the paper's colour, so the child and the
-    // parent share the plate's warmth (the model drew the bald child cooler, and the tint copies it).
-    for (let p = 0; p < info.width * info.height; p++) {
+    // Every figure is then graphite on that paper, all equally dark: each pixel's ink (how much darker than the
+    // paper it is) scaled so the figure's mean ink is INK, then laid on the paper's colour. The model shaded some
+    // bald figures much heavier than others, and the tint copies each one's darkness and warmth into the book.
+    const paperL = 0.299 * paper[0] + 0.587 * paper[1] + 0.114 * paper[2];
+    const n = info.width * info.height;
+    const ink = new Float32Array(n);
+    let sum = 0;
+    let count = 0;
+    for (let p = 0; p < n; p++) {
       const a = data[p * 4 + 3] / 255;
-      const lum = (0.299 * data[p * 4] + 0.587 * data[p * 4 + 1] + 0.114 * data[p * 4 + 2]) / 255;
-      const over = inside[p] ? 1 : a;
-      for (let c = 0; c < 3; c++) {
-        const ink = lum * paper[c];
-        data[p * 4 + c] = Math.round(inside[p] ? ink * a + paper[c] * (1 - a) : ink);
+      const lum = 0.299 * data[p * 4] + 0.587 * data[p * 4 + 1] + 0.114 * data[p * 4 + 2];
+      // Over the paper fill inside the figure, a faint stroke is that much ink; outside, only the stroke's own.
+      ink[p] = Math.max(0, inside[p] ? (paperL - lum) * a : paperL - lum);
+      if (inside[p] || a > 0.8) {
+        sum += ink[p];
+        count++;
       }
-      data[p * 4 + 3] = Math.round(over * 255);
+    }
+    const k = INK / (sum / count);
+    for (let p = 0; p < n; p++) {
+      const q = Math.max(0, 1 - (ink[p] * k) / paperL);
+      for (let c = 0; c < 3; c++) data[p * 4 + c] = Math.round(q * paper[c]);
+      if (inside[p]) data[p * 4 + 3] = 255;
     }
     const [bx0, by0, bx1, by1] = figure.box.map((v) => (v * C) / 1000);
     const scale = Math.min((bx1 - bx0) / (x1 - x0), (by1 - by0) / (y1 - y0));
