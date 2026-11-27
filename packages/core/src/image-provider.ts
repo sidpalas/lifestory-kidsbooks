@@ -17,7 +17,10 @@ export interface ImageJob {
   readonly seed: number;
   /** Object keys of reference images, in order: the prompt calls them "the first image", "the second image", ... */
   readonly references: ReadonlyArray<string>;
-  /** "transparent" for a figure layer (D56); the default draws a background. */
+  /**
+   * "transparent" for a figure layer (D56), "opaque" for anything drawn on paper, such as a sheet. Without it the
+   * provider chooses: OpenAI's "auto" can return a transparent sheet.
+   */
   readonly background?: "transparent" | "opaque";
   /** Where the provider writes the image. */
   readonly outputKey: string;

@@ -6,6 +6,7 @@
 // (AppConfig.dataRetention).
 import type { JsonObject } from "absurd-sdk";
 import { Config, Effect, Layer, Redacted } from "effect";
+import sharp from "sharp";
 
 import { GenerationFailed } from "../errors.ts";
 import { generationEvent, type GenerationOutcome, ImageProvider } from "../image-provider.ts";
@@ -84,11 +85,18 @@ export const OpenAIImageProvider = Layer.effect(
           if (job.background) form.set("background", job.background);
           for (const [i, key] of job.references.entries()) {
             const reference = yield* storage.get(key).pipe(Effect.mapError((error) => fail(error.message)));
-            form.append(
-              "image[]",
-              new Blob([new Uint8Array(reference.body)], { type: reference.contentType }),
-              `ref-${i}.png`,
-            );
+            // The model reads a reference's colour under its transparency, which is often near-black: a transparent
+            // sheet sent as is came back with a dark gradient around the figure (2026-11-27). References are
+            // pictures to look at, never masks, so one with transparency is sent on white paper.
+            const body = (yield* Effect.promise(() => sharp(reference.body).metadata())).hasAlpha
+              ? {
+                  bytes: yield* Effect.promise(() =>
+                    sharp(reference.body).flatten({ background: "#ffffff" }).png().toBuffer(),
+                  ),
+                  type: "image/png",
+                }
+              : { bytes: reference.body, type: reference.contentType };
+            form.append("image[]", new Blob([new Uint8Array(body.bytes)], { type: body.type }), `ref-${i}.png`);
           }
           const response = yield* Effect.tryPromise({
             try: () =>

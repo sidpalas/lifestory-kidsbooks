@@ -465,6 +465,7 @@ export const drawLikenessSheet = defineTask({
         references: fresh
           ? [row.photoKey, ...poses, storyAssetKey(book.storyId, book.version, style.styleReference)]
           : [row.sheetKey!],
+        background: "opaque",
         outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/sheet-${drawId}`,
       });
       // The same person in several expressions, from the sheet just drawn, so the parent judges the likeness beyond
@@ -475,6 +476,7 @@ export const drawLikenessSheet = defineTask({
         width: 1536,
         height: 1024,
         references: [sheet.key],
+        background: "opaque",
         outputKey: `${bookPrefix(book.familyId, bookId)}likeness/${slotId}/expressions-${drawId}`,
       });
       // Store the sheet; the last sheet to finish makes the book ready to order (every person drawn, nobody drawing).
