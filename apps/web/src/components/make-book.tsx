@@ -139,9 +139,10 @@ const choiceClass =
   "cursor-pointer rounded px-2.5 py-1 text-muted-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring";
 
 /**
- * Who plays a role (D61): someone from the family's people, or someone new, an explicit choice. A picked person stays
- * that person when the parent edits their details, and the order updates them for later books; someone new never
- * changes an existing person. Without people who fit the role, only the fields show.
+ * Who plays a role (D61): someone from the family's people, or someone new, an explicit choice on every role once the
+ * family has people. A picked person stays that person when the parent edits their details, and the order updates them
+ * for later books; someone new never changes an existing person. A role nobody fits yet starts on someone new, and its
+ * "From your people" says why nobody is offered; a family with no people sees only the fields.
  */
 export function PersonChooser({
   slot,
@@ -165,13 +166,13 @@ export function PersonChooser({
   const [editing, setEditing] = useState(false);
   const picked = value.personId ? (people.find((person) => person.personId === value.personId) ?? null) : null;
   const choose = (next: "people" | "new") => {
-    setMode(next === "people" && !canPick ? "new" : next);
+    setMode(next);
     setEditing(false);
     onChange({ ...blankFor(slot), personId: null });
   };
   return (
     <div className="flex flex-col gap-2">
-      {(canPick || value.personId) && (
+      {(people.length > 0 || value.personId) && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div
             role="radiogroup"
@@ -209,7 +210,16 @@ export function PersonChooser({
           </Link>
         </div>
       )}
-      {mode === "people" && !value.personId && (
+      {mode === "people" && !value.personId && !canPick && (
+        <p
+          className="rounded-md bg-muted/60 p-2 text-xs text-muted-foreground"
+          data-testid={`${slot.slotId}-nobody-fits`}
+        >
+          None of your people can play this part yet: it's for {agesLabel(slot)}. Choose Someone new; they join your
+          people when you order the book.
+        </p>
+      )}
+      {mode === "people" && !value.personId && canPick && (
         <NativeSelect
           aria-label={`${slot.label}: choose from your people`}
           value=""

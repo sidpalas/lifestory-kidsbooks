@@ -644,9 +644,18 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   await expect(page.getByTestId("role-grownup")).toContainText(`${dad} · Dad · he/him · adult`);
 
   await page.goto("/stories/the-kite-day");
-  // Nobody fits the child's role now (the typo is archived), so it shows only the fields; the grown-up's role offers
-  // the explicit choice, from the family's people first.
-  await expect(page.getByTestId("role-hero").getByRole("radiogroup")).toHaveCount(0);
+  // Every role offers the explicit choice once the family has people. Nobody fits the child's role now (the typo is
+  // archived), so it starts on someone new, and its "From your people" says why nobody is offered.
+  const hero = page.getByTestId("role-hero");
+  await expect(hero.getByRole("radio", { name: "Someone new" })).toBeChecked();
+  await expect(hero.getByLabel("Name")).toBeVisible();
+  await hero.getByText("From your people", { exact: true }).click();
+  await expect(page.getByTestId("hero-nobody-fits")).toContainText(
+    "None of your people can play this part yet: it's for young child or older child.",
+  );
+  await evidence(page, "story-nobody-fits");
+  await hero.getByText("Someone new", { exact: true }).click();
+  // The grown-up's role offers the family's people first.
   const grownup = page.getByTestId("role-grownup");
   await expect(grownup.getByRole("radio", { name: "From your people" })).toBeChecked();
   const grownupPick = page.getByLabel("A grown-up: choose from your people");

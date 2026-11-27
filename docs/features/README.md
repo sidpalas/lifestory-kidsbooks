@@ -43,7 +43,7 @@ Show the user the images from that directory; a PASS line with no evidence looke
 
 - Who plays each role: a name, what the kids call them (adult and older-adult ages only; Sid, 2026-11-25), pronouns, and an age the role accepts (D29, D56), entered
   per book on the story page and changeable in the book editor; the family's people (D61), made when a book is
-  ordered, are offered as "From your people" next to "Someone new". The People page (`/people`) lists them to edit for new books or archive. Covered by
+  ordered, are offered as "From your people" next to "Someone new" on every role once the family has anyone (those of an age the role accepts). The People page (`/people`) lists them to edit for new books or archive. Covered by
   `e2e -- books milestone1`; no map file yet. Their likeness comes from a photo per book (photo-books).
 
 ### Stories and books
