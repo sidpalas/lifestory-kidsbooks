@@ -11,6 +11,10 @@
 // occluders/*.png (full canvas). Occluders of kind "hero" (the figure's own hat or helmet) are merged into the bald
 // reference, so the model redraws them; "scenery" occluders are art layers over the figure.
 //
+// A story with several roles lists them as `slots` in its config and takes `--sheet <slotId>=<image>` for each. Its
+// export lists each page's `figures` (slotId, box and head, back to front) instead of `hero`, with
+// pages/<pageId>/<slotId>.png, and its stock figures are pNN-<slotId>.png.
+//
 // Without --stock, each figure's stock drawing is its bald reference on the window: a placeholder until the stock
 // figures are drawn from the stock sheet.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -37,7 +41,11 @@ const ExportFile = Schema.Struct({
   pages: Schema.Array(
     Schema.Struct({
       pageId: Schema.String,
-      hero: Schema.NullOr(Schema.Struct({ box: PixelBox, head: PixelBox })),
+      hero: Schema.optionalKey(Schema.NullOr(Schema.Struct({ box: PixelBox, head: PixelBox }))),
+      /** A page with several roles: each figure's bald drawing is pages/<pageId>/<slotId>.png, back to front. */
+      figures: Schema.optionalKey(
+        Schema.Array(Schema.Struct({ slotId: Schema.String, box: PixelBox, head: PixelBox })),
+      ),
       occluders: Schema.Array(Schema.String),
       occluderKinds: Schema.Record(Schema.String, Schema.Literals(["scenery", "hero"])),
     }),
@@ -54,7 +62,9 @@ const Config = Schema.Struct({
     publishedAt: Schema.String,
   }),
   /** The role, without its stock sheet: `--sheet` provides it. */
-  slot: CharacterSlot,
+  slot: Schema.optionalKey(CharacterSlot),
+  /** Several roles instead of `slot`, for an export whose pages list `figures`; `--sheet <slotId>=<image>` for each. */
+  slots: Schema.optionalKey(Schema.Array(CharacterSlot)),
   styleWords: Schema.String,
   /** The page whose composite, cropped around its figure, is the style reference for the sheets. */
   styleReferencePage: Schema.String,
@@ -96,7 +106,8 @@ const alphaBounds = (rgba: Buffer, width: number, height: number): PixelRect | n
 export const convertExport = async (options: {
   exportDir: string;
   config: typeof Config.Type;
-  sheet: string;
+  /** Each role's stock sheet image, by slotId. */
+  sheets: Readonly<Record<string, string>>;
   out: string;
   stockDir?: string;
 }): Promise<{ manifest: StoryManifest; notes: ReadonlyArray<string> }> => {
@@ -159,8 +170,17 @@ export const convertExport = async (options: {
       return { ...font, asset };
     }),
   );
-  const sheetAsset = `sheets/${config.slot.slotId}${extname(options.sheet).toLowerCase()}`;
-  await write(sheetAsset, await readFile(options.sheet));
+  const slots = config.slots ?? (config.slot ? [config.slot] : []);
+  if (slots.length === 0) throw new Error("the config needs slot or slots");
+  const characterSlots = await Promise.all(
+    slots.map(async (slot) => {
+      const sheet = options.sheets[slot.slotId];
+      if (!sheet) throw new Error(`no --sheet for ${slot.slotId}`);
+      const stockSheet = `sheets/${slot.slotId}${extname(sheet).toLowerCase()}`;
+      await write(stockSheet, await readFile(sheet));
+      return { ...slot, stockSheet };
+    }),
+  );
 
   const pages: Array<StoryManifest["pages"][number]> = [];
   let styleReference: string | undefined;
@@ -175,25 +195,40 @@ export const convertExport = async (options: {
       { kind: "art", asset: plate },
     ];
     const scenery = page.occluders.filter((file) => page.occluderKinds[file] !== "hero");
-    if (page.hero) {
-      const { box, head } = page.hero;
+    const hats = page.occluders.filter((file) => page.occluderKinds[file] === "hero");
+    // A one-role export names its figure hero.png; a page with several roles lists them, each in <slotId>.png.
+    const figures =
+      page.figures?.map((figure) => ({ ...figure, file: `${figure.slotId}.png` })) ??
+      (page.hero ? [{ slotId: slots[0]!.slotId, ...page.hero, file: "hero.png" }] : []);
+    if (hats.length && page.figures) throw new Error(`${id}: a hat occluder needs a one-role page`);
+    const canvases: Array<Buffer> = [];
+    let union: PixelRect | null = null;
+    for (const { slotId, box, head, file } of figures) {
       // The bald figure on the full canvas, with the figure's own hat or helmet merged in.
-      const hats = page.occluders.filter((file) => page.occluderKinds[file] === "hero");
       const canvas = await sharp({
         create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
       })
         .composite([
-          { input: join(dir, "hero.png"), left: Math.round(box[0]), top: Math.round(box[1]) },
-          ...hats.map((file) => ({ input: join(dir, "occluders", file), left: 0, top: 0 })),
+          { input: join(dir, file), left: Math.round(box[0]), top: Math.round(box[1]) },
+          ...hats.map((hat) => ({ input: join(dir, "occluders", hat), left: 0, top: 0 })),
         ])
         .png()
         .toBuffer();
+      canvases.push(canvas);
       const raw = await sharp(canvas).raw().toBuffer();
       const bounds = alphaBounds(raw, W, H);
-      if (!bounds) throw new Error(`${id}: the hero has no opaque pixels`);
+      if (!bounds) throw new Error(`${id}: the ${slotId} figure has no opaque pixels`);
+      union = union
+        ? [
+            Math.min(union[0], bounds[0]),
+            Math.min(union[1], bounds[1]),
+            Math.max(union[2], bounds[2]),
+            Math.max(union[3], bounds[3]),
+          ]
+        : bounds;
       const figureBox = toPermille(bounds);
       const [cx0, cy0, cx1, cy1] = toPixels(figureBox);
-      const reference = `pages/${id}/${config.slot.slotId}/reference.png`;
+      const reference = `pages/${id}/${slotId}/reference.png`;
       await write(
         reference,
         await sharp(canvas)
@@ -212,10 +247,14 @@ export const convertExport = async (options: {
       const headShare =
         ((headBox[2] - headBox[0]) * (headBox[3] - headBox[1])) /
         ((figureBox[2] - figureBox[0]) * (figureBox[3] - figureBox[1]));
-      if (headShare > 0.5) notes.push(`${id}: the head box covers ${Math.round(headShare * 100)}% of the figure`);
+      if (headShare > 0.5)
+        notes.push(`${id}: the ${slotId} head box covers ${Math.round(headShare * 100)}% of the figure`);
       if (hats.length) notes.push(`${id}: merged ${hats.join(", ")} into the bald reference`);
-      const stock = `pages/${id}/${config.slot.slotId}/stock.png`;
-      const stockSource = options.stockDir ? join(options.stockDir, `${id}.png`) : undefined;
+      const stock = `pages/${id}/${slotId}/stock.png`;
+      // Stock figures are <pageId>.png for a one-role story, <pageId>-<slotId>.png otherwise.
+      const stockSource = options.stockDir
+        ? join(options.stockDir, slots.length === 1 ? `${id}.png` : `${id}-${slotId}.png`)
+        : undefined;
       if (stockSource) await write(stock, await readFile(stockSource));
       else {
         // Placeholder: the bald reference where it sits in the window, at the window's generation size.
@@ -236,35 +275,27 @@ export const convertExport = async (options: {
             .toBuffer(),
         );
       }
-      layers.push({
-        kind: "photoFigure",
-        slotId: config.slot.slotId,
-        reference,
-        box: figureBox,
-        window,
-        head: headBox,
-        stock,
-      });
-      if (id === config.styleReferencePage) {
-        // The painted page around its figure, as drawn: plate, bald figure, scenery.
-        const composite = await sharp(join(dir, "plate.jpg"))
-          .composite([
-            { input: canvas, left: 0, top: 0 },
-            ...scenery.map((file) => ({ input: join(dir, "occluders", file), left: 0, top: 0 })),
-          ])
-          .png()
-          .toBuffer();
-        const [wx0, wy0, wx1, wy1] = toPixels(window);
-        styleReference = "style/reference.jpg";
-        await write(
-          styleReference,
-          await sharp(composite)
-            .extract({ left: wx0, top: wy0, width: Math.min(W, wx1) - wx0, height: Math.min(H, wy1) - wy0 })
-            .resize({ width: 1024, height: 1024, fit: "inside" })
-            .jpeg({ quality: 90 })
-            .toBuffer(),
-        );
-      }
+      layers.push({ kind: "photoFigure", slotId, reference, box: figureBox, window, head: headBox, stock });
+    }
+    if (id === config.styleReferencePage && union) {
+      // The painted page around its figures, as drawn: plate, bald figures, scenery.
+      const composite = await sharp(join(dir, "plate.jpg"))
+        .composite([
+          ...canvases.map((input) => ({ input, left: 0, top: 0 })),
+          ...scenery.map((file) => ({ input: join(dir, "occluders", file), left: 0, top: 0 })),
+        ])
+        .png()
+        .toBuffer();
+      const [wx0, wy0, wx1, wy1] = toPixels(windowOf(union));
+      styleReference = "style/reference.jpg";
+      await write(
+        styleReference,
+        await sharp(composite)
+          .extract({ left: wx0, top: wy0, width: Math.min(W, wx1) - wx0, height: Math.min(H, wy1) - wy0 })
+          .resize({ width: 1024, height: 1024, fit: "inside" })
+          .jpeg({ quality: 90 })
+          .toBuffer(),
+      );
     }
     for (const file of scenery) {
       const asset = `pages/${id}/occluders/${file}`;
@@ -284,7 +315,7 @@ export const convertExport = async (options: {
       trim: layout.trim,
       fonts,
       textStyles: layout.textStyles,
-      characterSlots: [{ ...config.slot, stockSheet: sheetAsset }],
+      characterSlots,
       photo: { styleReference, styleWords: config.styleWords, promptVersion: "photo-hero-v3" },
       pages,
     }),
@@ -299,22 +330,30 @@ if (import.meta.main) {
     options: {
       export: { type: "string" },
       config: { type: "string" },
-      sheet: { type: "string" },
+      sheet: { type: "string", multiple: true },
       out: { type: "string" },
       stock: { type: "string" },
     },
   });
-  if (!values.export || !values.config || !values.sheet || !values.out) {
+  if (!values.export || !values.config || !values.sheet?.length || !values.out) {
     console.error(
-      "usage: node packages/core/src/story-from-export.ts --export <dir> --config <json> --sheet <image> --out <dir> [--stock <dir>]",
+      "usage: node packages/core/src/story-from-export.ts --export <dir> --config <json> --sheet <image> --out <dir> [--stock <dir>]\n" +
+        "  several roles: --sheet <slotId>=<image> for each",
     );
     process.exit(2);
   }
   const config = Schema.decodeUnknownSync(Config)(await readJson(resolve(values.config)));
+  // One role takes a bare --sheet <image>; several take --sheet <slotId>=<image> each.
+  const sheets = Object.fromEntries(
+    values.sheet.map((arg) => {
+      const at = arg.indexOf("=");
+      return at < 0 ? [config.slot?.slotId ?? "", resolve(arg)] : [arg.slice(0, at), resolve(arg.slice(at + 1))];
+    }),
+  );
   const { manifest, notes } = await convertExport({
     exportDir: resolve(values.export),
     config,
-    sheet: resolve(values.sheet),
+    sheets,
     out: resolve(values.out),
     ...(values.stock ? { stockDir: resolve(values.stock) } : {}),
   });

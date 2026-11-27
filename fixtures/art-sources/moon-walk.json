@@ -1,0 +1,30 @@
+{
+  "story": {
+    "id": "story_moon_walk",
+    "slug": "the-moon-walk",
+    "title": "The Moon Walk",
+    "summary": "A four-page sample story in loose, scribbly graphite pencil: a child and a parent go out after supper to find the moon.",
+    "version": 1,
+    "publishedAt": "2026-11-27T12:00:00Z"
+  },
+  "slots": [
+    {
+      "slotId": "hero",
+      "label": "The child",
+      "description": "A child about 3 to 10 years old, the main character on every page",
+      "ages": ["toddler", "young-child", "older-child"],
+      "example": { "name": "Nia", "pronouns": "she/her" },
+      "outfit": "a chunky knitted jumper, dungarees and wellington boots"
+    },
+    {
+      "slotId": "grownup",
+      "label": "A parent",
+      "description": "A mum, dad or other grown-up who comes along",
+      "ages": ["adult", "older-adult"],
+      "example": { "name": "Leo", "title": "Dad", "pronouns": "he/him" },
+      "outfit": "a long wool coat, a scarf and walking boots"
+    }
+  ],
+  "styleWords": "very loose, scribbly black-and-white graphite pencil sketch on off-white paper: quick wobbly overlapping strokes, unerased construction lines, sparse scribbled hatching, lots of bare paper, no polished rendering, no colour",
+  "styleReferencePage": "p01"
+}
