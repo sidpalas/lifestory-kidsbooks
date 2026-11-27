@@ -679,4 +679,47 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   await expect(people.getByRole("listitem").filter({ hasText: `Sammy ${id}` })).toContainText(
     "In The Kite Day, The Kite Day",
   );
+
+  // Someone plays one part in a book (Sid, 2026-11-27): the server refuses one person in two roles, whatever the
+  // client sends, when making a book and when changing a role. Imported here (AGENTS.md, "Orb size").
+  const { createBook, Database, makeServerRuntime, setBookCast } = await import("@lifestory/core");
+  const runtime = makeServerRuntime();
+  try {
+    const { rows } = await runtime.runPromise(
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool.query<{ userId: string; familyId: string; personId: string; name: string }>(
+            `select u.id as "userId", p.family_id as "familyId", p.id as "personId", p.name from "user" u
+             join member m on m.user_id = u.id join family_person p on p.family_id = m.organization_id
+             where u.email = $1`,
+            [`people-${id}@lifestory.dev`],
+          ),
+        ),
+      ),
+    );
+    const sammy = rows.find((row) => row.name === `Sammy ${id}`)!;
+    const twice = { name: sammy.name, title: null, pronouns: "he/him", personId: sammy.personId } as const;
+    const made = await runtime.runPromise(
+      Effect.exit(
+        createBook(sammy.userId, sammy.familyId, {
+          slug: "the-kite-day",
+          cast: { hero: { ...twice, age: "young-child" }, grownup: { ...twice, age: "adult" } },
+          existing: [],
+        }),
+      ),
+    );
+    expect(String(made)).toContain(`Sammy ${id} already plays`);
+    const changed = await runtime.runPromise(
+      Effect.exit(
+        setBookCast(sammy.userId, {
+          bookId: firstBook.split("/").at(-1)!,
+          slotId: "hero",
+          person: { ...twice, age: "young-child" },
+        }),
+      ),
+    );
+    expect(String(changed)).toContain(`Sammy ${id} already plays a grown-up`);
+  } finally {
+    await runtime.dispose();
+  }
 });

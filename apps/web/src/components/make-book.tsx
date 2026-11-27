@@ -149,6 +149,7 @@ export function PersonChooser({
   value,
   onChange,
   people,
+  taken,
   disabled,
 }: {
   slot: CharacterSlot;
@@ -156,12 +157,15 @@ export function PersonChooser({
   onChange: (next: PersonDraft) => void;
   /** The family's people that aren't archived; those of an age the role accepts are offered. */
   people: ReadonlyArray<CastPerson>;
+  /** People who play another role of this book, by person ID, with that role's label: someone plays one part. */
+  taken?: ReadonlyMap<string, string>;
   disabled?: boolean;
 }) {
   const fits = people.filter((person) => slot.ages.includes(person.age));
   const canPick = fits.length > 0;
+  const playsIn = (person: CastPerson) => (person.personId ? taken?.get(person.personId) : undefined);
   const [mode, setMode] = useState<"people" | "new">(() =>
-    value.personId || (canPick && value.name.trim() === "") ? "people" : "new",
+    value.personId || (fits.some((person) => !playsIn(person)) && value.name.trim() === "") ? "people" : "new",
   );
   const [editing, setEditing] = useState(false);
   const picked = value.personId ? (people.find((person) => person.personId === value.personId) ?? null) : null;
@@ -231,8 +235,8 @@ export function PersonChooser({
         >
           <option value="">Choose…</option>
           {fits.map((person, i) => (
-            <option key={i} value={i}>
-              {person.title ? `${person.name} (${person.title})` : person.name}
+            <option key={i} value={i} disabled={!!playsIn(person)}>
+              {`${person.title ? `${person.name} (${person.title})` : person.name}${playsIn(person) ? ` · plays ${playsIn(person)!.toLowerCase()}` : ""}`}
             </option>
           ))}
         </NativeSelect>
@@ -273,6 +277,19 @@ export function PersonChooser({
     </div>
   );
 }
+
+/** The people other roles of a book play, by person ID, with the role's label (Sid, 2026-11-27: one part each). */
+export const takenBy = (
+  slots: ReadonlyArray<CharacterSlot>,
+  cast: Readonly<Record<string, { personId?: string | null }>>,
+  slotId: string,
+) =>
+  new Map(
+    slots.flatMap((other) => {
+      const personId = cast[other.slotId]?.personId;
+      return other.slotId !== slotId && personId ? [[personId, other.label] as const] : [];
+    }),
+  );
 
 export function StoryCast({
   slug,
@@ -375,6 +392,7 @@ export function StoryCast({
                   slot={slot}
                   value={cast[slot.slotId]!}
                   people={people}
+                  taken={takenBy(slots, cast, slot.slotId)}
                   disabled={!hydrated}
                   onChange={(next) => setCast((current) => ({ ...current, [slot.slotId]: next }))}
                 />

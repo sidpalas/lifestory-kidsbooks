@@ -32,12 +32,26 @@ const withTitleRule = (person: CastPerson): CastPerson =>
 /** A stored person; a title saved for a child before the rule is dropped on read. */
 const decodePerson = (row: unknown) => Schema.decodeUnknownEffect(CastPerson)(row).pipe(Effect.map(withTitleRule));
 
-/** Every role filled, by a person of an age the role accepts, and no role the story lacks. */
-
+/**
+ * Every role filled, by a person of an age the role accepts, no role the story lacks, and no family person in two roles
+ * (Sid, 2026-11-27). `changed` checks only that role's person against the others, so a book that already had someone
+ * twice can still change its other roles.
+ */
 const checkCast = Effect.fn("books.checkCast")(function* (
   manifest: StoryManifest,
   cast: Readonly<Record<string, CastPerson>>,
+  changed?: string,
 ) {
+  const label = (slotId: string) =>
+    manifest.characterSlots.find((slot) => slot.slotId === slotId)?.label.toLowerCase() ?? slotId;
+  for (const [slotId, person] of Object.entries(cast)) {
+    if (!person.personId || (changed !== undefined && slotId !== changed)) continue;
+    const other = Object.keys(cast).find((id) => id !== slotId && cast[id]!.personId === person.personId);
+    if (other)
+      return yield* new InvalidInput({
+        message: `${person.name} already plays ${label(other)}: someone can play only one part in a book.`,
+      });
+  }
   for (const slot of manifest.characterSlots) {
     const person = cast[slot.slotId];
     if (!person) return yield* new InvalidInput({ message: `Say who plays ${slot.label.toLowerCase()}.` });
@@ -178,6 +192,9 @@ export const syncBookPeople = Effect.fn("books.syncPeople")(function* (
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`people:${book.familyId}`}, 0))`);
       const cast = await tx.select().from(schema.bookCast).where(eq(schema.bookCast.bookId, bookId));
       const people = await tx.select().from(schema.familyPerson).where(eq(schema.familyPerson.familyId, book.familyId));
+      // Picked roles first, so someone typed as new never matches a person another role of this book already is.
+      cast.sort((a, b) => Number(!a.personId) - Number(!b.personId));
+      const used = new Set<string>();
       for (const row of cast) {
         const values = {
           name: row.name.trim(),
@@ -191,7 +208,7 @@ export const syncBookPeople = Effect.fn("books.syncPeople")(function* (
         // only an exact name, title, pronouns and age, which is how reusing an archived person brings them back.
         const match = row.personId
           ? people.find((person) => person.id === row.personId)
-          : people.find((person) => personKey(person) === personKey(row));
+          : people.find((person) => !used.has(person.id) && personKey(person) === personKey(row));
         let personId: string;
         if (match) {
           personId = match.id;
@@ -205,6 +222,7 @@ export const syncBookPeople = Effect.fn("books.syncPeople")(function* (
             .returning();
           people.push(created!);
         }
+        used.add(personId);
         if (row.personId !== personId)
           await tx
             .update(schema.bookCast)
@@ -610,7 +628,7 @@ export const setBookCast = Effect.fn("books.setCast")(function* (
   for (const row of rows) cast[row.slotId] = yield* decodePerson(row).pipe(Effect.orDie);
   const person = withTitleRule(input.person);
   cast[input.slotId] = person;
-  yield* checkCast(book.manifest, cast);
+  yield* checkCast(book.manifest, cast, input.slotId);
   yield* Database.query((db) =>
     db
       .insert(schema.bookCast)

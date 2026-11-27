@@ -566,7 +566,10 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   editor offers "From your people" (first, when anyone fits the role) or "Someone new". **Every role, not only the
   hero (Sid, 2026-11-27):** the choice shows on each role once the family has anyone, since the child-only stories
   left families with only children and the grown-up role showed bare fields. A role offers only people of an age it
-  accepts; one nobody fits starts on Someone new, and its "From your people" says who the part is for. A picked person stays linked
+  accepts; one nobody fits starts on Someone new, and its "From your people" says who the part is for. **One part
+  each (Sid, 2026-11-27):** someone who plays another role of the book is listed but can't be picked ("plays the
+  child"); `createBook` and `setBookCast` refuse one person in two roles, and at the order someone typed as new never
+  matches a person another role of the book already is. A picked person stays linked
   whatever the parent edits under "Edit details", including the name ("This changes Lucy for your next books too"),
   and the order updates the person with the book's details and look. Someone new is never linked by choice: at the
   order they match only a person with exactly the same name, title, pronouns and age (case and spacing ignored), which
