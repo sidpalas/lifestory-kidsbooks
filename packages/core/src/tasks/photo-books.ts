@@ -243,20 +243,23 @@ const uploadedPhoto = (bookId: string, slotId: string, uploadId: string, fileNam
     return { body: object.body, contentType: object.contentType, fileName };
   });
 
+const CheckPhotoParams = Schema.Struct({
+  bookId: Schema.String,
+  slotId: Schema.String,
+  uploadId: Schema.String,
+  fileName: Schema.String,
+  /** An extra photo's pose; absent for the main photo. */
+  pose: Schema.optionalKey(PhotoPose),
+});
+
 /**
  * Checks one uploaded photo (D56): moderation with per-category thresholds, then the vision model, then the rules in
- * code. A refused photo is deleted at once. A passed photo is drawn only when the parent asks ("Draw {name}").
+ * code. A refused photo is deleted at once. A passed photo is drawn only when the parent asks ("Draw {name}"). A main
+ * photo that passes has the person's extra photos checked again against it, so none of someone else stays.
  */
 export const checkPhoto = defineTask({
   name: "photo.check",
-  params: Schema.Struct({
-    bookId: Schema.String,
-    slotId: Schema.String,
-    uploadId: Schema.String,
-    fileName: Schema.String,
-    /** An extra photo's pose; absent for the main photo. */
-    pose: Schema.optionalKey(PhotoPose),
-  }),
+  params: CheckPhotoParams,
   run: ({ bookId, slotId, uploadId, fileName, pose }, ctx) =>
     Effect.gen(function* () {
       const moderation = yield* step(
@@ -319,10 +322,11 @@ export const checkPhoto = defineTask({
               .where(and(eq(schema.bookCast.bookId, bookId), eq(schema.bookCast.slotId, slotId))),
           );
           const result: PhotoCheckResult = report
-            ? judgePhoto(samePerson === null ? report : { ...report, samePerson }, {
-                ages: slot?.ages ?? [],
-                ...(person ? { chosen: person.age as Age } : {}),
-              })
+            ? judgePhoto(
+                samePerson === null ? report : { ...report, samePerson },
+                { ages: slot?.ages ?? [], ...(person ? { chosen: person.age as Age } : {}) },
+                pose,
+              )
             : { status: "refused", refusals: refusedFirst, warnings: [], report: null };
           if (result.status === "refused") yield* (yield* ObjectStorage).delete(row.photoKey).pipe(Effect.orDie);
           const outcome = {
@@ -383,6 +387,39 @@ export const checkPhoto = defineTask({
           return result.status;
         }),
       );
+      if (!pose && status === "passed")
+        yield* step(
+          ctx,
+          "recheck",
+          Effect.gen(function* () {
+            const extras = yield* Database.query((db) =>
+              db
+                .update(schema.bookPosePhoto)
+                .set({ checkStatus: "checking", check: null })
+                .where(
+                  and(
+                    eq(schema.bookPosePhoto.bookId, bookId),
+                    eq(schema.bookPosePhoto.slotId, slotId),
+                    isNotNull(schema.bookPosePhoto.photoKey),
+                  ),
+                )
+                .returning({ pose: schema.bookPosePhoto.pose, uploadId: schema.bookPosePhoto.uploadId }),
+            );
+            yield* Effect.forEach(
+              extras,
+              (extra) =>
+                Jobs.use((jobs) =>
+                  jobs.spawn(
+                    { name: "photo.check", params: CheckPhotoParams },
+                    { bookId, slotId, uploadId: extra.uploadId, fileName: "", pose: extra.pose as PhotoPose },
+                    { idempotencyKey: `photo.check:${extra.uploadId}:${uploadId}` },
+                  ),
+                ).pipe(Effect.orDie),
+              { discard: true },
+            );
+            return extras.length;
+          }),
+        );
       return { status };
     }),
 });

@@ -613,6 +613,11 @@ function PoseSlot({ view, slotId, name, pose }: { view: BookView; slotId: string
           {issue.message}
         </p>
       ))}
+      {photo?.check?.warnings.map((issue) => (
+        <p key={issue.code} className="text-amber-700">
+          {issue.message}
+        </p>
+      ))}
       <Alert text={error} />
     </li>
   );

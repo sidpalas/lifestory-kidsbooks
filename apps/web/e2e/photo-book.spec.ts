@@ -191,7 +191,42 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     await expect(page.getByTestId("pose-status-hero-expression")).toHaveText("This photo works.", {
       timeout: 30_000,
     });
-    await expect(page.getByTestId("pose-hero-hair")).not.toContainText("No photo yet");
+    // The side or back of the hair needs no face, and one the comparison can't place passes with a warning.
+    await page
+      .getByLabel(`The side or back of their hair (${child})`)
+      .setInputFiles(photo("back-of-head-unsure-person.png"));
+    await expect(page.getByTestId("pose-status-hero-hair")).toHaveText("This photo works.", { timeout: 30_000 });
+    await expect(page.getByTestId("pose-hero-hair")).toContainText("couldn't tell from this photo");
+    // A new main photo that passes has the extra photos checked again against it.
+    const extraUploads = await sql<{ upload_id: string }>(
+      "select upload_id from book_pose_photo where book_id = $1 and slot_id = 'hero' order by pose",
+      [bookId],
+    );
+    await page.getByLabel(`Photo of ${child}`).setInputFiles(photo("child-2.png"));
+    await expect(page.getByTestId("photo-status-hero")).toHaveText("This photo works.", { timeout: 30_000 });
+    for (const status of ["pose-status-hero-expression", "pose-status-hero-hair"])
+      await expect(page.getByTestId(status)).toHaveText("This photo works.", { timeout: 30_000 });
+    await expect
+      .poll(
+        async () =>
+          (
+            await sql<{ upload_id: string }>(
+              "select params->>'uploadId' as upload_id from absurd.t_default where task_name = 'photo.check' and params->>'bookId' = $1",
+              [bookId],
+            )
+          ).filter((task) => extraUploads.some((extra) => extra.upload_id === task.upload_id)).length,
+      )
+      .toBe(4);
+    await expect
+      .poll(async () =>
+        (
+          await sql<{ check_status: string }>(
+            "select check_status from book_pose_photo where book_id = $1 and slot_id = 'hero' order by pose",
+            [bookId],
+          )
+        ).map((row) => row.check_status),
+      )
+      .toEqual(["passed", "passed"]);
     await expect(page.getByLabel(`Use the camera for ${child}, the side or back of their hair`)).toHaveAttribute(
       "capture",
       "environment",
@@ -211,10 +246,10 @@ test("a parent puts the family into a book from photos, changes pages, and the o
       "select photo_key from book_pose_photo where book_id = $1 and slot_id = 'hero' and pose = 'expression'",
       [bookId],
     );
-    // The main photo, the extra photo, then the style reference.
-    expect(heroSheet!.references).toHaveLength(3);
+    // The main photo, the extra photos, then the style reference.
+    expect(heroSheet!.references).toHaveLength(4);
     expect(heroSheet!.references[1]).toBe(extra!.photo_key);
-    expect(first!.prompt).toContain("The first 2 images are photos of the same person");
+    expect(first!.prompt).toContain("The first 3 images are photos of the same person");
     // Each drawing also draws the person in six expressions, from the sheet just drawn and never the photo (D56).
     await expect(page.getByTestId("expressions-hero")).toBeVisible();
     const [expressions] = await sql<{ references: Array<string>; sheet: string }>(
@@ -225,7 +260,7 @@ test("a parent puts the family into a book from photos, changes pages, and the o
     expect(expressions!.references).toEqual([expressions!.sheet]);
     // Once drawn, the look is how they were drawn; a note changes it.
     await expect(page.getByTestId("look-hero").getByLabel(`${child}'s hair length`)).toBeDisabled();
-    expect(await photosOf(bookId)).toBe(3); // two main photos and the passing extra one; the refused one is gone
+    expect(await photosOf(bookId)).toBe(4); // two main photos and the passing extra ones; the refused one is gone
     await evidence(page, "photo-preview");
     // On a phone each person's photo and sheet card fits its column: the buttons named after the person wrap instead
     // of widening the card off the screen.

@@ -1,7 +1,8 @@
 // The photo check (D56): each uploaded photo is moderated, then looked at by a small vision model, and the rules below
 // decide in code whether it can make a character sheet. `PHOTO_CHECK=fake` (the default) looks at nothing and refuses
-// a photo whose file name contains `two-faces`, and an extra photo whose name contains `other-person` as someone else,
-// so tests and orbs make no API calls; `openai` calls OpenAI.
+// a photo whose file name contains `two-faces`, shows no face for `back-of-head`, and takes an extra photo whose name
+// contains `other-person` as someone else and one with `unsure-person` as unsure, so tests and orbs make no API calls;
+// `openai` calls OpenAI.
 import type { JsonObject } from "absurd-sdk";
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect";
 import sharp from "sharp";
@@ -14,6 +15,7 @@ import {
   HairTexture,
   type PhotoCheckResult,
   type PhotoIssue,
+  type PhotoPose,
   PhotoReport,
   SkinTone,
 } from "./contracts.ts";
@@ -42,8 +44,11 @@ export class PhotoCheck extends Context.Service<
     readonly inspect: (
       photo: PhotoInput,
     ) => Effect.Effect<Inspection & { readonly usage?: JsonObject }, PhotoCheckFailed>;
-    /** Whether an extra photo shows the same person as the main photo, without saying who either is. */
-    readonly samePerson: (main: PhotoInput, extra: PhotoInput) => Effect.Effect<boolean, PhotoCheckFailed>;
+    /**
+     * Whether an extra photo shows the same person as the main photo, without saying who either is: "unsure" when
+     * the extra photo doesn't show enough to tell, such as the back of their head.
+     */
+    readonly samePerson: (main: PhotoInput, extra: PhotoInput) => Effect.Effect<boolean | "unsure", PhotoCheckFailed>;
   }
 >()("@lifestory/core/PhotoCheck") {}
 
@@ -71,31 +76,60 @@ export const moderationRefusals = (moderation: Moderation): ReadonlyArray<PhotoI
 
 const ageIndex = (age: Age) => ageOptions.findIndex((option) => option.id === age);
 
+/** The extra photos that may not show the face (D56): the side or back of the hair, and another angle. */
+const faceOptional = (pose: PhotoPose | undefined) => pose === "hair" || pose === "angle";
+
 /**
  * The rules (D56): refuse with no visible main face, a second prominent face, a face under about 150 px across, or a
- * blurred face, or an extra photo of someone other than the main photo's person; background faces never refuse. Warn on a hat, helmet, goggles or sunglasses, poor light, and an age
- * that doesn't match: one the role accepts but the parent didn't choose (the
+ * blurred face; background faces never refuse. An extra photo (`pose`) is refused when there's no passing main photo
+ * to compare it with, or when it shows someone else; when the comparison can't tell, the expression photo is refused
+ * and the hair and angle photos pass with a warning. The hair and angle photos need no visible face or face size, but
+ * are refused when anyone else is close to the camera, and get no age warning. Warn on a hat, helmet, goggles or
+ * sunglasses, poor light, and an age that doesn't match: one the role accepts but the parent didn't choose (the
  * sheet draws the chosen age, so a toddler chosen as a young child comes out about six), or one far from the role's.
  */
 export const judgePhoto = (
   report: PhotoReport,
   role: { readonly ages: ReadonlyArray<Age>; readonly chosen?: Age },
+  pose?: PhotoPose,
 ): PhotoCheckResult => {
   const refusals = [...moderationRefusals(report.moderation)];
   const warnings: Array<PhotoIssue> = [];
+  const anyFace = faceOptional(pose);
   if (refusals.length === 0) {
-    if (!report.mainFaceVisible)
+    if (pose && report.samePerson === undefined)
+      refusals.push(issue("no-main", "Add a main photo that works first, so we can compare this one with it."));
+    else if (!anyFace && !report.mainFaceVisible)
       refusals.push(issue("no-face", "We couldn't see a face clearly. Choose a photo where the face is in view."));
-    else if (report.prominentFaces > 1)
+    else if (report.prominentFaces > 1 || (anyFace && (report.otherPeopleClose ?? 0) > 0))
       refusals.push(
         issue("two-faces", "There's more than one person close to the camera. Crop the photo to just this person."),
       );
-    else if (report.mainFaceWidthPx < photoRules.minFaceWidthPx)
+    else if (!anyFace && report.mainFaceWidthPx < photoRules.minFaceWidthPx)
       refusals.push(issue("small-face", "The face is too small. Choose a closer photo, or crop it around the face."));
     else if (report.sharpness === "blurred")
-      refusals.push(issue("blurred", "The face is blurred. Choose a sharper photo."));
+      refusals.push(
+        issue(
+          "blurred",
+          anyFace ? "The photo is blurred. Choose a sharper one." : "The face is blurred. Choose a sharper photo.",
+        ),
+      );
     else if (report.samePerson === false)
       refusals.push(issue("other-person", "This looks like a different person from the first photo."));
+    else if (report.samePerson === "unsure" && !anyFace)
+      refusals.push(
+        issue(
+          "unsure-person",
+          "We couldn't tell whether this is the same person as the first photo. Choose a clearer one.",
+        ),
+      );
+    else if (report.samePerson === "unsure")
+      warnings.push(
+        issue(
+          "unsure-person",
+          "We couldn't tell from this photo whether it's the same person as the first one. Keep it only if it is.",
+        ),
+      );
   }
   if (refusals.length === 0) {
     const covered = report.occlusions.filter((o) => ["hat", "helmet", "sunglasses", "goggles"].includes(o));
@@ -108,7 +142,8 @@ export const judgePhoto = (
     const ages = role.ages.map(ageIndex);
     const distance = Math.min(...ages.map((age) => Math.abs(age - ageIndex(report.apparentAge))));
     const looks = ageOptions[ageIndex(report.apparentAge)]!;
-    if (role.chosen && role.chosen !== report.apparentAge && role.ages.includes(report.apparentAge)) {
+    // A photo from the side or behind shows too little for an age; the main photo's warning covers it.
+    if (!anyFace && role.chosen && role.chosen !== report.apparentAge && role.ages.includes(report.apparentAge)) {
       const chosen = ageOptions[ageIndex(role.chosen)]!;
       warnings.push(
         issue(
@@ -117,7 +152,7 @@ export const judgePhoto = (
             `${chosen.label.toLowerCase()} (${chosen.years}). We draw them at the age you choose, so change it if that's wrong.`,
         ),
       );
-    } else if (distance >= photoRules.ageWarnBuckets)
+    } else if (!anyFace && distance >= photoRules.ageWarnBuckets)
       warnings.push(
         issue(
           "age",
@@ -128,16 +163,17 @@ export const judgePhoto = (
   return { status: refusals.length > 0 ? "refused" : "passed", refusals, warnings, report };
 };
 
-/** The fake check: a clean photo, or two prominent faces when the file name says `two-faces`. */
+/** The fake check: a clean photo, or what the file name says (`two-faces`, `back-of-head`, `other-person`, `unsure-person`). */
 export const FakePhotoCheck = Layer.succeed(PhotoCheck, {
   name: "fake",
   moderate: () => Effect.succeed({ sexual: 0, violence: 0, selfHarm: 0 }),
   inspect: (photo) =>
     Effect.succeed({
-      prominentFaces: photo.fileName.includes("two-faces") ? 2 : 1,
+      prominentFaces: photo.fileName.includes("two-faces") ? 2 : photo.fileName.includes("back-of-head") ? 0 : 1,
       backgroundFaces: 0,
-      mainFaceVisible: true,
-      mainFaceWidthPx: 400,
+      otherPeopleClose: photo.fileName.includes("two-faces") ? 1 : 0,
+      mainFaceVisible: !photo.fileName.includes("back-of-head"),
+      mainFaceWidthPx: photo.fileName.includes("back-of-head") ? 0 : 400,
       sharpness: "sharp" as const,
       lighting: "good" as const,
       occlusions: [],
@@ -152,15 +188,19 @@ export const FakePhotoCheck = Layer.succeed(PhotoCheck, {
       facialHair: "none" as const,
       tip: "",
     }),
-  samePerson: (_main, extra) => Effect.succeed(!extra.fileName.includes("other-person")),
+  samePerson: (_main, extra) =>
+    Effect.succeed(
+      extra.fileName.includes("other-person") ? false : extra.fileName.includes("unsure-person") ? "unsure" : true,
+    ),
 });
 
 const visionPrompt = `You check a photo a parent uploaded so an illustrator can draw the main person in a children's book.
 Do not identify the person or guess who they are. Describe only what is visible.
 - prominentFaces: faces near the camera and in focus, the main person included. backgroundFaces: small, distant or out-of-focus faces.
+- otherPeopleClose: people other than the main person near the camera and in focus, counted whether or not their face shows.
 - mainFaceVisible: whether the main person's face is clearly in view (not turned away, not covered).
-- mainFaceWidth: the main face's width as a fraction of the image width (0-1).
-- sharpness of the main face; lighting of the photo; occlusions on the main person's head or face.
+- mainFaceWidth: the main face's width as a fraction of the image width (0-1), 0 when it isn't in view.
+- sharpness of the main face, or of the main person's head when the face isn't in view; lighting of the photo; occlusions on the main person's head or face.
 - apparentAge: the age bucket the main person looks.
 - hairColour, hairLength, hairTexture: the main person's hair from the lists, each null when it is hidden (hairLength "none" for a bald head).
 - eyeColour and skinTone from the lists, each null when you can't tell; glasses and freckles, null when you can't tell.
@@ -176,6 +216,7 @@ const VisionReply = Schema.Struct({
   glasses: Schema.NullOr(Schema.Boolean),
   freckles: Schema.NullOr(Schema.Boolean),
   mainFaceWidth: Schema.Number,
+  otherPeopleClose: Schema.Number,
 });
 const nullable = (literals: ReadonlyArray<string>) => ({ type: ["string", "null"], enum: [...literals, null] });
 
@@ -185,6 +226,7 @@ const visionSchema = {
   required: [
     "prominentFaces",
     "backgroundFaces",
+    "otherPeopleClose",
     "mainFaceVisible",
     "mainFaceWidth",
     "sharpness",
@@ -204,6 +246,7 @@ const visionSchema = {
   properties: {
     prominentFaces: { type: "integer" },
     backgroundFaces: { type: "integer" },
+    otherPeopleClose: { type: "integer" },
     mainFaceVisible: { type: "boolean" },
     mainFaceWidth: { type: "number" },
     sharpness: { type: "string", enum: ["sharp", "soft", "blurred"] },
@@ -228,13 +271,16 @@ const visionSchema = {
 const samePersonPrompt = `Two photos a parent uploaded of one family member for a children's book illustrator.
 Do not identify the people or guess who they are. Say only whether the main person in the second photo looks like the
 same person as the main person in the first, allowing for a different expression, angle, hairstyle, light or a few
-years of age.`;
-const SamePersonReply = Schema.Struct({ samePerson: Schema.Boolean });
+years of age. The second photo may show them from the side or from behind: then judge from what it shows, such as the
+hair, build, skin tone and clothes.
+Answer "same" when they look like the same person, "different" when they look like someone else, and "unsure" only
+when the second photo doesn't show enough of them to tell.`;
+const SamePersonReply = Schema.Struct({ samePerson: Schema.Literals(["same", "different", "unsure"]) });
 const samePersonSchema = {
   type: "object",
   additionalProperties: false,
   required: ["samePerson"],
-  properties: { samePerson: { type: "boolean" } },
+  properties: { samePerson: { type: "string", enum: ["same", "different", "unsure"] } },
 };
 
 const dataUrl = (photo: PhotoInput) => `data:${photo.contentType};base64,${Buffer.from(photo.body).toString("base64")}`;
@@ -298,7 +344,7 @@ export const OpenAIPhotoCheck = Layer.effect(
           Effect.mapError((error) =>
             error instanceof PhotoCheckFailed ? error : new PhotoCheckFailed({ message: String(error) }),
           ),
-          Effect.map((reply) => reply.samePerson),
+          Effect.map((reply) => (reply.samePerson === "unsure" ? "unsure" : reply.samePerson === "same")),
         ),
       moderate: (photo) =>
         post("/moderations", {

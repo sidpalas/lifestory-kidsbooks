@@ -344,6 +344,8 @@ export const PhotoReport = Schema.Struct({
   prominentFaces: Schema.Number,
   /** Bystanders: small or out of focus; they never refuse a photo. */
   backgroundFaces: Schema.Number,
+  /** People besides the main one close to the camera, face shown or not; absent from reports stored before 2026-11-27. */
+  otherPeopleClose: Schema.optionalKey(Schema.Number),
   mainFaceVisible: Schema.Boolean,
   /** The main face's width in pixels of the uploaded image. */
   mainFaceWidthPx: Schema.Number,
@@ -361,8 +363,11 @@ export const PhotoReport = Schema.Struct({
   freckles: Schema.optionalKey(Schema.NullOr(Schema.Boolean)),
   facialHair: Schema.Literals(["none", "stubble", "moustache", "beard"]),
   tip: Schema.String,
-  /** An extra photo only: whether it shows the same person as the main photo; absent when there was none to compare. */
-  samePerson: Schema.optionalKey(Schema.Boolean),
+  /**
+   * An extra photo only: whether it shows the same person as the main photo, or "unsure" when it doesn't show enough
+   * to tell; absent when there was no passing main photo to compare.
+   */
+  samePerson: Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Literal("unsure")])),
 });
 export type PhotoReport = typeof PhotoReport.Type;
 

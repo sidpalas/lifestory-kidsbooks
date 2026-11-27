@@ -387,6 +387,14 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   before the style reference; pages never do. A passing extra photo clears that person's sheet, so drawing them
   again uses one of their drawings; "Draw {name}" waits while any of their photos is being checked. They're
   deleted with the main photo (the order, the sweep, a refusal).
+  - **Per-pose rules (Sid, 2026-11-27):** the same check refused the very photos the hair and angle slots ask for
+    ("no-face" for the back of the head, "small-face" for a profile). Now the hair and angle photos skip the
+    visible-face and 150 px rules but are still refused for moderation, a blurred photo, anyone else close to the
+    camera (`otherPeopleClose`, face shown or not) or someone else; they get no age warning. The comparison answers
+    same, different or unsure, judging from hair, build and clothes when the face is hidden: unsure refuses an
+    expression photo and passes a hair or angle photo with a warning. The main and expression photos keep every face
+    rule. The comparison fails closed: an extra photo with no passing main photo to compare is refused ("no-main"),
+    and a main photo that passes has the person's extra photos checked again against it.
 - **Expressions (Sid, 2026-11-25):** each drawing also draws the person's head six times from the sheet just drawn
   (a big grin, a gentle smile, neutral, eyes closed, sad, surprised; about US$0.03), shown under the sheet and in the
   operator's review, so the parent judges the likeness across faces, not one. Lucy's pages with her open grin looked

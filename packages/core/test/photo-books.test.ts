@@ -59,10 +59,54 @@ describe("judgePhoto", () => {
     expect(judgePhoto(report({ sharpness: "soft" }), child).status).toBe("passed");
   });
 
-  it("refuses an extra photo of someone else, and says nothing when there was no main photo to compare", () => {
-    expect(codes(judgePhoto(report({ samePerson: false }), child)).refusals).toEqual(["other-person"]);
-    expect(judgePhoto(report({ samePerson: true }), child).status).toBe("passed");
+  it("refuses an extra photo of someone else, or with no passing main photo to compare", () => {
+    for (const pose of ["expression", "hair", "angle"] as const) {
+      expect(codes(judgePhoto(report({ samePerson: false }), child, pose)).refusals).toEqual(["other-person"]);
+      expect(judgePhoto(report({ samePerson: true }), child, pose).status).toBe("passed");
+      expect(codes(judgePhoto(report(), child, pose)).refusals).toEqual(["no-main"]);
+    }
     expect(judgePhoto(report(), child).status).toBe("passed");
+  });
+
+  it("passes a hair or angle photo with no face in view, but keeps the face rules for the main and expression photos", () => {
+    const backOfHead = report({
+      samePerson: true,
+      mainFaceVisible: false,
+      prominentFaces: 0,
+      mainFaceWidthPx: 0,
+      apparentAge: "adult",
+    });
+    for (const pose of ["hair", "angle"] as const)
+      expect(codes(judgePhoto(backOfHead, child, pose))).toEqual({ status: "passed", refusals: [], warnings: [] });
+    expect(codes(judgePhoto(backOfHead, child, "expression")).refusals).toEqual(["no-face"]);
+    expect(codes(judgePhoto(backOfHead, child)).refusals).toEqual(["no-face"]);
+    const profile = report({ samePerson: true, mainFaceWidthPx: 120 });
+    expect(judgePhoto(profile, child, "angle").status).toBe("passed");
+    expect(codes(judgePhoto(profile, child, "expression")).refusals).toEqual(["small-face"]);
+  });
+
+  it("still refuses a hair or angle photo with someone else close, blurred, or flagged by moderation", () => {
+    const hidden = { samePerson: true, mainFaceVisible: false, prominentFaces: 1 } as const;
+    expect(codes(judgePhoto(report({ ...hidden, otherPeopleClose: 1 }), child, "hair")).refusals).toEqual([
+      "two-faces",
+    ]);
+    expect(codes(judgePhoto(report({ ...hidden, prominentFaces: 2 }), child, "angle")).refusals).toEqual(["two-faces"]);
+    expect(codes(judgePhoto(report({ ...hidden, sharpness: "blurred" }), child, "hair")).refusals).toEqual(["blurred"]);
+    const moderation = { sexual: 0.3, violence: 0, selfHarm: 0 };
+    expect(codes(judgePhoto(report({ ...hidden, moderation }), child, "hair")).refusals).toEqual(["moderation"]);
+  });
+
+  it("passes a hair or angle photo the comparison can't place with a warning, and refuses such an expression photo", () => {
+    const unsure = report({ samePerson: "unsure", mainFaceVisible: false });
+    for (const pose of ["hair", "angle"] as const)
+      expect(codes(judgePhoto(unsure, child, pose))).toEqual({
+        status: "passed",
+        refusals: [],
+        warnings: ["unsure-person"],
+      });
+    expect(codes(judgePhoto(report({ samePerson: "unsure" }), child, "expression")).refusals).toEqual([
+      "unsure-person",
+    ]);
   });
 
   it("warns on an age far from the role's", () => {
