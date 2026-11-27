@@ -37,7 +37,7 @@ const pages = [
     pageId: "p02",
     figures: [
       { slotId: "grownup", box: [150, 340, 450, 975], head: [420, 120, 610, 330] },
-      { slotId: "hero", box: [600, 620, 832, 935], head: [350, 140, 760, 560] },
+      { slotId: "hero", box: [620, 700, 806, 935], head: [350, 140, 760, 560] },
     ],
     paragraphs: [
       {
