@@ -8,6 +8,7 @@ import {
   Age,
   type CastPerson,
   type CharacterSlot,
+  type LookChoices,
   PronounSet,
   takesTitle,
   unwrapResult,
@@ -40,7 +41,15 @@ const titleSuggestions = [
 ];
 
 /** A person in progress: the title as typed, empty for none; kept while the age is a child's, so switching back restores it. */
-export type PersonDraft = { name: string; title: string; pronouns: PronounSet; age: Age; personId?: string | null };
+export type PersonDraft = {
+  name: string;
+  title: string;
+  pronouns: PronounSet;
+  age: Age;
+  personId?: string | null;
+  /** The look corrections (D56) a picked person or a book's role brings; someone new has none. */
+  look?: LookChoices;
+};
 
 export const draftOf = (person: CastPerson): PersonDraft => ({ ...person, title: person.title ?? "" });
 export const blankFor = (slot: CharacterSlot): PersonDraft => ({
@@ -56,6 +65,8 @@ export const personOf = (draft: PersonDraft): CastPerson => ({
   age: draft.age,
   // The person it was picked as (D61), edits and all; null for someone new.
   personId: draft.personId ?? null,
+  // Their look corrections go with them, so a new book starts from what People has (D61).
+  ...(draft.look ? { look: draft.look } : {}),
 });
 
 /** Who plays one role: name, what the kids call them (only for an adult age), pronouns, and an age the role accepts. */

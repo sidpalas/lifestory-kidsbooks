@@ -1,12 +1,20 @@
 // The People page (D61): the family's people, kept to pick for new books. Each row says who they are, which books
-// they're in and the look corrections they bring; parents edit who they are for new books, or archive them.
-import { Age, ageLabel, type FamilyPerson, unwrapResult } from "@lifestory/core/contracts";
+// they're in and the look corrections they bring; parents edit who they are and those corrections for new books, or
+// archive them.
+import {
+  Age,
+  ageLabel,
+  type FamilyPerson,
+  type LookChoices as Corrections,
+  unwrapResult,
+} from "@lifestory/core/contracts";
 import { Link, useHydrated, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { lookFields } from "~/components/book/look-fields";
+import { lookFields, LookSelect } from "~/components/book/look-fields";
 import { draftOf, PersonFields, type PersonDraft, personOf } from "~/components/make-book";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 import { EditBookResult, setPersonArchivedFn, updatePersonFn } from "~/server/books";
 
 /** Every age: a person isn't tied to one role, so editing them offers all seven. */
@@ -40,6 +48,69 @@ function LookChoices({ entry }: { entry: FamilyPerson }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The look corrections a new book starts from, with the photo step's controls (Sid, 2026-11-27). "From the photo"
+ * leaves an attribute to each book's photo; "Use the photo for everything" clears every correction.
+ */
+function LookEdit({
+  id,
+  name,
+  look,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  look: Corrections;
+  onChange: (next: Corrections) => void;
+}) {
+  const set = (key: keyof Corrections, value: string | boolean | undefined) => {
+    const next: Record<string, unknown> = { ...look };
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+    onChange(next as Corrections);
+  };
+  const anySet = lookFields.some((field) => look[field.key] !== undefined);
+  return (
+    <section className="@container flex flex-col gap-2 border-t pt-2" aria-labelledby={`look-edit-${id}`}>
+      <p id={`look-edit-${id}`} className="font-medium">
+        Look corrections
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Each new book reads {name}'s look from its photo. Set only what the photo would get wrong, like hair they always
+        wear differently; you can still change it in each book.
+      </p>
+      <dl className="grid grid-cols-1 gap-x-3 gap-y-2 @[22rem]:grid-cols-2">
+        {lookFields.map((field) => {
+          const chosen = look[field.key] !== undefined;
+          return (
+            <div key={field.key} className="flex flex-col gap-0.5 text-xs">
+              <dt className="flex items-center justify-between gap-2 font-medium">
+                {field.label}
+                <span className={cn("font-normal", chosen ? "text-primary" : "text-muted-foreground")}>
+                  {chosen ? "You set this" : "From the photo"}
+                </span>
+              </dt>
+              <LookSelect
+                field={field}
+                value={look[field.key]}
+                emptyLabel="From the photo"
+                ariaLabel={`${name}'s ${field.label.toLowerCase()}`}
+                idPrefix={`person-${id}`}
+                onChange={(value) => set(field.key, value)}
+              />
+            </div>
+          );
+        })}
+      </dl>
+      {anySet && (
+        <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => onChange({})}>
+          Use the photo for everything
+        </Button>
+      )}
+    </section>
   );
 }
 
@@ -130,6 +201,12 @@ function PersonRow({
             value={draft}
             onChange={setDraft}
           />
+          <LookEdit
+            id={entry.id}
+            name={draft.name.trim() || person.name}
+            look={draft.look ?? {}}
+            onChange={(look) => setDraft({ ...draft, look })}
+          />
           <p className="text-xs text-muted-foreground">New books use this. Books you've made keep theirs.</p>
           {error && (
             <p role="alert" className="text-xs text-destructive">
@@ -172,14 +249,14 @@ export function PeopleList({ people, canEdit }: { people: ReadonlyArray<FamilyPe
           <p className="font-medium">Kept here</p>
           <p>
             Name, what the kids call them (e.g. mom/dad), pronouns, age, and any look you corrected, like hair colour or
-            glasses.
+            glasses.{canEdit && " Change any of it under Edit for the next books."}
           </p>
         </div>
         <div>
           <p className="font-medium">From each book's photo</p>
           <p>
             Everything else about how they look. Every book asks for a new photo, and your corrections go over what it
-            shows.
+            shows. Clear a correction and new books go back to the photo.
           </p>
         </div>
         <p className="border-t pt-2 text-muted-foreground sm:col-span-2">

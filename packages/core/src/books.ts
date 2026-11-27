@@ -141,19 +141,20 @@ const editablePerson = Effect.fn("books.editablePerson")(function* (userId: stri
 });
 
 /**
- * Changes a person's name, title, pronouns or age for the books made after (D61). Their look comes from each book's
- * photo and their newest book's corrections, so it isn't edited here; books already made keep their own copy.
+ * Changes a person's name, title, pronouns, age and look corrections for the books made after (D61; look editable,
+ * Sid 2026-11-27). `look` replaces the corrections, so `{}` leaves every attribute to each book's photo; without
+ * `look` they stay as they are. Books already made keep their own copy.
  */
 export const updatePerson = Effect.fn("books.updatePerson")(function* (
   userId: string,
   input: { readonly personId: string; readonly person: CastPerson },
 ) {
   yield* editablePerson(userId, input.personId);
-  const { name, title, pronouns, age } = withTitleRule(input.person);
+  const { name, title, pronouns, age, look } = withTitleRule(input.person);
   yield* Database.query((db) =>
     db
       .update(schema.familyPerson)
-      .set({ name, title, pronouns, age })
+      .set({ name, title, pronouns, age, ...(look ? { look: look as Record<string, string | boolean> } : {}) })
       .where(eq(schema.familyPerson.id, input.personId)),
   );
 });

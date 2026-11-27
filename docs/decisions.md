@@ -577,15 +577,23 @@ adopted), **Made** (chosen during implementation, Sid can veto), or **Proposed**
   rule that kept a pick linked only while its name matched, which turned a renamed pick into a second person.
 - **People page (`/people`, in the nav):** each person with their age, pronouns, the books they're in, and the look
   corrections in words ("You set: Hair colour: Blond"). Copy says what's kept here and what each book's photo
-  supplies, and why photos aren't kept. Owners and parents (`book: edit`) edit name, title, pronouns and age for new
-  books, and archive (with Undo) or restore; viewers read. The look isn't edited here: it comes with a book's photo.
-  The story page's picker offers people who aren't archived, with a "Manage people" link.
+  supplies, and why photos aren't kept. Owners and parents (`book: edit`) edit name, title, pronouns, age and the look
+  corrections for new books, and archive (with Undo) or restore; viewers read. The story page's picker offers people
+  who aren't archived, with a "Manage people" link.
+- **Look corrections editable on People (Sid, 2026-11-27):** reverses "the look isn't edited here": showing
+  corrections a parent couldn't change was confusing. Under Edit, each attribute has the photo step's control; "From
+  the photo" removes that correction and "Use the photo for everything" removes all of them, so new books read that
+  attribute from their photo again. Saving replaces the person's corrections (`updatePerson`, the same `book: edit`
+  check); books already made keep their own copy (`book_cast.look`), sheets, pages and proofs. A picked person's
+  corrections now go into the new book's role (the picker had dropped them, so a pick started with none and its order
+  then wiped the person's), where the photo step shows them as "You set this" and the parent can still change them
+  for that book. The newest ordered book's corrections still replace the person's at its order.
 - **Retention:** a person holds no image. Photos, sheets and pages keep D56's and D57's rules and go with their book.
   Families delete a person's data by deleting their books; archiving deletes nothing.
 - **Migration 0027** adds the table and column and backfills one person per family and key from ordered books, with
   the newest book's spelling and look. It only adds rows and links. Books ordered between the migration and the new
   web image (minutes, during a deploy) get their people the next time their cast changes.
-- **Reopen if:** families want to set a look without a photo, add people before a book, or share people across
+- **Reopen if:** families want to draw a person without a photo, add people before a book, or share people across
   families.
 
 ### D60. An operator-only story: published for operators to try the pipeline, never seen by families — Decided (Sid, 2026-11-25) / Made

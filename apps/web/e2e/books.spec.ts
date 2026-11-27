@@ -591,7 +591,7 @@ test("each book in Our books shows its cover: the drawn cover page, else stock f
   await outsider.close();
 });
 
-test("People lists who's in the ordered books: archiving takes a typo out of the picker, edits apply to new books only, and reusing someone brings them back", async ({
+test("People lists who's in the ordered books: archiving takes a typo out of the picker, edits (look corrections too) apply to new books only, and reusing someone brings them back", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -616,7 +616,9 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   await markShownBookDrawn(page);
   await page.goto("/people");
   const people = page.getByTestId("people");
-  await expect(people.getByRole("listitem")).toHaveCount(2);
+  // One row per person; the look corrections are list items inside a row.
+  const personRows = people.locator(":scope > li");
+  await expect(personRows).toHaveCount(2);
   await expect(people).toContainText(`${dad} (Dad)`);
   await expect(people).toContainText("Nothing set. Each book reads their look from its photo.");
   await evidence(page, "people");
@@ -625,9 +627,9 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   await page.getByRole("button", { name: `Archive ${typo}` }).click();
   await expect(page.getByRole("status")).toContainText(`${typo} won't be offered for new books.`);
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(people.getByRole("listitem")).toHaveCount(2);
+  await expect(personRows).toHaveCount(2);
   await page.getByRole("button", { name: `Archive ${typo}` }).click();
-  await expect(people.getByRole("listitem")).toHaveCount(1);
+  await expect(personRows).toHaveCount(1);
   await page.getByTestId("archived-people").locator("summary").click();
   await expect(page.getByRole("button", { name: `Restore ${typo}` })).toBeVisible();
   await evidence(page, "people-archived");
@@ -637,9 +639,22 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   const edit = page.getByTestId("people").getByRole("group");
   await edit.getByLabel("Name").fill(`Samuel ${id}`);
   await edit.getByLabel("Age").selectOption({ label: "Older adult" });
+  // The look corrections too (Sid, 2026-11-27), with the photo step's controls; "From the photo" leaves one to the photo.
+  const hair = page.getByLabel(`Samuel ${id}'s hair colour`);
+  await expect(hair).toHaveValue("");
+  await hair.selectOption({ label: "Auburn" });
+  await page.getByLabel(`Samuel ${id}'s glasses`).selectOption({ label: "Yes" });
+  await page.getByLabel(`Samuel ${id}'s eyes`).selectOption({ label: "Blue" });
+  await page.getByLabel(`Samuel ${id}'s eyes`).selectOption({ label: "From the photo" });
+  await evidence(page, "people-edit-look");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(people).toContainText(`Samuel ${id} (Dad)`);
   await expect(people).toContainText("Older adult, he/him.");
+  const lookOfDad = page.getByLabel(`Look you set for Samuel ${id}`);
+  await expect(lookOfDad).toContainText("Hair colour: Auburn");
+  await expect(lookOfDad).toContainText("Glasses: Yes");
+  await expect(lookOfDad).not.toContainText("Eyes");
+  await evidence(page, "people-look-set");
   await page.goto(firstBook);
   await expect(page.getByTestId("role-grownup")).toContainText(`${dad} · Dad · he/him · adult`);
 
@@ -671,13 +686,23 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
   await fillRole(page, "hero", { name: typo, pronouns: "she/her", age: "Young child" });
   await makeBook(page).click();
   await markShownBookDrawn(page);
+  const secondBook = new URL(page.url()).pathname;
   await page.goto("/people");
-  await expect(people.getByRole("listitem")).toHaveCount(2);
+  await expect(personRows).toHaveCount(2);
   await expect(page.getByTestId("archived-people")).toHaveCount(0);
-  await expect(people.getByRole("listitem").filter({ hasText: typo })).toContainText("In The Kite Day, The Kite Day");
+  await expect(personRows.filter({ hasText: typo })).toContainText("In The Kite Day, The Kite Day");
   await expect(people).not.toContainText(`Samuel ${id}`);
-  await expect(people.getByRole("listitem").filter({ hasText: `Sammy ${id}` })).toContainText(
-    "In The Kite Day, The Kite Day",
+  await expect(personRows.filter({ hasText: `Sammy ${id}` })).toContainText("In The Kite Day, The Kite Day");
+  // The pick brought the corrections into the new book, and its order kept them on the person.
+  await expect(page.getByLabel(`Look you set for Sammy ${id}`)).toContainText("Hair colour: Auburn");
+  // Clearing them sends new books back to the photo; the books made keep theirs (checked below).
+  await page.getByRole("button", { name: `Edit Sammy ${id} (Dad)` }).click();
+  await page.getByRole("button", { name: "Use the photo for everything" }).click();
+  await expect(page.getByLabel(`Sammy ${id}'s hair colour`)).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Use the photo for everything" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(personRows.filter({ hasText: `Sammy ${id}` })).toContainText(
+    "Nothing set. Each book reads their look from its photo.",
   );
 
   // Someone plays one part in a book (Sid, 2026-11-27): the server refuses one person in two roles, whatever the
@@ -698,6 +723,23 @@ test("People lists who's in the ordered books: archiving takes a typo out of the
       ),
     );
     const sammy = rows.find((row) => row.name === `Sammy ${id}`)!;
+    // Each book kept its own copy: the first never had corrections, the second keeps the ones it was made with.
+    const looks = await runtime.runPromise(
+      Database.use(({ pool }) =>
+        Effect.promise(() =>
+          pool
+            .query<{ bookId: string; look: object }>(
+              `select book_id as "bookId", look from book_cast where person_id = $1`,
+              [sammy.personId],
+            )
+            .then((result) => Object.fromEntries(result.rows.map((row) => [row.bookId, row.look]))),
+        ),
+      ),
+    );
+    expect(looks).toEqual({
+      [firstBook.split("/").at(-1)!]: {},
+      [secondBook.split("/").at(-1)!]: { hairColour: "auburn", glasses: true },
+    });
     const twice = { name: sammy.name, title: null, pronouns: "he/him", personId: sammy.personId } as const;
     const made = await runtime.runPromise(
       Effect.exit(

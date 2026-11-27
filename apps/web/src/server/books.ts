@@ -242,7 +242,7 @@ export const getPeopleFn = createServerFn({ method: "GET" }).handler(() =>
   ),
 );
 
-/** Changes a person's name, title, pronouns or age for books made after (D61). */
+/** Changes a person's name, title, pronouns, age and look corrections for books made after (D61). */
 export const updatePersonFn = createServerFn({ method: "POST" })
   .validator(Schema.toStandardSchemaV1(Schema.Struct({ personId: Schema.String, person: CastPerson })))
   .handler(({ data }) =>

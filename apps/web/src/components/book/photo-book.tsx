@@ -19,11 +19,10 @@ import { CameraIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { BookPage, ScaledPage } from "~/components/book/BookPage";
-import { lookFields } from "~/components/book/look-fields";
+import { lookFields, LookSelect } from "~/components/book/look-fields";
 import { type ProofList, ProofPanel } from "~/components/book/ProofPanel";
 import { Button } from "~/components/ui/button";
 import { FileInput } from "~/components/ui/file-input";
-import { NativeSelect } from "~/components/ui/native-select";
 import { cn } from "~/lib/utils";
 import {
   BookProofsResult,
@@ -353,11 +352,10 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
   const look = lookOf(photo, choices);
   const locked = likeness.drawing || likeness.sheetKey !== null;
   const { error, pending, run } = useStep();
-  const set = (key: LookKey, value: string) => {
+  const set = (key: LookKey, value: string | boolean | undefined) => {
     const next: Record<string, unknown> = { ...choices };
-    const option = lookFields.find((field) => field.key === key)!.options.find((o) => String(o.id) === value);
-    if (!option) delete next[key];
-    else next[key] = option.id;
+    if (value === undefined) delete next[key];
+    else next[key] = value;
     void run(() => setLookFn({ data: { bookId: view.book.id, slotId, look: next as LookChoices } }));
   };
   return (
@@ -373,10 +371,6 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
           const chosen = choices[field.key] !== undefined;
           const fromPhoto = photo?.[field.key] ?? null;
           const value = look[field.key];
-          const selected = field.options.find((option) => option.id === value);
-          const swatch = selected?.swatch;
-          const described = field.options.some((option) => option.description);
-          const descriptionId = `look-${slotId}-${field.key}-description`;
           return (
             <div key={field.key} className="flex flex-col gap-0.5 text-xs">
               <dt className="flex items-center justify-between gap-2 font-medium">
@@ -385,50 +379,15 @@ function LookConfirm({ view, slotId, name }: { view: BookView; slotId: string; n
                   {chosen ? "You set this" : fromPhoto === null ? "Not in the photo" : "From the photo"}
                 </span>
               </dt>
-              <dd className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="size-4 shrink-0 rounded-full ring-1 ring-black/20"
-                  style={{ background: swatch ?? "transparent" }}
-                />
-                <NativeSelect
-                  aria-label={`${name}'s ${field.label.toLowerCase()}`}
-                  aria-describedby={selected?.description ? descriptionId : undefined}
-                  className="h-8 min-w-0 flex-1 text-xs"
-                  value={value === null ? "" : String(value)}
-                  disabled={locked || pending}
-                  onChange={(event) => set(field.key, event.target.value)}
-                >
-                  <option value="">{fromPhoto === null ? "Not sure" : "As in the photo"}</option>
-                  {field.options.map((option) => (
-                    <option key={String(option.id)} value={String(option.id)}>
-                      {option.label}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </dd>
-              {selected?.description && (
-                <dd id={descriptionId} className="text-muted-foreground" data-testid={descriptionId}>
-                  {selected.description}
-                </dd>
-              )}
-              {described && (
-                <dd>
-                  <details className="text-muted-foreground">
-                    <summary className="cursor-pointer underline-offset-2 hover:underline">
-                      What each {field.label.toLowerCase()} means
-                    </summary>
-                    <dl className="mt-1 flex flex-col gap-1.5 border-l-2 pl-2 leading-snug">
-                      {field.options.map((option) => (
-                        <div key={String(option.id)}>
-                          <dt className="inline font-medium text-foreground">{option.label}:</dt>{" "}
-                          <dd className="inline">{option.description}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </details>
-                </dd>
-              )}
+              <LookSelect
+                field={field}
+                value={value}
+                emptyLabel={fromPhoto === null ? "Not sure" : "As in the photo"}
+                ariaLabel={`${name}'s ${field.label.toLowerCase()}`}
+                idPrefix={`look-${slotId}`}
+                disabled={locked || pending}
+                onChange={(next) => set(field.key, next)}
+              />
               {chosen && fromPhoto !== null && fromPhoto !== value && (
                 <dd className="text-amber-700">
                   The photo looked {optionLabel(field.options, fromPhoto).toLowerCase()}.
