@@ -19,7 +19,7 @@ const pages = [
   {
     pageId: "p01",
     figures: [
-      { slotId: "hero", box: [110, 620, 340, 975], head: [390, 140, 730, 460], flop: true },
+      { slotId: "hero", box: [135, 675, 325, 975], head: [390, 140, 730, 460], flop: true },
       { slotId: "grownup", box: [400, 400, 720, 975], head: [350, 40, 530, 220] },
     ],
     paragraphs: [
@@ -35,7 +35,7 @@ const pages = [
     pageId: "p02",
     figures: [
       { slotId: "grownup", box: [150, 340, 450, 975], head: [420, 120, 610, 330] },
-      { slotId: "hero", box: [560, 540, 860, 935], head: [350, 140, 760, 560] },
+      { slotId: "hero", box: [600, 620, 832, 935], head: [350, 140, 760, 560] },
     ],
     paragraphs: [
       {
@@ -60,7 +60,7 @@ const pages = [
     pageId: "p04",
     figures: [
       { slotId: "grownup", box: [80, 560, 500, 965], head: [500, 25, 750, 265] },
-      { slotId: "hero", box: [580, 665, 800, 965], head: [490, 25, 860, 430] },
+      { slotId: "hero", box: [600, 720, 787, 965], head: [490, 25, 860, 430] },
     ],
     // The moon sits top right: the text stops short of it.
     textWidthIn: 5.4,
@@ -154,11 +154,17 @@ for (const page of pages) {
     // illustrator's figure layer: fitFigure's tint and overlap checks compare against it.
     const paper = await paperOf(join(raw, `${page.pageId}-plate.png`));
     const inside = silhouette(data, info.width, info.height, 10);
+    // Every figure is then graphite on that paper: its lightness times the paper's colour, so the child and the
+    // parent share the plate's warmth (the model drew the bald child cooler, and the tint copies it).
     for (let p = 0; p < info.width * info.height; p++) {
-      if (!inside[p]) continue;
       const a = data[p * 4 + 3] / 255;
-      for (let c = 0; c < 3; c++) data[p * 4 + c] = Math.round(data[p * 4 + c] * a + paper[c] * (1 - a));
-      data[p * 4 + 3] = 255;
+      const lum = (0.299 * data[p * 4] + 0.587 * data[p * 4 + 1] + 0.114 * data[p * 4 + 2]) / 255;
+      const over = inside[p] ? 1 : a;
+      for (let c = 0; c < 3; c++) {
+        const ink = lum * paper[c];
+        data[p * 4 + c] = Math.round(inside[p] ? ink * a + paper[c] * (1 - a) : ink);
+      }
+      data[p * 4 + 3] = Math.round(over * 255);
     }
     const [bx0, by0, bx1, by1] = figure.box.map((v) => (v * C) / 1000);
     const scale = Math.min((bx1 - bx0) / (x1 - x0), (by1 - by0) / (y1 - y0));
